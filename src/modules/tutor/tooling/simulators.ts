@@ -345,15 +345,14 @@ function buildSnapshotSignals(snapshots?: HeadlessTurnSnapshot[]): string[] {
   const total = snapshots.length;
   const toolTurns = snapshots.filter((snap) => (snap.assistant.toolCalls?.length ?? 0) > 0).length;
   const tutorUiTurns = snapshots.filter((snap) => snap.assistant.tutorUi).length;
-  const learnerTurns = snapshots.filter(
-    (snap) => snap.plan.learnerModel || snap.assistant.learnerModel,
-  ).length;
-  const planUpdates = snapshots.reduce((sum, snap) => {
-    const updates = snap.plan.planUpdates;
-    const statusChanges = updates?.statusChanges?.length ?? 0;
-    const masteryChanges = updates?.masteryChanges?.length ?? 0;
-    return sum + statusChanges + masteryChanges;
-  }, 0);
+  // B-later: the simulation rewrite reads these from the event log.
+  const calls = (snap: HeadlessTurnSnapshot, names: string[]) =>
+    (snap.assistant.toolCalls ?? []).filter((call) => names.includes(call.name)).length;
+  const learnerTurns = snapshots.filter((snap) => calls(snap, ['record_evidence']) > 0).length;
+  const planUpdates = snapshots.reduce(
+    (sum, snap) => sum + calls(snap, ['complete_topic', 'start_topic']),
+    0,
+  );
   const searchTurns = snapshots.filter((snap) => snap.plan.hasSearchResults).length;
   const reasoningTurns = snapshots.filter(
     (snap) => snap.assistant.reasoning && snap.assistant.reasoning.trim().length > 0,

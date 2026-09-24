@@ -6,7 +6,7 @@ import type {
   ModelDescriptor,
   SearchMode,
 } from '@/lib/types';
-import type { UiNextOverrides, UiSnapshot } from '@/lib/contracts/ui';
+import type { UiSnapshot } from '@/lib/contracts/ui';
 import type { ModelIndex, ModelCapabilityFlags } from '@/lib/models';
 import {
   clampReasoningEffort,
@@ -32,7 +32,6 @@ export type ResolvedTurnSettings = {
   tutorEnabled: boolean;
   timestampsEnabled: boolean;
   system?: string;
-  tutorNudge?: UiNextOverrides['tutorNudge'];
 };
 
 export function resolveNewChatSettings(opts: {
@@ -201,6 +200,5 @@ export function resolveTurnSettings(args: {
     tutorEnabled,
     timestampsEnabled: ui.messageTimestamps === true,
     system,
-    tutorNudge: overrides.tutorNudge,
   };
 }

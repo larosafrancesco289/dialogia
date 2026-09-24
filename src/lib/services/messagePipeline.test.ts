@@ -8,7 +8,6 @@ import { regenerate } from '@/lib/agent/regenerate';
 import { createPipelineClient } from '@/lib/agent/pipelineClient';
 import { createModelIndex } from '@/lib/models';
 import type { Message, Chat, ModelDescriptor } from '@/lib/types';
-import { getTutorToolDefinitions } from '@/modules/tutor/agent/preamble';
 import { getSearchToolDefinition } from '@/lib/search';
 import type { StoreSetter, TurnContext } from '@/lib/agent/types';
 import { mockFetch } from '../../../tests/helpers/mockFetch';
@@ -27,7 +26,6 @@ const baseModels: ModelDescriptor[] = [
   },
 ];
 
-const tutorTools = getTutorToolDefinitions();
 const searchTools = getSearchToolDefinition();
 
 const mergeState = (target: any, patch: any) => {
@@ -37,7 +35,7 @@ const mergeState = (target: any, patch: any) => {
   });
 };
 
-test('planTurn applies tutor tools and updates Tavily UI state', async () => {
+test('planTurn runs search tools and updates Tavily UI state', async () => {
   // Tool-based search only runs when its provider is keyed; without one the
   // turn would (correctly) fall back to provider-native search.
   await setKey('tavily', 'tvly-test');
@@ -119,10 +117,9 @@ test('planTurn applies tutor tools and updates Tavily UI state', async () => {
         mode: false,
         byMessageId: {},
         autoReasoningModelIds: {},
-        learnerModelDebugByMessageId: {},
       },
       search: { tavilyByMessageId: {} },
-      tutor: { byMessageId: {}, forceMode: false },
+      tutor: { forceMode: false },
     },
     setSearchStatus: (messageId: string, entry: any) => {
       state.ui.search.tavilyByMessageId[messageId] = entry;
@@ -185,60 +182,6 @@ test('planTurn applies tutor tools and updates Tavily UI state', async () => {
                   arguments: JSON.stringify({ query: 'tavily query', count: 3 }),
                 },
               },
-              {
-                id: 'call_1',
-                type: 'function',
-                function: {
-                  name: 'quiz',
-                  arguments: JSON.stringify({
-                    type: 'mcq',
-                    title: 'Quiz',
-                    items: [
-                      {
-                        id: 'item1',
-                        question: 'Q?',
-                        choices: ['A', 'B'],
-                        correct: 1,
-                      },
-                    ],
-                  }),
-                },
-              },
-              {
-                id: 'call_2',
-                type: 'function',
-                function: {
-                  name: 'quiz',
-                  arguments: JSON.stringify({
-                    type: 'mcq',
-                    title: 'Extra',
-                    items: [
-                      {
-                        id: 'mcq2',
-                        question: '1 + 1 = ?',
-                        choices: ['1', '2'],
-                        correct: 1,
-                      },
-                    ],
-                  }),
-                },
-              },
-              {
-                id: 'call_3',
-                type: 'function',
-                function: {
-                  name: 'record_learning',
-                  arguments: JSON.stringify({
-                    source: 'assessment',
-                    nodeId: 'node-1',
-                    interaction: {
-                      question: 'Q?',
-                      studentAnswer: 'A',
-                      correct: true,
-                    },
-                  }),
-                },
-              },
             ],
           },
         },
@@ -277,7 +220,7 @@ test('planTurn applies tutor tools and updates Tavily UI state', async () => {
       { role: 'system', content: 'Be concise.' },
       { role: 'user', content: 'Hello' },
     ],
-    toolDefinition: [...searchTools, ...tutorTools],
+    toolDefinition: searchTools,
     controller: new AbortController(),
     turn: turnContext,
     settings,
@@ -290,25 +233,14 @@ test('planTurn applies tutor tools and updates Tavily UI state', async () => {
   assert.equal(tavilyEntry.status, 'done');
   assert.equal(tavilyEntry.query, 'tavily query');
   assert.ok(Array.isArray(tavilyEntry.results) && tavilyEntry.results.length === 1);
-  const savedTutor = savedMessages.find((msg) => Array.isArray((msg as any)?.tutor?.mcq))
-    ?.tutor as any;
-  assert.ok(Array.isArray(savedTutor?.mcq) && savedTutor.mcq.length === 1);
   const toolLog = state.messagesById[assistantMessage.id]?.toolCalls;
-  assert.ok(Array.isArray(toolLog) && toolLog.length >= 2);
+  assert.ok(Array.isArray(toolLog) && toolLog.length >= 1);
   const searchEntries = toolLog.filter((entry: any) => entry?.name === 'web_search');
-  const quizEntries = toolLog.filter((entry: any) => entry?.name === 'quiz');
-  const recordEntries = toolLog.filter((entry: any) => entry?.name === 'record_learning');
   assert.ok(searchEntries.length >= 1);
-  // Only one quiz should be processed (first one), second is skipped due to alreadyUsedContent
-  assert.ok(quizEntries.length >= 1);
-  assert.ok(recordEntries.length >= 1);
   assert.equal(searchEntries[0]?.category, 'search');
   assert.equal(searchEntries[0]?.metadata?.provider, 'tavily');
   assert.equal(searchEntries[0]?.metadata?.round, 1);
   assert.equal(searchEntries[0]?.metadata?.results, 1);
-  assert.equal(quizEntries[0]?.category, 'tutor');
-  assert.equal(quizEntries[0]?.metadata?.round, 1);
-  assert.equal(quizEntries[0]?.metadata?.usedContent, true);
 
   restoreFetch();
   await deleteKey('tavily');
@@ -392,10 +324,9 @@ test('regenerate reuses snapshots and records debug payload', async () => {
         mode: true,
         byMessageId: {},
         autoReasoningModelIds: {},
-        learnerModelDebugByMessageId: {},
       },
       search: { tavilyByMessageId: {} },
-      tutor: { byMessageId: {}, forceMode: false },
+      tutor: { forceMode: false },
     },
     setNotice: (notice?: string) => {
       state.ui.notice = notice;
@@ -526,10 +457,9 @@ test('regenerate keeps search alive when a keyless provider degrades to native',
         mode: true,
         byMessageId: {},
         autoReasoningModelIds: {},
-        learnerModelDebugByMessageId: {},
       },
       search: { tavilyByMessageId: {} },
-      tutor: { byMessageId: {}, forceMode: false },
+      tutor: { forceMode: false },
     },
     setNotice: (notice?: string) => {
       state.ui.notice = notice;

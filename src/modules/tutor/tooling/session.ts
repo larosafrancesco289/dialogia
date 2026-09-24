@@ -7,9 +7,7 @@ import { composeTurn } from '@/lib/agent/compose';
 import { planTurn } from '@/lib/agent/planning';
 import { applyPlanSideEffects } from '@/lib/agent/planning/sideEffects';
 import { streamFinal } from '@/lib/agent/streaming';
-import { mergeTutorPayload } from '@/modules/tutor/agent/tutorFlow';
 import type { PipelineClient } from '@/lib/agent/pipelineClient';
-import { shouldShortCircuitTutor } from '@/lib/agent/policy';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
 import { getModelEndpoint } from '@/lib/providers';
 import { setTurnController, clearTurnController } from '@/lib/turns/runtime';
@@ -23,8 +21,8 @@ import { appendMessagesToChat, getMessagesForChat } from '@/lib/messages/indexin
 import { resolveTurnSettings } from '@/lib/settings/resolve';
 import { adjustActiveTurnCount } from '@/lib/ui/streaming';
 import type { TransportAuth } from '@/lib/auth/transport';
-import { getNextNode, updateNodeStatus } from '@/modules/tutor/learning-plan/service';
-import { initializeLearnerModel, syncLearnerModelWithPlan } from '@/modules/tutor/learner-model';
+import { EMPTY_TUTOR_SESSION } from '@/modules/tutor/store/tutorSlice';
+import { cardsForMessage } from '@/modules/tutor/ui/messageViews';
 
 export type AuthResolver = (params: {
   modelId: string;
@@ -202,7 +200,6 @@ export class HeadlessTutorSession {
         streamFinal: stream,
         authResolver,
         attachmentPreparer: async () => [],
-        shouldShortCircuit: shouldShortCircuitTutor,
         hooks: {
           ...lifecycle.hooks,
           onPlanSideEffects: (effects) =>
@@ -231,7 +228,7 @@ export class HeadlessTutorSession {
             usedContentTool: false,
             hasSearchResults: false,
           };
-        return this.finishTurn(userMessage, finalMsg, {
+        return await this.finishTurn(userMessage, finalMsg, {
           composition: {
             system: runArtifacts.composition.system,
             tools: runArtifacts.composition.tools,
@@ -240,7 +237,7 @@ export class HeadlessTutorSession {
             shouldPlan: runArtifacts.composition.shouldPlan,
           },
           plan: planArtifacts,
-          tutorUi: this.store.getState().ui.tutor?.byMessageId?.[assistantMessage.id],
+          tutorUi: this.cardsFor(assistantMessage.id),
           toolCalls: finalMsg.toolCalls,
           debugPayload: this.store.getState().ui.debug.byMessageId?.[assistantMessage.id]?.body,
         });
@@ -285,117 +282,33 @@ export class HeadlessTutorSession {
         shouldPlan: runArtifacts?.composition.shouldPlan ?? false,
       },
       plan: planArtifacts,
-      tutorUi: this.store.getState().ui.tutor?.byMessageId?.[assistantMessage.id],
+      tutorUi: this.cardsFor(assistantMessage.id),
       toolCalls: assistantFinal.toolCalls,
       debugPayload: this.store.getState().ui.debug.byMessageId?.[assistantMessage.id]?.body,
     });
   }
 
-  private finishTurn(
+  private cardsFor(messageId: string): Record<string, unknown> {
+    const session = this.store.getState().tutorSessions[this.chatId] ?? EMPTY_TUTOR_SESSION;
+    return cardsForMessage(session, messageId);
+  }
+
+  private async finishTurn(
     user: Message,
     assistant: Message,
     artifacts: HeadlessTurnArtifacts,
-  ): HeadlessTurnResult {
-    // Auto-approve any pending plan proposals in headless mode
-    this.autoApprovePendingPlanProposal(assistant.id);
-
-    return {
-      user,
-      assistant,
-      artifacts,
-    };
-  }
-
-  /**
-   * Auto-approve pending plan proposals in headless mode.
-   * In UI mode, the user clicks "Approve plan" in PlanProposalCard.
-   * In headless/ablation mode, we auto-approve to test editability.
-   */
-  private autoApprovePendingPlanProposal(messageId: string): void {
+  ): Promise<HeadlessTurnResult> {
+    // Headless runs approve a pending proposal the way the learner's button would.
+    // B-later: the simulated student answers cards through learner commands instead.
     const state = this.store.getState();
-    const tutorState = state.ui.tutor?.byMessageId?.[messageId];
-    const planProposal = tutorState?.planProposal;
-
-    if (!planProposal || planProposal.status !== 'pending') {
-      return;
+    const proposal = state.tutorSessions[this.chatId]?.state.proposal;
+    if (proposal) {
+      await state.dispatchTutor(
+        this.chatId,
+        { by: 'learner', type: 'approve_plan', proposalId: proposal.proposalId },
+        { by: 'learner', messageId: proposal.messageId },
+      );
     }
-
-    const chat = state.chats.find((c) => c.id === this.chatId);
-    if (!chat) return;
-
-    const now = Date.now();
-    let adoptedPlan = { ...planProposal.plan, updatedAt: now };
-
-    // Ensure at least one node is in_progress
-    const hasInProgress = adoptedPlan.nodes.some((n) => n.status === 'in_progress');
-    if (!hasInProgress && adoptedPlan.nodes.length > 0) {
-      const firstReady = getNextNode(adoptedPlan) || adoptedPlan.nodes[0];
-      adoptedPlan = updateNodeStatus(adoptedPlan, firstReady.id, 'in_progress');
-    }
-
-    // Initialize or sync learner model
-    const existingModel = chat.settings.features.tutor?.learnerModel;
-    const learnerModel = existingModel
-      ? syncLearnerModelWithPlan(existingModel, adoptedPlan)
-      : initializeLearnerModel(chat.id, adoptedPlan);
-
-    const nextPlanProposal = {
-      ...planProposal,
-      plan: adoptedPlan,
-      status: 'approved' as const,
-      resolvedAt: now,
-    };
-
-    // Apply the plan to chat settings and sync tutor payloads
-    this.store.setState((draft) => ({
-      chats: draft.chats.map((c) =>
-        c.id === this.chatId
-          ? {
-              ...c,
-              settings: {
-                ...c.settings,
-                features: {
-                  ...c.settings.features,
-                  tutor: {
-                    ...c.settings.features.tutor,
-                    learningPlan: adoptedPlan,
-                    planGenerated: true,
-                    enableLearnerModel: true,
-                    learnerModel,
-                  },
-                },
-              },
-              updatedAt: now,
-            }
-          : c,
-      ),
-      ui: {
-        ...draft.ui,
-        tutor: {
-          ...draft.ui.tutor,
-          byMessageId: {
-            ...draft.ui.tutor?.byMessageId,
-            [messageId]: {
-              ...(draft.ui.tutor?.byMessageId?.[messageId] || {}),
-              planProposal: nextPlanProposal,
-            },
-          },
-        },
-      },
-      ...(draft.messagesById[messageId]
-        ? (() => {
-            const currentMessage = draft.messagesById[messageId];
-            const { merged, hiddenContent } = mergeTutorPayload(currentMessage.tutor, {
-              planProposal: nextPlanProposal,
-            });
-            return {
-              messagesById: {
-                ...draft.messagesById,
-                [messageId]: { ...currentMessage, tutor: merged, hiddenContent },
-              },
-            };
-          })()
-        : {}),
-    }));
+    return { user, assistant, artifacts };
   }
 }

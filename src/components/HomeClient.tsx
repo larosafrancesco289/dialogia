@@ -9,7 +9,8 @@ import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
 import { useAppBootstrap } from '@/lib/hooks/useAppBootstrap';
 import { useAmbientMotionPause } from '@/lib/hooks/useAmbientMotionPause';
-import { selectCurrentChat, selectIsTutorEnabled } from '@/lib/store/selectors';
+import { selectIsTutorEnabled } from '@/lib/store/selectors';
+import { selectRightPanelContent } from '@/lib/modules';
 import { MotionConfig } from 'framer-motion';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
@@ -49,7 +50,7 @@ export function HomeClient() {
       isIntroOpen: s.ui.introSeen !== true,
       tutorActive: selectIsTutorEnabled(s),
       rightPanelOpen: s.ui.plan?.rightPanelOpen ?? false,
-      hasPlan: !!selectCurrentChat(s)?.settings?.features.tutor?.learningPlan,
+      hasPlan: selectRightPanelContent(s),
       planSheetOverride: s.ui.plan?.sheetPlanOverride ?? null,
       chatId: s.selectedChatId ?? null,
     }),

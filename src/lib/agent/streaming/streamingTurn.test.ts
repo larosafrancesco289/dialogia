@@ -3,15 +3,22 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { executeStreamingTurn } from '@/lib/agent/streaming/streamingTurn';
 import { createPipelineClient } from '@/lib/agent/pipelineClient';
-import { getTutorToolDefinitions } from '@/modules/tutor/agent/preamble';
 import { buildTransportAuth } from '@/lib/auth/transport';
 import { createModelIndex } from '@/lib/models';
 import { createAssistantMessage } from '@/lib/messages/createMessage';
 import { buildMessageIndex } from '@/lib/messages/indexing';
 import type { Chat, Message, ModelDescriptor } from '@/lib/types';
+import type { ToolDefinition } from '@/lib/agent/types';
 import { createTestStoreState } from '../../../../tests/helpers/createTestStoreState';
 
-test('executeStreamingTurn keeps pre-tool tutor draft and skips final overwrite for meta-only rounds', async () => {
+// Tools no module registers: their calls fail as unsupported, which is what
+// these draft-keeping paths are about.
+const TOOLS: ToolDefinition[] = ['advance_topic', 'quiz'].map((name) => ({
+  type: 'function',
+  function: { name, description: name, parameters: { type: 'object', properties: {} } },
+}));
+
+test('executeStreamingTurn keeps the pre-tool draft and skips final overwrite for meta-only rounds', async () => {
   const chatId = 'chat-streaming-turn-preserve-draft';
   const model: ModelDescriptor = {
     id: 'provider/model',
@@ -158,7 +165,7 @@ test('executeStreamingTurn keeps pre-tool tutor draft and skips final overwrite 
       timestampsEnabled: false,
       system: undefined,
     },
-    toolDefinition: getTutorToolDefinitions(),
+    toolDefinition: TOOLS,
     startBuffered: false,
     userContent: 'How do I solve 2x + 4 = 10?',
     combinedSystem: 'You are a tutor.',
@@ -333,7 +340,7 @@ test('executeStreamingTurn prefers complete fallback draft over incomplete curre
       timestampsEnabled: false,
       system: undefined,
     },
-    toolDefinition: getTutorToolDefinitions(),
+    toolDefinition: TOOLS,
     startBuffered: true,
     userContent: 'How do I solve 2x + 4 = 10?',
     combinedSystem: 'You are a tutor.',
@@ -487,7 +494,7 @@ test('executeStreamingTurn keeps draft when all tool calls fail to execute', asy
       timestampsEnabled: false,
       system: undefined,
     },
-    toolDefinition: getTutorToolDefinitions(),
+    toolDefinition: TOOLS,
     startBuffered: false,
     userContent: 'Teach me one-step equations.',
     combinedSystem: 'You are a tutor.',
@@ -642,7 +649,7 @@ test('executeStreamingTurn does not preserve incomplete draft when tools fail', 
       timestampsEnabled: false,
       system: undefined,
     },
-    toolDefinition: getTutorToolDefinitions(),
+    toolDefinition: TOOLS,
     startBuffered: false,
     userContent: 'Teach me one-step equations.',
     combinedSystem: 'You are a tutor.',
@@ -798,7 +805,7 @@ test('executeStreamingTurn omits follow-up user prompt after Anthropic tool resu
       timestampsEnabled: false,
       system: undefined,
     },
-    toolDefinition: getTutorToolDefinitions(),
+    toolDefinition: TOOLS,
     startBuffered: false,
     userContent: 'Teach me one-step equations.',
     combinedSystem: 'You are a tutor.',

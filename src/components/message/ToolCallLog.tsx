@@ -7,7 +7,7 @@ import {
   ChevronUpIcon,
   DocumentDuplicateIcon,
 } from '@heroicons/react/20/solid';
-import type { LearnerModelDebugSnapshot, ToolCallLogEntry } from '@/lib/types';
+import type { ToolCallLogEntry } from '@/lib/types';
 import { copyText } from '@/lib/clipboard';
 
 type ToolCallLogMode = 'compact' | 'full';
@@ -71,48 +71,6 @@ const PROVIDER_LABEL: Record<string, string> = {
 
 function summaryForCall(call: ToolCallLogEntry): string {
   switch (call.name) {
-    case 'assess_answer': {
-      const output = call.output;
-      const evidence = output?.learnerModelDebug ?? output?.assessment;
-      let result: string | undefined;
-      if (evidence && typeof evidence === 'object' && !Array.isArray(evidence)) {
-        const maybe = evidence as Record<string, unknown>;
-        if (typeof maybe.correct === 'boolean') {
-          result = maybe.correct ? 'correct' : 'incorrect';
-        } else if (typeof maybe.result === 'string') {
-          result = maybe.result;
-        }
-      }
-      return `Assessed: ${result ?? 'n/a'}`;
-    }
-    case 'update_learner_model': {
-      const debug = (call.output as { learnerModelDebug?: LearnerModelDebugSnapshot } | undefined)
-        ?.learnerModelDebug;
-      if (
-        debug &&
-        typeof debug.oldConfidence === 'number' &&
-        typeof debug.newConfidence === 'number'
-      ) {
-        const prev = Math.round(debug.oldConfidence * 100);
-        const next = Math.round(debug.newConfidence * 100);
-        const delta = next - prev;
-        const sign = delta >= 0 ? '+' : '';
-        return `Confidence ${prev}% → ${next}% (${sign}${delta}%)`;
-      }
-      return 'Learner model updated';
-    }
-    case 'generate_plan': {
-      const nodes = call.output?.nodes;
-      const nodeCount = Array.isArray(nodes) ? nodes.length : undefined;
-      return typeof nodeCount === 'number'
-        ? `Generated plan with ${nodeCount} steps`
-        : 'Generated plan';
-    }
-    case 'create_diagnostic': {
-      const topicValue = call.output?.topic;
-      const topic = typeof topicValue === 'string' ? topicValue : undefined;
-      return typeof topic === 'string' && topic ? `Diagnostic for ${topic}` : 'Diagnostic created';
-    }
     case 'web_search': {
       const output = call.output;
       const ok = typeof output?.ok === 'boolean' ? output.ok : undefined;

@@ -20,7 +20,6 @@ import { runPlanningRound } from '@/lib/agent/planning/round';
 import { schedulePlanningRound } from '@/lib/agent/planning/schedule';
 import { createPlanningExecutionState } from '@/lib/agent/planning/types';
 import type { PlanningExecutionState } from '@/lib/agent/planning/types';
-import { readContentModuleResult } from '@/lib/agent/planning/moduleResult';
 import { getMessagesForChat } from '@/lib/messages/indexing';
 import { resolveModelTransportKind } from '@/lib/providers';
 
@@ -57,14 +56,12 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnOutput> {
   const { set, get, persistMessage } = turn;
   const storeState = get?.();
   const messagesForChat = storeState ? getMessagesForChat(storeState, chatId) : [];
-  let currentPlan = chat.settings.features.tutor?.learningPlan;
   const sideEffects: PlanTurnSideEffect[] = [];
   const { toolDefinitions, gate } = derivePlanningContext({
     chat,
     messagesForChat,
     ui: storeState?.ui,
     toolDefinition,
-    currentPlan,
   });
 
   const planningMessages = buildPlanningMessages(
@@ -81,11 +78,7 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnOutput> {
   const shouldAppendToolFollowUp =
     resolveModelTransportKind(settings.modelId, settings.modelMeta) !== 'anthropic';
 
-  // Learner model updates are now handled by the tutor via tool calls at meaningful moments,
-  // rather than automatically every turn. This reduces latency and API costs.
-  let state: PlanningExecutionState = createPlanningExecutionState({
-    moduleState: currentPlan ? { contentModule: { currentPlan } } : {},
-  });
+  let state: PlanningExecutionState = createPlanningExecutionState();
 
   while (rounds < MAX_PLANNING_ROUNDS) {
     const { message, toolCalls } = await runPlanningRound({
@@ -151,7 +144,6 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnOutput> {
       },
       state,
     });
-    currentPlan = readContentModuleResult(state).currentPlan ?? currentPlan;
 
     if (shouldAppendToolFollowUp) {
       const followup = followUpPrompt({ searchEnabled, searchProvider });
@@ -172,16 +164,11 @@ export async function planTurn(opts: PlanTurnOptions): Promise<PlanTurnOutput> {
     : undefined;
   const finalSystem = combineSystem(baseSystem, [], sourcesAppendix) ?? baseSystem;
 
-  const moduleResult = readContentModuleResult(state);
   return {
     result: {
       finalSystem,
       usedContentTool: state.usedContentTool,
       hasSearchResults: hasResults,
-      learnerModel: moduleResult.learnerModel,
-      planUpdates: moduleResult.planUpdates,
-      updatedPlan: moduleResult.updatedPlan,
-      learnerModelDebug: moduleResult.learnerModelDebug,
     },
     sideEffects,
   };

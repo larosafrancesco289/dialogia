@@ -4,11 +4,7 @@ import { executePlanningToolCall } from '@/lib/agent/tools/exec';
 import { createToolExecutionLogger } from '@/lib/agent/tools/executionLogger';
 import type { ModelMessage, PlanTurnOptions, ToolCall, ToolModelMessage } from '@/lib/agent/types';
 import type { PlanningToolExecutionResult, ToolResult } from '@/lib/tools/execution';
-import type { LearningPlan, Message } from '@/lib/types';
-import {
-  readContentModuleResult,
-  withContentModuleResult,
-} from '@/lib/agent/planning/moduleResult';
+import type { Message } from '@/lib/types';
 import type { PlanningExecutionState } from '@/lib/agent/planning/types';
 
 /** What one executed call produced, as the agent loop needs it. */
@@ -59,18 +55,13 @@ export async function applyToolExecutions(args: {
     if (args.agentLoop && context.controller.signal.aborted) break;
     const parsedArgs = parseToolArguments(tc);
     const roundMeta = Number.isFinite(round) ? { round } : undefined;
-    // Create getCurrentPlan that returns the most up-to-date plan from the execution state.
-    // This ensures subsequent tool calls in the same turn see plan updates from earlier calls.
-    const getCurrentPlan = (): LearningPlan | undefined =>
-      readContentModuleResult(next).currentPlan ??
-      context.chat.settings.features.tutor?.learningPlan;
     let execution: PlanningToolExecutionResult;
     try {
       execution = await executePlanningToolCall({
         toolCall: tc,
         parsedArgs,
         roundMeta,
-        context: { ...context, logger, getCurrentPlan },
+        context: { ...context, logger },
         aggregatedResults: next.aggregatedResults,
       });
     } catch (error) {
@@ -115,14 +106,6 @@ export async function applyToolExecutions(args: {
       replay: execution.replay,
     });
     next.aggregatedResults = execution.aggregatedResults ?? next.aggregatedResults;
-    next = withContentModuleResult(next, {
-      ...(execution.learnerModel ? { learnerModel: execution.learnerModel } : {}),
-      ...(execution.planUpdates ? { planUpdates: execution.planUpdates } : {}),
-      ...(execution.updatedPlan
-        ? { updatedPlan: execution.updatedPlan, currentPlan: execution.updatedPlan }
-        : {}),
-      ...(execution.learnerModelDebug ? { learnerModelDebug: execution.learnerModelDebug } : {}),
-    });
     if (execution.usedContentTool) {
       next.usedContentTool = true;
     }

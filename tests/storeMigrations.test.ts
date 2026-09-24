@@ -26,7 +26,7 @@ test('migrate strips deprecated ui fields only', () => {
   assert.ok(!('tutorGlobalMemory' in migratedUi));
 });
 
-test('migrate drops the research-study ui fields and keeps the rest', () => {
+test('migrate drops the research-study and context-mode ui fields and keeps the rest', () => {
   const persisted: Record<string, unknown> = {
     selectedChatId: 'chat-1',
     favoriteModelIds: ['a/b'],
@@ -53,7 +53,8 @@ test('migrate drops the research-study ui fields and keeps the rest', () => {
   assert.equal(migrated.ui.sidebarCollapsed, true);
   assert.equal(migrated.ui.flags.experimentalTutor, true);
   assert.equal(migrated.ui.plan?.rightPanelOpen, true);
-  assert.equal(migrated.ui.tutor?.contextMode, 'full');
+  // v8: the tutor reads its own state block; there is no context mode left to choose.
+  assert.ok(!('contextMode' in migrated.ui.tutor));
   assert.equal(migrated.ui.tutor?.forceMode, true);
   assert.equal(migrated.ui.tutor?.autoScroll, true);
   assert.ok(!('researchMode' in migrated.ui.tutor));

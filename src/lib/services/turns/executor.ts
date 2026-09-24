@@ -8,7 +8,6 @@ import { composeTurn } from '@/lib/agent/compose';
 import { planTurn } from '@/lib/agent/planning';
 import { applyPlanSideEffects } from '@/lib/agent/planning/sideEffects';
 import { streamFinal } from '@/lib/agent/streaming';
-import { shouldShortCircuitTutor } from '@/lib/agent/policy';
 import type { Repository } from '@/lib/db/repository';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
 import { finalizeShortCircuitMessage } from '@/lib/services/turns/shortCircuit';
@@ -130,7 +129,6 @@ export const executeModelTurn = async ({
       authResolver: () => modelContext.auth,
       attachmentPreparer: async () => attachments,
       fallbackAttachments: attachments,
-      shouldShortCircuit: shouldShortCircuitTutor,
       hooks: {
         ...lifecycle.hooks,
         onPlanSideEffects: (effects) => applyPlanSideEffects({ sideEffects: effects, set }),

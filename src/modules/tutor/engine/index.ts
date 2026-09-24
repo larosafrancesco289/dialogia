@@ -12,3 +12,4 @@ export * from '@/modules/tutor/engine/render';
 export * from '@/modules/tutor/engine/rules';
 export * from '@/modules/tutor/engine/state';
 export * from '@/modules/tutor/engine/tools';
+export * from '@/modules/tutor/engine/validate';

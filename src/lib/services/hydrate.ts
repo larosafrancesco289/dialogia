@@ -2,56 +2,32 @@
 // Responsibility: Convert repository snapshots into store-ready message indices.
 
 import type { RepositorySnapshot } from '@/lib/db/repository';
-import type { Message, MessageTutor } from '@/lib/types';
+import type { Message } from '@/lib/types';
 import { decorateMessage } from '@/lib/messages/decorate';
 
 export type HydratedRepositorySnapshot = Omit<RepositorySnapshot, 'messages'> & {
   messagesById: Record<string, Message>;
   messageIdsByChatId: Record<string, string[]>;
-  tutorByMessageId: Record<string, MessageTutor>;
-};
-
-export type HydratedMessageList = {
-  messages: Message[];
-  tutorByMessageId: Record<string, MessageTutor>;
 };
 
 /** Hydrate a single chat's persisted messages (used by lazy chat loads). */
-export const hydrateMessageList = (list: Message[]): HydratedMessageList => {
-  const tutorByMessageId: Record<string, MessageTutor> = {};
-  const messages: Message[] = [];
-  for (const message of list ?? []) {
-    const nextMessage = { ...message } as Message;
-    if (nextMessage.role === 'assistant' && nextMessage.tutor) {
-      tutorByMessageId[nextMessage.id] = nextMessage.tutor;
-    }
-    messages.push(decorateMessage(nextMessage));
-  }
-  return { messages, tutorByMessageId };
-};
+export const hydrateMessageList = (list: Message[]): Message[] =>
+  (list ?? []).map((message) => decorateMessage({ ...message }));
 
 export const hydrateRepositorySnapshot = (
   snapshot: RepositorySnapshot,
 ): HydratedRepositorySnapshot => {
-  const tutorByMessageId: Record<string, MessageTutor> = {};
   const messagesById: Record<string, Message> = {};
   const messageIdsByChatId: Record<string, string[]> = {};
 
   for (const [chatId, list] of Object.entries(snapshot.messages)) {
-    const hydrated = hydrateMessageList(list ?? []);
-    Object.assign(tutorByMessageId, hydrated.tutorByMessageId);
     const ids: string[] = [];
-    for (const message of hydrated.messages) {
+    for (const message of hydrateMessageList(list ?? [])) {
       messagesById[message.id] = message;
       ids.push(message.id);
     }
     if (ids.length) messageIdsByChatId[chatId] = ids;
   }
 
-  return {
-    ...snapshot,
-    messagesById,
-    messageIdsByChatId,
-    tutorByMessageId,
-  };
+  return { ...snapshot, messagesById, messageIdsByChatId };
 };

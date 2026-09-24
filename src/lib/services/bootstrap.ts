@@ -5,7 +5,6 @@ import { loadRepositorySnapshot } from '@/lib/db';
 import { loadKeys } from '@/lib/keys/store';
 import type { StoreGetter, StoreSetter } from '@/lib/store/types';
 import { hydrateRepositorySnapshot } from '@/lib/services/hydrate';
-import { mergeTutorMap } from '@/lib/ui/tutorState';
 import { ENABLED_MODULES } from '@/lib/modules';
 import { refreshZdrListsIfNeeded } from '@/lib/policy/zdr/cache';
 import { ZDR_CACHE_TTL_MS } from '@/lib/policy/zdr/constants';
@@ -85,7 +84,7 @@ async function runBootstrap(set: StoreSetter, get: StoreGetter): Promise<void> {
     if (!nonEmptyChatIds[chat.id]) loadedMessageChatIds[chat.id] = true;
   }
 
-  set((s) => ({
+  set(() => ({
     chats: hydrated.chats,
     folders: hydrated.folders,
     messagesById: hydrated.messagesById,
@@ -94,7 +93,6 @@ async function runBootstrap(set: StoreSetter, get: StoreGetter): Promise<void> {
     loadedMessageChatIds,
     nonEmptyChatIds,
     hydrated: true,
-    ui: mergeTutorMap(s.ui, hydrated.tutorByMessageId),
   }));
 
   for (const appModule of ENABLED_MODULES) {

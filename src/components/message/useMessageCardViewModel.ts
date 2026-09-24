@@ -1,6 +1,6 @@
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
-import type { Chat, Message, MessageTutor, ModelDescriptor } from '@/lib/types';
+import type { Chat, Message, ModelDescriptor } from '@/lib/types';
 import type { UIDebugState, UISearchState } from '@/lib/store/types';
 import { selectIsTutorEnabledForChat } from '@/lib/store/selectors';
 const EMPTY_AUTO_REASONING: Record<string, boolean> = {};
@@ -12,8 +12,6 @@ export type MessageCardViewModel = {
   tavilyEntry?: NonNullable<UISearchState['tavilyByMessageId']>[string];
   debugMode: boolean;
   debugEntry?: NonNullable<UIDebugState['byMessageId']>[string];
-  tutorGloballyEnabled: boolean;
-  tutorEntry?: MessageTutor;
   autoReasoningModelIds: Record<string, boolean>;
   showToolCallLog: boolean;
   showDebugRawJson: boolean;
@@ -34,8 +32,6 @@ export function useMessageCardViewModel({
     const message =
       state.messagesById[messageId]?.chatId === chatId ? state.messagesById[messageId] : undefined;
     const chat = state.chats.find((entry) => entry.id === chatId);
-    const tutorEntry = state.ui.tutor?.byMessageId?.[messageId] ?? message?.tutor;
-    const tutorGloballyEnabled = !!state.ui.flags.experimentalTutor;
     const tutorEnabled = selectIsTutorEnabledForChat(chatId)(state);
 
     return {
@@ -45,8 +41,6 @@ export function useMessageCardViewModel({
       tavilyEntry: state.ui.search.tavilyByMessageId?.[messageId],
       debugMode: !!state.ui.debug.mode,
       debugEntry: state.ui.debug.byMessageId?.[messageId],
-      tutorGloballyEnabled,
-      tutorEntry,
       autoReasoningModelIds: state.ui.debug.autoReasoningModelIds ?? EMPTY_AUTO_REASONING,
       showToolCallLog: !!chat?.settings?.ui.showToolCallLog,
       showDebugRawJson: chat?.settings?.ui.showDebugRawJson ?? true,

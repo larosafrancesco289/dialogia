@@ -1,134 +1,73 @@
-import { useEffect, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import type { TutorDiagnostic, TutorMCQItem } from '@/lib/types';
 import { useChatStore } from '@/lib/store';
-import { McqCard } from '@/modules/tutor/components/message/McqCard';
+import type { DiagnosticRecord } from '@/modules/tutor/engine';
+import { McqCard, type McqAttempts } from '@/modules/tutor/components/message/McqCard';
 
+/**
+ * A diagnostic: answers are held here until every item has one, then go to
+ * the engine together, which scores them into evidence.
+ */
 export function DiagnosticCard({
+  chatId,
   messageId,
   diagnostic,
 }: {
+  chatId: string;
   messageId: string;
-  diagnostic: TutorDiagnostic;
+  diagnostic: DiagnosticRecord;
 }) {
-  const patchTutorEntry = useChatStore((s) => s.patchTutorEntry);
+  const dispatchTutor = useChatStore((s) => s.dispatchTutor);
   const sendUserMessage = useChatStore((s) => s.sendUserMessage);
-  const tutorEntry = useChatStore((s) => s.ui.tutor?.byMessageId?.[messageId]);
-  const attempts = tutorEntry?.attempts;
-  const mcqAttempts: Record<string, { done?: boolean; correct?: boolean }> = attempts?.mcq ?? {};
+  const [draft, setDraft] = useState<Record<string, number>>({});
+  const submitted = diagnostic.answers;
+  const choices = submitted ?? draft;
+
+  const attempts = useMemo(() => {
+    const out: McqAttempts = {};
+    for (const item of diagnostic.items) {
+      const choice = choices[item.id];
+      if (typeof choice === 'number') out[item.id] = { choice, correct: choice === item.correct };
+    }
+    return out;
+  }, [choices, diagnostic.items]);
 
   const total = diagnostic.items.length;
-  const answered = diagnostic.items.filter((item) => mcqAttempts[item.id]?.done).length;
-  const correct = diagnostic.items.filter((item) => mcqAttempts[item.id]?.correct).length;
+  const answered = Object.keys(attempts).length;
+  const scored = diagnostic.items.filter((item) => typeof item.correct === 'number');
+  const right = scored.filter((item) => attempts[item.id]?.correct).length;
   const percentComplete = total > 0 ? Math.round((answered / total) * 100) : 0;
-  const scoreRatio =
-    diagnostic.status === 'completed' && typeof diagnostic.score === 'number'
-      ? diagnostic.score
-      : total > 0
-        ? correct / total
-        : 0;
-  const scorePercent = Math.round(scoreRatio * 100);
+  const scorePercent = scored.length ? Math.round((right / scored.length) * 100) : 0;
 
-  useEffect(() => {
-    if (total === 0 || answered !== total) return;
-    const prevDiagnosticMeta = tutorEntry?.diagnosticMeta || {};
-    const prevCompletion = prevDiagnosticMeta.completedAt || {};
-    const alreadyRecorded = !!prevCompletion[diagnostic.diagnosticId];
-    const now = Date.now();
-
-    const needsStatusUpdate =
-      diagnostic.status !== 'completed' || typeof diagnostic.score !== 'number';
-    if (needsStatusUpdate || !alreadyRecorded) {
-      const updatedDiagnostic: TutorDiagnostic = needsStatusUpdate
-        ? { ...diagnostic, status: 'completed', score: scoreRatio }
-        : diagnostic;
-      void patchTutorEntry(messageId, {
-        diagnostic: updatedDiagnostic,
-        diagnosticMeta: {
-          ...prevDiagnosticMeta,
-          completedAt: {
-            ...prevCompletion,
-            [diagnostic.diagnosticId]: now,
-          },
-        },
-      });
-    }
-
-    if (!alreadyRecorded) {
-      const topicText = diagnostic.topic ? ` on ${diagnostic.topic}` : '';
-      const message = `Completed diagnostic${topicText} (${scorePercent}%).`;
-      sendUserMessage(message, {
-        metadata: {
-          hiddenFromUser: true,
-          kind: 'tutor_diagnostic_completion',
-        },
-      }).catch(() => void 0);
-    }
-  }, [
-    answered,
-    total,
-    diagnostic,
-    messageId,
-    scoreRatio,
-    scorePercent,
-    patchTutorEntry,
-    sendUserMessage,
-    tutorEntry,
-  ]);
-
-  const mcqItems: TutorMCQItem[] = useMemo(
-    () =>
-      diagnostic.items.map((item) => {
-        let normalizedDifficulty: TutorMCQItem['difficulty'] | undefined;
-        if (item.difficulty === 'beginner') normalizedDifficulty = 'easy';
-        else if (item.difficulty === 'intermediate') normalizedDifficulty = 'medium';
-        else if (item.difficulty === 'advanced') normalizedDifficulty = 'hard';
-        else if (
-          item.difficulty === 'easy' ||
-          item.difficulty === 'medium' ||
-          item.difficulty === 'hard'
-        )
-          normalizedDifficulty = item.difficulty;
-        return {
-          id: item.id,
-          question: item.question,
-          choices: item.choices,
-          correct: typeof item.correct === 'number' ? item.correct : -1,
-          explanation: item.explanation,
-          topic: item.skill,
-          skill: item.skill,
-          difficulty: normalizedDifficulty,
-        };
-      }),
-    [diagnostic.items],
-  );
-
-  const interpretation = useMemo(() => {
-    if (!diagnostic.interpretation || !total || answered !== total) return null;
-    const entries = Object.entries(diagnostic.interpretation);
-    for (const [range, text] of entries) {
-      const match = range.match(/(\d+)\s*-\s*(\d+)%?/);
-      if (!match) continue;
-      const low = Number.parseInt(match[1], 10);
-      const high = Number.parseInt(match[2], 10);
-      if (Number.isNaN(low) || Number.isNaN(high)) continue;
-      if (scorePercent >= low && scorePercent <= high) return text;
-    }
-    return null;
-  }, [diagnostic.interpretation, answered, total, scorePercent]);
+  const onAnswer = async (itemId: string, choice: number) => {
+    if (submitted || itemId in draft) return;
+    const next = { ...draft, [itemId]: choice };
+    setDraft(next);
+    if (Object.keys(next).length < total) return;
+    const result = await dispatchTutor(
+      chatId,
+      {
+        by: 'learner',
+        type: 'answer_diagnostic',
+        diagnosticId: diagnostic.diagnosticId,
+        answers: next,
+      },
+      { by: 'learner', messageId },
+    );
+    if (!result.ok) return;
+    const correct = scored.filter((item) => next[item.id] === item.correct).length;
+    // B2: a visible ledger line instead of a hidden message.
+    await sendUserMessage(`Finished the diagnostic: ${correct} of ${scored.length} right.`, {
+      metadata: { hiddenFromUser: true, kind: 'tutor_diagnostic_completion' },
+    });
+  };
 
   return (
     <div className="exercise">
       <div>
         <h4 className="exercise__title">A quick check on {diagnostic.topic}</h4>
         <p className="exercise__meta">
-          {diagnostic.depth === 'comprehensive'
-            ? 'A thorough check'
-            : diagnostic.depth === 'moderate'
-              ? 'A moderate check'
-              : 'A few questions'}
-          {' · '}
-          {answered} of {total} answered
+          A few questions · {answered} of {total} answered
         </p>
       </div>
       <div className="exercise-meter">
@@ -144,12 +83,11 @@ export function DiagnosticCard({
         <span className="exercise-meter__pct">{percentComplete}%</span>
       </div>
 
-      <McqCard messageId={messageId} items={mcqItems} />
+      <McqCard items={diagnostic.items} attempts={attempts} onAnswer={onAnswer} />
 
       {answered === total && total > 0 && (
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
           <p className="exercise__kicker">Score {scorePercent}%</p>
-          {interpretation && <p className="exercise__aside mt-2">{interpretation}</p>}
         </motion.div>
       )}
     </div>

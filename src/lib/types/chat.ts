@@ -32,6 +32,10 @@ export type TutorSettings = {
   /** The chat's model before tutor mode swapped in its own; restored when it ends. */
   modelIdBeforeTutor?: string;
   toolBudget?: TutorToolBudget;
+  /**
+   * The approved plan from before the tutor's event log.
+   * @deprecated legacy: read by the import only.
+   */
   learningPlan?: LearningPlan;
   planGenerated?: boolean;
   planGenerationModel?: string;
@@ -41,6 +45,10 @@ export type TutorSettings = {
   learnerModelVisible?: boolean;
   /** Whether the learner may correct the learner model (only meaningful while it is visible). */
   learnerModelEditable?: boolean;
+  /**
+   * The learner model from before the tutor's event log.
+   * @deprecated legacy: read by the import only.
+   */
   learnerModel?: LearnerModel;
 };
 

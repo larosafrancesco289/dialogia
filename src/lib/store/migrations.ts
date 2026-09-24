@@ -93,6 +93,15 @@ export const migrateToV7 = (state: PersistedState): PersistedState => {
   return { ...state, ui: { ...state.ui, tutor } };
 };
 
+// V8 drops the tutor's context mode: the tutor now reads its own state block,
+// and no longer copies cards into the message history at either detail.
+export const migrateToV8 = (state: PersistedState): PersistedState => {
+  if (!isRecord(state.ui) || !isRecord(state.ui.tutor)) return state;
+  const tutor = { ...state.ui.tutor };
+  delete tutor['contextMode'];
+  return { ...state, ui: { ...state.ui, tutor } };
+};
+
 export const migrate = (persistedState: unknown, version = 0): PersistedStoreState => {
   if (!isRecord(persistedState)) return {} as PersistedStoreState;
   let state: PersistedState = persistedState;
@@ -100,5 +109,6 @@ export const migrate = (persistedState: unknown, version = 0): PersistedStoreSta
   if (version < 3) state = migrateToV3(state);
   if (version < 4) state = migrateToV4(state);
   if (version < 7) state = migrateToV7(state);
+  if (version < 8) state = migrateToV8(state);
   return state as PersistedStoreState;
 };

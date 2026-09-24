@@ -326,15 +326,17 @@ export function createMessageStreamCallbacks(
         usage: extras?.usage,
       });
       const content = cleanStreamedText(full, state.ui.messageTimestamps === true);
+      // Fields set on the message during the turn (a module's patch, say) are
+      // kept: the store copy is the turn's record, the stream adds the ending.
       const finalMessage: Message = {
         ...assistantMessage,
+        ...current,
         content,
         reasoning: current?.reasoning,
         activity: current?.activity ?? assistantMessage.activity,
         attachments: current?.attachments,
         systemSnapshot: current?.systemSnapshot,
         genSettings: current?.genSettings,
-        tutor: current?.tutor,
         hiddenContent: current?.hiddenContent,
         toolCalls: current?.toolCalls ?? assistantMessage.toolCalls,
         toolRounds: current?.toolRounds,

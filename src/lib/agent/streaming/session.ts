@@ -34,7 +34,6 @@ import type {
 import type { ToolGate } from '@/lib/agent/planning/types';
 import { createPlanningExecutionState } from '@/lib/agent/planning/types';
 import type { PlanningExecutionState } from '@/lib/agent/planning/types';
-import { readContentModuleResult } from '@/lib/agent/planning/moduleResult';
 import type { ToolCallDelta } from '@/lib/transport/types';
 import { createStreamCallContext, type StreamCallContext } from '@/lib/agent/streaming/streamCall';
 
@@ -45,7 +44,6 @@ export type StreamingTurnOptions = StreamFinalOptions & {
   loop?: TurnLoopMode;
   onPlanResult?: (plan: PlanTurnResult) => void;
   onPlanSideEffects?: (effects: PlanTurnSideEffect[]) => void;
-  shouldShortCircuit?: (plan: PlanTurnResult) => boolean;
 };
 
 export type StreamingTurnResult = PlanTurnResult & {
@@ -76,14 +74,12 @@ export async function openSession(opts: StreamingTurnOptions): Promise<TurnSessi
   await loadModuleRuntimes();
   const { chat, chatId, turn, settings, toolDefinition, combinedSystem } = opts;
   const storeState = turn.get?.();
-  const currentPlan = chat.settings.features.tutor?.learningPlan;
 
   const { toolDefinitions, gate } = derivePlanningContext({
     chat,
     messagesForChat: storeState ? getMessagesForChat(storeState, chatId) : [],
     ui: storeState?.ui,
     toolDefinition,
-    currentPlan,
   });
 
   const modelMeta = settings.modelMeta ?? turn.modelIndex.get(settings.modelId);
@@ -102,9 +98,7 @@ export async function openSession(opts: StreamingTurnOptions): Promise<TurnSessi
     convo: planningSystem
       ? [planningSystem, ...opts.messages.filter((m) => m.role !== 'system')]
       : opts.messages.slice(),
-    state: createPlanningExecutionState({
-      moduleState: currentPlan ? { contentModule: { currentPlan } } : {},
-    }),
+    state: createPlanningExecutionState(),
     sideEffects: [],
     draft: '',
     searchEnabled: settings.searchEnabled,
@@ -205,15 +199,10 @@ export function createUiCallbacks(session: TurnSession): MessageStreamCallbacks 
 
 function buildPlanResult(session: TurnSession, finalSystem: string): PlanTurnResult {
   const { state } = session;
-  const moduleResult = readContentModuleResult(state);
   return {
     finalSystem,
     usedContentTool: state.usedContentTool,
     hasSearchResults: shouldAppendSources(state.aggregatedResults),
-    learnerModel: moduleResult.learnerModel,
-    planUpdates: moduleResult.planUpdates,
-    updatedPlan: moduleResult.updatedPlan,
-    learnerModelDebug: moduleResult.learnerModelDebug,
   };
 }
 

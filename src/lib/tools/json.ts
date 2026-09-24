@@ -1,4 +1,8 @@
-import type { TutorToolCall } from '@/lib/agent/types';
+/** A tool call a model wrote into its text instead of making it for real. */
+type InlineToolCall = {
+  name: string;
+  args: Record<string, unknown>;
+};
 
 export function parseJsonAfter(
   source: string,
@@ -43,10 +47,10 @@ export function parseJsonAfter(
 
 export function extractInlineToolCalls(
   text: string,
-  toolNames: ReadonlyArray<TutorToolCall['name']>,
-): TutorToolCall[] {
+  toolNames: ReadonlyArray<string>,
+): InlineToolCall[] {
   if (typeof text !== 'string' || !text) return [];
-  const output: TutorToolCall[] = [];
+  const output: InlineToolCall[] = [];
   for (const tool of toolNames) {
     const idx = text.indexOf(tool);
     if (idx < 0) continue;

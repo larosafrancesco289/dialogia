@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { selectMessagesForCurrentChat } from '@/lib/store/selectors';
 import type { Evidence, Message } from '@/lib/types';
+import { nextReadyNode } from '@/modules/tutor/engine';
 import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
 import { inSentence } from '@/modules/tutor/ui/text';
 import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
@@ -62,18 +63,30 @@ export function ChapterBreak({
     return messages[messages.length - 1]?.id === message.id;
   });
   const setUI = useChatStore((s) => s.setUI);
-  const { learningPlan, onRequestMorePractice } = usePlanCallbacks();
+  const { state, learningPlan, onRequestMorePractice, onStartLesson } = usePlanCallbacks();
   const affordances = useTutorAffordances();
 
   const index = learningPlan?.nodes.findIndex((n) => n.id === completedNodeId) ?? -1;
   const node = index >= 0 ? learningPlan!.nodes[index] : undefined;
   if (!node) return null;
-  const next = startedNodeId ? learningPlan!.nodes.find((n) => n.id === startedNodeId) : undefined;
+  // Legacy turns moved on by themselves; now the learner does, from here.
+  const next = startedNodeId
+    ? learningPlan!.nodes.find((n) => n.id === startedNodeId)
+    : nextReadyNode(learningPlan);
+  const goesOn = !startedNodeId && state.phase === 'interlude' && !!next;
 
-  const mastery = message.learnerModel?.mastery?.[completedNodeId];
+  // B2: the estimate at the break, from the event on this message, not today's.
+  const mastery =
+    message.learnerModel?.mastery?.[completedNodeId] ?? state.mastery[completedNodeId];
   const percent =
     affordances.showMastery && mastery ? Math.round(mastery.confidence * 100) : undefined;
-  const answers = mastery?.evidence.filter((e) => DEMONSTRATIONS.has(e.type)).length ?? 0;
+  const answers =
+    mastery?.evidence.filter(
+      (e) =>
+        e.source === 'quiz' ||
+        e.source === 'diagnostic' ||
+        (!e.source && DEMONSTRATIONS.has(e.type)),
+    ).length ?? 0;
   const reopened = node.status !== 'completed';
   // The choices are about the plan, so a read-only plan has no live seam.
   const live = affordances.revisePlan && isLatest && !dismissed && !reopened;
@@ -104,7 +117,15 @@ export function ChapterBreak({
             <button
               type="button"
               className="chapter-break__action chapter-break__action--primary"
-              onClick={() => setDismissed(true)}
+              disabled={busy}
+              onClick={() => {
+                if (!goesOn || !next) {
+                  setDismissed(true);
+                  return;
+                }
+                setBusy(true);
+                void onStartLesson(next.id).finally(() => setBusy(false));
+              }}
             >
               {next ? `Go on to ${inSentence(next.name)}` : 'Go on'}
             </button>
@@ -114,9 +135,7 @@ export function ChapterBreak({
               disabled={busy}
               onClick={() => {
                 setBusy(true);
-                void onRequestMorePractice(completedNodeId, next?.id, {
-                  adjustMastery: affordances.correctMastery,
-                }).finally(() => setBusy(false));
+                void onRequestMorePractice(completedNodeId).finally(() => setBusy(false));
               }}
             >
               Not yet, more practice

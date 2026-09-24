@@ -1,70 +1,59 @@
-// Module: modules/tutor/agent/compose
-// Responsibility: The tutor module's contribution to a turn's request payload —
-// its tool list, its system preambles, and whether the turn needs the planning loop.
+// Module: tutor agent compose
+// Responsibility: the tutor's part of a turn's request: the stable prompt, the state
+// block rendered from the event log, the tools the engine would accept now, and the agent loop.
 
 import type { ModuleComposeArgs, ModuleComposeContribution } from '@/lib/modules';
-import type { ToolDefinition } from '@/lib/agent/types';
-import { getTutorPreamble, getTutorToolDefinitions } from '@/modules/tutor/agent/preamble';
-import { getTutorPhase, getTutorToolEligibility } from '@/modules/tutor/agent/state';
-import { isTutorToolName } from '@/modules/tutor/tools/register';
-import { getNextNode } from '@/modules/tutor/learning-plan/service';
-import tutorProfileService from '@/modules/tutor/lib/profile';
+import type { Message } from '@/lib/types';
+import {
+  learnerChangesSince,
+  renderStateBlock,
+  resolveTutorFlags,
+  tutorToolDefinitions,
+  type TutorEvent,
+} from '@/modules/tutor/engine';
+import { TUTOR_SYSTEM_PROMPT } from '@/modules/tutor/agent/systemPrompt';
+import { tutorStore } from '@/modules/tutor/store/access';
+import { EMPTY_TUTOR_SESSION } from '@/modules/tutor/store/tutorSlice';
+
+/**
+ * Where "since the learner's last message" starts: the log position the
+ * previous tutor reply saw when it was composed. A chat whose replies predate
+ * that bookkeeping starts after its imported history.
+ */
+export function learnerChangesBaseline(priorMessages: Message[], events: TutorEvent[]): number {
+  for (let i = priorMessages.length - 1; i >= 0; i -= 1) {
+    const message = priorMessages[i];
+    if (message.role === 'assistant' && typeof message.tutorSeq === 'number') {
+      return message.tutorSeq;
+    }
+  }
+  const imported = events.find((event) => event.type === 'legacy_imported');
+  return imported?.seq ?? 0;
+}
 
 export async function buildTutorComposeContribution({
   chat,
-  ui,
   settings,
   priorMessages,
+  store,
 }: ModuleComposeArgs): Promise<ModuleComposeContribution | undefined> {
   if (!settings.tutorEnabled) return undefined;
 
-  const learningPlan = chat.settings.features.tutor?.learningPlan;
-  const phase = getTutorPhase(chat, priorMessages, ui);
-  const activeNodeId = learningPlan ? getNextNode(learningPlan)?.id : undefined;
-  const { allowedTutorTools } = getTutorToolEligibility({ chat, ui, phase, activeNodeId });
-
-  const tools: ToolDefinition[] = getTutorToolDefinitions().filter((def) => {
-    const name = def.function?.name;
-    return !!name && isTutorToolName(name) && allowedTutorTools.has(name);
-  });
-
-  const stablePreambles: string[] = [];
-  const dynamicPreambles: string[] = [];
-
-  const tutorPreamble = getTutorPreamble();
-  if (tutorPreamble) stablePreambles.push(tutorPreamble);
-
-  try {
-    const profile = await tutorProfileService.loadTutorProfile(chat.id);
-    const summary = tutorProfileService.summarizeTutorProfile(profile);
-    if (summary) stablePreambles.push(`Learner Profile:\n${summary}`);
-  } catch {
-    // ignore profile load failures
-  }
-
-  // Tutor always sees the numerical learner model (it's internal system state).
-  // learnerModelVisible controls student-facing UI only, not tutor context.
-  if (learningPlan) {
-    const { generatePlanContextPreamble } = await import('@/modules/tutor/agent/planContext');
-    const { resolveLearnerModel } = await import('@/modules/tutor/learner-model');
-    const planContext = generatePlanContextPreamble(
-      learningPlan,
-      resolveLearnerModel(priorMessages, chat.settings.features.tutor?.learnerModel),
-      { includeLearnerModel: true },
-    );
-    if (planContext) dynamicPreambles.push(planContext);
-  }
-
-  if (settings.tutorNudge) {
-    stablePreambles.push(`Learner Preference: ${settings.tutorNudge.replace(/_/g, ' ')}`);
-  }
+  const tutor = tutorStore(store?.get);
+  const session = tutor ? await tutor.ensureTutorSession(chat.id) : EMPTY_TUTOR_SESSION;
+  const { state, events } = session;
+  const flags = resolveTutorFlags(chat.settings.features.tutor);
+  const since = learnerChangesBaseline(priorMessages, events);
 
   return {
-    tools,
-    stablePreambles,
-    dynamicPreambles,
-    requiresPlanning: true,
-    // The tutor preamble is a complete system prompt on its own.
+    tools: tutorToolDefinitions(state, flags),
+    stablePreambles: [TUTOR_SYSTEM_PROMPT],
+    dynamicPreambles: [
+      renderStateBlock(state, { flags, learnerChanges: learnerChangesSince(state, events, since) }),
+    ],
+    loop: 'agent',
+    // The tutor prompt is a complete system prompt on its own.
     replacesBaseSystem: true,
+    messagePatch: { tutorSeq: state.lastSeq },
   };
 }

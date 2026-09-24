@@ -234,37 +234,9 @@ function previewTextBlock(text: string | undefined, maxLines = 4): string[] {
 
 function summarizePlanFlags(plan: PlanTurnResult): string {
   const segments: string[] = [];
-  if (plan.learnerModel) segments.push('learner model updated');
-  if (plan.planUpdates) segments.push('plan updated');
   if (plan.usedContentTool) segments.push('inline tutor UI');
   if (plan.hasSearchResults) segments.push('search results cited');
   return segments.length ? segments.join(', ') : 'no tutor tool usage';
-}
-
-function summarizePlanUpdates(plan: PlanTurnResult): string[] {
-  const updates = plan.planUpdates;
-  if (!updates) return ['(no plan deltas)'];
-
-  const lines: string[] = [];
-  if (updates.statusChanges?.length) {
-    lines.push(`status changes: ${updates.statusChanges.length}`);
-  }
-  if (updates.masteryChanges?.length) {
-    lines.push(`mastery changes: ${updates.masteryChanges.length}`);
-  }
-  if (!lines.length) return ['(no plan deltas)'];
-  return lines;
-}
-
-function learnerModelSummary(plan: PlanTurnResult): string | undefined {
-  if (!plan.learnerModel) return undefined;
-  const mastery = plan.learnerModel.mastery ?? {};
-  const nodeCount = Object.keys(mastery).length;
-  const avg = plan.learnerModel.globalMetrics?.averageConfidence;
-  const avgPct = typeof avg === 'number' ? `${Math.round(avg * 100)}% avg confidence` : undefined;
-  const parts = [`nodes tracked: ${nodeCount}`];
-  if (avgPct) parts.push(avgPct);
-  return parts.join(', ');
 }
 
 function summarizeMetrics(metrics: Message['metrics'] | undefined): string | undefined {
@@ -362,10 +334,9 @@ function printSummary(report: SimulationReport, jsonPath: string) {
     console.log('\nPlanning Artifacts');
     console.log('------------------');
     console.log(`  Flags: ${summarizePlanFlags(turn.plan)}`);
-    const learnerSummary = learnerModelSummary(turn.plan);
+    const learnerSummary: string | undefined = undefined;
     if (learnerSummary) console.log(`  Learner model: ${learnerSummary}`);
     console.log('  Plan deltas:');
-    indentLines(summarizePlanUpdates(turn.plan), '    ').forEach((line) => console.log(line));
     if (turn.plan.finalSystem) {
       console.log('  Final system preview:');
       indentLines(previewTextBlock(turn.plan.finalSystem), '    ').forEach((line) =>
@@ -599,7 +570,6 @@ export async function runTutorSimulationCli(argv: string[]) {
     genSettings: snapshot.assistant.genSettings,
     systemSnapshot: snapshot.assistant.systemSnapshot,
     hiddenContent: snapshot.assistant.hiddenContent,
-    learnerModelDebug: snapshot.assistant.learnerModelDebug,
   }));
 
   const transcript = runResult.messages.map((msg) => ({

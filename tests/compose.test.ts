@@ -1,9 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { composeTurn } from '@/lib/agent/compose';
-import type { Chat, Message, Attachment, TutorProfile } from '@/lib/types';
+import { createStore } from 'zustand/vanilla';
+import type { StateCreator } from 'zustand';
+import type { Chat, Message, Attachment } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
-import tutorProfileService from '@/modules/tutor/lib/profile';
+import { buildStoreInitializer } from '@/lib/store/createStore';
+import type { StoreState } from '@/lib/store/types';
+import { TUTOR_SYSTEM_PROMPT } from '@/modules/tutor/agent/systemPrompt';
 import { resolveTurnSettings } from '@/lib/settings/resolve';
 import { deleteKey, setKey } from '@/lib/keys/store';
 
@@ -93,32 +97,15 @@ const modelIndexStub: ModelIndex = {
 
 test('composeTurn merges tutor and search context with plugins and tools', async () => {
   await setKey('tavily', 'tvly-test');
-  const profileStub: TutorProfile = {
-    chatId: 'chat-1',
-    updatedAt: Date.now(),
-    totalAnswered: 0,
-    totalCorrect: 0,
-    topics: {},
-    skills: {},
-    difficulty: {
-      easy: { correct: 0, wrong: 0 },
-      medium: { correct: 0, wrong: 0 },
-      hard: { correct: 0, wrong: 0 },
-    },
-  };
-
-  const originalLoadProfile = tutorProfileService.loadTutorProfile;
-  const originalSummarizeProfile = tutorProfileService.summarizeTutorProfile;
-
-  tutorProfileService.loadTutorProfile = async () => profileStub;
-  tutorProfileService.summarizeTutorProfile = () => 'Prefers visuals';
-
   const chat = baseChat();
+  const store = createStore<StoreState>(
+    buildStoreInitializer() as unknown as StateCreator<StoreState>,
+  );
+  store.setState({ chats: [chat] });
   const ui = {
     flags: { experimentalTutor: true },
     tutor: { forceMode: false },
     routePreference: 'speed',
-    overrides: { tutorNudge: 'more_practice' },
   } as any;
   const prior: Message[] = [
     {
@@ -154,6 +141,7 @@ test('composeTurn merges tutor and search context with plugins and tools', async
       prior,
       newUser: { content: 'Here are my notes.', attachments },
       attachments,
+      store: { get: store.getState, set: store.setState },
     });
 
     assert.equal(result.settings.tutorEnabled, true);
@@ -161,21 +149,25 @@ test('composeTurn merges tutor and search context with plugins and tools', async
     assert.equal(result.settings.searchEnabled, true);
     assert.equal(result.hasPdf, true);
     assert.equal(result.shouldPlan, true);
+    assert.equal(result.loop, 'agent');
     assert.equal(result.settings.generation.providerSort, undefined);
-    assert.equal(result.consumedTutorNudge, 'more_practice');
-    assert.ok(result.system && result.system.includes('Learner Profile:'));
-    // When tutor is enabled, the base system prompt should NOT be included
+    // The tutor prompt replaces the chat's base system prompt.
+    assert.ok(result.systemStable?.includes(TUTOR_SYSTEM_PROMPT));
     assert.ok(!result.system?.includes('Always respond enthusiastically.'));
-    assert.ok(result.system && result.system.includes('LEARNING PLAN CONTEXT'));
-    assert.ok(result.system && result.system.includes('CURRENT FOCUS: Linear Equations'));
+    // The chat's legacy plan was imported, and the state block reads from it.
+    assert.ok(result.systemDynamic?.startsWith('Tutor state'));
+    assert.ok(result.systemDynamic?.includes('Current topic: Linear Equations [linear-equations]'));
+    assert.equal(
+      result.messagePatch?.tutorSeq,
+      store.getState().tutorSessions[chat.id].state.lastSeq,
+    );
 
     assert.ok(result.plugins && result.plugins.some((plugin) => plugin.id === 'file-parser'));
     const toolNames = (result.tools || []).map((tool) => tool.function.name);
     assert.ok(toolNames.includes('web_search'), 'expected web_search tool');
-    assert.ok(toolNames.length > 1, 'expected tutor tools to be included');
+    assert.ok(toolNames.includes('give_quiz'), 'expected the teaching tools');
+    assert.ok(!toolNames.includes('ask_intake'), 'no intake once a plan exists');
   } finally {
-    tutorProfileService.loadTutorProfile = originalLoadProfile;
-    tutorProfileService.summarizeTutorProfile = originalSummarizeProfile;
     await deleteKey('tavily');
   }
 });

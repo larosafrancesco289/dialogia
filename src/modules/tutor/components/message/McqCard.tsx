@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   CheckIcon,
@@ -6,33 +6,62 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
 } from '@heroicons/react/24/outline';
-import type { TutorMCQItem } from '@/lib/types';
 import { useChatStore } from '@/lib/store';
+import { quizFinished, type QuizItem, type QuizRecord } from '@/modules/tutor/engine';
 import { contentVariants } from '@/modules/tutor/components/message/shared';
 import { StepperDots } from '@/modules/tutor/components/message/StepperDots';
 import { useStepper } from '@/modules/tutor/components/message/hooks/useStepper';
 import { InlineEmphasis } from '@/modules/tutor/components/message/InlineEmphasis';
 
-export function McqCard({ items, messageId }: { items: TutorMCQItem[]; messageId: string }) {
-  const log = useChatStore((s) => s.logTutorResult);
-  const setTutorAttemptMcq = useChatStore((s) => s.setTutorAttemptMcq);
-  const patchTutorEntry = useChatStore((s) => s.patchTutorEntry);
+export type McqItem = Omit<QuizItem, 'correct'> & { correct?: number };
+export type McqAttempts = Record<string, { choice: number; correct: boolean }>;
+
+/** A quiz card: each answer goes to the engine, which grades it and records the evidence. */
+export function QuizCard({
+  chatId,
+  messageId,
+  quiz,
+}: {
+  chatId: string;
+  messageId: string;
+  quiz: QuizRecord;
+}) {
+  const dispatchTutor = useChatStore((s) => s.dispatchTutor);
   const sendUserMessage = useChatStore((s) => s.sendUserMessage);
-  const tutorEntry = useChatStore((s) => s.ui.tutor?.byMessageId?.[messageId]);
-  const attempts = tutorEntry?.attempts;
-  const mcq = useMemo(
-    () =>
-      (attempts?.mcq as Record<string, { choice?: number; done?: boolean; correct?: boolean }>) ||
-      {},
-    [attempts],
-  );
-  const isPending = useCallback((item: TutorMCQItem) => !mcq[item.id]?.done, [mcq]);
+  const onAnswer = async (itemId: string, choice: number) => {
+    const result = await dispatchTutor(
+      chatId,
+      { by: 'learner', type: 'answer_quiz_item', quizId: quiz.quizId, itemId, choice },
+      { by: 'learner', messageId },
+    );
+    if (!result.ok) return;
+    const before = result.before.quizzes[quiz.quizId];
+    const after = result.state.quizzes[quiz.quizId];
+    if (!after || !quizFinished(after) || (before && quizFinished(before))) return;
+    const right = after.items.filter((item) => after.answers[item.id]?.correct).length;
+    // B2: a visible ledger line instead of a hidden message.
+    await sendUserMessage(`Answered the quiz: ${right} of ${after.items.length} right.`, {
+      metadata: { hiddenFromUser: true, kind: 'tutor_quiz_completion' },
+    });
+  };
+  return <McqCard items={quiz.items} attempts={quiz.answers} onAnswer={onAnswer} />;
+}
+
+export function McqCard({
+  items,
+  attempts,
+  onAnswer,
+}: {
+  items: McqItem[];
+  attempts: McqAttempts;
+  onAnswer: (itemId: string, choice: number) => void | Promise<void>;
+}) {
+  const isPending = useCallback((item: McqItem) => !attempts[item.id], [attempts]);
   const { total, activeIndex, goToIndex, goPrevious, goNext, activeItem } = useStepper(
     items,
     isPending,
   );
   const advanceTimer = useRef<number | null>(null);
-  const completionStarted = useRef(false);
 
   useEffect(
     () => () => {
@@ -44,62 +73,16 @@ export function McqCard({ items, messageId }: { items: TutorMCQItem[]; messageId
     [],
   );
 
-  const answeredCount = useMemo(
-    () => items.filter((item) => mcq[item.id]?.done).length,
-    [items, mcq],
-  );
-  const correctCount = useMemo(
-    () => items.filter((item) => mcq[item.id]?.done && mcq[item.id]?.correct).length,
-    [items, mcq],
-  );
-
-  useEffect(() => {
-    if (total === 0 || answeredCount !== total) return;
-    if (completionStarted.current) return;
-    if (tutorEntry?.diagnostic) return;
-    if (typeof tutorEntry?.quizMeta?.completedAt === 'number') return;
-    completionStarted.current = true;
-
-    const now = Date.now();
-    const prevQuizMeta = tutorEntry?.quizMeta || {};
-    void patchTutorEntry(messageId, {
-      quizMeta: {
-        ...prevQuizMeta,
-        completedAt: now,
-        type: 'mcq',
-      },
-    })
-      .then(() =>
-        sendUserMessage(`Completed quiz (${correctCount}/${total} correct).`, {
-          metadata: {
-            hiddenFromUser: true,
-            kind: 'tutor_quiz_completion',
-          },
-        }),
-      )
-      .catch(() => {
-        completionStarted.current = false;
-      });
-  }, [answeredCount, correctCount, messageId, patchTutorEntry, sendUserMessage, total, tutorEntry]);
-
-  const activeAttempt = activeItem ? mcq[activeItem.id] || {} : {};
-  const picked = activeAttempt.choice;
-  const answered = !!activeAttempt.done;
+  const activeAttempt = activeItem ? attempts[activeItem.id] : undefined;
+  const picked = activeAttempt?.choice;
+  const answered = !!activeAttempt;
   const correctIdx = typeof activeItem?.correct === 'number' ? activeItem.correct : -1;
 
   const handleSelect = (choiceIdx: number) => {
     if (!activeItem) return;
     if (answered) return;
     const correct = choiceIdx === correctIdx;
-    log({
-      kind: 'mcq',
-      itemId: activeItem.id,
-      correct,
-      topic: activeItem.topic,
-      skill: activeItem.skill,
-      difficulty: activeItem.difficulty,
-    });
-    setTutorAttemptMcq(messageId, activeItem.id, choiceIdx, correct);
+    void onAnswer(activeItem.id, choiceIdx);
 
     if (advanceTimer.current != null) {
       window.clearTimeout(advanceTimer.current);
@@ -125,8 +108,8 @@ export function McqCard({ items, messageId }: { items: TutorMCQItem[]; messageId
           items={items}
           activeIndex={activeIndex}
           resolveStatus={(item) => {
-            const attempt = mcq[item.id];
-            if (!attempt?.done) return 'pending';
+            const attempt = attempts[item.id];
+            if (!attempt) return 'pending';
             return attempt.correct ? 'correct' : 'incorrect';
           }}
           onSelect={goToIndex}

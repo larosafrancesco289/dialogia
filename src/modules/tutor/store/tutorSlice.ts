@@ -1,107 +1,206 @@
+// Module: tutor store slice
+// Responsibility: the tutor's only state (one folded event log per chat) and its only
+// mutation path, `dispatchTutor`. Learner clicks and tutor tool calls both come through here.
+
+import { v4 as uuidv4 } from 'uuid';
 import type { StoreSetter, StoreState } from '@/lib/store/types';
-import type { MessageTutor, TutorEvent } from '@/lib/types';
-import type { LearnerModelFeedback } from '@/modules/tutor/learner-model';
-import { updateTutorProfile, loadTutorProfile } from '@/modules/tutor/lib/profile';
+import type { Message } from '@/lib/types';
 import { repository } from '@/lib/db';
+import { logger } from '@/lib/logger';
+import { getMessagesForChat } from '@/lib/messages/indexing';
 import { readNextOverrides } from '@/lib/ui/next';
+import {
+  emptyTutorState,
+  fold,
+  parseTutorEvent,
+  resolveTutorFlags,
+  step,
+  type StepResult,
+  type TutorCommand,
+  type TutorEvent,
+  type TutorState,
+} from '@/modules/tutor/engine';
+import { buildLegacyImport } from '@/modules/tutor/store/legacyImport';
 import {
   buildPlanWelcomeMessage,
   prepareTutorWelcomeMessage as prepareTutorWelcomeMessageService,
 } from '@/modules/tutor/services/tutorWelcome';
 
-// Pulls in the learner-model pipeline; only reachable from an explicit user action.
-const loadLearnerModelFeedback = () => import('@/modules/tutor/services/learnerModelFeedback');
+export type TutorSession = {
+  /** The chat's log in seq order. */
+  events: TutorEvent[];
+  /** Always `fold(events)`. */
+  state: TutorState;
+  /** False only for the placeholder a chat has before its first load. */
+  loaded: boolean;
+};
 
-type McqAttempts = NonNullable<MessageTutor['attempts']>['mcq'];
+export type TutorDispatchMeta = {
+  by: 'tutor' | 'learner';
+  /** The assistant message the events belong to: the turn's reply, or the card acted on. */
+  messageId?: string;
+};
+
+/** The engine's step result; on success also the state the command was decided against. */
+export type TutorDispatchResult =
+  | (Extract<StepResult, { ok: true }> & { before: TutorState })
+  | Extract<StepResult, { ok: false }>;
+
+export type TutorSliceState = {
+  tutorSessions: Record<string, TutorSession>;
+};
 
 export type TutorStoreActions = {
-  persistTutorStateForMessage: (messageId: string) => Promise<void>;
-  logTutorResult: (evt: TutorEvent) => Promise<void>;
-  loadTutorProfileIntoUI: (chatId?: string) => Promise<void>;
+  /** Loads a chat's log once (importing legacy data on the first load of an empty log). */
+  ensureTutorSession: (chatId: string) => Promise<TutorSession>;
+  /**
+   * The one way tutor state changes. Decides the command against the chat's
+   * current state, appends the events in memory, then persists them. Calls
+   * for one chat run one after another, so none can decide against a state
+   * another is about to change.
+   */
+  dispatchTutor: (
+    chatId: string,
+    command: TutorCommand,
+    meta: TutorDispatchMeta,
+  ) => Promise<TutorDispatchResult>;
   primeTutorWelcomePreview: () => Promise<string | undefined>;
   prepareTutorWelcomeMessage: (chatId?: string) => Promise<string | undefined>;
-  applyLearnerModelFeedbackFromUser: (input: LearnerModelFeedback) => Promise<void>;
-  patchTutorEntry: (
-    messageId: string,
-    patch: Partial<MessageTutor>,
-    opts?: { persist?: boolean },
-  ) => Promise<void>;
-  setTutorAttemptMcq: (
-    messageId: string,
-    itemId: string,
-    choiceIdx: number,
-    correct: boolean,
-  ) => void;
-  setTutorPlanProposalStatus: (
-    messageId: string,
-    status: 'pending' | 'approved' | 'declined',
-  ) => void;
 };
 
 declare module '@/lib/store/stateTypes' {
+  interface ModuleStoreState extends TutorSliceState {}
   interface ModuleStoreActions extends TutorStoreActions {}
+}
+
+export const EMPTY_TUTOR_SESSION: TutorSession = {
+  events: [],
+  state: emptyTutorState(),
+  loaded: false,
+};
+
+/** The chat's messages from the database, with anything newer already in memory on top. */
+async function legacyMessages(state: StoreState, chatId: string): Promise<Message[]> {
+  const byId = new Map<string, Message>();
+  try {
+    for (const message of await repository.loadMessagesForChat(chatId)) {
+      byId.set(message.id, message);
+    }
+  } catch (error) {
+    logger.warn('Tutor legacy import could not read stored messages', error);
+  }
+  for (const message of getMessagesForChat(state, chatId)) byId.set(message.id, message);
+  return [...byId.values()];
 }
 
 export function createTutorSlice(
   set: StoreSetter,
   get: () => StoreState,
   _store?: unknown,
-): TutorStoreActions {
-  const updateTutorEntry = (messageId: string, updater: (prev: MessageTutor) => MessageTutor) => {
-    if (!messageId) return;
-    set((state) => {
-      const current = state.ui.tutor?.byMessageId || {};
-      const prevEntry = (current[messageId] || {}) as MessageTutor;
-      const nextEntry = updater(prevEntry);
+): TutorSliceState & TutorStoreActions {
+  const loads = new Map<string, Promise<TutorSession>>();
+  const queues = new Map<string, Promise<unknown>>();
+
+  const publish = (chatId: string, session: TutorSession) =>
+    set((s) => ({ tutorSessions: { ...s.tutorSessions, [chatId]: session } }));
+
+  const load = async (chatId: string): Promise<TutorSession> => {
+    const records = await repository.loadTutorEvents(chatId);
+    let events = records
+      .map(parseTutorEvent)
+      .filter((event): event is TutorEvent => !!event && event.chatId === chatId);
+    if (records.length > events.length) {
+      logger.warn(`Dropped ${records.length - events.length} malformed tutor events for a chat`);
+    }
+
+    // A chat whose log is empty may still hold tutor data from before the
+    // log existed. Read it once; from now on the log is the only record.
+    const chat = get().chats.find((c) => c.id === chatId);
+    if (!records.length && chat) {
+      const imported = buildLegacyImport({
+        chat,
+        messages: await legacyMessages(get(), chatId),
+        at: Date.now(),
+        newId: uuidv4,
+      });
+      if (imported.length) {
+        await repository.appendTutorEvents(imported);
+        events = imported;
+      }
+    }
+
+    const session: TutorSession = { events, state: fold(events), loaded: true };
+    publish(chatId, session);
+    return session;
+  };
+
+  const ensureTutorSession = (chatId: string): Promise<TutorSession> => {
+    const existing = get().tutorSessions[chatId];
+    if (existing?.loaded) return Promise.resolve(existing);
+    let pending = loads.get(chatId);
+    if (!pending) {
+      pending = load(chatId).finally(() => loads.delete(chatId));
+      loads.set(chatId, pending);
+    }
+    return pending;
+  };
+
+  const decideAndAppend = async (
+    chatId: string,
+    command: TutorCommand,
+    meta: TutorDispatchMeta,
+  ): Promise<TutorDispatchResult> => {
+    if (command.by !== meta.by) {
       return {
-        ui: {
-          ...state.ui,
-          tutor: {
-            ...state.ui.tutor,
-            byMessageId: { ...current, [messageId]: nextEntry },
-          },
+        ok: false,
+        error: {
+          code: 'invalid_arguments',
+          message: `A ${command.by} command cannot be dispatched as the ${meta.by}.`,
+          hint: 'Dispatch the command with a matching actor.',
         },
       };
+    }
+    await ensureTutorSession(chatId);
+    const session = get().tutorSessions[chatId] ?? EMPTY_TUTOR_SESSION;
+    const chat = get().chats.find((c) => c.id === chatId);
+    const result = step(session.state, command, {
+      chatId,
+      at: Date.now(),
+      idFactory: uuidv4,
+      flags: resolveTutorFlags(chat?.settings.features.tutor),
+      ...(meta.messageId ? { messageId: meta.messageId } : {}),
     });
+    if (!result.ok) return result;
+
+    publish(chatId, {
+      events: [...session.events, ...result.events],
+      state: result.state,
+      loaded: true,
+    });
+    try {
+      await repository.appendTutorEvents(result.events);
+    } catch (error) {
+      // The change stands for this session; say so rather than pretend it failed.
+      logger.error('Tutor events could not be saved', error);
+    }
+    return { ...result, before: session.state };
   };
 
   return {
-    async persistTutorStateForMessage(messageId: string) {
-      const { persistTutorForMessage } = await import(
-        '@/modules/tutor/services/persistMessagePayload'
+    tutorSessions: {},
+
+    ensureTutorSession,
+
+    dispatchTutor(chatId, command, meta) {
+      const previous = queues.get(chatId) ?? Promise.resolve();
+      const run = previous.then(() => decideAndAppend(chatId, command, meta));
+      queues.set(
+        chatId,
+        run.catch(() => undefined),
       );
-      await persistTutorForMessage({ messageId, store: { set, get }, repository });
+      return run;
     },
 
-    async logTutorResult(evt: TutorEvent) {
-      const chatId = get().selectedChatId!;
-      if (!chatId) return;
-      const prof = await updateTutorProfile(chatId, evt);
-      set((s) => ({
-        ui: {
-          ...s.ui,
-          tutor: {
-            ...s.ui.tutor,
-            profileByChatId: { ...(s.ui.tutor?.profileByChatId || {}), [chatId]: prof },
-          },
-        },
-      }));
-    },
-    async loadTutorProfileIntoUI(chatId?: string) {
-      const id = chatId || get().selectedChatId!;
-      if (!id) return;
-      const prof = await loadTutorProfile(id);
-      if (prof)
-        set((s) => ({
-          ui: {
-            ...s.ui,
-            tutor: {
-              ...s.ui.tutor,
-              profileByChatId: { ...(s.ui.tutor?.profileByChatId || {}), [id]: prof },
-            },
-          },
-        }));
-    },
     async primeTutorWelcomePreview() {
       const state = get();
       const nextOverrides = readNextOverrides(state.ui);
@@ -110,90 +209,30 @@ export function createTutorSlice(
         (state.ui.tutor?.forceMode || nextOverrides.tutorMode);
       if (!tutorActive) {
         set((s) => ({
-          ui: {
-            ...s.ui,
-            tutor: {
-              ...s.ui.tutor,
-              welcomePreview: { status: 'idle' },
-            },
-          },
+          ui: { ...s.ui, tutor: { ...s.ui.tutor, welcomePreview: { status: 'idle' } } },
         }));
         return undefined;
       }
-      const selectedChat = state.selectedChatId
-        ? state.chats.find((c) => c.id === state.selectedChatId)
+      const plan = state.selectedChatId
+        ? state.tutorSessions[state.selectedChatId]?.state.plan
         : undefined;
-      const plan = selectedChat?.settings?.features.tutor?.learningPlan;
       const message = buildPlanWelcomeMessage(plan);
       set((s) => ({
         ui: {
           ...s.ui,
           tutor: {
             ...s.ui.tutor,
-            welcomePreview: {
-              status: 'ready',
-              message,
-              generatedAt: Date.now(),
-            },
+            welcomePreview: { status: 'ready', message, generatedAt: Date.now() },
           },
         },
       }));
       return message;
     },
+
     async prepareTutorWelcomeMessage(chatId?: string) {
       const id = chatId || get().selectedChatId;
       if (!id) return undefined;
       return prepareTutorWelcomeMessageService({ chatId: id, set, get, repository });
     },
-
-    async applyLearnerModelFeedbackFromUser(input: LearnerModelFeedback) {
-      const { applyLearnerModelFeedbackFromUser: apply } = await loadLearnerModelFeedback();
-      await apply({ input, set, get, repository });
-    },
-
-    async patchTutorEntry(
-      messageId: string,
-      patch: Partial<MessageTutor>,
-      opts?: { persist?: boolean },
-    ) {
-      updateTutorEntry(messageId, (prev) => ({ ...prev, ...patch }));
-      if (opts?.persist === false) return;
-      await get()
-        .persistTutorStateForMessage(messageId)
-        .catch(() => undefined);
-    },
-
-    setTutorPlanProposalStatus(messageId, status) {
-      updateTutorEntry(messageId, (prev) => {
-        if (!prev.planProposal) return prev;
-        return {
-          ...prev,
-          planProposal: {
-            ...prev.planProposal,
-            status,
-            resolvedAt: Date.now(),
-          },
-        };
-      });
-      void get().persistTutorStateForMessage(messageId);
-    },
-
-    setTutorAttemptMcq(messageId, itemId, choiceIdx, correct) {
-      updateTutorEntry(messageId, (prev) => {
-        const prevAttempts = prev.attempts || {};
-        const prevMcq: McqAttempts = prevAttempts.mcq ?? {};
-        return {
-          ...prev,
-          attempts: {
-            ...prevAttempts,
-            mcq: {
-              ...prevMcq,
-              [itemId]: { choice: choiceIdx, done: true, correct },
-            },
-          },
-        };
-      });
-      void get().persistTutorStateForMessage(messageId);
-    },
-  } satisfies Partial<StoreState>;
+  };
 }

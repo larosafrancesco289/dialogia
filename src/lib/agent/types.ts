@@ -1,24 +1,15 @@
-import type {
-  Chat,
-  Message,
-  ModelDescriptor,
-  LearnerModel,
-  LearningPlan,
-  LearnerModelDebugSnapshot,
-  PersistedAttachment,
-  SearchMode,
-} from '@/lib/types';
+import type { Chat, Message, ModelDescriptor, PersistedAttachment, SearchMode } from '@/lib/types';
 import type { SearchResult } from '@/lib/search/types';
 import type { Result } from '@/lib/utils/result';
 import type { ModelIndex } from '@/lib/models';
 import { ProviderSort } from '@/lib/models/providerSort';
 import type { TransportAuth } from '@/lib/auth/transport';
-import type { TurnStoreState } from '@/lib/agent/contracts';
+import type { TurnStore, TurnStoreState } from '@/lib/agent/contracts';
 import type {
   StoreGetter as ContractStoreGetter,
   StoreSetter as ContractStoreSetter,
 } from '@/lib/contracts/store';
-import type { UiNextOverrides, UiSnapshot } from '@/lib/contracts/ui';
+import type { UiSnapshot } from '@/lib/contracts/ui';
 import type { ResolvedTurnSettings } from '@/lib/settings/resolve';
 import type { WebSearchArgs as SearchArgs } from '@/lib/search/args';
 import type { PipelineClient } from '@/lib/agent/pipelineClient';
@@ -62,11 +53,6 @@ export type TurnContext = {
 
 export type WebSearchArgs = SearchArgs;
 
-export type TutorToolCall = {
-  name: string;
-  args: Record<string, unknown>;
-};
-
 export type PlanTurnOptions = {
   chat: Chat;
   chatId: string;
@@ -87,10 +73,6 @@ export type PlanTurnResult = {
   finalSystem: string;
   usedContentTool: boolean;
   hasSearchResults: boolean;
-  learnerModel?: LearnerModel;
-  planUpdates?: Message['planUpdates'];
-  updatedPlan?: LearningPlan;
-  learnerModelDebug?: LearnerModelDebugSnapshot;
 };
 
 export type PlanTurnSideEffect = {
@@ -116,6 +98,8 @@ export type ComposeTurnArgs = {
     attachments?: PersistedAttachment[];
   };
   attachments?: PersistedAttachment[];
+  /** The turn's store, for modules that read their own state while composing. */
+  store?: TurnStore;
 };
 
 /**
@@ -140,7 +124,8 @@ export type TurnComposition = {
   /** Set when an enabled module asked for the agent loop. */
   loop?: TurnLoopMode;
   settings: ResolvedTurnSettings;
-  consumedTutorNudge?: UiNextOverrides['tutorNudge'];
+  /** Fields the modules want on this turn's assistant message; applied when composed. */
+  messagePatch?: Partial<Message>;
 };
 
 export type StreamFinalOptions = {

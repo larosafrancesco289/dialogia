@@ -25,7 +25,6 @@ export async function finalizeShortCircuitMessage(
     content: current?.content ?? baseMessage.content ?? '',
     reasoning: current?.reasoning ?? baseMessage.reasoning,
     attachments: current?.attachments ?? baseMessage.attachments,
-    tutor: current?.tutor ?? baseMessage.tutor,
     hiddenContent: current?.hiddenContent ?? baseMessage.hiddenContent ?? undefined,
   });
 

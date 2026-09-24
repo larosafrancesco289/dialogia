@@ -1,6 +1,5 @@
-import type { PlanTurnResult, ToolDefinition } from '@/lib/agent/types';
+import type { ToolDefinition } from '@/lib/agent/types';
 import type { SearchResult } from '@/lib/search/types';
-import type { LearningPlan } from '@/lib/types';
 
 export type ToolGate = {
   /**
@@ -24,19 +23,6 @@ export type PlanningContext = {
   gate: ToolGate;
   /** Opaque per-module turn state; only the owning module interprets it. */
   moduleContext?: Record<string, unknown>;
-};
-
-/**
- * What a content module contributes to the turn's result. Core knows the shape
- * (every field is a core type) but not which module produced it, so this survives
- * a module being removed: the fields simply stay undefined.
- */
-export type ContentModuleResult = {
-  learnerModel?: PlanTurnResult['learnerModel'];
-  planUpdates?: PlanTurnResult['planUpdates'];
-  updatedPlan?: PlanTurnResult['updatedPlan'];
-  learnerModelDebug?: PlanTurnResult['learnerModelDebug'];
-  currentPlan?: LearningPlan;
 };
 
 export type PlanningExecutionState = {

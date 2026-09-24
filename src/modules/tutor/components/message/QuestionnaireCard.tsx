@@ -1,22 +1,34 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CheckIcon } from '@heroicons/react/24/outline';
-import type { TutorQuestionnaire } from '@/lib/types';
 import { useChatStore } from '@/lib/store';
+import type { IntakeQuestion } from '@/modules/tutor/engine';
+import type { MessageCards } from '@/modules/tutor/ui/messageViews';
 import { contentVariants, safeKey } from '@/modules/tutor/components/message/shared';
 import { StepperDots } from '@/modules/tutor/components/message/StepperDots';
 import { useStepper } from '@/modules/tutor/components/message/hooks/useStepper';
 import { InlineEmphasis } from '@/modules/tutor/components/message/InlineEmphasis';
 
-type QuestionnaireItem = TutorQuestionnaire['questions'][number];
+type QuestionnaireItem = IntakeQuestion;
 
 export function QuestionnaireCard({
+  chatId,
   messageId,
-  questionnaire,
+  intake,
 }: {
+  chatId: string;
   messageId: string;
-  questionnaire: TutorQuestionnaire;
+  intake: NonNullable<MessageCards['intake']>;
 }) {
+  // B2: the card reads the intake record directly; this keeps the old shape.
+  const questionnaire = useMemo(
+    () => ({
+      questions: intake.questions,
+      responses: intake.responses,
+      submittedAt: intake.answeredAt,
+    }),
+    [intake],
+  );
   const initialSelections = useMemo(() => {
     const map: Record<string, string[]> = {};
     for (const q of questionnaire.questions) {
@@ -27,9 +39,9 @@ export function QuestionnaireCard({
   }, [questionnaire]);
   const [selections, setSelections] = useState<Record<string, string[]>>(initialSelections);
   const [submitting, setSubmitting] = useState(false);
-  const patchTutorEntry = useChatStore((s) => s.patchTutorEntry);
+  const dispatchTutor = useChatStore((s) => s.dispatchTutor);
   const sendUserMessage = useChatStore((s) => s.sendUserMessage);
-  const isSubmitted = questionnaire.status === 'submitted';
+  const isSubmitted = !!intake.responses;
   const questionCount = questionnaire.questions.length;
 
   const isPending = useCallback(
@@ -94,21 +106,15 @@ export function QuestionnaireCard({
   const handleSubmit = async () => {
     if (!allAnswered || submitting) return;
     setSubmitting(true);
-    const now = Date.now();
     try {
-      const updatedQuestionnaire: TutorQuestionnaire = {
-        ...questionnaire,
-        status: 'submitted',
-        submittedAt: now,
-        responses: selections,
-      };
-      await patchTutorEntry(messageId, { questionnaire: updatedQuestionnaire });
-
-      const content =
-        questionCount === 1
-          ? 'Submitted questionnaire response.'
-          : `Submitted questionnaire responses (${questionCount}).`;
-      await sendUserMessage(content, {
+      const result = await dispatchTutor(
+        chatId,
+        { by: 'learner', type: 'answer_intake', intakeId: intake.intakeId, responses: selections },
+        { by: 'learner', messageId },
+      );
+      if (!result.ok) return;
+      // B2: a visible ledger line instead of a hidden message.
+      await sendUserMessage('Answered the intake questions.', {
         metadata: {
           hiddenFromUser: true,
           kind: 'tutor_questionnaire_submission',

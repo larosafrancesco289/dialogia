@@ -49,7 +49,6 @@ export type RunTurnArgs = {
   authResolver: AuthResolver;
   attachmentPreparer?: AttachmentPreparer;
   fallbackAttachments?: PersistedAttachment[];
-  shouldShortCircuit?: (plan: PlanTurnResult) => boolean;
   hooks?: RunTurnHooks;
   startBuffered?: boolean;
   pipeline?: PipelineClient;
@@ -89,7 +88,6 @@ export const runTurn = async ({
   authResolver,
   attachmentPreparer,
   fallbackAttachments,
-  shouldShortCircuit,
   hooks,
   startBuffered = false,
   pipeline,
@@ -106,6 +104,7 @@ export const runTurn = async ({
     prior: priorMessages,
     newUser: { content: userContent, attachments },
     attachments,
+    store: { set: baseTurnContext.set, get: baseTurnContext.get },
   });
   hooks?.onComposition?.(composition);
 
@@ -147,26 +146,14 @@ export const runTurn = async ({
       loop: composition.loop,
       onPlanResult: hooks?.onPlanResult,
       onPlanSideEffects: hooks?.onPlanSideEffects,
-      shouldShortCircuit,
     });
 
-    // Convert streaming result to plan result format for compatibility
     planResult = {
       finalSystem: streamingResult.finalSystem,
       usedContentTool: streamingResult.usedContentTool,
       hasSearchResults: streamingResult.hasSearchResults,
-      learnerModel: streamingResult.learnerModel,
-      planUpdates: streamingResult.planUpdates,
-      updatedPlan: streamingResult.updatedPlan,
-      learnerModelDebug: streamingResult.learnerModelDebug,
     };
-    planSideEffects = streamingResult.sideEffects;
-
-    if (streamingResult.shortCircuited) {
-      return { composition, plan: planResult, shortCircuited: true };
-    }
-
-    return { composition, plan: planResult, shortCircuited: false };
+    return { composition, plan: planResult, shortCircuited: !!streamingResult.shortCircuited };
   }
 
   // Legacy path: use old plan+stream when planning without tools, or no planning needed
@@ -189,10 +176,6 @@ export const runTurn = async ({
     planSideEffects = planOutput.sideEffects;
     hooks?.onPlanResult?.(planResult);
     hooks?.onPlanSideEffects?.(planSideEffects);
-
-    if (shouldShortCircuit?.(planResult)) {
-      return { composition, plan: planResult, shortCircuited: true };
-    }
   }
 
   hooks?.beforeStream?.({ composition, plan: planResult });
