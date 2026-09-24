@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveTutorFlags, tutorAffordances } from '@/modules/tutor/ui/tutorFlags';
+import { resolveTutorFlags, seamChoices, tutorAffordances } from '@/modules/tutor/ui/tutorFlags';
 import { normalizeChatSettings } from '@/lib/settings/normalize';
 import type { TutorSettings } from '@/lib/types';
 
@@ -79,4 +79,23 @@ test('the condition flags survive settings normalization', () => {
   assert.equal(settings.features.tutor?.planEditable, false);
   assert.equal(settings.features.tutor?.learnerModelVisible, true);
   assert.equal(settings.features.tutor?.learnerModelEditable, false);
+});
+
+test('a chapter break offers going on under every flag, negotiation only on an editable plan', () => {
+  const open = { phase: 'interlude' as const, hasNext: true };
+  assert.deepEqual(seamChoices(affordancesFor(undefined), open), { goOn: true, negotiate: true });
+  assert.deepEqual(seamChoices(affordancesFor({ planEditable: false }), open), {
+    goOn: true,
+    negotiate: false,
+  });
+  // After the last topic there is nowhere to go on to.
+  assert.deepEqual(
+    seamChoices(affordancesFor({ planEditable: false }), { phase: 'complete', hasNext: false }),
+    { goOn: false, negotiate: false },
+  );
+  // Once the next topic has started, going on is no longer the break's to offer.
+  assert.equal(
+    seamChoices(affordancesFor(undefined), { phase: 'teaching', hasNext: true }).goOn,
+    false,
+  );
 });

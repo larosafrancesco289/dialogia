@@ -3,6 +3,8 @@ import { useChatStore } from '@/lib/store';
 import { NOTICE_PLAN_APPLY_FAILED } from '@/lib/store/notices';
 import { PlanFeedbackModal } from '@/modules/tutor/components/plan/PlanFeedbackModal';
 import type { ProposalView } from '@/modules/tutor/ui/messageViews';
+import { LEDGER, useLedger } from '@/modules/tutor/ui/ledger';
+import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 
 export function PlanProposalCard({
   chatId,
@@ -19,7 +21,9 @@ export function PlanProposalCard({
   const dispatchTutor = useChatStore((s) => s.dispatchTutor);
   const setUI = useChatStore((s) => s.setUI);
   const setNotice = useChatStore((s) => s.setNotice);
-  const sendUserMessage = useChatStore((s) => s.sendUserMessage);
+  const ledger = useLedger();
+  // Declining is negotiating the plan; a read-only plan only takes approval.
+  const { revisePlan } = useTutorAffordances();
 
   const resolved = proposal.status !== 'pending';
   const disableActions = resolved || approving || declining;
@@ -52,10 +56,7 @@ export function PlanProposalCard({
           sheetOpen: false,
         },
       });
-      // B2: a visible ledger line instead of a hidden message.
-      await sendUserMessage('Approved the plan.', {
-        metadata: { hiddenFromUser: true, kind: 'tutor_plan_adoption' },
-      });
+      await ledger(LEDGER.planApproved());
     } catch {
       setNotice(NOTICE_PLAN_APPLY_FAILED);
     } finally {
@@ -77,7 +78,7 @@ export function PlanProposalCard({
         { by: 'learner', messageId },
       );
       if (!result.ok) return;
-      await sendUserMessage(`Declined the plan: ${feedback}`);
+      await ledger(LEDGER.planDeclined(feedback));
     } finally {
       setDeclining(false);
     }
@@ -107,13 +108,15 @@ export function PlanProposalCard({
           <button className="btn btn-sm" onClick={handleApprove} disabled={disableActions}>
             {approving ? 'Applying…' : 'Approve plan'}
           </button>
-          <button
-            className="btn-outline btn-sm"
-            onClick={handleRequestChanges}
-            disabled={disableActions}
-          >
-            {declining ? 'Recording…' : 'Suggest changes'}
-          </button>
+          {revisePlan && (
+            <button
+              className="btn-outline btn-sm"
+              onClick={handleRequestChanges}
+              disabled={disableActions}
+            >
+              {declining ? 'Recording…' : 'Suggest changes'}
+            </button>
+          )}
           <button className="btn-ghost btn-sm" onClick={handleOpenFullPlan}>
             View full plan
           </button>
@@ -122,7 +125,7 @@ export function PlanProposalCard({
       </div>
 
       <PlanFeedbackModal
-        isOpen={feedbackModalOpen}
+        isOpen={feedbackModalOpen && revisePlan}
         context={{ type: 'plan_proposal' }}
         onSubmit={handleFeedbackSubmit}
         onClose={() => setFeedbackModalOpen(false)}

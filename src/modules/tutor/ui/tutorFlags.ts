@@ -1,4 +1,4 @@
-import { resolveTutorFlags, type TutorFlags } from '@/modules/tutor/engine';
+import { resolveTutorFlags, type TutorFlags, type TutorPhase } from '@/modules/tutor/engine';
 
 export { resolveTutorFlags, type TutorFlags };
 
@@ -17,5 +17,23 @@ export function tutorAffordances(flags: TutorFlags): TutorAffordances {
     showMastery: flags.learnerModelVisible,
     correctMastery: flags.learnerModelEditable,
     revisePlan: flags.planEditable,
+  };
+}
+
+export type SeamChoices = {
+  /** "Go on to …": follows the plan, so it needs only a next topic to go to. */
+  goOn: boolean;
+  /** "More practice" (reopens the topic) and "Change the path" both change the plan. */
+  negotiate: boolean;
+};
+
+/** What a live chapter break offers, under the flags and the session's phase. */
+export function seamChoices(
+  affordances: TutorAffordances,
+  seam: { phase: TutorPhase; hasNext: boolean },
+): SeamChoices {
+  return {
+    goOn: seam.phase === 'interlude' && seam.hasNext,
+    negotiate: affordances.revisePlan,
   };
 }

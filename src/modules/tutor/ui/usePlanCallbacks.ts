@@ -2,8 +2,14 @@ import { useCallback, useMemo } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import type { LearningPlan, TopicMastery } from '@/lib/types';
-import { confidenceOf, type LearnerCommand, type TutorState } from '@/modules/tutor/engine';
+import {
+  confidenceOf,
+  contestTarget,
+  type LearnerCommand,
+  type TutorState,
+} from '@/modules/tutor/engine';
 import type { TutorDispatchResult } from '@/modules/tutor/store/tutorSlice';
+import { LEDGER, useLedger } from '@/modules/tutor/ui/ledger';
 import { useTutorSession } from '@/modules/tutor/ui/useTutorSession';
 
 type PlanProgress = { completed: number; total: number; percentComplete: number };
@@ -11,10 +17,6 @@ type PlanProgress = { completed: number; total: number; percentComplete: number 
 /** Distributes Omit over the command union, so a command is written without its actor. */
 type WithoutBy<T> = T extends unknown ? Omit<T, 'by'> : never;
 export type LearnerAction = WithoutBy<LearnerCommand>;
-
-// B2: "Too high / Too low" moves the estimate by this much; the Hub redesign
-// replaces it with a direct setting.
-const CONTEST_STEP = 0.15;
 
 export type PlanCallbacks = {
   state: TutorState;
@@ -29,16 +31,20 @@ export type PlanCallbacks = {
     command: LearnerAction,
     messageId?: string,
   ) => Promise<TutorDispatchResult | undefined>;
-  onStartLesson: (nodeId: string) => Promise<void>;
+  /** The chapter break's "Go on". */
+  onGoOn: (nodeId: string) => Promise<void>;
+  /** Revise's "Do this next". */
+  onStartNext: (nodeId: string) => Promise<void>;
+  /** Revise's "I know this". */
   onMarkKnown: (nodeId: string) => Promise<void>;
+  onReopenTopic: (nodeId: string) => Promise<void>;
+  onRequestMorePractice: (nodeId: string) => Promise<void>;
+  onContestMastery: (nodeId: string, direction: 'up' | 'down') => Promise<number | undefined>;
+  onResolveMisconceptionQuietly: (nodeId: string, misconceptionId: string) => Promise<void>;
   onToggleRightPanel: () => void;
   onOpenRightPanel: (tab?: 'plan' | 'progress') => void;
   onCloseRightPanel: () => void;
   onSendPlanFeedback: (message: string) => void;
-  onRequestMorePractice: (nodeId: string) => Promise<void>;
-  onContestMastery: (nodeId: string, direction: 'up' | 'down') => Promise<number | undefined>;
-  onResolveMisconceptionQuietly: (nodeId: string, misconceptionId: string) => Promise<void>;
-  onReopenTopic: (nodeId: string) => Promise<void>;
 };
 
 /**
@@ -46,7 +52,7 @@ export type PlanCallbacks = {
  * read them, and the learner's controls over them. Every change is a learner
  * command through `dispatchTutor`. Quiet corrections only dispatch (the next
  * turn's state block reports them); the ones that call for the tutor's reply
- * also send a short message saying what the learner did.
+ * then leave a ledger line in the transcript, which starts its turn.
  */
 export function usePlanCallbacks(): PlanCallbacks {
   const { chatId, session } = useTutorSession();
@@ -60,6 +66,7 @@ export function usePlanCallbacks(): PlanCallbacks {
     }),
     shallow,
   );
+  const ledger = useLedger();
 
   const state = session.state;
   const learningPlan = state.plan;
@@ -86,51 +93,49 @@ export function usePlanCallbacks(): PlanCallbacks {
     [learningPlan],
   );
 
-  // B2: these become visible ledger lines; until then they are hidden user messages.
-  const tellTutor = useCallback(
-    (content: string, kind: string) =>
-      sendUserMessage(content, { metadata: { hiddenFromUser: true, kind } }),
-    [sendUserMessage],
+  /** Dispatches, then (only if the engine took it) leaves the ledger line. */
+  const act = useCallback(
+    async (command: LearnerAction & { nodeId: string }, line: (topic: string) => string) => {
+      const result = await dispatch(command);
+      if (result?.ok) await ledger(line(nameOf(command.nodeId)));
+    },
+    [dispatch, ledger, nameOf],
   );
 
-  const onStartLesson = useCallback(
+  const onGoOn = useCallback(
+    (nodeId: string) => act({ type: 'start_topic', nodeId }, LEDGER.goingOn),
+    [act],
+  );
+
+  const onStartNext = useCallback(
     async (nodeId: string) => {
-      const result = await dispatch({ type: 'start_topic', nodeId });
       setUI({ plan: { sheetOpen: false, sheetPlanOverride: null } });
-      if (result?.ok) await tellTutor(`Started ${nameOf(nodeId)}.`, 'tutor_start_lesson');
+      await act({ type: 'start_topic', nodeId }, LEDGER.startedTopic);
     },
-    [dispatch, nameOf, setUI, tellTutor],
+    [act, setUI],
   );
 
   const onMarkKnown = useCallback(
-    async (nodeId: string) => {
-      await dispatch({ type: 'mark_known', nodeId });
-    },
-    [dispatch],
+    (nodeId: string) => act({ type: 'mark_known', nodeId }, LEDGER.markedKnown),
+    [act],
+  );
+
+  const onReopenTopic = useCallback(
+    (nodeId: string) => act({ type: 'reopen_topic', nodeId }, LEDGER.reopenedTopic),
+    [act],
   );
 
   const onRequestMorePractice = useCallback(
-    async (nodeId: string) => {
-      const result = await dispatch({ type: 'more_practice', nodeId });
-      if (result?.ok) {
-        await tellTutor(`Asked for more practice on ${nameOf(nodeId)}.`, 'tutor_more_practice');
-      }
-    },
-    [dispatch, nameOf, tellTutor],
+    (nodeId: string) => act({ type: 'more_practice', nodeId }, LEDGER.morePractice),
+    [act],
   );
 
   const onContestMastery = useCallback(
     async (nodeId: string, direction: 'up' | 'down') => {
-      const current = confidenceOf(state, nodeId);
-      const setTo =
-        Math.round(
-          Math.min(1, Math.max(0, current + (direction === 'up' ? CONTEST_STEP : -CONTEST_STEP))) *
-            100,
-        ) / 100;
       const result = await dispatch({
         type: 'adjust_mastery',
         nodeId,
-        setTo,
+        setTo: contestTarget(confidenceOf(state, nodeId), direction),
         note: `You said the estimate was too ${direction === 'down' ? 'high' : 'low'}.`,
       });
       return result?.ok ? confidenceOf(result.state, nodeId) : undefined;
@@ -143,14 +148,6 @@ export function usePlanCallbacks(): PlanCallbacks {
       await dispatch({ type: 'resolve_misconception', nodeId, misconceptionId });
     },
     [dispatch],
-  );
-
-  const onReopenTopic = useCallback(
-    async (nodeId: string) => {
-      const result = await dispatch({ type: 'reopen_topic', nodeId });
-      if (result?.ok) await tellTutor(`Reopened ${nameOf(nodeId)}.`, 'tutor_reopen_topic');
-    },
-    [dispatch, nameOf, tellTutor],
   );
 
   const onToggleRightPanel = useCallback(() => {
@@ -191,15 +188,16 @@ export function usePlanCallbacks(): PlanCallbacks {
     rightPanelOpen,
     rightPanelTab,
     dispatch,
-    onStartLesson,
+    onGoOn,
+    onStartNext,
     onMarkKnown,
+    onReopenTopic,
+    onRequestMorePractice,
+    onContestMastery,
+    onResolveMisconceptionQuietly,
     onToggleRightPanel,
     onOpenRightPanel,
     onCloseRightPanel,
     onSendPlanFeedback,
-    onRequestMorePractice,
-    onContestMastery,
-    onResolveMisconceptionQuietly,
-    onReopenTopic,
   };
 }

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useChatStore } from '@/lib/store';
 import type { DiagnosticRecord } from '@/modules/tutor/engine';
 import { McqCard, type McqAttempts } from '@/modules/tutor/components/message/McqCard';
+import { LEDGER, useLedger } from '@/modules/tutor/ui/ledger';
 
 /**
  * A diagnostic: answers are held here until every item has one, then go to
@@ -18,7 +19,7 @@ export function DiagnosticCard({
   diagnostic: DiagnosticRecord;
 }) {
   const dispatchTutor = useChatStore((s) => s.dispatchTutor);
-  const sendUserMessage = useChatStore((s) => s.sendUserMessage);
+  const ledger = useLedger();
   const [draft, setDraft] = useState<Record<string, number>>({});
   const submitted = diagnostic.answers;
   const choices = submitted ?? draft;
@@ -56,10 +57,7 @@ export function DiagnosticCard({
     );
     if (!result.ok) return;
     const correct = scored.filter((item) => next[item.id] === item.correct).length;
-    // B2: a visible ledger line instead of a hidden message.
-    await sendUserMessage(`Finished the diagnostic: ${correct} of ${scored.length} right.`, {
-      metadata: { hiddenFromUser: true, kind: 'tutor_diagnostic_completion' },
-    });
+    await ledger(LEDGER.diagnosticFinished(correct, scored.length));
   };
 
   return (

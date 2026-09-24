@@ -12,6 +12,7 @@ import { contentVariants } from '@/modules/tutor/components/message/shared';
 import { StepperDots } from '@/modules/tutor/components/message/StepperDots';
 import { useStepper } from '@/modules/tutor/components/message/hooks/useStepper';
 import { InlineEmphasis } from '@/modules/tutor/components/message/InlineEmphasis';
+import { LEDGER, useLedger } from '@/modules/tutor/ui/ledger';
 
 export type McqItem = Omit<QuizItem, 'correct'> & { correct?: number };
 export type McqAttempts = Record<string, { choice: number; correct: boolean }>;
@@ -27,7 +28,7 @@ export function QuizCard({
   quiz: QuizRecord;
 }) {
   const dispatchTutor = useChatStore((s) => s.dispatchTutor);
-  const sendUserMessage = useChatStore((s) => s.sendUserMessage);
+  const ledger = useLedger();
   const onAnswer = async (itemId: string, choice: number) => {
     const result = await dispatchTutor(
       chatId,
@@ -39,10 +40,7 @@ export function QuizCard({
     const after = result.state.quizzes[quiz.quizId];
     if (!after || !quizFinished(after) || (before && quizFinished(before))) return;
     const right = after.items.filter((item) => after.answers[item.id]?.correct).length;
-    // B2: a visible ledger line instead of a hidden message.
-    await sendUserMessage(`Answered the quiz: ${right} of ${after.items.length} right.`, {
-      metadata: { hiddenFromUser: true, kind: 'tutor_quiz_completion' },
-    });
+    await ledger(LEDGER.quizFinished(right, after.items.length));
   };
   return <McqCard items={quiz.items} attempts={quiz.answers} onAnswer={onAnswer} />;
 }

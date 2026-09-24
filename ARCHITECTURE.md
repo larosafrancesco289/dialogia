@@ -251,7 +251,9 @@ one. Removing a feature is deleting its directory and its entry in that file.
 A module has two halves.
 
 - **The boot half** is `storeSlice`, `persistFragment`, `decorateMessage`, `settingsDefaults`,
-  `panels`, `hasRightPanelContent` and `onBootstrap`. It is statically imported.
+  `panels`, `hasRightPanelContent`, `onBootstrap`, and two lifecycle hooks core calls through
+  `src/lib/modules.ts`: `onChatDeleted` (after a chat is deleted) and `onReplyRetracted` (awaited
+  before a reply is regenerated, including an edit that reruns it). It is statically imported.
 - **The turn half** is `load()`, returning a `ModuleRuntime` with `registerTools`, `compose`,
   `planning` and `turnEffects`. It is loaded on demand with the turn pipeline. `compose` receives
   the turn's store, so a module can read (and first load) its own slice, and may return a
@@ -272,7 +274,7 @@ first.
 
 `src/lib/types/tutor.ts` and `src/lib/types/learningPlan.ts` stay in core by design. Core declares
 the shapes it persists: `TutorEventRecord`, the envelope of a row in the `tutorEvents` table (the
-repository validates only that), `Message.tutorSeq`, and the pre-rebuild fields
+repository validates only that), `Message.tutorSeq`, `Message.ledger`, and the pre-rebuild fields
 (`Message.tutor`, `Message.learnerModel`, `Message.planUpdates`, the plan and learner model in
 `ChatSettings.features.tutor`), which are kept readable but are read only by the tutor's one-time
 legacy import. The module owns all behaviour.
@@ -286,6 +288,13 @@ The tutor's state is one append-only event log per chat, folded by the pure engi
 events in memory and then to Dexie. Dispatches for a chat run one after another, so a learner's
 click and the tutor's tool calls in the same turn can never decide against a stale state. The
 tutor's tools are the engine's; each handler parses the call into a command and dispatches it.
+The UI renders from the same log: cards from their `*_given` / `plan_proposed` events by message id,
+margin notes from a message's `evidence_recorded` events, a chapter break from its
+`topic_completed` event, "Why N%" from `explainTopic`. A learner action that needs the tutor's
+answer (a finished card, approving the plan, Go on) dispatches its command and then sends a
+visible user message with `Message.ledger` set, which the transcript shows as a quiet line and the
+model reads as an ordinary message; quiet corrections only dispatch. Regenerating a reply appends
+a `reply_retracted` event, and `fold` drops every earlier event carrying that message id.
 Cards (quiz, intake, diagnostic, plan proposal) are `content` tools that end the turn; state tools
 are `action` tools. Every tutor turn runs the agent loop, reads a state block rendered from the log,
 and records on its reply (`Message.tutorSeq`) the log position it saw, so the next turn can tell the
