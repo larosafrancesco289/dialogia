@@ -134,11 +134,12 @@ export function RegenerateMenu({
     const raf = requestAnimationFrame(() => updateCoords());
     const onScroll = () => updateCoords();
     const onResize = () => updateCoords();
-    window.addEventListener('scroll', onScroll, { passive: true });
+    // Capture: the message list scrolls, not the window, and scroll does not bubble.
+    window.addEventListener('scroll', onScroll, { capture: true, passive: true });
     window.addEventListener('resize', onResize, { passive: true });
     return () => {
       cancelAnimationFrame(raf);
-      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('scroll', onScroll, { capture: true });
       window.removeEventListener('resize', onResize);
     };
   }, [open, updateCoords]);

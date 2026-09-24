@@ -95,6 +95,7 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
   let annotations: unknown;
   let finishReason: FinishReason | undefined;
   let reasoningDetails: unknown;
+  let reasoningTail = '';
   const toolCallAccumulator = new Map<number, Partial<ToolCall>>();
 
   const emitImages = (arr: unknown) => {
@@ -162,7 +163,11 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
       emitImages(delta?.images);
       emitImages(message?.images);
 
-      if (deltaReasoning) callbacks?.onReasoningToken?.(deltaReasoning);
+      if (deltaReasoning) {
+        const piece = separateSummaryParts(reasoningTail, deltaReasoning);
+        reasoningTail = piece.slice(-1);
+        callbacks?.onReasoningToken?.(piece);
+      }
       if (deltaContent) {
         full += deltaContent;
         callbacks?.onToken?.(deltaContent);
@@ -254,4 +259,13 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
     toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
     reasoningDetails,
   });
+}
+
+/**
+ * OpenAI streams a reasoning summary as parts, each opening with a bold title,
+ * and nothing between them: "…the formula.**Checking the base rate**". A part
+ * that opens right after a finished sentence starts a new paragraph.
+ */
+export function separateSummaryParts(previousChar: string, piece: string): string {
+  return piece.startsWith('**') && /[.!?:)]/.test(previousChar) ? `\n\n${piece}` : piece;
 }

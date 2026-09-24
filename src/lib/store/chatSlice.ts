@@ -383,10 +383,12 @@ export function createChatSlice(
       });
       if (withModuleDefaults.changed) nextSettings = withModuleDefaults.nextSettings;
 
+      // A settings change is not activity: the chat keeps its place in the list.
       const updatedChat = await ChatService.updateChat(
         before,
         { settings: nextSettings },
         repository,
+        { touch: false },
       );
 
       // In-chat changes to model and reasoning become the sticky defaults for

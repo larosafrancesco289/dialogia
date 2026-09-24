@@ -35,7 +35,9 @@ export function ImageLightbox({
       a.href = current.src;
       const mime = current.src.slice(5, current.src.indexOf(';')) || 'image/png';
       const ext = mime.split('/')[1] || 'png';
-      a.download = `${current.name || 'image'}.${ext}`;
+      const name = current.name || 'image';
+      // A named attachment usually carries its extension already.
+      a.download = /\.[a-z0-9]{2,5}$/i.test(name) ? name : `${name}.${ext}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

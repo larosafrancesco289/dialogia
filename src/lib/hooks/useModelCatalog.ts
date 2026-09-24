@@ -39,7 +39,11 @@ export function useCuratedModels() {
         description: `${entry.description} · now ${currentName}`,
       };
     });
-    return filterCuratedModelsByAvailability(resolved, availableIds);
+    // An alias can resolve to a model that is also listed by name (GPT Latest
+    // is GPT-6 Luna today); the list shows it once, under its first entry.
+    const seen = new Set<string>();
+    const unique = resolved.filter((entry) => !seen.has(entry.id) && !!seen.add(entry.id));
+    return filterCuratedModelsByAvailability(unique, availableIds);
   }, [allModels]);
 }
 
