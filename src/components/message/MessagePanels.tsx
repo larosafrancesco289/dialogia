@@ -2,6 +2,7 @@ import type { Chat, Message, ModelDescriptor, ToolCallLogEntry } from '@/lib/typ
 import type { UISearchState } from '@/lib/store/types';
 import { ResponseContextPanel } from '@/components/message/ResponseContextPanel';
 import { DebugPanel } from '@/components/message/DebugPanel';
+import { resolveDeveloperPanel } from '@/lib/ui/developerPanel';
 
 export type MessagePanelsProps = {
   message: Message;
@@ -83,14 +84,19 @@ export function MessagePanelsUpper({
   });
   if (contextPanel) panels.push(contextPanel);
 
-  const shouldShowToolLog = showToolCallLog && toolCallList && toolCallList.length > 0;
-  if (debugMode && (debugEntry?.body || shouldShowToolLog)) {
+  const developer = resolveDeveloperPanel({
+    debugMode,
+    debugBody: debugEntry?.body,
+    showToolCallLog,
+    toolCallCount: toolCallList?.length ?? 0,
+  });
+  if (developer) {
     panels.push(
       <DebugPanel
         key="debug"
-        body={debugEntry?.body}
+        body={developer.body}
         toolCalls={toolCallList}
-        showToolCalls={showToolCallLog}
+        showToolCalls={developer.showToolCalls}
         showRawJson={showDebugRawJson}
         highlightToolCalls={highlightToolCalls}
         expanded={isDebugExpanded}

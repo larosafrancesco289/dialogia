@@ -32,3 +32,13 @@ test('a blob written before the tour existed leaves it unseen', () => {
   assert.equal(rehydrated.ui.introSeen, false);
   assert.equal(rehydrated.ui.sidebarCollapsed, true);
 });
+
+test('Settings can bring the tour back after it was seen, and that survives a reload', () => {
+  const store = freshStore();
+  store.getState().setUI({ introSeen: true, showSettings: true });
+  store.getState().setUI({ showSettings: false, introSeen: false });
+
+  const persisted = buildPersistedState(store.getState());
+  const rehydrated = mergePersistedState(freshStore().getState(), persisted as PersistedStoreState);
+  assert.equal(rehydrated.ui.introSeen, false);
+});
