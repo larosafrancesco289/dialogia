@@ -59,5 +59,8 @@ state has one source of truth, `useThemeMode`. Never touch `localStorage.theme` 
   the environment; only the tutor simulation CLI does, in Node.
 - `SearchMode` is an open string, and "provider-native search" (a request field) is a different
   mechanism from a `SearchProvider` (a tool call). Do not collapse them.
+- Other tabs learn of a database write only through the repository's announcement
+  (`src/lib/db/announce.ts`). A write that bypasses the repository stays invisible to them. Code
+  that takes in another tab's write must never save it again, or two tabs echo each other.
 - Client config is `import.meta.env.VITE_*`, inlined at build time. There is no server config,
   because there is no server.

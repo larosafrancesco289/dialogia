@@ -63,10 +63,10 @@ The store is one Zustand store composed from slices in `src/lib/store/createStor
 buildStoreInitializer(modules = ENABLED_MODULES): StoreInitializer;
 ```
 
-`src/lib/store/index.ts` wraps it in `persist` and does nothing else. Every consumer that needs a
-store builds from `buildStoreInitializer()`, and that includes the app, the tests and the headless
-tutor runner. Adding a field or an action means editing exactly one slice file. There are no
-mirrors.
+`src/lib/store/index.ts` wraps it in `persist`, connects it to the other tabs (see below) and
+does nothing else. Every consumer that needs a store builds from `buildStoreInitializer()`, and
+that includes the app, the tests and the headless tutor runner. Adding a field or an action means
+editing exactly one slice file. There are no mirrors.
 
 The core slices are `chatSlice`, `messageSlice`, `modelSlice`, `uiSlice` and `endpointSlice`.
 Modules contribute their own through `AppModule.storeSlice`, and augment `ModuleStoreActions` by
@@ -106,6 +106,35 @@ spread above it has already replaced its key with the persisted partial. Migrati
 
 **Persisted key names are a compatibility surface.** `tests/persistedStoreCompat.test.ts` round-trips
 a pre-refactor blob through migrate → merge → partialize and asserts the exact key set.
+
+### Tabs keep each other in step
+
+Every tab has its own store over the one `dialogia` database. Preferences follow through the
+`storage` event on `localStorage['dialogia-ui']` (`src/lib/store/index.ts`). Everything in IndexedDB
+follows through a `BroadcastChannel` (`src/lib/sync/tabChannel.ts`, a no-op where there is none).
+
+- **The repository announces.** `src/lib/db/announce.ts` wraps it, so each write is announced once
+  it has landed: chat and folder rows by id, message rows by chat and id, deletions, a chat's tutor
+  log, a backup import. Announcements carry ids, never content. A write that bypasses the
+  repository is invisible to the other tabs.
+- **The receiver reads back.** `src/lib/store/tabSync.ts` takes the rows from IndexedDB into the
+  store. Messages go only into a chat whose messages are loaded; an unloaded chat just becomes
+  non-empty, and lazy hydration loads it later. A deleted chat goes the way a local delete goes. A
+  module re-reads its log through `onEventsChangedElsewhere`.
+- **No echo.** What a tab adopts is set into the store and never written back, so nothing it hears
+  is announced again. The only writes a received announcement can cause are this tab's own: the
+  tutor's unsaved events, or the last checkpoint of a reply stopped because another tab deleted its
+  chat.
+- **Never under this tab's own reply.** Messages another tab saves in a chat where this tab is
+  streaming wait until its turn ends. Otherwise the in-flight message could be replaced by an
+  older copy from disk.
+- **Replies in progress are announced too.** A tab says when it starts and stops writing a reply,
+  with the reply ids. It repeats this every 15 s while the reply lasts, answers a newly opened
+  tab, and says it has stopped on `pagehide`. The other tabs list those replies in
+  `repliesInOtherTabs`. They render them as streaming, not with the "page closed" cut-off note
+  their checkpoints carry on disk, and they refuse to start a turn in that chat. A turn started
+  there would miss the reply, and the transcript would interleave two turns. A writing tab not
+  heard from for 60 s is let go.
 
 ## A turn, end to end
 
@@ -274,7 +303,8 @@ A module has two halves.
 
 - **The boot half** is `storeSlice`, `persistFragment`, `decorateMessage`, `settingsDefaults`,
   `panels`, `hasRightPanelContent`, `onBootstrap`, and the hooks core calls through
-  `src/lib/modules.ts`: `onChatDeleted` (after a chat is deleted), `onReplyRetracted` (awaited
+  `src/lib/modules.ts`: `onChatDeleted` (after a chat is deleted), `onEventsChangedElsewhere`
+  (another tab changed a chat's stored event log), `onReplyRetracted` (awaited
   before a reply is regenerated, including an edit that reruns it), `onChatBranched` (awaited
   before a branch opens, with the source-to-copy message id map) and `latestExchangeOnly` (the
   module's record follows this chat's transcript, so regenerate and edit-and-rerun are offered
@@ -411,5 +441,6 @@ A browser-held key is readable by the page holding it. That is inherent to bring
 | Endpoints, auth, clients | `src/lib/transport/**`, `src/lib/{openrouter,anthropic,openaiCompat}/**`, `src/lib/auth/**` |
 | Keys                     | `src/lib/keys/store.ts`                                                                     |
 | Chat persistence         | `src/lib/db/**`                                                                             |
+| Cross-tab sync           | `src/lib/sync/tabChannel.ts`, `src/lib/db/announce.ts`, `src/lib/store/tabSync.ts`          |
 | Feature modules          | `src/modules/**`, listed in `src/lib/modules.ts`                                            |
 | Styles and tokens        | `styles/**`                                                                                 |
