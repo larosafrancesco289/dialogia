@@ -10,7 +10,6 @@ import {
   MASTERY_PRIOR,
   PRACTISING,
   READY,
-  STARTING_ESTIMATE_MAX,
   masteryBand,
   percent,
 } from '@/modules/tutor/engine/rules';
@@ -19,6 +18,7 @@ import {
   currentNode,
   openMisconceptions,
   remainingBudgets,
+  startingEstimateCap,
   type DiagnosticRecord,
   type TutorPhase,
   type TutorState,
@@ -226,8 +226,9 @@ export function renderStateBlock(state: TutorState, options: RenderOptions): str
     Object.values(state.intakes).some((i) => !!i.responses) ||
     Object.values(state.diagnostics).some((d) => !!d.answers);
   if (!plan && !state.proposal && heardBack) {
+    const cap = percent(startingEstimateCap(state));
     lines.push(
-      `Starting estimates: in propose_plan, give each topic these answers show the learner already knows a startingEstimate (up to ${percent(STARTING_ESTIMATE_MAX)}%) with a one-line reason; the rest start at ${percent(MASTERY_PRIOR)}%.`,
+      `Starting estimates: in propose_plan, give a startingEstimate (up to ${cap}%) with a one-line reason only to a topic these answers show the learner already knows, not to the topics built on it; the rest start at ${percent(MASTERY_PRIOR)}%.`,
     );
   }
 

@@ -31,7 +31,6 @@ import {
   OBSERVATION_SIGN,
   OBSERVATION_WEIGHTS,
   READY,
-  STARTING_ESTIMATE_MAX,
   WEIGHT_MAX,
   WEIGHT_MIN,
   clamp01,
@@ -47,9 +46,11 @@ import {
   confidenceOf,
   demonstratedEvidence,
   openMisconceptions,
+  diagnosed,
   quizFinished,
   remainingBudgets,
   replyRecord,
+  startingEstimateCap,
   type TutorPhase,
   type TutorState,
 } from '@/modules/tutor/engine/state';
@@ -477,12 +478,13 @@ function decideTutor(
         );
       }
       const startingEstimates: Record<string, StartingEstimate> = {};
+      const cap = startingEstimateCap(state);
       cmd.nodes.forEach((node, i) => {
         const estimate = node.startingEstimate;
         const id = built.plan.nodes[i]?.id;
         if (!id || !estimate || !Number.isFinite(estimate.value) || estimate.value <= 0) return;
         startingEstimates[id] = {
-          value: Math.min(STARTING_ESTIMATE_MAX, clamp01(estimate.value)),
+          value: Math.min(cap, clamp01(estimate.value)),
           reason: text(estimate.reason),
         };
       });
@@ -1121,11 +1123,11 @@ function decideLearner(
 function placeStartingEstimates(before: TutorState, after: TutorState, out: Emitter): void {
   const estimates = before.proposal?.startingEstimates;
   if (!estimates) return;
-  const fromDiagnostic = Object.values(before.diagnostics).some((d) => !!d.answers);
+  const fromDiagnostic = diagnosed(before);
   for (const [nodeId, estimate] of Object.entries(estimates)) {
     const topic = after.mastery[nodeId];
     if (!topic || topic.evidence.length > 0) continue;
-    const setTo = Math.min(STARTING_ESTIMATE_MAX, clamp01(estimate.value));
+    const setTo = Math.min(startingEstimateCap(before), clamp01(estimate.value));
     if (setTo === topic.confidence) continue;
     const reason = estimate.reason || 'From what the learner said before the plan';
     out.push(

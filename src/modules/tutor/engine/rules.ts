@@ -20,11 +20,19 @@ export const MASTERY_EVIDENCE_MIN = 2;
 export const PRACTISING = 0.5;
 
 /**
- * The highest starting estimate a plan may give a topic from intake or
- * diagnostic evidence: below READY, so the tutor still checks the topic before
+ * The highest starting estimate a plan may give a topic once a diagnostic has
+ * tested the learner: below READY, so the tutor still checks the topic before
  * it counts as ready. A learner who knows a topic can mark it known.
  */
 export const STARTING_ESTIMATE_MAX = Math.round((READY - 0.05) * 100) / 100;
+
+/**
+ * The highest starting estimate that rests on what the learner said (intake,
+ * chat) with no diagnostic behind it: the start of practising. A tutor that
+ * reads "I know the basics" as knowing the topic built on them can place it
+ * only this high, and the learner's own "I know this" is still there.
+ */
+export const STARTING_ESTIMATE_SAID_MAX = PRACTISING;
 
 /** "Too high" / "Too low" on an estimate moves it by this much, as a direct setting. */
 export const CONTEST_STEP = 0.15;

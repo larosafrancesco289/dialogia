@@ -260,19 +260,16 @@ describe('plans', () => {
       'evidence_recorded:system',
       'topic_started:system',
     ]);
+    // On the learner's word alone, a topic starts no higher than practising.
     const limits = h.state.mastery.limits;
-    assert.equal(limits.confidence, 0.6);
+    assert.equal(limits.confidence, 0.5);
     assert.equal(limits.evidence[0].source, 'placement');
     assert.equal(limits.evidence[0].kind, 'placement');
     assert.equal(limits.evidence[0].details, 'Said they evaluate limits at work');
-    assert.equal(
-      h.state.mastery.derivatives.confidence,
-      READY - 0.05,
-      'capped below READY, so the tutor still checks it',
-    );
+    assert.equal(h.state.mastery.derivatives.confidence, 0.5, 'a claim of mastery too');
     assert.equal(h.state.mastery['chain-rule'].confidence, MASTERY_PRIOR);
     const why = explainTopic(h.state, 'limits')!;
-    assert.equal(why.confidence, 0.6);
+    assert.equal(why.confidence, 0.5);
     assert.match(why.steps[0].text, /Starting estimate: Said they evaluate limits/);
 
     // Contestable like any estimate.
@@ -968,6 +965,12 @@ describe('topics and phases', () => {
 
   test('mastered needs two pieces of the learner’s own work, not a starting estimate and one answer', () => {
     const h = harness();
+    h.tutor({ type: 'give_diagnostic', topic: 'Calculus basics', items: DIAGNOSTIC });
+    h.learner({
+      type: 'answer_diagnostic',
+      diagnosticId: h.state.awaiting!.id,
+      answers: { q1: 1, q2: 1, q3: 0 },
+    });
     h.tutor({
       type: 'propose_plan',
       ...CALCULUS,
