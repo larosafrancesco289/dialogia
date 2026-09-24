@@ -342,6 +342,23 @@ export function createRepository(db: DialogiaDbLike) {
   const loadMessagesForChat = async (chatId: string): Promise<Message[]> =>
     getMessagesForChat(db, chatId);
 
+  // Rows by id, for a tab taking in another tab's writes. A row that is
+  // missing has been deleted, and is left out.
+  const loadChats = async (ids: string[]): Promise<Chat[]> =>
+    (await Promise.all(ids.map((id) => db.chats.get(id))))
+      .filter((chat): chat is Chat => !!chat)
+      .map(upgradeChatSystem);
+
+  const loadFolders = async (ids: string[]): Promise<Folder[]> =>
+    (await Promise.all(ids.map((id) => db.folders.get(id)))).filter(
+      (folder): folder is Folder => !!folder,
+    );
+
+  const loadMessages = async (ids: string[]): Promise<Message[]> =>
+    (await Promise.all(ids.map((id) => db.messages.get(id))))
+      .filter((message): message is Message => !!message)
+      .map((message) => sanitizeMessageRecord(message).next);
+
   const saveChatWithMessages = async (chat: Chat, list: Message[]) => {
     await runTransaction(db, [db.chats, db.messages], async () => {
       await saveChat(chat);
@@ -421,6 +438,9 @@ export function createRepository(db: DialogiaDbLike) {
     importAll,
     loadRepositorySnapshot,
     loadMessagesForChat,
+    loadChats,
+    loadFolders,
+    loadMessages,
     saveChatWithMessages,
     deleteChatAndMessages,
     deleteFolder,

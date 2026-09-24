@@ -2,6 +2,8 @@ import { createDexieDb } from '@/lib/db/dexie';
 import { createMemoryDb } from '@/lib/db/memory';
 import { createKvStore } from '@/lib/db/kv';
 import { createRepository } from '@/lib/db/repository';
+import { announceWrites } from '@/lib/db/announce';
+import { tabChannel } from '@/lib/sync/tabChannel';
 
 export { sanitizeMessageRecord } from '@/lib/db/sanitize';
 export { DialogiaDB } from '@/lib/db/dexie';
@@ -14,7 +16,8 @@ const hasIndexedDb =
 
 export const db = hasIndexedDb ? createDexieDb() : createMemoryDb();
 
-export const repository = createRepository(db);
+// Every write is announced to the other tabs once it has landed.
+export const repository = announceWrites(createRepository(db), tabChannel.post);
 const kvStore = createKvStore(db);
 
 export const {
