@@ -1,8 +1,9 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { AnimatePresence, motion, useDragControls, useReducedMotion } from 'framer-motion';
 import { DialogPortal } from '@/components/ui/Dialog';
 import { springs } from '@/lib/mobile/springConfig';
 import { useBackToClose } from '@/lib/hooks/useBackToClose';
+import { useModalFocus } from '@/lib/hooks/useModalFocus';
 
 type BottomSheetProps = {
   open: boolean;
@@ -31,32 +32,11 @@ export function BottomSheet({
 }: BottomSheetProps) {
   const reducedMotion = useReducedMotion();
   const sheetRef = useRef<HTMLDivElement | null>(null);
-  const returnFocusRef = useRef<HTMLElement | null>(null);
   // Pulled down by its head, so a long list in the body still scrolls.
   const dragControls = useDragControls();
-  // Callers pass a fresh onClose each render; the open/close effect must not
-  // re-run for that, or focus would bounce back and forth.
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
   useBackToClose(open, onClose);
-
-  useEffect(() => {
-    if (!open) return;
-    returnFocusRef.current = document.activeElement as HTMLElement | null;
-    sheetRef.current?.focus({ preventScroll: true });
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      e.preventDefault();
-      onCloseRef.current();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      // Back to where the reader was, if that is still on the page.
-      const back = returnFocusRef.current;
-      if (back && back.isConnected) back.focus?.({ preventScroll: true });
-    };
-  }, [open]);
+  // Focus comes in, stays in, and goes back to where the reader was.
+  useModalFocus(open, sheetRef, { onEscape: onClose });
 
   const slide = reducedMotion ? { duration: 0 } : springs.smooth;
 
