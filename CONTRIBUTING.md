@@ -122,10 +122,10 @@ bun run tutor:simulate -- --help
 Each run writes a JSON transcript (every exchange, tool call, request, learner action, the final
 event log and folded state) and a readable report to `tmp/tutor-sim/`. `--check` exits 1 when a
 protocol health check fails: a tool error the tutor never fixed, a card the learner could not
-answer, evidence recorded twice for one answer, mastery outside [0, 1], an answer key in replayed
-history, a request without the state block, or no approved plan or completed topic in time.
-The harness itself is covered by `src/modules/tutor/tooling/simulation.test.ts`, with scripted
-models and no network.
+answer, evidence recorded twice for one answer, a reply that gained on a topic it noted a
+misconception on, mastery outside [0, 1], an answer key in replayed history, a request without the
+state block, or no approved plan or completed topic in time. The harness itself is covered by
+`src/modules/tutor/tooling/simulation.test.ts`, with scripted models and no network.
 
 ## Pull requests
 
