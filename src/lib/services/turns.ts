@@ -5,6 +5,7 @@
 import type { DraftAttachment, Chat, Message } from '@/lib/types';
 import type { StoreAccess, StoreGetter, StoreSetter, TurnContext } from '@/lib/agent/types';
 import type { Repository } from '@/lib/db/repository';
+import type { StoreGetter as StoreStateGetter } from '@/lib/store/stateTypes';
 import { applyModuleSettingsDefaults } from '@/lib/settings/moduleDefaults';
 import { regenerate } from '@/lib/agent/regenerate';
 import { isUntitledChat } from '@/lib/services/chatService';
@@ -21,11 +22,14 @@ import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { resetEphemeralUi } from '@/lib/ui/defaults';
 import { triggerAsyncTitleGeneration } from '@/lib/services/titleGenerator';
 import { appendMessagesToChat, getMessagesForChat } from '@/lib/messages/indexing';
+import { notifyReplyRetracted } from '@/lib/modules';
 
 export type SendTurnOptions = {
   content: string;
   attachments?: DraftAttachment[];
   metadata?: Message['metadata'];
+  /** The message records an interface action; see `Message.ledger`. */
+  ledger?: boolean;
   set: StoreSetter;
   get: StoreGetter;
   repository: Repository;
@@ -78,6 +82,7 @@ export async function sendUserTurn({
   content,
   attachments,
   metadata,
+  ledger,
   set,
   get,
   repository,
@@ -104,6 +109,7 @@ export async function sendUserTurn({
     chatId,
     content,
     metadata,
+    ledger,
     primaryAttachments: modelContexts.get(primaryModelId)?.attachments ?? [],
     activeModelIds,
     set,
@@ -224,8 +230,11 @@ export async function regenerateTurn({
   );
   if (!canUseModel) return;
 
+  if (!getMessagesForChat(get(), chatId).some((m) => m.id === messageId)) return;
+  // The old reply's cards and what its turn recorded go before the new one is composed.
+  // Turn code sees a core-typed getter; the store behind it is the composed one.
+  await notifyReplyRetracted({ get: get as unknown as StoreStateGetter }, { chatId, messageId });
   const messages = getMessagesForChat(get(), chatId);
-  if (!messages.some((m) => m.id === messageId)) return;
 
   const controller = new AbortController();
   try {

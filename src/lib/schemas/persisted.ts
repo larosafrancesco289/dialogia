@@ -157,6 +157,8 @@ export const MessageSchema = z
       .optional(),
     tutor: z.custom<MessageTutor>().optional(),
     tutorWelcome: z.boolean().optional(),
+    // Checked by `sanitizeMessageRecord`, which drops anything but `true`.
+    ledger: z.custom<true>().optional(),
     learnerModel: z.custom<LearnerModel>().optional(),
     planUpdates: z
       .object({

@@ -22,6 +22,7 @@ export const spawnTurnMessages = async ({
   chatId,
   content,
   metadata,
+  ledger,
   primaryAttachments,
   activeModelIds,
   set,
@@ -31,6 +32,7 @@ export const spawnTurnMessages = async ({
   chatId: string;
   content: string;
   metadata?: Message['metadata'];
+  ledger?: boolean;
   primaryAttachments: PersistedAttachment[];
   activeModelIds: string[];
   set: StoreSetter;
@@ -45,6 +47,7 @@ export const spawnTurnMessages = async ({
     createdAt: now,
     attachments: primaryAttachments.length ? primaryAttachments : undefined,
     metadata: metadata || undefined,
+    ledger,
   });
 
   const assistantPlaceholders = activeModelIds.map((modelId, index) =>

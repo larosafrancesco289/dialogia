@@ -146,3 +146,22 @@ test('isPartialTimestampPrefix tracks growing stream heads', () => {
   assert.equal(isPartialTimestampPrefix('Hello'), false);
   assert.equal(isPartialTimestampPrefix('[20a6'), false);
 });
+
+test('a ledger line reaches the model as an ordinary user message', () => {
+  const ledger: Message = {
+    id: 'msg-3',
+    chatId: 'chat-1',
+    role: 'user',
+    content: 'Answered the quiz: 2 of 3 right',
+    createdAt: new Date(2026, 5, 11, 9, 7).getTime(),
+    ledger: true,
+  };
+  const payload = buildChatCompletionMessages({
+    chat: baseChat(),
+    priorMessages: [...priorMessages(), ledger],
+    models: [],
+  });
+  const last = payload.at(-1);
+  assert.equal(last?.role, 'user');
+  assert.equal(last?.content, 'Answered the quiz: 2 of 3 right');
+});

@@ -6,7 +6,10 @@ import { repository } from '@/lib/db';
 import { buildStoreInitializer } from '@/lib/store/createStore';
 import type { StoreState } from '@/lib/store/types';
 import type { Chat, LearnerModel, LearningPlan, Message, TopicMastery } from '@/lib/types';
-import { CALCULUS } from '@/modules/tutor/engine/testSupport';
+import { notifyChatDeleted, notifyReplyRetracted } from '@/lib/modules';
+import { remainingBudgets } from '@/modules/tutor/engine';
+import { CALCULUS, QUIZ_ITEMS } from '@/modules/tutor/engine/testSupport';
+import { cardsForMessage } from '@/modules/tutor/ui/messageViews';
 
 const newStore = () =>
   createStore<StoreState>(buildStoreInitializer() as unknown as StateCreator<StoreState>);
@@ -198,6 +201,7 @@ test('legacy import turns a pre-rebuild tutor chat into one log, read once', asy
     [
       'intake_asked:a1',
       'intake_answered:a1',
+      'proposal_imported:a2',
       'quiz_given:a3',
       'quiz_answered:a3',
       'quiz_answered:a3',
@@ -234,8 +238,12 @@ test('legacy import turns a pre-rebuild tutor chat into one log, read once', asy
   // An abandoned card closes; the one on the last reply is still the learner's to finish.
   assert.equal(state.diagnostics['diag-1'].dismissed, true);
   assert.deepEqual(state.awaiting, { kind: 'quiz', id: 'legacy-quiz-a5' });
-  // The old approved proposal is history, not a pending card.
+  // The old approved proposal is history, not a pending card, and still renders.
   assert.equal(state.proposal, undefined);
+  assert.equal(cardsForMessage(session, 'a2').proposal?.status, 'approved');
+  assert.equal(cardsForMessage(session, 'a2').proposal?.plan.goal, legacyPlan().goal);
+  // Old quizzes are on the current topic but spend none of its budget.
+  assert.equal(remainingBudgets(state).quizzesLeft, 3);
 
   // Persisted, and the legacy fields are left exactly as they were.
   const stored = await repository.loadTutorEvents(id);
@@ -505,4 +513,50 @@ test('a dispatch decides only after the one before it is on disk', async () => {
     'the log reaches disk in order',
   );
   assert.equal(written.length, 2);
+});
+
+// ---------------------------------------------------------------- retraction and deletion
+
+test('retracting a reply through the module hook takes back its quiz and answers', async () => {
+  const { id, store } = await teachingChat();
+  const { dispatchTutor } = store.getState();
+  await dispatchTutor(
+    id,
+    { by: 'tutor', type: 'give_quiz', items: QUIZ_ITEMS },
+    { by: 'tutor', messageId: 'm2' },
+  );
+  const quizId = store.getState().tutorSessions[id].state.awaiting!.id;
+  await dispatchTutor(
+    id,
+    { by: 'learner', type: 'answer_quiz_item', quizId, itemId: 'q1', choice: 0 },
+    { by: 'learner', messageId: 'm2' },
+  );
+  assert.equal(store.getState().tutorSessions[id].state.mastery.limits.evidence.length, 1);
+
+  await notifyReplyRetracted({ get: store.getState }, { chatId: id, messageId: 'm2' });
+  const { state, events } = store.getState().tutorSessions[id];
+  assert.equal(events.at(-1)?.type, 'reply_retracted');
+  assert.equal(state.quizzes[quizId], undefined);
+  assert.equal(state.mastery.limits.evidence.length, 0);
+  assert.equal(remainingBudgets(state).quizzesLeft, 3);
+
+  // On disk too, so a reload folds to the same state.
+  const reloaded = newStore();
+  reloaded.setState({ chats: store.getState().chats });
+  const again = await reloaded.getState().ensureTutorSession(id);
+  assert.deepEqual(again.state, state);
+
+  // A reply with nothing in the log leaves the log alone.
+  assert.equal(await store.getState().retractTutorReply(id, 'unrelated'), false);
+  assert.equal(store.getState().tutorSessions[id].events.length, events.length);
+});
+
+test('deleting a chat drops its session from memory', async () => {
+  const { id, store } = await teachingChat();
+  assert.ok(store.getState().tutorSessions[id]);
+  await store.getState().deleteChat(id);
+  assert.equal(store.getState().tutorSessions[id], undefined);
+  assert.deepEqual(await repository.loadTutorEvents(id), []);
+  // Dropping an unknown chat is harmless.
+  notifyChatDeleted({ get: store.getState }, 'never-loaded');
 });

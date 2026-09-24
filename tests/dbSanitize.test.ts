@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { sanitizeMessageRecord } from '@/lib/db/sanitize';
+import { createUserMessage } from '@/lib/messages/createMessage';
 import type { Message } from '@/lib/types';
 
 test('sanitizeMessageRecord trims hidden content and drops empty fields', () => {
@@ -126,4 +127,33 @@ test('sanitizeMessageRecord keeps well-formed tool rounds and drops malformed on
   const dropped = sanitizeMessageRecord(hopeless);
   assert.equal(dropped.changed, true);
   assert.equal('toolRounds' in dropped.next, false);
+});
+
+test('sanitizeMessageRecord keeps a ledger line and drops a malformed or misplaced flag', () => {
+  const line: Message = {
+    id: 'm-ledger',
+    chatId: 'chat-ledger',
+    role: 'user',
+    content: 'Approved the plan',
+    createdAt: Date.now(),
+    ledger: true,
+  };
+  const kept = sanitizeMessageRecord(line);
+  assert.equal(kept.changed, false);
+  assert.equal(kept.next.ledger, true);
+
+  const truthy = sanitizeMessageRecord({ ...line, ledger: 'yes' } as unknown as Message);
+  assert.equal(truthy.changed, true);
+  assert.equal('ledger' in truthy.next, false);
+
+  const onReply = sanitizeMessageRecord({ ...line, role: 'assistant' });
+  assert.equal(onReply.changed, true);
+  assert.equal('ledger' in onReply.next, false);
+});
+
+test('createUserMessage marks a ledger line and leaves typed messages unmarked', () => {
+  const ledger = createUserMessage({ chatId: 'c', content: 'Approved the plan', ledger: true });
+  assert.equal(ledger.ledger, true);
+  const typed = createUserMessage({ chatId: 'c', content: 'hello' });
+  assert.equal('ledger' in typed, false);
 });

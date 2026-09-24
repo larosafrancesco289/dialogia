@@ -155,13 +155,19 @@ export type Message = {
   tutor?: MessageTutor;
   tutorWelcome?: boolean;
   /**
+   * A user message that records an action taken in the interface (answering
+   * a card, approving a plan) rather than typed words. The model reads it as
+   * an ordinary user message; the transcript sets it as a quiet line.
+   */
+  ledger?: true;
+  /**
    * A snapshot of the learner model after this turn, from before the event log.
    * @deprecated legacy: read by the import only.
    */
   learnerModel?: LearnerModel;
   /**
    * What this turn changed in the plan and the learner model, from before the event log.
-   * @deprecated legacy: read by the import only (and old transcripts' margin notes).
+   * @deprecated legacy: read by the import only.
    */
   planUpdates?: {
     statusChanges?: { nodeId: string; from: string; to: string }[];

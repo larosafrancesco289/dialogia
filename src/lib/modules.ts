@@ -95,6 +95,17 @@ export type AppModule = {
   hasRightPanelContent?(state: StoreState): boolean;
   /** Warms whatever the module needs after the store has hydrated. Boot half. */
   onBootstrap?(store: { get: StoreGetter; set: StoreSetter }): Promise<void> | void;
+  /** A chat was deleted; drop anything held for it in memory. Boot half. */
+  onChatDeleted?(store: { get: StoreGetter }, chatId: string): void;
+  /**
+   * An assistant reply is about to be replaced (regenerated, or rerun after an
+   * edit): whatever the module recorded for it should stop counting. Core
+   * awaits this before the new reply is composed. Boot half.
+   */
+  onReplyRetracted?(
+    store: { get: StoreGetter },
+    reply: { chatId: string; messageId: string },
+  ): Promise<void> | void;
   /** Fills in the module's own chat-settings block. Boot half. */
   settingsDefaults?(args: {
     chat: Pick<Chat, 'settings'>;
@@ -119,6 +130,10 @@ const tutorModule: AppModule = {
   settingsDefaults: tutorSettingsDefaults,
   panels: tutorPanels,
   hasRightPanelContent: hasTutorPlan,
+  onChatDeleted: ({ get }, chatId) => get().dropTutorSession(chatId),
+  onReplyRetracted: async ({ get }, { chatId, messageId }) => {
+    await get().retractTutorReply(chatId, messageId);
+  },
   load: async () => (await import('@/modules/tutor/moduleEntry')).tutorRuntime,
 };
 
@@ -127,6 +142,26 @@ export const ENABLED_MODULES: AppModule[] = [coreModule, tutorModule];
 /** Whether any module's right panel has content for the current state. */
 export function selectRightPanelContent(state: StoreState): boolean {
   return ENABLED_MODULES.some((appModule) => appModule.hasRightPanelContent?.(state) === true);
+}
+
+export function notifyChatDeleted(store: { get: StoreGetter }, chatId: string): void {
+  for (const appModule of ENABLED_MODULES) {
+    try {
+      appModule.onChatDeleted?.(store, chatId);
+    } catch {
+      // One module's cleanup must not stop another's.
+    }
+  }
+}
+
+/** Every module's `onReplyRetracted`, awaited; a failing module never blocks the new reply. */
+export async function notifyReplyRetracted(
+  store: { get: StoreGetter },
+  reply: { chatId: string; messageId: string },
+): Promise<void> {
+  await Promise.allSettled(
+    ENABLED_MODULES.map(async (appModule) => appModule.onReplyRetracted?.(store, reply)),
+  );
 }
 
 let loading: Promise<ModuleRuntime[]> | undefined;

@@ -11,10 +11,19 @@ export type CreateUserMessageArgs = BaseMessageArgs & {
   content: string;
   attachments?: PersistedAttachment[];
   metadata?: Message['metadata'];
+  ledger?: boolean;
 };
 
 export function createUserMessage(args: CreateUserMessageArgs): Message {
-  const { id = uuidv4(), chatId, createdAt = Date.now(), content, attachments, metadata } = args;
+  const {
+    id = uuidv4(),
+    chatId,
+    createdAt = Date.now(),
+    content,
+    attachments,
+    metadata,
+    ledger,
+  } = args;
 
   return {
     id,
@@ -24,6 +33,7 @@ export function createUserMessage(args: CreateUserMessageArgs): Message {
     createdAt,
     ...(attachments && attachments.length ? { attachments } : {}),
     ...(metadata ? { metadata } : {}),
+    ...(ledger ? { ledger: true as const } : {}),
   };
 }
 

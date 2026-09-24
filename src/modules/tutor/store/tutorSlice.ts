@@ -14,6 +14,7 @@ import {
   fold,
   parseTutorEvent,
   resolveTutorFlags,
+  retractReply,
   step,
   type StepResult,
   type TutorCommand,
@@ -64,6 +65,14 @@ export type TutorStoreActions = {
     command: TutorCommand,
     meta: TutorDispatchMeta,
   ) => Promise<TutorDispatchResult>;
+  /**
+   * An assistant reply is being replaced or removed: what its turn did, and
+   * the learner's answers to its cards, stop counting. Serialized with
+   * dispatches. Resolves false when nothing belonged to it.
+   */
+  retractTutorReply: (chatId: string, messageId: string) => Promise<boolean>;
+  /** Forgets a deleted chat's session. Its stored events go with the chat. */
+  dropTutorSession: (chatId: string) => void;
   primeTutorWelcomePreview: () => Promise<string | undefined>;
   prepareTutorWelcomeMessage: (chatId?: string) => Promise<string | undefined>;
 };
@@ -186,19 +195,58 @@ export function createTutorSlice(
     return { ...result, before: session.state };
   };
 
+  const retract = async (chatId: string, messageId: string): Promise<boolean> => {
+    await ensureTutorSession(chatId);
+    const session = get().tutorSessions[chatId] ?? EMPTY_TUTOR_SESSION;
+    const event = retractReply(session.events, messageId, {
+      chatId,
+      at: Date.now(),
+      id: uuidv4(),
+    });
+    if (!event) return false;
+    const events = [...session.events, event];
+    // A retraction reaches back, so the state is refolded rather than stepped.
+    publish(chatId, { events, state: fold(events), loaded: true });
+    try {
+      await repository.appendTutorEvents([event]);
+    } catch (error) {
+      logger.error('Tutor events could not be saved', error);
+    }
+    return true;
+  };
+
+  /** Runs one change for a chat after every change queued before it. */
+  const serialize = <T>(chatId: string, task: () => Promise<T>): Promise<T> => {
+    const previous = queues.get(chatId) ?? Promise.resolve();
+    const run = previous.then(task);
+    queues.set(
+      chatId,
+      run.catch(() => undefined),
+    );
+    return run;
+  };
+
   return {
     tutorSessions: {},
 
     ensureTutorSession,
 
     dispatchTutor(chatId, command, meta) {
-      const previous = queues.get(chatId) ?? Promise.resolve();
-      const run = previous.then(() => decideAndAppend(chatId, command, meta));
-      queues.set(
-        chatId,
-        run.catch(() => undefined),
-      );
-      return run;
+      return serialize(chatId, () => decideAndAppend(chatId, command, meta));
+    },
+
+    retractTutorReply(chatId, messageId) {
+      return serialize(chatId, () => retract(chatId, messageId));
+    },
+
+    dropTutorSession(chatId) {
+      loads.delete(chatId);
+      queues.delete(chatId);
+      if (!(chatId in get().tutorSessions)) return;
+      set((s) => {
+        const { [chatId]: _dropped, ...rest } = s.tutorSessions;
+        return { tutorSessions: rest };
+      });
     },
 
     async primeTutorWelcomePreview() {
