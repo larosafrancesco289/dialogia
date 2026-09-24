@@ -114,7 +114,8 @@ a pre-refactor blob through migrate → merge → partialize and asserts the exa
    Zero-Data-Retention (ZDR) gate, and hands off to `src/lib/agent/orchestrator/turn.ts`.
 3. `src/lib/agent/compose.ts` assembles the request, which means system preambles, message history
    and tool definitions. Enabled modules contribute tools and preambles through
-   `ModuleRuntime.compose`, and may set `requiresPlanning` to demand the multi-round planning loop.
+   `ModuleRuntime.compose`, and may set `requiresPlanning` to demand the multi-round planning loop,
+   or `loop: 'agent'` to demand the visible agent loop (see below).
 4. `src/lib/settings/resolve.ts` produces `ResolvedTurnSettings`, which carries the model, the
    clamped reasoning effort, and the effective search mode. Everything downstream reads the
    resolved values, never the raw chat settings.
@@ -217,6 +218,28 @@ Web search is two distinct mechanisms, kept apart on purpose.
 
 `SearchMode` is an open string. A chat naming a provider this machine has no key for degrades to
 native search rather than failing (`selectSearchMode`).
+
+### Two turn loops
+
+A turn with tools runs one of two loops in `src/lib/agent/streaming/`.
+
+- **The default loop** (`streamingTurn.ts`, used by search) paints the first round, clears it if
+  the model calls tools, runs further rounds silently, then streams a closing answer or keeps the
+  first draft.
+- **The agent loop** (`agentLoop.ts`, requested by a module with `loop: 'agent'`) streams every
+  round visibly into the one reply, a blank line between rounds. Tool calls present in a round
+  run whatever the finish reason says, and every call gets a result: a handler returns a
+  model-facing `result` (`{ ok: true, ... }` or `{ ok: false, error, hint }`) that the model reads
+  and can correct itself from. A handler that returns `endsTurn: true` stops the loop without
+  another model call. The loop is capped at `AGENT_MAX_ROUNDS`, and the last round is sent with
+  `tool_choice: 'none'`.
+
+A tool registered with `metadata.replay: true` has its agent-loop rounds stored on the assistant
+message as `Message.toolRounds`. `buildChatCompletionMessages` replays them on later turns as real
+assistant tool calls and tool results around the reply text, and the token budget keeps or drops a
+message together with its rounds, so a result is never orphaned. A request that offers no tools
+(or an endpoint that does not declare tool support) gets that history folded back to text by the
+transport, because a provider may reject tool traffic it has no definitions for.
 
 ## Feature modules
 

@@ -1,4 +1,4 @@
-import type { Message } from '@/lib/types';
+import type { Message, MessageToolRound, MessageToolRoundCall } from '@/lib/types';
 
 const REMOVED_MESSAGE_KEYS = ['deepResearch'] as const;
 
@@ -55,6 +55,17 @@ export function sanitizeMessageRecord(message: Message): { next: Message; change
     }
   }
 
+  if ('toolRounds' in next) {
+    const rounds = normalizeToolRounds(next.toolRounds);
+    if (!rounds) {
+      delete next.toolRounds;
+      changed = true;
+    } else if (rounds.changed) {
+      next.toolRounds = rounds.value;
+      changed = true;
+    }
+  }
+
   if (next.tutorWelcome === false) {
     delete next.tutorWelcome;
     changed = true;
@@ -84,4 +95,43 @@ export function sanitizeMessageRecord(message: Message): { next: Message; change
   }
 
   return { next, changed };
+}
+
+const isString = (value: unknown): value is string => typeof value === 'string';
+
+function normalizeToolRoundCall(value: unknown): MessageToolRoundCall | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const call = value as Record<string, unknown>;
+  if (!isString(call.id) || !isString(call.name) || !call.name) return undefined;
+  if (!isString(call.arguments) || !isString(call.result)) return undefined;
+  return { id: call.id, name: call.name, arguments: call.arguments, result: call.result };
+}
+
+/**
+ * Keeps only well-formed rounds, and only rounds with at least one call: a
+ * replayed assistant tool-call message with no calls, or a call with no
+ * result, is something no provider accepts. Undefined when nothing survives.
+ */
+function normalizeToolRounds(
+  value: unknown,
+): { value: MessageToolRound[]; changed: boolean } | undefined {
+  if (!Array.isArray(value)) return undefined;
+  let changed = false;
+  const rounds: MessageToolRound[] = [];
+  for (const entry of value) {
+    const round = entry && typeof entry === 'object' ? (entry as Record<string, unknown>) : null;
+    const rawCalls = round && Array.isArray(round.calls) ? round.calls : [];
+    const calls = rawCalls
+      .map(normalizeToolRoundCall)
+      .filter((call): call is MessageToolRoundCall => !!call);
+    if (!round || calls.length === 0) {
+      changed = true;
+      continue;
+    }
+    const text = isString(round.text) ? round.text : '';
+    const extraKeys = Object.keys(round).some((key) => key !== 'text' && key !== 'calls');
+    if (calls.length !== rawCalls.length || text !== round.text || extraKeys) changed = true;
+    rounds.push({ text, calls });
+  }
+  return rounds.length > 0 ? { value: rounds, changed } : undefined;
 }

@@ -178,6 +178,47 @@ export function removeOrphanPendingToolCalls({
   });
 }
 
+/**
+ * Closes every entry still pending on a message, for a turn that ended without
+ * running them (stopped by the user, or failed mid-loop). A pending row would
+ * otherwise spin in the ledger forever.
+ */
+export function settlePendingToolCalls({
+  set,
+  chatId,
+  messageId,
+  error,
+}: {
+  set: StoreSetter;
+  chatId: string;
+  messageId: string;
+  error: string;
+}): void {
+  set((state) => {
+    const patch = mutateMessage(state, chatId, messageId, (msg) => {
+      const toolCalls = Array.isArray(msg.toolCalls) ? msg.toolCalls : [];
+      const activity = Array.isArray(msg.activity) ? msg.activity : [];
+      const pending = (entry: { status?: string }) => entry.status === 'pending';
+      const anyPending =
+        toolCalls.some(pending) ||
+        activity.some((item) => item.type === 'tool_call' && pending(item));
+      if (!anyPending) return msg;
+      return {
+        ...msg,
+        toolCalls: toolCalls.map((entry) =>
+          pending(entry) ? { ...entry, status: 'error' as const, error } : entry,
+        ),
+        activity: activity.map((item) =>
+          item.type === 'tool_call' && pending(item)
+            ? { ...item, status: 'error' as const, error }
+            : item,
+        ),
+      };
+    });
+    return patch ?? state;
+  });
+}
+
 export type FindPendingToolCallArgs = {
   get: () => MessageIndexState;
   chatId: string;

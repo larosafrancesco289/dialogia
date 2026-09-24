@@ -21,6 +21,12 @@ export type ToolMetadata = {
   kind: ToolKind;
   /** Label the tool-call ledger shows this tool under. Defaults to 'other'. */
   logCategory?: ToolCallCategory;
+  /**
+   * Agent-mode rounds that call this tool are stored on the assistant message and
+   * replayed to the model on later turns as real tool calls and results. Leave it
+   * off for tools whose results are bulky or stale by the next turn (search).
+   */
+  replay?: boolean;
   /** Module-private metadata. Only the owning module may interpret it. */
   ext?: Record<string, unknown>;
 };
@@ -91,6 +97,10 @@ export function getToolModule(name: string): string | undefined {
 
 export function getToolLogCategory(name: string): ToolCallCategory {
   return REGISTRY.get(name)?.metadata.logCategory ?? 'other';
+}
+
+export function isReplayTool(name: string): boolean {
+  return REGISTRY.get(name)?.metadata.replay === true;
 }
 
 export function isContentTool(name: string): boolean {

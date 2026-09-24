@@ -27,11 +27,38 @@ export type ToolExecutionContext = {
   getCurrentPlan?: () => LearningPlan | undefined;
 };
 
+/**
+ * What the model reads back from a tool call, sent as compact JSON. A success
+ * carries the state the model needs next; a failure says what went wrong and
+ * how to correct it, so the model can retry in the next round.
+ */
+export type ToolResult =
+  | ({ ok: true } & Record<string, unknown>)
+  | ({ ok: false; error: string; hint?: string } & Record<string, unknown>);
+
 export type PlanningToolExecutionResult = {
-  convoMessages: ModelMessage[];
-  aggregatedResults: SearchResult[];
+  /**
+   * Messages appended to the conversation. A handler may leave this out and
+   * return `result` instead; core then sends that as the call's tool message.
+   */
+  convoMessages?: ModelMessage[];
+  /** The turn's search results after this call. Omitted means unchanged. */
+  aggregatedResults?: SearchResult[];
   usedTool: boolean;
   usedContentTool: boolean;
+  /** The model-facing result; used when `convoMessages` carries no tool message for the call. */
+  result?: ToolResult;
+  /**
+   * Agent mode only: the turn stops after this round without another model
+   * call (the tool put something in front of the user and waits for them).
+   */
+  endsTurn?: boolean;
+  /**
+   * What a replayable tool's round stores for later turns, when the live call
+   * holds something the model must not see again (an answer key, say).
+   * Defaults to the call's own arguments and the result it read.
+   */
+  replay?: { arguments?: Record<string, unknown>; result?: ToolResult };
   learnerModel?: LearnerModel;
   planUpdates?: Message['planUpdates'];
   updatedPlan?: LearningPlan;

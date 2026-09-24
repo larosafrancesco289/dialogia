@@ -1,8 +1,16 @@
-import type { Chat, Message, ModelDescriptor, PersistedAttachment } from '@/lib/types';
+import type {
+  Chat,
+  Message,
+  MessageToolRound,
+  ModelDescriptor,
+  PersistedAttachment,
+} from '@/lib/types';
 import type { ModelMessage } from '@/lib/agent/types';
 import { TokenBudgeter } from './TokenBudgeter';
+import { createToolCallIdAllocator, replayAssistantTurn } from './replay';
 import { AttachmentProcessor } from '@/lib/attachments/prompt';
 import { formatMessageTimestamp } from '@/lib/agent/prompts/timestamps';
+import { estimateTokens } from '@/lib/tokenEstimate';
 
 export function buildChatCompletionMessages(params: {
   chat: Chat;
@@ -27,6 +35,9 @@ export function buildChatCompletionMessages(params: {
     createdAt?: number;
     attachments?: PersistedAttachment[];
     annotations?: Message['annotations'];
+    /** Replayed as real tool calls; budgeted with the message, never apart from it. */
+    toolRounds?: MessageToolRound[];
+    extraTokens?: number;
   }[] = [];
 
   for (const m of priorMessages) {
@@ -38,13 +49,20 @@ export function buildChatCompletionMessages(params: {
       m.role === 'assistant'
         ? [base, typeof hidden === 'string' ? hidden : ''].filter((x) => x && x.trim()).join('\n\n')
         : base;
-    if (!combined) continue;
+    const toolRounds =
+      m.role === 'assistant' && Array.isArray(m.toolRounds) && m.toolRounds.length > 0
+        ? m.toolRounds
+        : undefined;
+    if (!combined && !toolRounds) continue;
     history.push({
       role: m.role,
       content: combined,
       createdAt: m.createdAt,
       attachments: m.attachments,
       annotations: m.annotations,
+      ...(toolRounds
+        ? { toolRounds, extraTokens: estimateTokens(JSON.stringify(toolRounds)) ?? 1 }
+        : {}),
     });
   }
 
@@ -64,6 +82,7 @@ export function buildChatCompletionMessages(params: {
 
   // 3. Format Messages
   const finalMsgs: ModelMessage[] = [];
+  const allocateToolCallId = createToolCallIdAllocator();
 
   // System
   if (chat.settings.system && chat.settings.system.trim()) {
@@ -72,10 +91,23 @@ export function buildChatCompletionMessages(params: {
 
   // Conversation
   for (const k of kept) {
-    const content =
+    const stamp = (text: string) =>
       timestamps && typeof k.createdAt === 'number'
-        ? `[${formatMessageTimestamp(k.createdAt)}] ${k.content}`
-        : k.content;
+        ? `[${formatMessageTimestamp(k.createdAt)}] ${text}`
+        : text;
+    if (k.role === 'assistant' && k.toolRounds) {
+      finalMsgs.push(
+        ...replayAssistantTurn({
+          content: k.content,
+          rounds: k.toolRounds,
+          allocateId: allocateToolCallId,
+          decorate: stamp,
+          annotations: k.annotations,
+        }),
+      );
+      continue;
+    }
+    const content = stamp(k.content);
     if (k.role === 'user' && Array.isArray(k.attachments) && k.attachments.length > 0) {
       const blocks = AttachmentProcessor.process(k.attachments);
       if (content && content.trim()) {

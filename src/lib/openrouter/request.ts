@@ -7,6 +7,7 @@ import type {
 import { ProviderSort } from '@/lib/models/providerSort';
 import type { OpenRouterChatRequest, OpenRouterReasoning } from '@/lib/openrouter/types';
 import type { EndpointCapabilities } from '@/lib/transport/endpoints';
+import { withoutToolHistory } from '@/lib/transport/toolHistory';
 import type { ReasoningEffort } from '@/lib/types/enums';
 
 export type BuildChatBodyParams = {
@@ -67,9 +68,14 @@ export function buildChatBody(params: BuildChatBodyParams): OpenRouterChatReques
   const allow = (name: keyof EndpointCapabilities): boolean => !caps || caps[name] === true;
   const allowExtensions = params.allowProviderExtensions ?? !caps;
 
+  // Replayed tool rounds travel only with tools on offer: an endpoint without
+  // tool support, or a provider handed tool calls it has no definitions for,
+  // may refuse the whole request.
+  const offersTools = allow('tools') && Array.isArray(params.tools) && params.tools.length > 0;
+  const messages = offersTools ? params.messages : withoutToolHistory(params.messages);
   const body: OpenRouterChatRequest = {
     model: params.model,
-    messages: allow('promptCaching') ? params.messages : stripCacheControl(params.messages),
+    messages: allow('promptCaching') ? messages : stripCacheControl(messages),
     stream: params.stream,
   };
   if (allowExtensions && Array.isArray(params.modalities) && params.modalities.length)

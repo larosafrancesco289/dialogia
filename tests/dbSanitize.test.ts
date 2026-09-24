@@ -95,3 +95,35 @@ test('sanitizeMessageRecord drops an answerless deepResearch field without touch
   assert.equal('deepResearch' in next, false);
   assert.equal(next.content, '');
 });
+
+test('sanitizeMessageRecord keeps well-formed tool rounds and drops malformed ones', () => {
+  const call = { id: 'c1', name: 'note', arguments: '{}', result: '{"ok":true}' };
+  const kept: Message = {
+    id: 'm-rounds',
+    chatId: 'chat-rounds',
+    role: 'assistant',
+    content: 'Noted.',
+    createdAt: Date.now(),
+    toolRounds: [{ text: 'Noted.', calls: [call] }],
+  };
+  const clean = sanitizeMessageRecord(kept);
+  assert.equal(clean.changed, false);
+  assert.deepEqual(clean.next.toolRounds, kept.toolRounds);
+
+  const messy = {
+    ...kept,
+    toolRounds: [
+      { text: 'Noted.', calls: [call, { id: 'c2', name: 'note' }] },
+      { text: 'No calls.', calls: [] },
+      'junk',
+    ],
+  } as unknown as Message;
+  const repaired = sanitizeMessageRecord(messy);
+  assert.equal(repaired.changed, true);
+  assert.deepEqual(repaired.next.toolRounds, [{ text: 'Noted.', calls: [call] }]);
+
+  const hopeless = { ...kept, toolRounds: 'nope' } as unknown as Message;
+  const dropped = sanitizeMessageRecord(hopeless);
+  assert.equal(dropped.changed, true);
+  assert.equal('toolRounds' in dropped.next, false);
+});

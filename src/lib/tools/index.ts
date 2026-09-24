@@ -14,6 +14,7 @@ export {
   isContentTool,
   isMetaTool,
   isRegisteredTool,
+  isReplayTool,
   listTools,
   registerTool,
   unregisterTool,
@@ -28,5 +29,6 @@ export type {
   PlanningToolExecutionResult,
   ToolExecutionArgs,
   ToolExecutionContext,
+  ToolResult,
 } from '@/lib/tools/execution';
 export { extractInlineToolCalls, parseJsonAfter } from '@/lib/tools/json';

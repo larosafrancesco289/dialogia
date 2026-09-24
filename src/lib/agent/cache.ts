@@ -22,6 +22,12 @@ function toContentBlocks(content: string | ModelContentBlock[] | null): ModelCon
   return [{ type: 'text', text: content }];
 }
 
+function hasText(content: string | ModelContentBlock[] | null): boolean {
+  if (typeof content === 'string') return content.trim().length > 0;
+  if (!Array.isArray(content)) return false;
+  return content.some((block) => block.type === 'text' && block.text.trim().length > 0);
+}
+
 /**
  * Return a copy of `blocks` with `cache_control` set on the last text block.
  */
@@ -115,6 +121,9 @@ export function applyCacheBreakpoints(messages: ModelMessage[]): ModelMessage[] 
     for (let i = lastUserIdx - 1; i >= 0; i--) {
       const msg = result[i];
       if (msg.role !== 'user' && msg.role !== 'assistant') continue;
+      // A replayed tool call can carry no text; a marker on an empty text block
+      // is rejected, so the breakpoint moves to the nearest message with text.
+      if (!hasText(msg.content)) continue;
       const blocks = markLastTextBlock(toContentBlocks(msg.content));
       result[i] = { ...msg, content: blocks } as ModelMessage;
       break;
