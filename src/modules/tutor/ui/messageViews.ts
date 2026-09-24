@@ -125,6 +125,8 @@ export type Completion = {
   mastery?: TopicMastery;
   /** The topic started after this one, once one has been. */
   nextNodeId?: string;
+  /** The learner took this topic up again before anything else started. */
+  reopened?: boolean;
 };
 
 export type MessageEffects = { masteryChanges: MasteryChange[]; completed?: Completion };
@@ -133,7 +135,9 @@ const effectsCache = new WeakMap<readonly TutorEvent[], Map<string, MessageEffec
 
 /**
  * Per message, what its events did: each topic's estimate before and after
- * (with the notes that moved it), and the topic it finished, as of then. One
+ * (with the notes that moved it), and the topic it finished, as of then, with
+ * what the learner did next at that seam: the first topic started or reopened
+ * after it. What happens to the topic later is not that seam's to show. One
  * replay of the (retraction-aware) log per log, shared by every message.
  */
 export function effectsByMessage(events: readonly TutorEvent[]): Map<string, MessageEffects> {
@@ -145,8 +149,12 @@ export function effectsByMessage(events: readonly TutorEvent[]): Map<string, Mes
   for (const event of effectiveEvents(events)) {
     const before = state;
     state = apply(state, event);
-    if (event.type === 'topic_started' && awaitingNext) {
-      awaitingNext.nextNodeId = event.nodeId;
+    if (awaitingNext && (event.type === 'topic_started' || event.type === 'topic_reopened')) {
+      if (event.type === 'topic_reopened' && event.nodeId === awaitingNext.nodeId) {
+        awaitingNext.reopened = true;
+      } else {
+        awaitingNext.nextNodeId = event.nodeId;
+      }
       awaitingNext = undefined;
     }
     const messageId = event.messageId;
