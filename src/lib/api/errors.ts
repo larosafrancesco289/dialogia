@@ -46,8 +46,6 @@ type ResponseErrorBuilder = (
 ) => Promise<ApiError>;
 
 type StatusOptions = {
-  /** Read 429 as a failure like any other, for a caller that never has. */
-  rateLimit?: boolean;
   /** Sees the error for a failure other than auth or rate limit before it is thrown. */
   onFailure?: (error: ApiError) => void;
 };
@@ -66,7 +64,7 @@ export async function throwForStatus(
   if (res.status === 401 || res.status === 403) {
     throw await build(res, API_ERROR_CODES.UNAUTHORIZED, 'Invalid API key');
   }
-  if (res.status === 429 && options.rateLimit !== false) {
+  if (res.status === 429) {
     throw await build(res, API_ERROR_CODES.RATE_LIMITED, 'Rate limited');
   }
   if (!res.ok) {

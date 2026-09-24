@@ -195,19 +195,17 @@ test('openrouter stream still ignores malformed chunks', async () => {
 test('throwForStatus maps each status onto the shared codes', async () => {
   const build = async (res: Response, code: string, message?: string) =>
     new ApiError({ code, status: res.status, message: message ?? code });
-  const cases: Array<[number, { rateLimit?: boolean }, string | undefined, string | undefined]> = [
-    [200, {}, undefined, undefined],
-    [401, {}, API_ERROR_CODES.UNAUTHORIZED, 'Invalid API key'],
-    [403, {}, API_ERROR_CODES.UNAUTHORIZED, 'Invalid API key'],
-    [429, {}, API_ERROR_CODES.RATE_LIMITED, 'Rate limited'],
-    [429, { rateLimit: false }, 'failed', 'failed'],
-    [500, {}, 'failed', 'failed'],
-    [404, {}, 'failed', 'failed'],
+  const cases: Array<[number, string | undefined, string | undefined]> = [
+    [200, undefined, undefined],
+    [401, API_ERROR_CODES.UNAUTHORIZED, 'Invalid API key'],
+    [403, API_ERROR_CODES.UNAUTHORIZED, 'Invalid API key'],
+    [429, API_ERROR_CODES.RATE_LIMITED, 'Rate limited'],
+    [500, 'failed', 'failed'],
+    [404, 'failed', 'failed'],
   ];
-  for (const [status, options, code, message] of cases) {
+  for (const [status, code, message] of cases) {
     const failures: ApiError[] = [];
     const result = throwForStatus(new Response(null, { status }), build, 'failed', {
-      ...options,
       onFailure: (error) => failures.push(error),
     });
     if (!code) {
@@ -289,8 +287,7 @@ test('every provider call keeps its own error codes for a failed status', async 
       {
         401: 'unauthorized',
         403: 'unauthorized',
-        // The models list has never told a rate limit apart.
-        429: 'openrouter_models_failed',
+        429: 'rate_limited',
         500: 'openrouter_models_failed',
       },
     ],

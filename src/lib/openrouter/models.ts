@@ -48,9 +48,7 @@ export async function fetchModels(
   } catch (error) {
     throw wrapOpenRouterClientError(error, API_ERROR_CODES.OPENROUTER_MODELS_FAILED);
   }
-  await throwForStatus(res, buildOpenRouterError, API_ERROR_CODES.OPENROUTER_MODELS_FAILED, {
-    rateLimit: false,
-  });
+  await throwForStatus(res, buildOpenRouterError, API_ERROR_CODES.OPENROUTER_MODELS_FAILED);
   const data = await res.json().catch(() => null);
   const models = normalizeModelList(data, {
     endpointId: auth.endpoint.id,
