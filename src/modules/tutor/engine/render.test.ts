@@ -208,7 +208,7 @@ test('once intake is answered, the block tells the tutor it may give starting es
   });
   assert.match(
     render(h),
-    /Starting estimates: in propose_plan, give .* startingEstimate \(up to 75%\)/,
+    /Starting estimates: in propose_plan, give a startingEstimate \(up to 50%\) .* not to the topics built on it/,
   );
   h.tutor({ type: 'propose_plan', ...CALCULUS });
   assert.doesNotMatch(render(h), /Starting estimates/, 'not while a proposal waits');

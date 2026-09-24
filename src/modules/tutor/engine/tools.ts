@@ -22,6 +22,7 @@ import {
   OBSERVATION_WEIGHTS,
   READY,
   STARTING_ESTIMATE_MAX,
+  STARTING_ESTIMATE_SAID_MAX,
   WEIGHT_MAX,
   WEIGHT_MIN,
   masteryBand,
@@ -29,6 +30,7 @@ import {
 } from '@/modules/tutor/engine/rules';
 import {
   confidenceOf,
+  diagnosed,
   remainingBudgets,
   replyRecord,
   type TutorState,
@@ -150,7 +152,7 @@ const ARGS = {
             })
             .optional()
             .describe(
-              'Only when intake answers, a diagnostic, or the chat showed prior knowledge of this topic. Omit otherwise.',
+              `Only for a topic the learner said they know, or a diagnostic tested; knowing a prerequisite is not knowing the topic. Up to ${percent(STARTING_ESTIMATE_SAID_MAX)}% on their word, ${percent(STARTING_ESTIMATE_MAX)}% after a diagnostic. Omit otherwise.`,
             ),
         }),
       )
@@ -207,7 +209,9 @@ const ARGS = {
     how: z
       .enum(['mastered', 'skipped'])
       .default('mastered')
-      .describe('skipped: only when the learner asked to move on before mastering it.'),
+      .describe(
+        'skipped: only when the learner asked to skip this very topic, not because they know what it builds on.',
+      ),
     note: z.string().optional().describe('One line on how the topic went.'),
     topicId: topicId.optional().describe('Defaults to the current topic.'),
   }),
@@ -217,7 +221,7 @@ const ARGS = {
 const DESCRIPTIONS: Record<TutorToolName, string> = {
   ask_intake: `Show the learner a short intake card (${LIMITS.intakeQuestions.min}-${LIMITS.intakeQuestions.max} multiple-choice questions) about their goal, background, and constraints. Use at the start, before any plan, when you cannot infer these from the chat. Always include a "complete beginner" option when asking about prior knowledge. Do not use once a plan exists. Ends your turn: the learner answers on the card.`,
   give_diagnostic: `Show a short multiple-choice pre-assessment (${LIMITS.diagnosticItems.min}-${LIMITS.diagnosticItems.max} items) to check prior knowledge before planning, or before the next topic at a chapter break. The engine scores it and records the evidence. Use when the learner's level is unclear; skip it when they have told you plainly. At most ${BUDGETS.diagnosticsPerSession} per session. Ends your turn.`,
-  propose_plan: `Propose a learning plan, or a revision of the current one: the goal and ${LIMITS.planNodes.min}-${LIMITS.planNodes.max} topics in teaching order, each with objectives and prerequisites. Give a startingEstimate (at most ${percent(STARTING_ESTIMATE_MAX)}%) only to topics the intake, a diagnostic or the chat showed you; omit it elsewhere. On approval it becomes evidence the learner can contest. The learner sees the plan as a card and approves or declines; nothing changes until they approve. In a revision, reuse existing topic ids to keep their progress. Propose at seams (after intake, at a chapter break, when the plan is done, or when the learner asks), not mid-explanation. Ends your turn.`,
+  propose_plan: `Propose a learning plan, or a revision: the goal and ${LIMITS.planNodes.min}-${LIMITS.planNodes.max} topics in teaching order, each with objectives and prerequisites. startingEstimate only for a topic the learner said they know or a diagnostic tested, not for knowing its prerequisites (at most ${percent(STARTING_ESTIMATE_SAID_MAX)}% on their word, ${percent(STARTING_ESTIMATE_MAX)}% after a diagnostic); on approval it becomes evidence they can contest. The learner approves or declines the card; nothing changes until they approve. In a revision, reuse topic ids to keep their progress. Propose at seams (after intake, at a chapter break, when the plan is done, or when asked), not mid-explanation. Ends your turn.`,
   give_quiz: `Show a multiple-choice quiz (${LIMITS.quizItems.min}-${LIMITS.quizItems.max} items) on the current topic. The engine grades each answer and updates mastery; do not record quiz results yourself. Use after teaching a piece of the topic to check it has landed. At most ${BUDGETS.quizzesPerTopic} per topic. Ends your turn.`,
   record_evidence: `Record what the conversation showed about the learner's grasp of a topic, judged from their own words: struggled (an answer with an error in it, even if part was right, or stuck), partial (right as far as it went, but incomplete), applied (used it correctly), explained (explained it back), insight (went beyond what was taught). Set helped when your previous message gave, named or hinted at it, or they repeat your correction back. One call per topic per reply, summing up the exchange; a reply that notes a misconception on a topic gains nothing on it. Source "learner_said" when they tell you about their own understanding. Not for quiz or diagnostic answers. Does not end your turn.`,
   note_misconception: `Note a specific mistaken belief the learner showed (not a slip). It is shown to the learner and blocks completing the topic as mastered until resolved. Noting the same description again counts another occurrence. Does not end your turn.`,
@@ -639,6 +643,11 @@ export function tutorToolResult(
               startingEstimates: Object.fromEntries(
                 Object.entries(proposal.startingEstimates).map(([id, e]) => [id, percent(e.value)]),
               ),
+              ...(diagnosed(before)
+                ? {}
+                : {
+                    startingEstimatesNote: `With no diagnostic, a starting estimate rests on what the learner said and goes no higher than ${percent(STARTING_ESTIMATE_SAID_MAX)}%.`,
+                  }),
             }
           : {}),
         note: 'The learner sees the proposal and will approve or decline it.',

@@ -8,7 +8,12 @@ import type {
   QuizItem,
   StartingEstimate,
 } from '@/modules/tutor/engine/events';
-import { BUDGETS, MASTERY_PRIOR } from '@/modules/tutor/engine/rules';
+import {
+  BUDGETS,
+  MASTERY_PRIOR,
+  STARTING_ESTIMATE_MAX,
+  STARTING_ESTIMATE_SAID_MAX,
+} from '@/modules/tutor/engine/rules';
 
 export type TutorPhase = 'intake' | 'proposal' | 'teaching' | 'interlude' | 'complete';
 
@@ -131,6 +136,16 @@ export function openMisconceptions(state: TutorState, nodeId: string): Misconcep
 
 export function quizFinished(quiz: QuizRecord): boolean {
   return quiz.items.every((item) => quiz.answers[item.id]);
+}
+
+/** Whether the learner has finished a diagnostic in this session. */
+export function diagnosed(state: TutorState): boolean {
+  return Object.values(state.diagnostics).some((d) => !!d.answers);
+}
+
+/** How high a proposal may start a topic: higher once a diagnostic has tested the learner. */
+export function startingEstimateCap(state: TutorState): number {
+  return diagnosed(state) ? STARTING_ESTIMATE_MAX : STARTING_ESTIMATE_SAID_MAX;
 }
 
 export type Budgets = { quizzesLeft?: number; diagnosticsLeft: number };

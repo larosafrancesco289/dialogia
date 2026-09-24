@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  emptyTutorState,
   TOOL_ENDS_TURN,
   TUTOR_TOOLS,
   TUTOR_TOOL_NAMES,
@@ -436,11 +437,28 @@ test('plan topics take a starting estimate, read leniently and capped below READ
   assert.ok(parsed.adjusted?.some((line) => /capped at 75%/.test(line)));
   assert.deepEqual(c.startingEstimate, { value: 0.5 });
 
-  const h = harness();
-  const before = h.state;
-  const events = h.tutor(parsed.command);
-  const result = tutorToolResult('propose_plan', before, h.state, events);
-  assert.deepEqual(result.startingEstimates, { b: 75, c: 50 });
+  // On the learner's word alone, no higher than practising; after a diagnostic, up to 75%.
+  const said = harness();
+  const events = said.tutor(parsed.command);
+  const result = tutorToolResult('propose_plan', emptyTutorState(), said.state, events);
+  assert.deepEqual(result.startingEstimates, { b: 50, c: 50 });
+  assert.match(String(result.startingEstimatesNote), /no higher than 50%/);
+  const tested = harness();
+  tested.tutor({
+    type: 'give_diagnostic',
+    topic: 't',
+    items: [0, 1, 2].map((i) => ({ question: `q${i}`, choices: ['a', 'b'], correct: 0 })),
+  });
+  tested.learner({
+    type: 'answer_diagnostic',
+    diagnosticId: tested.state.awaiting!.id,
+    answers: { q1: 0, q2: 0, q3: 1 },
+  });
+  const before = tested.state;
+  const afterDiagnostic = tested.tutor(parsed.command);
+  const diagnosed = tutorToolResult('propose_plan', before, tested.state, afterDiagnostic);
+  assert.deepEqual(diagnosed.startingEstimates, { b: 75, c: 50 });
+  assert.equal(diagnosed.startingEstimatesNote, undefined);
   assert.match(TUTOR_TOOLS.propose_plan.function.description ?? '', /startingEstimate/);
 });
 
