@@ -1,35 +1,20 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import type { Chat, LearningPlan, Message } from '@/lib/types';
+import type { LearningPlan, Message } from '@/lib/types';
 import { buildMessageIndex } from '@/lib/messages/indexing';
 import {
   buildPlanWelcomeMessage,
   prepareTutorWelcomeMessage,
 } from '@/modules/tutor/services/tutorWelcome';
 import { createTestStoreState } from './helpers/createTestStoreState';
+import { makeChat } from './helpers/makeChat';
 import type { Repository } from '@/lib/db/repository';
 
-const makeChat = (): Chat =>
-  ({
-    id: 'chat-1',
+const tutorChat = () =>
+  makeChat({
     title: 'Tutor Chat',
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    settings: {
-      modelId: 'provider/model',
-      generation: {},
-      ui: {
-        showThinkingByDefault: false,
-        showStats: false,
-        showToolCallLog: false,
-        showDebugRawJson: true,
-      },
-      features: {
-        search: { enabled: false, provider: 'openrouter' },
-        tutor: { enabled: true, defaultModelId: 'provider/model' },
-      },
-    },
-  }) as Chat;
+    settings: { features: { tutor: { enabled: true, defaultModelId: 'provider/model' } } },
+  });
 
 const makeMessage = (overrides: Partial<Message>): Message =>
   ({
@@ -45,7 +30,7 @@ const createRepositoryStub = (): Repository =>
   ({ saveMessage: async () => {} }) as unknown as Repository;
 
 test('prepareTutorWelcomeMessage replaces the first assistant before any user message', async () => {
-  const chat = makeChat();
+  const chat = tutorChat();
   const assistant = makeMessage({ id: 'a1', role: 'assistant', createdAt: 1 });
   const user = makeMessage({ id: 'u1', role: 'user', createdAt: 2, content: 'Hi' });
   const { messagesById, messageIdsByChatId } = buildMessageIndex({
@@ -76,7 +61,7 @@ test('prepareTutorWelcomeMessage replaces the first assistant before any user me
 });
 
 test('prepareTutorWelcomeMessage inserts before the first user message when needed', async () => {
-  const chat = makeChat();
+  const chat = tutorChat();
   const user = makeMessage({ id: 'u1', role: 'user', createdAt: 1, content: 'Hi' });
   const assistant = makeMessage({ id: 'a1', role: 'assistant', createdAt: 2 });
   const { messagesById, messageIdsByChatId } = buildMessageIndex({
@@ -133,7 +118,7 @@ test('the welcome never doubles the punctuation of the text it quotes', () => {
 });
 
 test('a written welcome is frozen: the plan moving on does not rewrite it', async () => {
-  const chat = makeChat();
+  const chat = tutorChat();
   const welcome = makeMessage({
     id: 'w1',
     role: 'assistant',

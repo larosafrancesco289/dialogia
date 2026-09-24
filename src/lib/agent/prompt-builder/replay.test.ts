@@ -3,25 +3,14 @@ import assert from 'node:assert/strict';
 import { buildChatCompletionMessages } from '@/lib/agent/prompt-builder';
 import { splitReplaySegments } from '@/lib/agent/prompt-builder/replay';
 import type { ModelMessage } from '@/lib/agent/types';
-import type { Chat, Message, MessageToolRound, ModelDescriptor } from '@/lib/types';
+import type { Message, MessageToolRound, ModelDescriptor } from '@/lib/types';
+import { makeChat } from '../../../../tests/helpers/makeChat';
 
-const chat: Chat = {
+const chat = makeChat({
   id: 'chat-replay',
   title: 'Replay',
-  createdAt: 0,
-  updatedAt: 0,
-  settings: {
-    modelId: 'provider/model',
-    generation: { maxTokens: 256 },
-    ui: {
-      showThinkingByDefault: false,
-      showStats: false,
-      showToolCallLog: false,
-      showDebugRawJson: false,
-    },
-    features: { search: { enabled: false, provider: 'openrouter' } },
-  },
-};
+  settings: { generation: { maxTokens: 256 } },
+});
 
 const model = (contextLength: number): ModelDescriptor => ({
   id: 'provider/model',

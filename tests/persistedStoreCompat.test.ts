@@ -1,8 +1,5 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createStore } from 'zustand/vanilla';
-import type { StateCreator } from 'zustand';
-import { buildStoreInitializer } from '@/lib/store/createStore';
 import {
   adoptPersistedState,
   buildPersistedState,
@@ -11,10 +8,10 @@ import {
 } from '@/lib/store/persistence';
 import { migrate } from '@/lib/store/migrations';
 import type { PersistedStoreState, StoreState } from '@/lib/store/types';
+import { createTestStore } from './helpers/createTestStoreState';
 
 const freshState = (): StoreState => {
-  const initializer = buildStoreInitializer() as unknown as StateCreator<StoreState>;
-  return createStore<StoreState>(initializer).getState();
+  return createTestStore().getState();
 };
 
 /** A localStorage blob written by the pre-refactor build (persist version 6). */

@@ -5,27 +5,11 @@ import { createMemoryDb } from '@/lib/db/memory';
 import { createRepository } from '@/lib/db/repository';
 import { createTabChannel, parseAnnouncement, type TabAnnouncement } from '@/lib/sync/tabChannel';
 import { createAssistantMessage, createUserMessage } from '@/lib/messages/createMessage';
-import type { Chat, Folder } from '@/lib/types';
+import type { Folder } from '@/lib/types';
 import { createFakeBus } from './helpers/fakeTabBus';
+import { makeChat } from './helpers/makeChat';
 
-const chat = (id: string) =>
-  ({
-    id,
-    title: 'Chat',
-    createdAt: 1,
-    updatedAt: 1,
-    settings: {
-      modelId: 'provider/model',
-      generation: {},
-      ui: {
-        showThinkingByDefault: false,
-        showStats: false,
-        showToolCallLog: false,
-        showDebugRawJson: false,
-      },
-      features: { search: { enabled: false, provider: 'openrouter' }, tutor: { enabled: false } },
-    },
-  }) satisfies Chat;
+const chat = (id: string) => makeChat({ id });
 
 test('a channel without a port does nothing and never throws', () => {
   const channel = createTabChannel(() => undefined);

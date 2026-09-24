@@ -1,14 +1,12 @@
 import { before, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createStore } from 'zustand/vanilla';
-import type { StateCreator } from 'zustand';
 import { loadModuleRuntimes } from '@/lib/modules';
-import { buildStoreInitializer } from '@/lib/store/createStore';
-import type { StoreState } from '@/lib/store/types';
 import { getToolHandler } from '@/lib/tools/registry';
 import type { ToolExecutionContext } from '@/lib/tools/execution';
-import type { Chat, Message } from '@/lib/types';
+import type { Message } from '@/lib/types';
 import { CALCULUS, QUIZ_ITEMS } from '@/modules/tutor/engine/testSupport';
+import { createTestStore } from './helpers/createTestStoreState';
+import { makeChat } from './helpers/makeChat';
 
 before(async () => {
   await loadModuleRuntimes();
@@ -18,26 +16,12 @@ let counter = 0;
 
 function setup() {
   const chatId = `chat-tools-${(counter += 1)}`;
-  const chat = {
+  const chat = makeChat({
     id: chatId,
     title: 'Tools',
-    createdAt: 1,
-    updatedAt: 1,
-    settings: {
-      modelId: 'provider/model',
-      generation: {},
-      ui: {
-        showThinkingByDefault: false,
-        showStats: false,
-        showToolCallLog: false,
-        showDebugRawJson: false,
-      },
-      features: { search: { enabled: false, provider: 'openrouter' }, tutor: { enabled: true } },
-    },
-  } satisfies Chat;
-  const store = createStore<StoreState>(
-    buildStoreInitializer() as unknown as StateCreator<StoreState>,
-  );
+    settings: { features: { tutor: { enabled: true } } },
+  });
+  const store = createTestStore();
   store.setState({ chats: [chat] });
   const logged: Array<{ name: string; ok: boolean }> = [];
 
