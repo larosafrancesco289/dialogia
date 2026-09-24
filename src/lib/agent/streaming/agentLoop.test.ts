@@ -35,6 +35,7 @@ const TOOL_CARD = 'agent_test_card';
 const TOOL_STRICT = 'agent_test_strict';
 const TOOL_LOOKUP = 'agent_test_lookup';
 const TOOL_STOP = 'agent_test_stop';
+const TOOL_SHOWN = 'agent_test_shown';
 
 let stopController: AbortController | undefined;
 
@@ -75,6 +76,13 @@ before(async () => {
     usedTool: true,
     usedContentTool: false,
     result: { ok: true, found: 'bulky results' },
+  }));
+  register(TOOL_SHOWN, true, () => ({
+    usedTool: true,
+    usedContentTool: true,
+    result: { ok: true, shown: 'card' },
+    endsTurn: 'after_text',
+    resultBeforeText: { ok: true, shown: 'card', note: 'Introduce it.' },
   }));
   register(TOOL_STOP, true, () => {
     stopController?.abort();
@@ -192,7 +200,9 @@ async function runAgentTurn(
     { role: 'system', content: 'You are an agent.' },
     { role: 'user', content: 'Go.' },
   ];
-  const tools = [TOOL_NOTE, TOOL_CARD, TOOL_STRICT, TOOL_LOOKUP, TOOL_STOP].map(definition);
+  const tools = [TOOL_NOTE, TOOL_CARD, TOOL_STRICT, TOOL_LOOKUP, TOOL_STOP, TOOL_SHOWN].map(
+    definition,
+  );
   const run = options.viaRunTurn
     ? runTurn({
         chat,
@@ -302,6 +312,60 @@ test('agent loop stops without another call when a handler ends the turn', async
   const stored = turn.persisted.at(-1)?.toolRounds?.[0]?.calls[0];
   assert.equal(stored?.arguments, '{"question":"Q"}');
   assert.equal(stored?.result, '{"ok":true,"shown":"card"}');
+});
+
+test('a card that ends the turn after text stops at once when the turn has words', async () => {
+  const turn = await runAgentTurn((_round, callbacks) =>
+    reply(callbacks, 'Here is a quick check.', [call(TOOL_SHOWN)]),
+  );
+  await turn.run;
+
+  assert.equal(turn.requests.length, 1);
+  assert.equal(turn.message()?.content, 'Here is a quick check.');
+  const stored = turn.persisted.at(-1)?.toolRounds?.[0]?.calls[0];
+  assert.deepEqual(JSON.parse(String(stored?.result)), { ok: true, shown: 'card' });
+});
+
+test('a card shown without a word gets one more round, without tools, to introduce it', async () => {
+  const turn = await runAgentTurn((round, callbacks) => {
+    if (round === 1) return reply(callbacks, '', [call(TOOL_SHOWN)]);
+    // A model that calls a tool anyway is not run: this round is the last.
+    return reply(callbacks, 'This checks the base rate. Take your time.', [
+      call(TOOL_NOTE, {}, 'note-late'),
+    ]);
+  });
+  await turn.run;
+
+  assert.equal(turn.requests.length, 2);
+  assert.deepEqual(
+    turn.requests.map((request) => request.toolChoice),
+    ['auto', 'none'],
+  );
+  // The model reads the handler's ask, not the ordinary result.
+  const [shown] = toolMessages(turn.requests[1].messages);
+  assert.deepEqual(JSON.parse(shown.content), { ok: true, shown: 'card', note: 'Introduce it.' });
+  // The introduction is the reply's text, so it sits above the card.
+  assert.equal(turn.message()?.content, 'This checks the base rate. Take your time.');
+  assert.equal(
+    turn.message()?.toolCalls?.some((entry) => entry.name === TOOL_NOTE),
+    false,
+    'the late call never ran',
+  );
+  const rounds = turn.persisted.at(-1)?.toolRounds;
+  assert.equal(rounds?.length, 1);
+  assert.equal(rounds?.[0].text, '');
+  assert.match(String(rounds?.[0].calls[0].result), /Introduce it/);
+});
+
+test('a card after an earlier round with words ends the turn without an introduction', async () => {
+  const turn = await runAgentTurn((round, callbacks) => {
+    if (round === 1) return reply(callbacks, 'Noted.', [call(TOOL_NOTE)]);
+    return reply(callbacks, '', [call(TOOL_SHOWN)]);
+  });
+  await turn.run;
+
+  assert.equal(turn.requests.length, 2);
+  assert.equal(turn.message()?.content, 'Noted.');
 });
 
 test('agent loop caps its rounds and forbids tools on the last one', async () => {

@@ -12,7 +12,9 @@ export type ToolCallOutcome = {
   call: ToolCall;
   /** The tool message content the model reads for this call. */
   content: string;
-  endsTurn: boolean;
+  endsTurn: boolean | 'after_text';
+  /** With `endsTurn: 'after_text'`: the content to read instead when the turn has no text yet. */
+  contentBeforeText?: string;
   replay?: PlanningToolExecutionResult['replay'];
 };
 
@@ -102,7 +104,10 @@ export async function applyToolExecutions(args: {
     args.onOutcome?.({
       call: tc,
       content: toolMessage.content,
-      endsTurn: execution.endsTurn === true,
+      endsTurn: execution.endsTurn === 'after_text' ? 'after_text' : execution.endsTurn === true,
+      ...(execution.endsTurn === 'after_text' && execution.resultBeforeText
+        ? { contentBeforeText: JSON.stringify(execution.resultBeforeText) }
+        : {}),
       replay: execution.replay,
     });
     next.aggregatedResults = execution.aggregatedResults ?? next.aggregatedResults;

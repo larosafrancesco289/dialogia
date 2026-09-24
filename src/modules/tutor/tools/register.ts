@@ -5,6 +5,7 @@
 import {
   TOOL_ENDS_TURN,
   TUTOR_TOOLS,
+  cardIntroduction,
   TUTOR_TOOL_NAMES,
   parseTutorToolCall,
   tutorToolError,
@@ -89,12 +90,16 @@ function createHandler(name: TutorToolName): PlanningToolHandler {
       parsed.adjusted,
     ) as ToolResult;
     log.success(result, roundMeta ? { ...roundMeta } : undefined);
+    // A card is introduced in words above it: if the turn has none yet, the
+    // loop gives the tutor one more round, without tools, to write them.
+    const resultBeforeText = endsTurn ? (cardIntroduction(name, result) as ToolResult) : undefined;
     return {
       aggregatedResults,
       usedTool: true,
       usedContentTool: endsTurn,
       result,
-      endsTurn,
+      endsTurn: endsTurn ? ('after_text' as const) : false,
+      ...(resultBeforeText ? { resultBeforeText } : {}),
       replay,
     };
   };

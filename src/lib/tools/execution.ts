@@ -47,8 +47,14 @@ export type PlanningToolExecutionResult = {
   /**
    * Agent mode only: the turn stops after this round without another model
    * call (the tool put something in front of the user and waits for them).
+   * `'after_text'` stops it the same way when the turn already has visible
+   * text; when it has none, one more round runs with tool_choice 'none', so
+   * the model can introduce what it just showed. The model then reads
+   * `resultBeforeText` for this call instead of `result`.
    */
-  endsTurn?: boolean;
+  endsTurn?: boolean | 'after_text';
+  /** With `endsTurn: 'after_text'` in a turn with no text yet: what the model reads instead of `result`. */
+  resultBeforeText?: ToolResult;
   /**
    * What a replayable tool's round stores for later turns, when the live call
    * holds something the model must not see again (an answer key, say).
