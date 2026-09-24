@@ -16,6 +16,5 @@ export const LEDGER = {
   goingOn: (topic: string) => `Going on to ${inSentence(topic)}`,
   morePractice: (topic: string) => `Asked for more practice on ${inSentence(topic)}`,
   startedTopic: (topic: string) => `Chose ${inSentence(topic)} next`,
-  markedKnown: (topic: string) => `Marked ${inSentence(topic)} as already known`,
   reopenedTopic: (topic: string) => `Took up ${inSentence(topic)} again`,
 } as const;
