@@ -6,6 +6,7 @@ import {
   READY,
   decide,
   explainTopic,
+  openMisconceptions,
   step,
   type TutorError,
   type TutorEvent,
@@ -843,6 +844,64 @@ describe('evidence and misconceptions', () => {
       'reply-2',
     );
     assert.ok(recorded.state.mastery.limits.confidence > start);
+  });
+
+  test('a misconception an earlier, recorded mistake showed leaves the latest answer its gain', () => {
+    const struggledThen = () => {
+      const h = teaching();
+      h.tutor(
+        { type: 'record_evidence', kind: 'struggled', note: 'Said 1 to 5', source: 'observation' },
+        'reply-1',
+      );
+      return h;
+    };
+    const applied = {
+      type: 'record_evidence',
+      kind: 'applied',
+      note: 'Gave 2, 3, 4, 5 for range(2, 6)',
+      source: 'observation',
+    } as const;
+    const earlier = {
+      type: 'note_misconception',
+      description: 'Thinks the stop is included',
+      shownBy: 'earlier_answer',
+    } as const;
+
+    // Noted first: the gain that follows stands.
+    const first = struggledThen();
+    const [noted] = first.tutor(earlier, 'reply-2');
+    assert.ok(noted.type === 'misconception_noted' && noted.shownBy === 'earlier_answer');
+    const before = first.state.mastery.limits.confidence;
+    first.tutor(applied, 'reply-2');
+    assert.ok(first.state.mastery.limits.confidence > before);
+    assert.deepEqual(first.state.reply?.misconceptions, []);
+
+    // Noted after: nothing is taken back, and the misconception is open all the same.
+    const after = struggledThen();
+    after.tutor(applied, 'reply-2');
+    const gained = after.state.mastery.limits.confidence;
+    assert.equal(after.tutor(earlier, 'reply-2').length, 1);
+    assert.equal(after.state.mastery.limits.confidence, gained);
+    assert.equal(openMisconceptions(after.state, 'limits').length, 1);
+
+    // With no earlier mistake in the log, only the latest answer can have shown it.
+    const unfounded = teaching();
+    unfounded.tutor(applied, 'reply-1');
+    const events = unfounded.tutor(earlier, 'reply-1');
+    assert.deepEqual(
+      events.map((e) => e.type),
+      ['misconception_noted', 'evidence_recorded'],
+    );
+    assert.ok(events[0].type === 'misconception_noted' && !events[0].shownBy);
+    assert.ok(Math.abs(unfounded.state.mastery.limits.confidence - MASTERY_PRIOR) < 1e-9);
+    // Its own reply's mistake is not an earlier one.
+    const same = teaching();
+    same.tutor(
+      { type: 'record_evidence', kind: 'struggled', note: 'Said 1 to 5', source: 'observation' },
+      'reply-1',
+    );
+    const [own] = same.tutor(earlier, 'reply-1');
+    assert.ok(own.type === 'misconception_noted' && !own.shownBy);
   });
 
   test('a weight against its kind is refused with the fields and values to change', () => {

@@ -45,6 +45,7 @@ import {
 import {
   confidenceOf,
   demonstratedEvidence,
+  earlierMistake,
   openMisconceptions,
   diagnosed,
   quizFinished,
@@ -113,7 +114,14 @@ export type TutorToolCommand =
       helped?: boolean;
       note: string;
     }
-  | { by: 'tutor'; type: 'note_misconception'; nodeId?: string; description: string }
+  | {
+      by: 'tutor';
+      type: 'note_misconception';
+      nodeId?: string;
+      description: string;
+      /** Which answer showed it; an earlier one leaves this reply's evidence standing. */
+      shownBy?: 'latest_answer' | 'earlier_answer';
+    }
   | {
       by: 'tutor';
       type: 'resolve_misconception';
@@ -571,7 +579,7 @@ function decideTutor(
         );
       }
       const scaled = observationWeight(cmd.kind, weight, !!cmd.helped);
-      // A reply that noted a misconception on the topic gains nothing on it.
+      // A reply that noted a misconception its answer showed gains nothing on the topic.
       const gains = scaled > 0 && !reply?.misconceptions.includes(node.id);
       out.push({
         type: 'evidence_recorded',
@@ -595,13 +603,18 @@ function decideTutor(
       );
       const misconceptionId =
         same?.id ?? uniqueId(slugify(description), new Set(existing.map((m) => m.id)));
+      // An earlier answer can have shown it only if the log holds that answer
+      // as a mistake; otherwise the answer this reply responds to showed it.
+      const earlier =
+        cmd.shownBy === 'earlier_answer' && earlierMistake(state, found.node.id, ctx.messageId);
       out.push({
         type: 'misconception_noted',
         nodeId: found.node.id,
         misconceptionId,
         description: same?.description ?? description,
+        ...(earlier ? { shownBy: 'earlier_answer' as const } : {}),
       });
-      takeBackGain(state, found.node.id, same?.description ?? description, ctx, out);
+      if (!earlier) takeBackGain(state, found.node.id, same?.description ?? description, ctx, out);
       return null;
     }
 

@@ -356,9 +356,12 @@ not kept waiting on the card.
 
 The tutor's own evidence is judged per reply, from a record `fold` keeps of the tutor's latest
 reply: one piece per topic, and none that gains on a topic the same reply noted a misconception
-on. Evidence recorded after the note moves nothing; a gain recorded before it is taken back
-exactly by a `misconception` evidence event naming the evidence it cancels, which then stops
-counting toward mastery. `partial` never lowers an estimate and, led to (`helped`), moves nothing.
+on that the answer it responds to showed. Evidence recorded after the note moves nothing; a gain
+recorded before it is taken back exactly by a `misconception` evidence event naming the evidence
+it cancels, which then stops counting toward mastery. A misconception noted as shown by an earlier
+answer (`shownBy: 'earlier_answer'`) leaves the reply's gain standing, and is accepted as such only
+when the log already holds a mistake on the topic from before the reply; older notes carry no
+`shownBy` and replay as the latest answer's. `partial` never lowers an estimate and, led to (`helped`), moves nothing.
 These rules live in `decide`, and `fold` replays what was decided, so older logs keep their values.
 Reopening a topic (more practice at a chapter break, or taking it up again) keeps its estimate;
 completing it again as mastered needs fresh work counted from the reopening.

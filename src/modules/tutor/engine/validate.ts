@@ -173,7 +173,12 @@ const PAYLOADS: Record<TutorEventType, z.ZodTypeAny> = {
       })
       .optional(),
   }),
-  misconception_noted: z.object({ nodeId: id, misconceptionId: id, description: z.string() }),
+  misconception_noted: z.object({
+    nodeId: id,
+    misconceptionId: id,
+    description: z.string(),
+    shownBy: z.literal('earlier_answer').optional(),
+  }),
   misconception_resolved: z.object({
     nodeId: id,
     misconceptionId: id,

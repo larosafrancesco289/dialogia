@@ -442,3 +442,58 @@ test('logs from before the evidence rules changed replay to the values they had'
   assert.ok(Math.abs(steps[0].after - MASTERY_PRIOR * 0.9) < 1e-9, 'partial went down then');
   assert.equal(explainTopic(state, 'limits')?.confidence, state.mastery.limits.confidence);
 });
+
+test('misconceptions noted before shownBy existed replay as shown by the latest answer', () => {
+  // An old reply: a gain, the misconception, and the engine's exact take-back.
+  const h = teaching();
+  const from = h.events.length;
+  const envelope = (seq: number, messageId = 'reply-old') => ({
+    id: `old-${seq}`,
+    chatId: 'chat-1',
+    seq: from + seq,
+    at: 60_000,
+    by: 'tutor',
+    messageId,
+  });
+  const noted = { type: 'misconception_noted', nodeId: 'limits', misconceptionId: 'm' };
+  const old = [
+    {
+      ...envelope(1),
+      type: 'evidence_recorded',
+      nodeId: 'limits',
+      source: 'observation',
+      kind: 'applied',
+      weight: 0.3,
+      note: 'Solved one',
+    },
+    { ...envelope(2), ...noted, description: 'm' },
+    {
+      ...envelope(3),
+      type: 'evidence_recorded',
+      nodeId: 'limits',
+      source: 'observation',
+      kind: 'misconception',
+      setTo: MASTERY_PRIOR,
+      note: 'No gain from this answer',
+      ref: { eventId: 'old-1' },
+    },
+  ].map(parseTutorEvent);
+  assert.ok(old.every(Boolean), 'old events still parse');
+  const state = fold([...h.events, ...(old as TutorEvent[])]);
+  assert.equal(state.mastery.limits.confidence, MASTERY_PRIOR);
+  assert.equal(explainTopic(state, 'limits')?.confidence, MASTERY_PRIOR);
+  // The reply still counts as having noted it, so it could gain nothing more on the topic.
+  assert.deepEqual(state.reply?.misconceptions, ['limits']);
+
+  // One noted now against an earlier answer survives the store and leaves its reply free to gain.
+  const earlier = parseTutorEvent({
+    ...envelope(4, 'reply-new'),
+    ...noted,
+    description: 'm',
+    shownBy: 'earlier_answer',
+  });
+  assert.ok(earlier?.type === 'misconception_noted' && earlier.shownBy === 'earlier_answer');
+  const now = fold([...h.events, ...(old as TutorEvent[]), earlier]);
+  assert.deepEqual(now.reply, { messageId: 'reply-new', evidence: {}, misconceptions: [] });
+  assert.equal(now.mastery.limits.misconceptions[0].occurrences, 2);
+});

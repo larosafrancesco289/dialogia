@@ -350,7 +350,8 @@ function reduce(state: TutorState, event: TutorEvent): TutorState {
 
 /**
  * Keeps the tutor's latest reply's record: its evidence per topic and the
- * topics it noted a misconception on. A learner's or the engine's events are
+ * topics it noted a misconception on that the answer it responds to showed
+ * (not one an earlier answer showed). A learner's or the engine's events are
  * not the reply's own, and a topic outside the plan is not tracked.
  */
 function noteReply(
@@ -364,7 +365,9 @@ function noteReply(
       ? next.reply
       : { messageId: event.messageId, evidence: {}, misconceptions: [] };
   if (event.type === 'misconception_noted') {
-    if (record.misconceptions.includes(event.nodeId)) return { ...next, reply: record };
+    if (event.shownBy === 'earlier_answer' || record.misconceptions.includes(event.nodeId)) {
+      return { ...next, reply: record };
+    }
     return {
       ...next,
       reply: { ...record, misconceptions: [...record.misconceptions, event.nodeId] },
