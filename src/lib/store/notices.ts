@@ -46,7 +46,7 @@ export function isSuccessNotice(message: string): boolean {
 
 const MAX_NOTICE_LENGTH = 200;
 
-function isAbortLike(error: unknown): boolean {
+export function isAbortLike(error: unknown): boolean {
   if (error instanceof DOMException && error.name === 'AbortError') return true;
   if (error instanceof Error) {
     if (error.name === 'AbortError') return true;
@@ -73,9 +73,23 @@ export function describeErrorNotice(error: unknown): string | undefined {
     return 'The request timed out. Please try again.';
   }
   if (!message.trim()) return 'An unexpected error occurred';
-  return message.length > MAX_NOTICE_LENGTH
-    ? `${message.slice(0, MAX_NOTICE_LENGTH - 1)}…`
-    : message;
+  const text = readable(message);
+  return text.length > MAX_NOTICE_LENGTH ? `${text.slice(0, MAX_NOTICE_LENGTH - 1)}…` : text;
+}
+
+// Transport errors read "openrouter_chat_failed (400): detail"; a person
+// should see what happened, with the provider's own words after it.
+const CODE_PREFIXES: Array<[RegExp, string]> = [
+  [/^(openrouter|provider)_chat_failed\b/, 'The model provider returned an error'],
+  [/^(openrouter|provider)_models_failed\b/, 'Could not load the model list'],
+  [/^stream_missing_body\b/, 'The provider sent an empty response'],
+];
+
+function readable(message: string): string {
+  for (const [pattern, text] of CODE_PREFIXES) {
+    if (pattern.test(message)) return message.replace(pattern, text);
+  }
+  return message;
 }
 
 export const NOTICE_INVALID_KEY = NOTICE_CATALOG.invalidKey;

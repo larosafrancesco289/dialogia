@@ -131,6 +131,10 @@ export type Message = {
   finishReason?: 'stop' | 'tool_calls' | 'length' | 'content_filter';
   // Policy category the provider reported for a classifier refusal.
   stopPolicy?: string;
+  // A reply that ended before the model finished: the person stopped it, the
+  // request failed, or the page closed mid-stream (the checkpoint's mark,
+  // cleared when the turn completes). Absent on a reply that finished.
+  cutOff?: 'stopped' | 'failed' | 'interrupted';
   tokensIn?: number;
   tokensOut?: number;
   model?: string;
