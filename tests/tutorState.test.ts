@@ -6,7 +6,9 @@ import { repository } from '@/lib/db';
 import { buildStoreInitializer } from '@/lib/store/createStore';
 import type { StoreState } from '@/lib/store/types';
 import type { Chat, LearnerModel, LearningPlan, Message, TopicMastery } from '@/lib/types';
-import { notifyChatDeleted, notifyReplyRetracted } from '@/lib/modules';
+import { canRedoReply, notifyChatDeleted, notifyReplyRetracted } from '@/lib/modules';
+import { createAssistantMessage, createUserMessage } from '@/lib/messages/createMessage';
+import { appendMessagesToChat, getMessagesForChat } from '@/lib/messages/indexing';
 import { remainingBudgets } from '@/modules/tutor/engine';
 import { CALCULUS, QUIZ_ITEMS } from '@/modules/tutor/engine/testSupport';
 import { cardsForMessage } from '@/modules/tutor/ui/messageViews';
@@ -559,4 +561,117 @@ test('deleting a chat drops its session from memory', async () => {
   assert.deepEqual(await repository.loadTutorEvents(id), []);
   // Dropping an unknown chat is harmless.
   notifyChatDeleted({ get: store.getState }, 'never-loaded');
+});
+
+// ---------------------------------------------------------------- transcript order
+
+/** A teaching chat with a transcript: u1, m1 (plan), u2 (ledger), m2 (quiz), u3, m3. */
+async function chatWithTranscript() {
+  const { id, store } = await teachingChat();
+  const { dispatchTutor } = store.getState();
+  await dispatchTutor(
+    id,
+    { by: 'tutor', type: 'give_quiz', items: QUIZ_ITEMS },
+    { by: 'tutor', messageId: 'm2' },
+  );
+  const quizId = store.getState().tutorSessions[id].state.awaiting!.id;
+  await dispatchTutor(
+    id,
+    { by: 'learner', type: 'answer_quiz_item', quizId, itemId: 'q1', choice: 0 },
+    { by: 'learner', messageId: 'm2' },
+  );
+  const seenByM3 = store.getState().tutorSessions[id].state.lastSeq;
+  await dispatchTutor(
+    id,
+    { by: 'tutor', type: 'record_evidence', kind: 'applied', note: 'Later', source: 'observation' },
+    { by: 'tutor', messageId: 'm3' },
+  );
+  let clock = 1_000;
+  const user = (msgId: string, content: string, ledger = false) =>
+    createUserMessage({ id: msgId, chatId: id, content, createdAt: (clock += 1), ledger });
+  const reply = (msgId: string, tutorSeq?: number) => ({
+    ...createAssistantMessage({
+      id: msgId,
+      chatId: id,
+      content: `Reply ${msgId}`,
+      createdAt: (clock += 1),
+    }),
+    ...(tutorSeq != null ? { tutorSeq } : {}),
+  });
+  const messages: Message[] = [
+    user('u1', 'Teach me'),
+    reply('m1', 0),
+    user('u2', 'Approved the plan', true),
+    reply('m2', 2),
+    user('u3', 'Why?'),
+    reply('m3', seenByM3),
+  ];
+  store.setState((s) => ({ ...appendMessagesToChat(s, id, messages), selectedChatId: id }));
+  for (const message of messages) await repository.saveMessage(message);
+  return { id, store, quizId };
+}
+
+test('in a tutor chat only the latest exchange can be regenerated or edited and rerun', async () => {
+  const { id, store } = await chatWithTranscript();
+  const can = (messageId: string) => canRedoReply(store.getState(), id, messageId);
+  assert.deepEqual(['u1', 'm1', 'u2', 'm2', 'u3', 'm3'].map(can), [
+    false,
+    false,
+    false,
+    false,
+    true,
+    true,
+  ]);
+
+  // An edit that would rerun an earlier reply is refused outright.
+  await store.getState().editUserMessage('u1', 'Something else', { rerun: true });
+  assert.equal(store.getState().messagesById.u1.content, 'Teach me');
+
+  // An ordinary chat keeps redo everywhere.
+  const plain = makeChat(chatId('plain'), { enabled: false });
+  store.setState((s) => ({
+    chats: [...s.chats, plain],
+    ...appendMessagesToChat(s, plain.id, [
+      createUserMessage({ id: 'p-u1', chatId: plain.id, content: 'a', createdAt: 1 }),
+      createAssistantMessage({ id: 'p-m1', chatId: plain.id, content: 'b', createdAt: 2 }),
+      createUserMessage({ id: 'p-u2', chatId: plain.id, content: 'c', createdAt: 3 }),
+    ]),
+  }));
+  assert.equal(canRedoReply(store.getState(), plain.id, 'p-m1'), true);
+});
+
+test('branching a tutor chat copies its log up to the branch point', async () => {
+  const { id, store, quizId } = await chatWithTranscript();
+  await store.getState().branchChatFromMessage('m2');
+
+  const branchId = store.getState().selectedChatId!;
+  assert.notEqual(branchId, id);
+  const copies = getMessagesForChat(store.getState(), branchId);
+  assert.equal(copies.length, 4);
+  const [, m1Copy, , m2Copy] = copies;
+  assert.notEqual(m2Copy.id, 'm2');
+
+  const session = store.getState().tutorSessions[branchId];
+  assert.ok(session?.loaded);
+  assert.ok(session.events.every((e) => e.chatId === branchId));
+  assert.ok(
+    !session.events.some((e) => e.type === 'evidence_recorded' && e.by === 'tutor'),
+    "m3's observation stays behind",
+  );
+  assert.equal(session.state.quizzes[quizId].messageId, m2Copy.id);
+  assert.deepEqual(Object.keys(session.state.quizzes[quizId].answers), ['q1']);
+  assert.ok(cardsForMessage(session, m2Copy.id).quiz, 'the quiz card renders on the copy');
+  assert.equal(session.state.proposal, undefined);
+  assert.equal(
+    store.getState().tutorSessions[id].state.mastery.limits.evidence.length,
+    session.state.mastery.limits.evidence.length + 1,
+    'the source keeps what came after the branch point',
+  );
+  assert.ok(session.events.some((e) => e.messageId === m1Copy.id));
+
+  // On disk, so the branch reloads to the same state.
+  const reloaded = newStore();
+  reloaded.setState({ chats: store.getState().chats });
+  const again = await reloaded.getState().ensureTutorSession(branchId);
+  assert.deepEqual(again.state, session.state);
 });

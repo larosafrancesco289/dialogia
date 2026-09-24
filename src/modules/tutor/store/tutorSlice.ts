@@ -10,6 +10,7 @@ import { logger } from '@/lib/logger';
 import { getMessagesForChat } from '@/lib/messages/indexing';
 import { readNextOverrides } from '@/lib/ui/next';
 import {
+  branchEvents,
   emptyTutorState,
   fold,
   parseTutorEvent,
@@ -71,6 +72,15 @@ export type TutorStoreActions = {
    * dispatches. Resolves false when nothing belonged to it.
    */
   retractTutorReply: (chatId: string, messageId: string) => Promise<boolean>;
+  /**
+   * A chat was branched: the branch inherits the log up to the branch point,
+   * re-addressed to its own chat and message ids (see `branchEvents`).
+   */
+  branchTutorSession: (
+    sourceChatId: string,
+    chatId: string,
+    messageIds: Record<string, string>,
+  ) => Promise<void>;
   /** Forgets a deleted chat's session. Its stored events go with the chat. */
   dropTutorSession: (chatId: string) => void;
   primeTutorWelcomePreview: () => Promise<string | undefined>;
@@ -239,6 +249,32 @@ export function createTutorSlice(
 
     retractTutorReply(chatId, messageId) {
       return serialize(chatId, () => retract(chatId, messageId));
+    },
+
+    async branchTutorSession(sourceChatId, chatId, messageIds) {
+      // Behind the source's queued changes, so a tool call still landing is included or not, never half.
+      const source = await serialize(sourceChatId, () => ensureTutorSession(sourceChatId));
+      if (!source.events.length) return;
+      const messages = getMessagesForChat(get(), sourceChatId);
+      const copiedAt = messages.findIndex((m) => !(m.id in messageIds));
+      const later = copiedAt < 0 ? [] : messages.slice(copiedAt);
+      const seenSeq = messages
+        .filter((m) => m.id in messageIds && typeof m.tutorSeq === 'number')
+        .reduce((max, m) => Math.max(max, m.tutorSeq as number), 0);
+      const events = branchEvents(source.events, {
+        chatId,
+        copied: messageIds,
+        later: new Set(later.map((m) => m.id)),
+        seenSeq,
+        newId: uuidv4,
+      });
+      if (!events.length) return;
+      try {
+        await repository.appendTutorEvents(events);
+      } catch (error) {
+        logger.error('Tutor events could not be saved', error);
+      }
+      publish(chatId, { events, state: fold(events), loaded: true });
     },
 
     dropTutorSession(chatId) {

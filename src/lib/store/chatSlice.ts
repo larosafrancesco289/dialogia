@@ -15,7 +15,7 @@ import {
   setMessagesForChat,
 } from '@/lib/messages/indexing';
 import { hydrateMessageList } from '@/lib/services/hydrate';
-import { notifyChatDeleted } from '@/lib/modules';
+import { notifyChatBranched, notifyChatDeleted } from '@/lib/modules';
 
 // Keeps the turn pipeline out of the boot bundle; welcome priming is user-triggered
 // and fire-and-forget, so the deferred load is invisible to callers.
@@ -291,6 +291,13 @@ export function createChatSlice(
       });
 
       if (!result) return;
+      // Before the branch opens, so nothing reads its module state half-copied.
+      const messageIds: Record<string, string> = {};
+      result.messages.forEach((copy, i) => {
+        const source = sourceMessages[i];
+        if (source) messageIds[source.id] = copy.id;
+      });
+      await notifyChatBranched({ get }, { sourceChatId, chatId: result.chat.id, messageIds });
 
       set((s) => ({
         chats: [result.chat, ...s.chats],

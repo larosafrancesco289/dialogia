@@ -18,10 +18,12 @@ import type { ModuleSettingsDefaults, ModuleSettingsPhase } from '@/lib/settings
 import type { ModulePanels } from '@/lib/ui/panels';
 import type { TurnStore } from '@/lib/agent/contracts';
 import type { Chat, Message } from '@/lib/types';
+import { getMessagesForChat } from '@/lib/messages/indexing';
+import { inLatestExchange } from '@/lib/messages/latestExchange';
 import { createTutorSlice } from '@/modules/tutor/store/tutorSlice';
 import { tutorSettingsDefaults } from '@/modules/tutor/lib/defaults';
 import { tutorPanels } from '@/modules/tutor/panels';
-import { hasTutorPlan } from '@/modules/tutor/store/selectors';
+import { hasTutorPlan, tutorFollowsTranscript } from '@/modules/tutor/store/selectors';
 
 export type ModulePlanningArgs = {
   chat: Chat;
@@ -67,6 +69,13 @@ export type ModuleComposeContribution = {
 };
 
 /** A module's turn-time half. Loaded on demand, never at boot. */
+export type ChatBranch = {
+  sourceChatId: string;
+  chatId: string;
+  /** Source message id to its copy's id, for every copied message. */
+  messageIds: Record<string, string>;
+};
+
 export type ModuleRuntime = {
   /** Reacts to the turn's composition, plan result, and message. */
   turnEffects?(context: TurnEffectsContext): ModuleTurnEffects | undefined;
@@ -98,6 +107,13 @@ export type AppModule = {
   /** A chat was deleted; drop anything held for it in memory. Boot half. */
   onChatDeleted?(store: { get: StoreGetter }, chatId: string): void;
   /**
+   * A chat was branched: the branch has copies of the source's messages up to
+   * the branch point, under new ids. Whatever the module recorded for those
+   * messages should come along. Core awaits this before the branch opens.
+   * Boot half.
+   */
+  onChatBranched?(store: { get: StoreGetter }, branch: ChatBranch): Promise<void> | void;
+  /**
    * An assistant reply is about to be replaced (regenerated, or rerun after an
    * edit): whatever the module recorded for it should stop counting. Core
    * awaits this before the new reply is composed. Boot half.
@@ -106,6 +122,13 @@ export type AppModule = {
     store: { get: StoreGetter },
     reply: { chatId: string; messageId: string },
   ): Promise<void> | void;
+  /**
+   * The module keeps a record of this chat that follows its transcript in
+   * order, so a reply may be regenerated (or an edit rerun) only in the latest
+   * exchange: redoing an earlier reply under later ones would leave the record
+   * and the transcript disagreeing. Boot half.
+   */
+  latestExchangeOnly?(state: StoreState, chatId: string): boolean;
   /** Fills in the module's own chat-settings block. Boot half. */
   settingsDefaults?(args: {
     chat: Pick<Chat, 'settings'>;
@@ -131,9 +154,13 @@ const tutorModule: AppModule = {
   panels: tutorPanels,
   hasRightPanelContent: hasTutorPlan,
   onChatDeleted: ({ get }, chatId) => get().dropTutorSession(chatId),
+  onChatBranched: async ({ get }, { sourceChatId, chatId, messageIds }) => {
+    await get().branchTutorSession(sourceChatId, chatId, messageIds);
+  },
   onReplyRetracted: async ({ get }, { chatId, messageId }) => {
     await get().retractTutorReply(chatId, messageId);
   },
+  latestExchangeOnly: tutorFollowsTranscript,
   load: async () => (await import('@/modules/tutor/moduleEntry')).tutorRuntime,
 };
 
@@ -152,6 +179,35 @@ export function notifyChatDeleted(store: { get: StoreGetter }, chatId: string): 
       // One module's cleanup must not stop another's.
     }
   }
+}
+
+/** Every module's `onChatBranched`, awaited; a failing module never blocks the branch. */
+export async function notifyChatBranched(
+  store: { get: StoreGetter },
+  branch: ChatBranch,
+): Promise<void> {
+  await Promise.allSettled(
+    ENABLED_MODULES.map(async (appModule) => appModule.onChatBranched?.(store, branch)),
+  );
+}
+
+/**
+ * Whether a reply may be regenerated, or the user message before it edited and
+ * rerun: always, unless a module keeps a record that follows this chat's
+ * transcript, and then only in the latest exchange.
+ */
+export function canRedoReply(state: StoreState, chatId: string, messageId: string): boolean {
+  return (
+    !latestExchangeOnly(state, chatId) ||
+    inLatestExchange(getMessagesForChat(state, chatId), messageId)
+  );
+}
+
+/** Whether some module restricts this chat's regenerate and edit-and-rerun to its latest exchange. */
+export function latestExchangeOnly(state: StoreState, chatId: string): boolean {
+  return ENABLED_MODULES.some(
+    (appModule) => appModule.latestExchangeOnly?.(state, chatId) === true,
+  );
 }
 
 /** Every module's `onReplyRetracted`, awaited; a failing module never blocks the new reply. */
