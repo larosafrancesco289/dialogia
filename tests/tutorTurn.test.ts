@@ -9,6 +9,7 @@ import { composeTurn } from '@/lib/agent/compose';
 import { createTurnLifecycle } from '@/lib/agent/orchestrator/lifecycle';
 import { runTurn } from '@/lib/agent/orchestrator/turn';
 import { createPipelineClient } from '@/lib/agent/pipelineClient';
+import { regenerate } from '@/lib/agent/regenerate';
 import { buildTransportAuth } from '@/lib/auth/transport';
 import { loadModuleRuntimes } from '@/lib/modules';
 import { createModelIndex } from '@/lib/models';
@@ -188,8 +189,37 @@ function session() {
     return { requests, message: () => store.getState().messagesById[assistant.id] };
   };
 
+  /** Regenerates a reply the way the app does: retract what it recorded, then rerun it. */
+  const regenerateReply = async (messageId: string, script: Script) => {
+    const requests: TransportStreamParams[] = [];
+    const pipeline = createPipelineClient({
+      streamChatCompletion: async (params) => {
+        requests.push(params);
+        script(requests.length, params.callbacks);
+      },
+    });
+    await store.getState().retractTutorReply(chatId, messageId);
+    await regenerate({
+      chat: store.getState().chats[0],
+      chatId,
+      targetMessageId: messageId,
+      messages: getMessagesForChat(store.getState(), chatId),
+      turn: {
+        auth,
+        set: store.setState,
+        get: store.getState,
+        models: [model],
+        modelIndex: store.getState().modelIndex,
+        persistMessage: async () => {},
+      },
+      controller: new AbortController(),
+      pipeline,
+    });
+    return { requests, message: () => store.getState().messagesById[messageId] };
+  };
+
   const tutor = () => store.getState().tutorSessions[chatId];
-  return { chatId, store, turn, tutor };
+  return { chatId, store, turn, tutor, regenerateReply };
 }
 
 const PLAN = {
@@ -320,4 +350,43 @@ test('a tutoring session runs intake, plan, teaching and a chapter break through
   );
   // Replayed history never carries an answer key or a failed call's secrets.
   assert.ok(!JSON.stringify(breakRequest.messages).includes('"correct"'));
+});
+
+test('regenerating a tutor reply reruns the whole turn, so its card comes back as a card', async () => {
+  const s = session();
+  const first = await s.turn('Teach me calculus.', (_, cb) =>
+    reply(cb, 'Here is a plan.', [call('propose_plan', PLAN, 'call-plan')]),
+  );
+  const replyId = first.message().id;
+  const oldProposal = s.tutor().state.proposal!.proposalId;
+
+  const again = await s.regenerateReply(replyId, (_, cb) =>
+    reply(cb, 'A shorter plan.', [
+      call('propose_plan', { ...PLAN, topics: PLAN.topics.slice(0, 1) }, 'call-plan-2'),
+    ]),
+  );
+
+  assert.equal(again.requests.length, 1, 'the card still ends the turn');
+  const [request] = again.requests;
+  assert.ok(toolNames(request).includes('propose_plan'), 'the tools are offered again');
+  const system = systemOf(request);
+  assert.ok(system.startsWith(TUTOR_SYSTEM_PROMPT), 'a fresh composition, not the old snapshot');
+  assert.ok(system.includes('Phase: intake'), 'composed after the old proposal was retracted');
+  assert.equal(
+    request.messages.filter((m) => m.role === 'assistant').length,
+    0,
+    'the reply being replaced is not in its own history',
+  );
+
+  const message = again.message();
+  assert.equal(message.id, replyId);
+  assert.equal(message.content, 'A shorter plan.');
+  assert.equal(message.toolRounds?.[0]?.calls[0]?.name, 'propose_plan');
+  const proposal = s.tutor().state.proposal!;
+  assert.notEqual(proposal.proposalId, oldProposal);
+  assert.equal(proposal.messageId, replyId);
+  assert.deepEqual(
+    proposal.plan.nodes.map((n) => n.id),
+    ['limits'],
+  );
 });
