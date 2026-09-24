@@ -16,7 +16,11 @@ import type {
   AnthropicUserContentBlock,
 } from '@/lib/anthropic/wire';
 
-function parseJsonObject(value: string | undefined): Record<string, unknown> {
+/**
+ * A tool call's JSON arguments as the object a tool_use block's `input` must
+ * be. Empty, malformed or non-object JSON reads as no arguments.
+ */
+export function parseToolInput(value: string | undefined): Record<string, unknown> {
   if (!value) return {};
   try {
     const parsed = JSON.parse(value);
@@ -123,11 +127,18 @@ function convertUserContent(
   return blocks;
 }
 
-function readAnthropicThinkingBlocks(value: unknown): AnthropicThinkingBlock[] | undefined {
-  if (!isRecord(value)) return undefined;
-  if (value.provider !== 'anthropic') return undefined;
-  if (!Array.isArray(value.thinkingBlocks)) return undefined;
-  const blocks = value.thinkingBlocks
+/**
+ * How a reply's thinking is kept on the message (`reasoning_details`), so the
+ * next request can send it back as the Messages API requires during tool use.
+ */
+type AnthropicReasoningDetails = {
+  provider: 'anthropic';
+  thinkingBlocks: AnthropicThinkingBlock[];
+};
+
+/** The signed thinking blocks in a list. An unsigned block cannot be sent back. */
+export function pickThinkingBlocks(entries: unknown[]): AnthropicThinkingBlock[] {
+  return entries
     .map((entry) => {
       if (!isRecord(entry)) return null;
       if (entry.type !== 'thinking') return null;
@@ -139,13 +150,24 @@ function readAnthropicThinkingBlocks(value: unknown): AnthropicThinkingBlock[] |
       } satisfies AnthropicThinkingBlock;
     })
     .filter((entry): entry is AnthropicThinkingBlock => entry !== null);
-  return blocks.length > 0 ? blocks : undefined;
+}
+
+export function toReasoningDetails(
+  thinkingBlocks: AnthropicThinkingBlock[],
+): AnthropicReasoningDetails | undefined {
+  return thinkingBlocks.length > 0 ? { provider: 'anthropic', thinkingBlocks } : undefined;
+}
+
+function readReasoningDetails(value: unknown): AnthropicThinkingBlock[] {
+  if (!isRecord(value)) return [];
+  if (value.provider !== 'anthropic') return [];
+  if (!Array.isArray(value.thinkingBlocks)) return [];
+  return pickThinkingBlocks(value.thinkingBlocks);
 }
 
 function convertAssistantContent(message: Extract<ModelMessage, { role: 'assistant' }>) {
   const blocks: AnthropicAssistantContentBlock[] = [];
-  const thinkingBlocks = readAnthropicThinkingBlocks(message.reasoning_details);
-  if (thinkingBlocks?.length) blocks.push(...thinkingBlocks);
+  blocks.push(...readReasoningDetails(message.reasoning_details));
 
   if (Array.isArray(message.content)) {
     for (const block of message.content) {
@@ -171,7 +193,7 @@ function convertAssistantContent(message: Extract<ModelMessage, { role: 'assista
         type: 'tool_use',
         id: toolCall.id,
         name,
-        input: parseJsonObject(toolCall.function.arguments),
+        input: parseToolInput(toolCall.function.arguments),
       });
     }
   }

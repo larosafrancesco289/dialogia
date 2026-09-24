@@ -4,6 +4,7 @@
 
 import type { PluginConfig, ToolDefinition } from '@/lib/transport/contracts';
 import type { TransportChatParams } from '@/lib/transport/types';
+import { logger } from '@/lib/logger';
 import { isRecord } from '@/lib/utils/guards';
 import { withoutToolHistory } from '@/lib/transport/toolHistory';
 import {
@@ -210,4 +211,28 @@ export function buildAnthropicBody(
   if (unsupported.size > 0) params.onUnsupportedContent?.(Array.from(unsupported));
 
   return body;
+}
+
+/** The body chat and stream send: every transport param, with automatic caching on. */
+export function bodyFromParams(
+  params: TransportChatParams,
+  stream: boolean,
+): AnthropicMessagesRequest {
+  return buildAnthropicBody({
+    model: params.model,
+    messages: params.messages,
+    stream,
+    temperature: params.temperature,
+    topP: params.topP,
+    maxTokens: params.maxTokens,
+    reasoningEffort: params.reasoningEffort,
+    reasoningTokens: params.reasoningTokens,
+    disableReasoning: params.disableReasoning,
+    tools: params.tools,
+    toolChoice: params.toolChoice,
+    plugins: params.plugins,
+    enableAutomaticCaching: true,
+    onUnsupportedContent: (kinds) =>
+      logger.warn(`[Anthropic] Dropped unsupported content: ${kinds.join(', ')}`),
+  });
 }
