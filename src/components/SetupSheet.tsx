@@ -1,9 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { shallow } from 'zustand/shallow';
 import { DialogOverlay, DialogPortal } from '@/components/ui/Dialog';
 import { useChatStore } from '@/lib/store';
 import { setKey } from '@/lib/keys/store';
+import { useBackToClose } from '@/lib/hooks/useBackToClose';
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
+import { useModalFocus } from '@/lib/hooks/useModalFocus';
+import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import {
   ANTHROPIC_ENDPOINT,
   OPENROUTER_ENDPOINT,
@@ -38,16 +42,19 @@ export function SetupSheet() {
   const [label, setLabel] = useState('Local model');
   const [busy, setBusy] = useState(false);
 
+  const surfaceRef = useRef<HTMLDivElement>(null);
+  const valueRef = useRef<HTMLInputElement>(null);
+  // A touch screen starts on the dialog itself: focusing the field would
+  // raise the keyboard over a dialog not yet read.
+  const isTouch = useMediaQuery(MEDIA_QUERIES.touch);
+
   const close = () => setUI({ setupOpen: false });
 
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') close();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useBackToClose(true, close);
+  useModalFocus(true, surfaceRef, {
+    initialFocus: isTouch ? undefined : valueRef,
+    onEscape: close,
+  });
 
   const canSubmit = value.trim().length > 0 && (choice !== 'local' || label.trim().length > 0);
 
@@ -79,10 +86,13 @@ export function SetupSheet() {
       <DialogOverlay className="scrim z-[90]" onClose={close}>
         <div className="fixed inset-0 z-[95] flex items-center justify-center p-4">
           <motion.div
+            ref={surfaceRef}
             className="dialog max-w-md"
             role="dialog"
             aria-modal="true"
             aria-labelledby="setup-title"
+            // A click on its text keeps focus in the dialog instead of dropping it.
+            tabIndex={-1}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.18 }}
@@ -134,6 +144,7 @@ export function SetupSheet() {
                     Base URL
                   </label>
                   <input
+                    ref={valueRef}
                     id="setup-value"
                     className="input w-full text-base sm:text-sm"
                     placeholder="http://localhost:11434/v1"
@@ -156,6 +167,7 @@ export function SetupSheet() {
                   API key
                 </label>
                 <input
+                  ref={valueRef}
                   id="setup-value"
                   type="password"
                   autoComplete="off"
