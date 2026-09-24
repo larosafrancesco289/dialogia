@@ -20,7 +20,7 @@ import {
 } from '@/lib/anthropic/shared';
 
 const MODEL_CACHE_TTL_MS = 1000 * 60 * 5;
-let modelCache = new Map<
+const modelCache = new Map<
   string,
   { models: ModelDescriptor[]; fetchedAt: number; origin?: string }
 >();
@@ -137,10 +137,6 @@ function normalizeAnthropicModel(entry: unknown, endpointId: string): ModelDescr
     transportModelId: directId,
     providerDisplay: 'Anthropic',
   };
-}
-
-export function clearAnthropicCachesForTest() {
-  modelCache = new Map();
 }
 
 export async function fetchModels(

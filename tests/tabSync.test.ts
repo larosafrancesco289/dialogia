@@ -1,10 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createStore } from 'zustand/vanilla';
-import type { StateCreator } from 'zustand';
 import { repository } from '@/lib/db';
-import { buildStoreInitializer } from '@/lib/store/createStore';
-import type { StoreState } from '@/lib/store/types';
 import { connectTabSync, OTHER_TAB_REPLY_TIMEOUT_MS } from '@/lib/store/tabSync';
 import { createTabChannel, type TabAnnouncement } from '@/lib/sync/tabChannel';
 import { createAssistantMessage, createUserMessage } from '@/lib/messages/createMessage';
@@ -13,30 +9,11 @@ import { adjustActiveTurnCount, clearActiveTurnCount, replyInProgress } from '@/
 import { NOTICE_REPLY_IN_OTHER_TAB } from '@/lib/store/notices';
 import type { Chat, Message } from '@/lib/types';
 import { createFakeBus } from './helpers/fakeTabBus';
-
-const newStore = () =>
-  createStore<StoreState>(buildStoreInitializer() as unknown as StateCreator<StoreState>);
+import { makeChat } from './helpers/makeChat';
+import { createTestStore } from './helpers/createTestStoreState';
 
 let counter = 0;
 const uniqueId = (label: string) => `${label}-${(counter += 1)}`;
-
-const makeChat = (id: string, title = 'Chat'): Chat => ({
-  id,
-  title,
-  createdAt: 1,
-  updatedAt: 1,
-  settings: {
-    modelId: 'provider/model',
-    generation: {},
-    ui: {
-      showThinkingByDefault: false,
-      showStats: false,
-      showToolCallLog: false,
-      showDebugRawJson: false,
-    },
-    features: { search: { enabled: false, provider: 'openrouter' }, tutor: { enabled: false } },
-  },
-});
 
 /**
  * Two tabs over the one (in-memory) database, joined by a fake BroadcastChannel.
@@ -47,7 +24,7 @@ function twoTabs(chats: Chat[]) {
   const bus = createFakeBus();
   let clock = 1_000;
   const tab = () => {
-    const store = newStore();
+    const store = createTestStore();
     const channel = createTabChannel(bus.open);
     const heard: TabAnnouncement[] = [];
     channel.subscribe((announcement) => heard.push(announcement));
@@ -86,23 +63,23 @@ function twoTabs(chats: Chat[]) {
 }
 
 async function savedChat(title = 'Chat') {
-  const chat = makeChat(uniqueId('chat'), title);
+  const chat = makeChat({ id: uniqueId('chat'), title });
   await repository.saveChat(chat);
   return chat;
 }
 
-const messageIds = (store: ReturnType<typeof newStore>, chatId: string) =>
+const messageIds = (store: ReturnType<typeof createTestStore>, chatId: string) =>
   getMessagesForChat(store.getState(), chatId).map((m) => m.id);
 
 /** A turn starting in a tab, the way the turn service counts it. */
-function startTurn(store: ReturnType<typeof newStore>, chatId: string, messages: Message[]) {
+function startTurn(store: ReturnType<typeof createTestStore>, chatId: string, messages: Message[]) {
   store.setState((s) => ({
     ...appendMessagesToChat(s, chatId, messages),
     ui: adjustActiveTurnCount(s.ui, chatId, 1),
   }));
 }
 
-const endTurn = (store: ReturnType<typeof newStore>, chatId: string) =>
+const endTurn = (store: ReturnType<typeof createTestStore>, chatId: string) =>
   store.setState((s) => ({ ui: clearActiveTurnCount(s.ui, chatId) }));
 
 test('a rename in one tab shows in the other, and a new chat appears there', async () => {
@@ -363,7 +340,7 @@ test('a tab that closes mid-reply says so, and a tab that opens learns of replie
     startTurn(tabs.a.store, chat.id, [reply]);
     await tabs.settle();
 
-    const late = newStore();
+    const late = createTestStore();
     const lateSync = connectTabSync(late, createTabChannel(tabs.bus.open), {
       every: () => () => undefined,
     });

@@ -1,36 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildFolderTreeIndex, getFolderChildren } from '@/lib/ui/sidebar/folderTree';
-import type { Chat, ChatSettings, Folder } from '@/lib/types';
-
-const BASE_CHAT_SETTINGS: ChatSettings = {
-  modelId: 'openai/gpt-4o-mini',
-  generation: {},
-  ui: {
-    showThinkingByDefault: false,
-    showStats: false,
-    showToolCallLog: false,
-    showDebugRawJson: true,
-  },
-  features: {
-    search: {
-      enabled: false,
-      provider: 'openrouter',
-    },
-    tutor: {
-      enabled: false,
-    },
-  },
-};
-
-const chat = (overrides: Partial<Chat>): Chat => ({
-  id: overrides.id ?? 'chat-1',
-  title: overrides.title ?? 'Chat',
-  createdAt: overrides.createdAt ?? 1,
-  updatedAt: overrides.updatedAt ?? 1,
-  settings: overrides.settings ?? BASE_CHAT_SETTINGS,
-  folderId: overrides.folderId,
-});
+import type { Chat, Folder } from '@/lib/types';
+import { makeChat as chat } from '../../../../tests/helpers/makeChat';
 
 const folder = (overrides: Partial<Folder>): Folder => ({
   id: overrides.id ?? 'folder-1',

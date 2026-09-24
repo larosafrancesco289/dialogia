@@ -2,30 +2,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { resolveTurnSettings } from '@/lib/settings/resolve';
 import { DEFAULT_REASONING_EFFORT } from '@/lib/settings/generation';
-import type { Chat, GenerationSettings, ModelDescriptor } from '@/lib/types';
+import type { GenerationSettings, ModelDescriptor } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
+import { makeChat } from './helpers/makeChat';
 
-const buildChat = (generation: GenerationSettings): Chat => ({
-  id: 'chat-1',
-  title: 'Chat',
-  createdAt: Date.now() - 1000,
-  updatedAt: Date.now() - 500,
-  settings: {
-    modelId: 'anthropic/claude-fable-5',
-    system: 'Be helpful.',
-    generation,
-    ui: {
-      showThinkingByDefault: false,
-      showStats: false,
-      showToolCallLog: false,
-      showDebugRawJson: true,
-    },
-    features: {
-      search: { enabled: false, provider: 'openrouter' },
-      tutor: { enabled: false },
-    },
-  },
-});
+const buildChat = (generation: GenerationSettings) =>
+  makeChat({
+    settings: { modelId: 'anthropic/claude-fable-5', system: 'Be helpful.', generation },
+  });
 
 const buildModelIndex = (canReason: boolean, model?: ModelDescriptor): ModelIndex => ({
   all: model ? [model] : [],

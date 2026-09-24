@@ -163,7 +163,7 @@ export function describeKey(ref?: string): string | undefined {
   return value.length <= 4 ? '••••' : `••••${value.slice(-4)}`;
 }
 
-/** Test seam: swap the backing table (and the announcement) and reset the cache. */
+/** @internal Test seam: swap the backing table (and the announcement) and reset the cache. */
 export function resetKeyStoreForTest(next?: KeyTable, announce?: () => void) {
   table = next ?? createMemoryKeyTable();
   announceKeysChanged = announce ?? (() => tabChannel.post({ kind: 'keys' }));

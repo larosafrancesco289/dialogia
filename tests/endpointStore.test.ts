@@ -1,20 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createStore } from 'zustand/vanilla';
-import { buildStoreInitializer } from '@/lib/store/createStore';
 import { buildPersistedState, mergePersistedState } from '@/lib/store/persistence';
 import { parseCustomEndpoints } from '@/lib/store/endpointSlice';
-import type { StoreState } from '@/lib/store/types';
 import { listEndpoints, resetEndpointRegistryForTest } from '@/lib/transport/endpointRegistry';
 import { requireEndpointAuth } from '@/lib/auth/require';
 import { deleteKey, getKey, setKey } from '@/lib/keys/store';
 import { mockFetch } from './helpers/mockFetch';
-
-const freshStore = () => createStore<StoreState>(buildStoreInitializer() as never);
+import { createTestStore } from './helpers/createTestStoreState';
 
 test('an added endpoint reaches the registry the request path reads', () => {
   resetEndpointRegistryForTest();
-  const store = freshStore();
+  const store = createTestStore();
   store.getState().addEndpoint({
     kind: 'openai-compatible',
     label: 'LM Studio',
@@ -37,7 +33,7 @@ test('an added endpoint reaches the registry the request path reads', () => {
 
 test('the built-ins cannot be removed or shadowed', () => {
   resetEndpointRegistryForTest();
-  const store = freshStore();
+  const store = createTestStore();
   store.getState().removeEndpoint('openrouter');
   assert.ok(listEndpoints().some((endpoint) => endpoint.id === 'openrouter'));
   assert.deepEqual(
@@ -48,7 +44,7 @@ test('the built-ins cannot be removed or shadowed', () => {
 
 test('persisted endpoints round-trip and never carry a key value', async () => {
   resetEndpointRegistryForTest();
-  const store = freshStore();
+  const store = createTestStore();
   const endpoint = store
     .getState()
     .addEndpoint({ kind: 'openai-compatible', label: 'Ollama', baseUrl: 'http://x/v1' });
@@ -62,7 +58,7 @@ test('persisted endpoints round-trip and never carry a key value', async () => {
   await deleteKey(endpoint.apiKeyRef!);
 
   resetEndpointRegistryForTest();
-  const merged = mergePersistedState(freshStore().getState(), persisted);
+  const merged = mergePersistedState(createTestStore().getState(), persisted);
   assert.equal(merged.customEndpoints.length, 1);
   // Merging is what republishes into the registry on a page load.
   assert.ok(listEndpoints().some((endpoint) => endpoint.id === 'ollama'));
@@ -91,7 +87,7 @@ test('an imported endpoint cannot claim a key reference it does not own', () => 
 
 test('a keyless OpenAI-compatible endpoint is callable and contributes models', async () => {
   resetEndpointRegistryForTest();
-  const store = freshStore();
+  const store = createTestStore();
   const endpoint = store.getState().addEndpoint({
     kind: 'openai-compatible',
     label: 'Ollama',
@@ -119,7 +115,7 @@ test('a keyless OpenAI-compatible endpoint is callable and contributes models', 
 
 test('removing an endpoint removes its key so a reused slug cannot inherit it', async () => {
   resetEndpointRegistryForTest();
-  const store = freshStore();
+  const store = createTestStore();
   const first = store.getState().addEndpoint({
     kind: 'openai-compatible',
     label: 'Ollama',

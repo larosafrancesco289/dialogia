@@ -8,32 +8,21 @@ import {
 } from '@/lib/agent/prompts/timestamps';
 import { composeTurn } from '@/lib/agent/compose';
 import { resolveTurnSettings } from '@/lib/settings/resolve';
-import type { Chat, Message } from '@/lib/types';
+import type { Message } from '@/lib/types';
 import type { ModelIndex } from '@/lib/models';
+import { makeChat } from './helpers/makeChat';
 
 const TIMESTAMP_PREFIX = /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}\] /;
 
-const baseChat = (): Chat => ({
-  id: 'chat-1',
-  title: 'Timestamps',
-  createdAt: Date.now() - 1000,
-  updatedAt: Date.now() - 500,
-  settings: {
-    modelId: 'provider/model-alpha',
-    system: 'Be brief.',
-    generation: { maxTokens: 256 },
-    ui: {
-      showThinkingByDefault: false,
-      showStats: false,
-      showToolCallLog: false,
-      showDebugRawJson: true,
+const baseChat = () =>
+  makeChat({
+    title: 'Timestamps',
+    settings: {
+      modelId: 'provider/model-alpha',
+      system: 'Be brief.',
+      generation: { maxTokens: 256 },
     },
-    features: {
-      search: { enabled: false, provider: 'openrouter' },
-      tutor: { enabled: false },
-    },
-  },
-});
+  });
 
 const priorMessages = (): Message[] => [
   {
