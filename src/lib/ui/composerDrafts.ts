@@ -37,7 +37,3 @@ export function writeDraft(scope: string, text: string): void {
     // As above.
   }
 }
-
-export function resetDraftsForTest(): void {
-  drafts = null;
-}

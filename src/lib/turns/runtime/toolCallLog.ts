@@ -126,24 +126,6 @@ export function updateToolCallLogEntry({
   });
 }
 
-export function clearToolCallLogs({
-  set,
-  chatId,
-  messageId,
-}: {
-  set: StoreSetter;
-  chatId: string;
-  messageId: string;
-}): void {
-  set((state) => {
-    const patch = mutateMessage(state, chatId, messageId, (msg) => {
-      if (!msg.toolCalls || msg.toolCalls.length === 0) return msg;
-      return { ...msg, toolCalls: [] };
-    });
-    return patch ?? state;
-  });
-}
-
 // Pre-logged entries (created from streamed tool-call deltas with empty input)
 // whose calls were dropped by scheduling would otherwise stay "pending" in the
 // UI forever. Executed entries are resolved before this runs, so any pending

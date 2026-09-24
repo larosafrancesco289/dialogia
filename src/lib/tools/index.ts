@@ -4,31 +4,20 @@
 // effects, so it stays out of the boot bundle.
 
 export {
-  getTool,
-  getToolDefinitions,
-  getToolExt,
   getToolHandler,
-  getToolKind,
   getToolLogCategory,
-  getToolModule,
   isContentTool,
   isMetaTool,
-  isRegisteredTool,
   isReplayTool,
+} from '@/lib/tools/registry';
+export { isSearchTool } from '@/lib/tools/core/searchTools';
+/** @internal The registry tests read and edit the registry through this surface. */
+export {
+  getTool,
+  getToolKind,
+  isRegisteredTool,
   listTools,
   registerTool,
   unregisterTool,
   type PlanningToolHandler,
-  type ToolFilter,
-  type ToolKind,
-  type ToolMetadata,
-  type ToolRegistryEntry,
 } from '@/lib/tools/registry';
-export { isSearchTool } from '@/lib/tools/core/searchTools';
-export type {
-  PlanningToolExecutionResult,
-  ToolExecutionArgs,
-  ToolExecutionContext,
-  ToolResult,
-} from '@/lib/tools/execution';
-export { extractInlineToolCalls, parseJsonAfter } from '@/lib/tools/json';

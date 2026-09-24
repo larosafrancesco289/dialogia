@@ -63,14 +63,8 @@ export const ANTHROPIC_ENDPOINT: ProviderEndpoint = Object.freeze({
 /** Always present, never deletable. */
 export const BUILT_IN_ENDPOINTS: ProviderEndpoint[] = [OPENROUTER_ENDPOINT, ANTHROPIC_ENDPOINT];
 
-export const DEFAULT_ENDPOINT_ID = OPENROUTER_ENDPOINT_ID;
-
 export function isBuiltInEndpointId(id: string): boolean {
   return id === OPENROUTER_ENDPOINT_ID || id === ANTHROPIC_ENDPOINT_ID;
-}
-
-export function getBuiltInEndpoint(id: string): ProviderEndpoint | undefined {
-  return BUILT_IN_ENDPOINTS.find((endpoint) => endpoint.id === id);
 }
 
 /**
@@ -117,10 +111,6 @@ export function endpointCapabilities(endpoint: ProviderEndpoint): Required<Endpo
     parallelToolCalls: explicit.parallelToolCalls ?? defaults.parallelToolCalls,
     promptCaching: explicit.promptCaching ?? defaults.promptCaching,
   };
-}
-
-export function getEndpointLabel(endpoint?: ProviderEndpoint): string {
-  return endpoint?.label || OPENROUTER_ENDPOINT.label;
 }
 
 /** A local OpenAI-compatible server (Ollama, LM Studio, llama.cpp) usually has no key. */

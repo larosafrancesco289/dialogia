@@ -8,7 +8,3 @@ export function getNodeEnv(): string | undefined {
 export function isProd(): boolean {
   return getNodeEnv() === 'production';
 }
-
-export function isDev(): boolean {
-  return !isProd();
-}

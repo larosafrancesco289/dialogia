@@ -2,9 +2,9 @@ import type { SearchMode } from '@/lib/search/providers/types';
 import { parseToolArguments } from '@/lib/agent/parsers';
 import { executePlanningToolCall } from '@/lib/agent/tools/exec';
 import { createToolExecutionLogger } from '@/lib/agent/tools/executionLogger';
-import type { ModelMessage, PlanTurnOptions, ToolCall, ToolModelMessage } from '@/lib/agent/types';
+import type { ModelMessage, ToolCall, ToolModelMessage, TurnContext } from '@/lib/agent/types';
 import type { PlanningToolExecutionResult, ToolResult } from '@/lib/tools/execution';
-import type { Message } from '@/lib/types';
+import type { Chat, Message } from '@/lib/types';
 import type { PlanningExecutionState } from '@/lib/agent/planning/types';
 
 /** What one executed call produced, as the agent loop needs it. */
@@ -26,15 +26,15 @@ export async function applyToolExecutions(args: {
   round: number;
   convo: ModelMessage[];
   context: {
-    chat: PlanTurnOptions['chat'];
+    chat: Chat;
     chatId: string;
     assistantMessage: Message;
     userContent: string;
     searchProvider: SearchMode;
     controller: AbortController;
-    set: PlanTurnOptions['turn']['set'];
-    get: PlanTurnOptions['turn']['get'];
-    persistMessage: PlanTurnOptions['turn']['persistMessage'];
+    set: TurnContext['set'];
+    get: TurnContext['get'];
+    persistMessage: TurnContext['persistMessage'];
   };
   state: PlanningExecutionState;
   /**

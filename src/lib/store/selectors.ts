@@ -3,7 +3,6 @@
 
 import type { Chat } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
-import type { ModelCapabilityFlags } from '@/lib/models';
 import { readNextOverrides } from '@/lib/ui/next';
 import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 import { getMessagesForChat } from '@/lib/messages/indexing';
@@ -16,8 +15,6 @@ export const selectCurrentChat = (state: StoreState) => {
   return state.chats.find((chat) => chat.id === chatId);
 };
 
-export const selectSelectedChatId = (state: StoreState) => state.selectedChatId;
-
 export const selectMessagesForChat = (chatId?: string) => (state: StoreState) =>
   chatId ? getMessagesForChat(state, chatId) : [];
 
@@ -27,13 +24,6 @@ export const selectChatMessagesLoaded = (chatId?: string) => (state: StoreState)
 export const selectMessagesForCurrentChat = (state: StoreState) => {
   const chatId = state.selectedChatId;
   return chatId ? getMessagesForChat(state, chatId) : [];
-};
-
-export const selectLastMessageId = (state: StoreState) => {
-  const chatId = state.selectedChatId;
-  if (!chatId) return undefined;
-  const ids = state.messageIdsByChatId[chatId] ?? [];
-  return ids.length ? ids[ids.length - 1] : undefined;
 };
 
 export const selectIsStreaming = (state: StoreState) => {
@@ -70,22 +60,9 @@ export const selectIsTutorEnabled = (state: StoreState) =>
 export const selectIsTutorEnabledForChat = (chatId?: string) => (state: StoreState) =>
   resolveTutorEnabled(state, chatId ? state.chats.find((chat) => chat.id === chatId) : undefined);
 
-export const selectModelCaps =
-  (modelId?: string) =>
-  (state: StoreState): ModelCapabilityFlags =>
-    state.modelIndex.caps(modelId);
-
-export const selectFavoriteModelIds = (state: StoreState) => state.favoriteModelIds;
-
-export const selectHiddenModelIds = (state: StoreState) => state.hiddenModelIds;
-
 export const selectNotice = (state: StoreState) => state.ui.notice;
 
-export const selectModels = (state: StoreState) => state.models;
-
 export const selectNextOverrides = (state: StoreState) => readNextOverrides(state.ui);
-
-export const selectNextModel = (state: StoreState) => selectNextOverrides(state).modelId;
 
 export const selectResolvedModelId =
   (fallbackId?: string) =>
@@ -99,12 +76,6 @@ export const selectResolvedTurnSettings = (state: StoreState) => {
   const chat = selectCurrentChat(state);
   if (!chat) return undefined;
   return resolveTurnSettings({ chat, ui: state.ui, modelIndex: state.modelIndex });
-};
-
-export const selectActiveModelIds = (state: StoreState) => {
-  const chat = selectCurrentChat(state);
-  if (!chat) return [];
-  return chat.settings.modelId ? [chat.settings.modelId] : [];
 };
 
 export const selectSearchEnabled = (state: StoreState) => {

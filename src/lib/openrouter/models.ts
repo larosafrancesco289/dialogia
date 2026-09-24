@@ -20,6 +20,7 @@ const fingerprintKey = (value: string): string => {
   return (hash >>> 0).toString(16);
 };
 
+/** @internal Test seam: resets module state between tests. */
 export function clearOpenRouterCachesForTest() {
   modelCache = new Map();
 }

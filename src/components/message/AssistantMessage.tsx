@@ -17,6 +17,7 @@ import { StreamingMarkdown } from '@/components/message/StreamingMarkdown';
 import { useChatStore } from '@/lib/store';
 import { messageHasModuleContent } from '@/lib/modules';
 import type { Chat, Message, ModelDescriptor, PersistedAttachment } from '@/lib/types';
+import { isRecord } from '@/lib/utils/guards';
 import styles from './MessageCard.module.css';
 
 export type AssistantMessageProps = {
@@ -66,10 +67,6 @@ const CUT_OFF_NOTES: Record<NonNullable<Message['cutOff']>, string> = {
   failed: 'Cut off by an error before the end.',
   interrupted: 'Cut off: the page closed while this was being written.',
 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function annotationSources(value: unknown): MarkdownCitationSource[] {
   if (Array.isArray(value)) return value.flatMap(annotationSources);

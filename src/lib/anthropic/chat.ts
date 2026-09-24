@@ -2,10 +2,7 @@ import { logger } from '@/lib/logger';
 import { normalizeUsage, sumUsage } from '@/lib/api/normalizers';
 import { API_ERROR_CODES } from '@/lib/api/errors';
 import type { TransportChatParams } from '@/lib/transport/types';
-import type { ModelMessage } from '@/lib/transport/contracts';
 import type { ChatCompletion } from '@/lib/transport/completions';
-import { buildTransportAuth } from '@/lib/auth/transport';
-import { ANTHROPIC_ENDPOINT } from '@/lib/transport/endpoints';
 import { anMessages } from '@/lib/anthropic/http';
 import {
   buildAnthropicBody,
@@ -214,41 +211,3 @@ export async function chatCompletion(params: TransportChatParams): Promise<ChatC
   });
   return mapAnthropicResponseToChatCompletion(data, params.model);
 }
-
-/**
- * Compatibility helper used by the ablation runner.
- * This intentionally routes through the same request builder as the UI transport.
- */
-export async function anthropicChatCompletion({
-  apiKey,
-  model,
-  messages,
-  temperature = 0,
-  maxTokens = 2048,
-  enableAutomaticCaching = false,
-}: {
-  apiKey: string;
-  model: string;
-  messages: ModelMessage[];
-  temperature?: number;
-  maxTokens?: number;
-  enableAutomaticCaching?: boolean;
-}): Promise<ChatCompletion> {
-  const auth = buildTransportAuth({ endpoint: ANTHROPIC_ENDPOINT, apiKey });
-  const body = buildAnthropicBody({
-    model,
-    messages,
-    stream: false,
-    temperature,
-    maxTokens,
-    plugins: undefined,
-    enableAutomaticCaching,
-  });
-  const data = await requestAnthropicMessageSequence({
-    auth,
-    body,
-  });
-  return mapAnthropicResponseToChatCompletion(data, model);
-}
-
-export { resolveAnthropicDirectModelId } from '@/lib/anthropic/shared';

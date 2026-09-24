@@ -146,8 +146,8 @@ follows through a `BroadcastChannel` (`src/lib/sync/tabChannel.ts`, a no-op wher
    Zero-Data-Retention (ZDR) gate, and hands off to `src/lib/agent/orchestrator/turn.ts`.
 3. `src/lib/agent/compose.ts` assembles the request, which means system preambles, message history
    and tool definitions. Enabled modules contribute tools and preambles through
-   `ModuleRuntime.compose`, and may set `requiresPlanning` to demand the multi-round planning loop,
-   or `loop: 'agent'` to demand the visible agent loop (see below).
+   `ModuleRuntime.compose`, and may set `loop: 'agent'` to demand the visible agent loop. Tool-based
+   search runs the default loop instead (see below).
 4. `src/lib/settings/resolve.ts` produces `ResolvedTurnSettings`, which carries the model, the
    clamped reasoning effort, and the effective search mode. Everything downstream reads the
    resolved values, never the raw chat settings.

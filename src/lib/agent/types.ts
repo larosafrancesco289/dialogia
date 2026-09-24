@@ -2,7 +2,6 @@ import type { Chat, Message, ModelDescriptor, PersistedAttachment, SearchMode } 
 import type { SearchResult } from '@/lib/search/types';
 import type { Result } from '@/lib/utils/result';
 import type { ModelIndex } from '@/lib/models';
-import { ProviderSort } from '@/lib/models/providerSort';
 import type { TransportAuth } from '@/lib/auth/transport';
 import type { TurnStore, TurnStoreState } from '@/lib/agent/contracts';
 import type {
@@ -11,31 +10,22 @@ import type {
 } from '@/lib/contracts/store';
 import type { UiSnapshot } from '@/lib/contracts/ui';
 import type { ResolvedTurnSettings } from '@/lib/settings/resolve';
-import type { WebSearchArgs as SearchArgs } from '@/lib/search/args';
 import type { PipelineClient } from '@/lib/agent/pipelineClient';
 import type { ModelMessage, PluginConfig, ToolDefinition } from '@/lib/transport/contracts';
 
 export type {
-  AssistantModelMessage,
-  CacheControl,
   ModelContentBlock,
   ModelMessage,
-  PdfPluginConfig,
   PluginConfig,
-  SystemModelMessage,
   ToolCall,
   ToolDefinition,
-  ToolFunctionDefinition,
   ToolModelMessage,
-  UserModelMessage,
-  WebPluginConfig,
 } from '@/lib/transport/contracts';
 
 export type StoreSetter = ContractStoreSetter<TurnStoreState>;
 export type StoreGetter = ContractStoreGetter<TurnStoreState>;
 export type PersistMessage = (message: Message) => Promise<void>;
 
-export { ProviderSort };
 export type { ResolvedTurnSettings };
 
 export type StoreAccess = { set: StoreSetter; get: StoreGetter };
@@ -51,24 +41,6 @@ export type TurnContext = {
   persistMessage: PersistMessage;
 };
 
-export type WebSearchArgs = SearchArgs;
-
-export type PlanTurnOptions = {
-  chat: Chat;
-  chatId: string;
-  assistantMessage: Message;
-  userContent: string;
-  combinedSystem?: string;
-  systemStable?: string;
-  systemDynamic?: string;
-  baseMessages: ModelMessage[];
-  toolDefinition?: ToolDefinition[];
-  controller: AbortController;
-  turn: TurnContext;
-  settings: ResolvedTurnSettings;
-  pipeline?: PipelineClient;
-};
-
 export type PlanTurnResult = {
   finalSystem: string;
   usedContentTool: boolean;
@@ -80,11 +52,6 @@ export type PlanTurnSideEffect = {
   chatId: string;
   messageId: string;
   content: string;
-};
-
-export type PlanTurnOutput = {
-  result: PlanTurnResult;
-  sideEffects: PlanTurnSideEffect[];
 };
 
 export type ComposeTurnArgs = {
@@ -125,6 +92,7 @@ export type TurnComposition = {
   refreshTools?: () => ToolDefinition[];
   plugins?: PluginConfig[];
   hasPdf: boolean;
+  /** Tool-based search is on: the turn drafts, runs the search tools, then answers. */
   shouldPlan: boolean;
   /** Set when an enabled module asked for the agent loop. */
   loop?: TurnLoopMode;

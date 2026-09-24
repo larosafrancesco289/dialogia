@@ -59,7 +59,6 @@ export async function composeTurn({
   // Per module: its tools now, read again on each call when it can refresh them.
   const moduleToolSources: Array<() => ToolDefinition[]> = [];
   let refreshable = false;
-  let modulesRequirePlanning = false;
   let modulesReplaceBaseSystem = false;
   let modulesRequestAgentLoop = false;
   let messagePatch: Partial<Message> | undefined;
@@ -79,7 +78,6 @@ export async function composeTurn({
     if (contribution.stablePreambles?.length) stablePreambles.push(...contribution.stablePreambles);
     if (contribution.dynamicPreambles?.length)
       dynamicPreambles.push(...contribution.dynamicPreambles);
-    if (contribution.requiresPlanning) modulesRequirePlanning = true;
     if (contribution.replacesBaseSystem) modulesReplaceBaseSystem = true;
     if (contribution.loop === 'agent') modulesRequestAgentLoop = true;
     if (contribution.messagePatch) {
@@ -123,8 +121,6 @@ export async function composeTurn({
     timestamps: settings.timestampsEnabled,
   });
 
-  const shouldPlan = modulesRequirePlanning || toolSearch;
-
   return {
     system,
     systemStable,
@@ -133,7 +129,7 @@ export async function composeTurn({
     tools: tools.length > 0 ? tools : undefined,
     plugins: Array.isArray(plugins) && plugins.length > 0 ? plugins : undefined,
     hasPdf,
-    shouldPlan,
+    shouldPlan: toolSearch,
     ...(modulesRequestAgentLoop ? { loop: 'agent' as const } : {}),
     ...(refreshTools ? { refreshTools } : {}),
     settings,

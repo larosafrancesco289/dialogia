@@ -136,19 +136,3 @@ export function useHaptics() {
     trigger,
   };
 }
-
-/**
- * Standalone haptic trigger for use outside React components.
- * Checks support on each call.
- */
-export function triggerHaptic(intensity: HapticIntensity = 'light') {
-  if (typeof navigator === 'undefined' || !('vibrate' in navigator)) return;
-
-  const durations: Record<HapticIntensity, number> = {
-    light: 10,
-    medium: 25,
-    heavy: 40,
-  };
-
-  navigator.vibrate(durations[intensity]);
-}

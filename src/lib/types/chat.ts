@@ -3,7 +3,7 @@ import type { LearningPlan } from '@/lib/types/learningPlan';
 import type { LearnerModel, TutorToolBudget } from '@/lib/types/tutor';
 import type { ReasoningEffort, SearchMode } from '@/lib/types/enums';
 export type { ReasoningEffort, SearchMode } from '@/lib/types/enums';
-export { NATIVE_SEARCH_MODE, ReasoningEffortEnum } from '@/lib/types/enums';
+export { ReasoningEffortEnum } from '@/lib/types/enums';
 
 export type GenerationSettings = {
   temperature?: number;

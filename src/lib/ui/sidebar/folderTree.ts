@@ -71,8 +71,3 @@ export function getFolderChildren(index: FolderTreeIndex, folderId?: string): Fo
     folders: index.foldersByParentId.get(key) ?? EMPTY_FOLDERS,
   };
 }
-
-export function sortChatsByRecency(chats: Chat[]): Chat[] {
-  if (chats.length < 2) return chats;
-  return [...chats].sort(compareByRecency);
-}

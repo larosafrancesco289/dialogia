@@ -233,7 +233,6 @@ async function runAgentTurn(
           ...(refreshTools ? { refreshTools } : {}),
           settings,
         }),
-        plan: async () => assert.fail('the agent loop never runs the legacy planner'),
         streamFinal: async () => assert.fail('the agent loop never runs the plain stream'),
         authResolver: () => auth,
         pipeline,

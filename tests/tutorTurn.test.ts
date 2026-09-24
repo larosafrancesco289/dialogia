@@ -180,7 +180,6 @@ function session() {
         persistMessage: async () => {},
       },
       compose: composeTurn,
-      plan: async () => assert.fail('a tutor turn never runs the legacy planner'),
       streamFinal: async () => assert.fail('a tutor turn with tools is the agent loop'),
       authResolver: () => auth,
       hooks: lifecycle.hooks,

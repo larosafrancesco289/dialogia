@@ -243,10 +243,6 @@ export function defaultAnthropicThinkingBudget(
   return 4096;
 }
 
-export function sanitizeAnthropicModelId(model: string): string {
-  return resolveAnthropicDirectModelId(model) ?? normalizeSlug(model);
-}
-
 export function readAnthropicCapabilityFlag(
   capabilities: unknown,
   ...names: string[]

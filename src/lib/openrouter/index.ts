@@ -3,9 +3,9 @@ import { chatCompletion } from '@/lib/openrouter/chat';
 import { fetchModels } from '@/lib/openrouter/models';
 import { streamChatCompletion } from '@/lib/openrouter/stream';
 
-export { chatCompletion } from '@/lib/openrouter/chat';
-export { fetchModels, clearOpenRouterCachesForTest } from '@/lib/openrouter/models';
-export { streamChatCompletion } from '@/lib/openrouter/stream';
+export { fetchModels } from '@/lib/openrouter/models';
+/** @internal Test seam, reached through this barrel by the tests. */
+export { clearOpenRouterCachesForTest } from '@/lib/openrouter/models';
 export { fetchZdrLists } from '@/lib/openrouter/zdr';
 
 export const openrouterTransport: TransportClient = {
