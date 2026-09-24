@@ -1,11 +1,12 @@
 // Module: store/tabSync
-// Responsibility: Keep this tab's chats, folders, messages and module logs in step with
-// what other tabs persist, and tell the other tabs when this one starts and stops writing
+// Responsibility: Keep this tab's chats, folders, messages, module logs and keys in step
+// with what other tabs persist, and tell the other tabs when this one starts and stops writing
 // a reply. What another tab wrote is read back from IndexedDB and set into the store,
 // never written again: a tab that re-saved what it adopted would announce it, and two
 // tabs would echo each other forever.
 
 import { repository } from '@/lib/db';
+import { reloadKeys } from '@/lib/keys/store';
 import { getMessagesForChat } from '@/lib/messages/indexing';
 import { notifyChatDeleted, notifyEventsChangedElsewhere } from '@/lib/modules';
 import { removeChatState } from '@/lib/store/chatSlice';
@@ -213,6 +214,14 @@ export function connectTabSync(
         return;
       case 'hello':
         writingHere.forEach((replyIds, chatId) => announceWriting(chatId, replyIds, true));
+        return;
+      case 'keys':
+        // Read back from this tab's own database connection; the models and the
+        // setup flow then follow, as they do when a key is saved in this tab.
+        await reloadKeys();
+        void get()
+          .loadModels()
+          .catch(() => undefined);
         return;
     }
   };

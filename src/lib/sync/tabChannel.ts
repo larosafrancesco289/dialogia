@@ -22,7 +22,9 @@ export type TabAnnouncement =
    */
   | { kind: 'streaming'; chatId: string; replyIds: string[]; writing: boolean }
   /** A tab opened: tabs writing a reply say so again. */
-  | { kind: 'hello' };
+  | { kind: 'hello' }
+  /** A provider or search key was saved or removed. Which one, and its value, stay unsaid. */
+  | { kind: 'keys' };
 
 export type TabChannel = {
   post(announcement: TabAnnouncement): void;
@@ -76,6 +78,7 @@ export function parseAnnouncement(data: unknown): TabAnnouncement | undefined {
         : undefined;
     case 'replaced':
     case 'hello':
+    case 'keys':
       return { kind: value.kind };
     default:
       return undefined;

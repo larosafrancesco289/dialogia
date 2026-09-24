@@ -8,6 +8,7 @@
 // is synchronous all the way down.
 
 import Dexie, { Table } from 'dexie';
+import { tabChannel } from '@/lib/sync/tabChannel';
 
 export type StoredKey = {
   /** `apiKeyRef` from a ProviderEndpoint or a SearchProvider id. */
@@ -63,6 +64,8 @@ let loaded: Promise<void> | null = null;
  */
 let inFlightWrites = new Set<string>();
 const listeners = new Set<() => void>();
+/** Tells the other tabs to read their keys again; never says which, or what. */
+let announceKeysChanged = () => tabChannel.post({ kind: 'keys' });
 
 function emit() {
   for (const listener of listeners) listener();
@@ -74,34 +77,49 @@ export function subscribeToKeys(listener: () => void): () => void {
   return () => listeners.delete(listener);
 }
 
+/** Reads every key into the cache; resolves false when the database could not be read. */
+function readKeys(): Promise<boolean> {
+  return table
+    .toArray()
+    .then((records) => {
+      const next = new Map<string, string>();
+      for (const record of records) {
+        if (record?.ref && typeof record.value === 'string' && record.value) {
+          next.set(record.ref, record.value);
+        }
+      }
+      // A mutation that happened while the read was in flight is newer than
+      // anything the read can report, including a delete.
+      for (const ref of inFlightWrites) {
+        const pending = cache.get(ref);
+        if (pending === undefined) next.delete(ref);
+        else next.set(ref, pending);
+      }
+      inFlightWrites = new Set();
+      cache = next;
+      emit();
+      return true;
+    })
+    .catch(() => false);
+}
+
+// A blocked or unavailable IndexedDB must not stop the app booting; the user
+// simply sees the setup flow again, and the next load reads again.
+function track(read: Promise<boolean>): Promise<void> {
+  const run: Promise<void> = read.then((ok) => {
+    if (!ok && loaded === run) loaded = null;
+  });
+  loaded = run;
+  return run;
+}
+
 export function loadKeys(): Promise<void> {
-  if (!loaded) {
-    loaded = table
-      .toArray()
-      .then((records) => {
-        const next = new Map<string, string>();
-        for (const record of records) {
-          if (record?.ref && typeof record.value === 'string' && record.value) {
-            next.set(record.ref, record.value);
-          }
-        }
-        // A mutation that happened while the read was in flight is newer than
-        // anything the read can report, including a delete.
-        for (const ref of inFlightWrites) {
-          const pending = cache.get(ref);
-          if (pending === undefined) next.delete(ref);
-          else next.set(ref, pending);
-        }
-        inFlightWrites = new Set();
-        cache = next;
-        emit();
-      })
-      .catch(() => {
-        // A blocked or unavailable IndexedDB must not stop the app booting;
-        // the user simply sees the setup flow again.
-      });
-  }
-  return loaded;
+  return loaded ?? track(readKeys());
+}
+
+/** Another tab saved or removed a key: read them all again, after any read under way. */
+export function reloadKeys(): Promise<void> {
+  return track((loaded ?? Promise.resolve()).then(readKeys));
 }
 
 export function getKey(ref?: string): string | undefined {
@@ -126,6 +144,7 @@ export async function setKey(ref: string, value: string): Promise<void> {
   inFlightWrites.add(ref);
   emit();
   await table.put({ ref, value: trimmed, updatedAt: Date.now() });
+  announceKeysChanged();
 }
 
 export async function deleteKey(ref: string): Promise<void> {
@@ -134,6 +153,7 @@ export async function deleteKey(ref: string): Promise<void> {
   inFlightWrites.add(ref);
   emit();
   await table.delete(ref);
+  announceKeysChanged();
 }
 
 /** Last four characters, for confirming *which* key is stored without showing it. */
@@ -143,9 +163,10 @@ export function describeKey(ref?: string): string | undefined {
   return value.length <= 4 ? '••••' : `••••${value.slice(-4)}`;
 }
 
-/** Test seam: swap the backing table and reset the cache. */
-export function resetKeyStoreForTest(next?: KeyTable) {
+/** Test seam: swap the backing table (and the announcement) and reset the cache. */
+export function resetKeyStoreForTest(next?: KeyTable, announce?: () => void) {
   table = next ?? createMemoryKeyTable();
+  announceKeysChanged = announce ?? (() => tabChannel.post({ kind: 'keys' }));
   cache = new Map();
   inFlightWrites = new Set();
   loaded = null;

@@ -120,6 +120,9 @@ follows through a `BroadcastChannel` (`src/lib/sync/tabChannel.ts`, a no-op wher
   store. Messages go only into a chat whose messages are loaded; an unloaded chat just becomes
   non-empty, and lazy hydration loads it later. A deleted chat goes the way a local delete goes. A
   module re-reads its log through `onEventsChangedElsewhere`.
+- **Keys say only that they changed.** `src/lib/keys/store.ts` announces `keys` after saving or
+  removing one, naming neither the key nor its provider. The receiver reads its key cache again
+  from `dialogia-keys` and reloads the models, as saving a key in the same tab does.
 - **No echo.** What a tab adopts is set into the store and never written back, so nothing it hears
   is announced again. The only writes a received announcement can cause are this tab's own: the
   tutor's unsaved events, or the last checkpoint of a reply stopped because another tab deleted its
