@@ -47,6 +47,15 @@ export const selectIsStreamingForChat = (chatId?: string) => (state: StoreState)
   return (state.ui.activeTurnByChatId[chatId] ?? 0) > 0;
 };
 
+const NO_REPLIES: string[] = [];
+
+/** Replies another tab says it is writing in this chat. */
+export const selectRepliesInOtherTab = (chatId?: string) => (state: StoreState) =>
+  (chatId && state.repliesInOtherTabs[chatId]) || NO_REPLIES;
+
+export const selectIsWritingInOtherTab = (state: StoreState) =>
+  selectRepliesInOtherTab(state.selectedChatId)(state).length > 0;
+
 const resolveTutorEnabled = (state: StoreState, chat?: Chat) => {
   if (chat) return isTutorRuntimeEnabled(state.ui, chat);
   const overrides = readNextOverrides(state.ui);

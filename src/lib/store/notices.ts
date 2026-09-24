@@ -13,6 +13,8 @@ export const NOTICE_CATALOG = {
   importedData: 'Imported data',
   planApplyFailed: 'Failed to apply learning plan. Please try again.',
   copyFailed: 'Could not copy: the browser blocked clipboard access.',
+  replyInOtherTab:
+    'Another tab is writing a reply in this chat. Send once it has finished, so both tabs keep the same conversation.',
 } as const;
 
 export type NoticeId = keyof typeof NOTICE_CATALOG;
@@ -101,3 +103,4 @@ export const NOTICE_UNKNOWN_ENDPOINT = NOTICE_CATALOG.unknownEndpoint;
 export const NOTICE_EXPORTED_CHATS = NOTICE_CATALOG.exportedChats;
 export const NOTICE_IMPORTED_DATA = NOTICE_CATALOG.importedData;
 export const NOTICE_PLAN_APPLY_FAILED = NOTICE_CATALOG.planApplyFailed;
+export const NOTICE_REPLY_IN_OTHER_TAB = NOTICE_CATALOG.replyInOtherTab;
