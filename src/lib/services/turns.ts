@@ -143,6 +143,7 @@ export async function sendUserTurn({
       primaryContext.auth.endpoint,
       get().ui.zdrOnly === true,
       primaryModelId,
+      get().models,
     );
   }
 

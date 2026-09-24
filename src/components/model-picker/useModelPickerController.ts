@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
-import { PINNED_MODEL_ID } from '@/lib/constants';
-import { findModelById, resolveDynamicModelId } from '@/lib/models';
+import { findModelById, resolveDefaultModelId } from '@/lib/models';
 import type { Chat } from '@/lib/types';
 import type { StoreState } from '@/lib/store/types';
 import { useCuratedModels, useDefaultModelId } from '@/lib/hooks/useModelCatalog';
@@ -97,10 +96,7 @@ export function useModelPickerController(): ModelPickerController {
     );
   }, [customOptions, curated, defaultModelId]);
 
-  const pinnedModelId = useMemo(
-    () => resolveDynamicModelId(PINNED_MODEL_ID, models || []),
-    [models],
-  );
+  const pinnedModelId = useMemo(() => resolveDefaultModelId(models || []), [models]);
 
   const options = useMemo(() => {
     const hidden = new Set(hiddenModelIds || []);

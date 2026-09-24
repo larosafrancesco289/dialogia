@@ -192,6 +192,25 @@ Keys are read synchronously from a cache in `src/lib/keys/store.ts` warmed by `l
 both `bootstrapApp` and `loadModels` await so a slow IndexedDB read can never look like an
 unconfigured app.
 
+### Model families
+
+The curated picks and every default name a **family**, not a model: OpenRouter's own alias ids
+(`~anthropic/claude-opus-latest`, `~openai/gpt-luna-latest`), listed in
+`src/lib/models/dynamicDefaults.ts`. The provider says what a family means today. OpenRouter lists
+each alias with `alias_target`. The Claude API has no moving aliases, since every id is a pinned
+snapshot, but its ids follow a documented `claude-{name}-{major}[-{minor}]` scheme and its list is
+newest first, so the family resolves there by name. A pin covers an empty model list.
+
+A chat stores the concrete id its family resolved to when it started, and every request names that
+id, so pricing, capabilities, ZDR and prompt caching describe the real model and a conversation
+never changes model underneath itself. When a family moves, `loadModels` says so once: new chats
+take the new model, chats under way keep theirs. New chats start with the first family in
+`DEFAULT_MODEL_PREFERENCE` that the user's providers serve (GPT Luna, then Claude Opus on a Claude
+API key alone). The tutor stays pinned to the model its prompt was tuned on, and falls back through
+`TUTOR_MODEL_PREFERENCE` if it disappears. Neither default ever falls back to a model on the user's
+own server while a built-in provider can serve one. Claude capabilities (adaptive thinking, effort
+levels, caching) are likewise read from the id's generation, not from a list of ids.
+
 ## Tools and search
 
 The tool registry (`src/lib/tools/registry.ts`) is open and keyed by string. An entry is
