@@ -263,51 +263,99 @@ function ContentsItem({
   );
 }
 
-/** Where the estimate started and what each piece of evidence did to it. */
+type WhyStep = TopicExplanation['steps'][number] & { evidence?: TopicMastery['evidence'][number] };
+
+/** One line of "Why N%": what a piece of evidence did, or where it set the estimate. */
+function WhyLine({ step: { evidence, before, after } }: { step: WhyStep }) {
+  if (!evidence || typeof evidence.setTo === 'number') {
+    return (
+      <li>
+        <span className="hub-contents__sign">=</span>
+        <span>
+          Set to {pct(after)}% directly
+          {evidence && evidence.details ? `: ${toLearner(evidence.details)}` : ''}
+        </span>
+      </li>
+    );
+  }
+  const delta = pct(after) - pct(before);
+  return (
+    <li className={delta < 0 ? 'is-against' : undefined}>
+      <span className="hub-contents__sign">
+        {delta > 0 ? `+${delta}` : delta < 0 ? `−${-delta}` : '0'}
+      </span>
+      <span>
+        {evidence.type === 'self_report' ? toLearner(evidence.details) : evidence.details}
+      </span>
+    </li>
+  );
+}
+
+/** What the latest direct setting was, to head the history before it. */
+function beforeLabel(evidence: WhyStep['evidence']): string {
+  if (evidence?.kind === 'placement') return 'Before the starting estimate';
+  if (evidence?.source === 'learner') return 'Before your correction';
+  if (evidence?.source === 'learner_said') return 'Before what you told the tutor';
+  return 'Before it was set';
+}
+
+/**
+ * Where the estimate started and what each piece of evidence did to it. Once
+ * the estimate has been set directly (a correction, a starting estimate), the
+ * lines from that setting on add up to today's value; everything earlier is
+ * history, folded away and muted so no one tries to add it up.
+ */
 function Why({ mastery, explanation }: { mastery: TopicMastery; explanation?: TopicExplanation }) {
+  const [showEarlier, setShowEarlier] = useState(false);
   const start = explanation?.start ?? mastery.confidence;
-  const steps = (explanation?.steps ?? []).map((step) => ({
+  const steps: WhyStep[] = (explanation?.steps ?? []).map((step) => ({
     ...step,
     evidence: mastery.evidence.find((entry) => entry.eventId === step.eventId),
   }));
-  const newest = [...steps].reverse();
+  const settledAt = explanation?.settledAt ?? -1;
+  const counting = settledAt >= 0 ? steps.slice(settledAt) : steps;
+  const earlier = settledAt >= 0 ? steps.slice(0, settledAt).reverse() : [];
+  const newest = [...counting].reverse();
   const shown = newest.slice(0, EVIDENCE_SHOWN);
   const hidden = newest.length - shown.length;
+  const startLine = (
+    <li className="hub-contents__start">
+      {mastery.baseline != null
+        ? `Carried over at ${pct(start)}% from before`
+        : `Started at ${pct(start)}%, before any evidence`}
+    </li>
+  );
 
   return (
     <div className="hub-contents__why">
       <p className="hub-contents__why-head">Why {pct(mastery.confidence)}%</p>
       <ul>
-        {shown.map(({ evidence, before, after }, i) => {
-          if (!evidence || typeof evidence.setTo === 'number') {
-            return (
-              <li key={i}>
-                <span className="hub-contents__sign">=</span>
-                <span>
-                  Set to {pct(after)}% directly
-                  {evidence && evidence.details ? `: ${toLearner(evidence.details)}` : ''}
-                </span>
-              </li>
-            );
-          }
-          const delta = pct(after) - pct(before);
-          return (
-            <li key={i} className={delta < 0 ? 'is-against' : undefined}>
-              <span className="hub-contents__sign">
-                {delta > 0 ? `+${delta}` : delta < 0 ? `−${-delta}` : '0'}
-              </span>
-              <span>
-                {evidence.type === 'self_report' ? toLearner(evidence.details) : evidence.details}
-              </span>
-            </li>
-          );
-        })}
+        {shown.map((step, i) => (
+          <WhyLine key={i} step={step} />
+        ))}
         {hidden > 0 && <li className="hub-contents__more">and {hidden} earlier</li>}
-        <li className="hub-contents__start">
-          {mastery.baseline != null
-            ? `Carried over at ${pct(start)}% from before`
-            : `Started at ${pct(start)}%, before any evidence`}
-        </li>
+        {settledAt < 0 ? (
+          startLine
+        ) : (
+          <li className="hub-contents__earlier">
+            <button
+              type="button"
+              aria-expanded={showEarlier}
+              onClick={() => setShowEarlier((open) => !open)}
+            >
+              {beforeLabel(steps[settledAt]?.evidence)}
+              {earlier.length ? ` (${earlier.length})` : ''}
+            </button>
+            {showEarlier && (
+              <ul>
+                {earlier.map((step, i) => (
+                  <WhyLine key={i} step={step} />
+                ))}
+                {startLine}
+              </ul>
+            )}
+          </li>
+        )}
       </ul>
     </div>
   );

@@ -23,6 +23,13 @@ export type TopicExplanation = {
   /** Where the replay starts: the prior, or the estimate carried over from before the log. */
   startText: string;
   steps: ExplanationStep[];
+  /**
+   * The index of the latest step that set the estimate directly (a learner's
+   * correction, a starting estimate), or -1. Steps before it no longer add
+   * up to anything: the value was reset there, so a reader should read the
+   * estimate from that step on, and everything earlier as history.
+   */
+  settledAt: number;
   confidence: number;
 };
 
@@ -79,5 +86,12 @@ export function explainTopic(state: TutorState, nodeId: string): TopicExplanatio
     });
     current = after;
   }
-  return { nodeId, name, start, startText, steps, confidence: current };
+  const settledAt = steps.reduce(
+    (latest, step, index) =>
+      typeof mastery.evidence.find((e) => e.eventId === step.eventId)?.setTo === 'number'
+        ? index
+        : latest,
+    -1,
+  );
+  return { nodeId, name, start, startText, steps, settledAt, confidence: current };
 }

@@ -63,3 +63,22 @@ test('each step reads as a plain sentence', () => {
 test('unknown topics have no explanation', () => {
   assert.equal(explainTopic(teaching().state, 'ghost'), undefined);
 });
+
+test('the latest direct setting is where the estimate adds up from', () => {
+  const h = teaching();
+  const plain = explainTopic(h.state, 'limits')!;
+  assert.equal(plain.settledAt, -1);
+
+  h.tutor({ type: 'record_evidence', kind: 'applied', note: 'Solved one', source: 'observation' });
+  h.tutor({ type: 'record_evidence', kind: 'insight', note: 'Saw why', source: 'observation' });
+  h.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.51 });
+  h.tutor({ type: 'record_evidence', kind: 'partial', note: 'Half of one', source: 'observation' });
+
+  const why = explainTopic(h.state, 'limits')!;
+  assert.equal(why.settledAt, 2);
+  assert.equal(why.steps[why.settledAt].after, 0.51);
+  // From the setting on, the steps add up to the current value.
+  const since = why.steps.slice(why.settledAt + 1);
+  assert.equal(since.at(-1)!.after, why.confidence);
+  assert.equal(since[0].before, 0.51);
+});

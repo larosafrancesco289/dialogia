@@ -235,6 +235,37 @@
   .hub-contents__why li.is-against .hub-contents__sign {
     color: var(--color-danger);
   }
+  /* History from before the estimate was set directly: folded, and muted
+     when open, since it no longer adds up to the number above. */
+  .hub-contents__why li.hub-contents__earlier {
+    display: block;
+    padding-left: 2rem;
+    font-size: 0.75rem;
+    color: var(--color-fg-muted);
+  }
+  .hub-contents__earlier > button {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: var(--rule-light);
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
+  .hub-contents__earlier > button:hover {
+    color: var(--color-fg);
+  }
+  .hub-contents__earlier > button:focus-visible {
+    outline: none;
+    border-radius: 2px;
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+  .hub-contents__why .hub-contents__earlier ul {
+    margin: 0.3rem 0 0 -2rem;
+    opacity: 0.7;
+  }
 
   /* Correcting the learner model in place: quiet, always the same words
      as the margin notes, so it reads as one gesture wherever it appears. */
