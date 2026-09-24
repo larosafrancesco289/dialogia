@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildProviderPolicy, providerSortFromRoutePref, selectSearchMode } from './provider';
+import { selectSearchMode } from './provider';
 import { setKey, deleteKey } from '@/lib/keys/store';
 import { NATIVE_SEARCH_MODE } from '@/lib/search/providers';
 
@@ -21,15 +21,7 @@ const baseSettings = {
 
 const baseUi = {
   flags: {},
-  routePreference: 'speed' as const,
 } as any;
-
-test('providerSortFromRoutePref maps UI preference', () => {
-  assert.equal(providerSortFromRoutePref('speed'), 'throughput');
-  assert.equal(providerSortFromRoutePref('cost'), 'price');
-  assert.equal(providerSortFromRoutePref('balanced'), undefined);
-  assert.equal(providerSortFromRoutePref(undefined), undefined);
-});
 
 test('a configured tool-based provider is used once it has a key', async () => {
   await setKey('tavily', 'tvly-test');
@@ -75,11 +67,4 @@ test('an unregistered provider id degrades to native search', () => {
     ),
     NATIVE_SEARCH_MODE,
   );
-});
-
-test('buildProviderPolicy surfaces unified routing decisions', () => {
-  const policy = buildProviderPolicy({ settings: baseSettings as any, ui: baseUi });
-  assert.equal(policy.searchEnabled, true);
-  assert.equal(policy.searchProvider, NATIVE_SEARCH_MODE);
-  assert.equal(policy.providerSort, undefined);
 });
