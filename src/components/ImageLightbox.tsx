@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { logger } from '@/lib/logger';
+import { useModalFocus } from '@/lib/hooks/useModalFocus';
 
 type Img = { src: string; name?: string };
 
@@ -17,16 +18,17 @@ export function ImageLightbox({
     Math.min(Math.max(0, initialIndex), Math.max(0, images.length - 1)),
   );
   const current = images[index];
+  const rootRef = useRef<HTMLDivElement>(null);
+  useModalFocus(true, rootRef, { onEscape: onClose });
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
       if (e.key === 'ArrowRight') setIndex((i) => Math.min(images.length - 1, i + 1));
       if (e.key === 'ArrowLeft') setIndex((i) => Math.max(0, i - 1));
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [images.length, onClose]);
+  }, [images.length]);
 
   const download = () => {
     if (!current) return;
@@ -48,7 +50,12 @@ export function ImageLightbox({
 
   return createPortal(
     <div
+      ref={rootRef}
       className="lightbox fixed inset-0 z-[100] flex flex-col"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Image viewer"
+      tabIndex={-1}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
