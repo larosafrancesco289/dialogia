@@ -217,12 +217,11 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
       </div>
       <div ref={contentRef} className="message-list__content space-y-2 pb-4">
         {!messagesLoaded && visibleMessages.length === 0 && (
-          <div
-            className="flex justify-center py-8 text-sm text-[var(--color-fg-muted)]"
-            role="status"
-          >
-            Loading conversation…
-          </div>
+          // Most chats arrive in a few milliseconds; the line only shows
+          // itself (CSS delay) when a read is actually slow.
+          <p className="message-list__loading" role="status">
+            Opening the conversation…
+          </p>
         )}
         {hiddenCount > 0 && (
           <div className="flex justify-center py-2">

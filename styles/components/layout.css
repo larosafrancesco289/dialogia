@@ -41,6 +41,31 @@
     overflow-anchor: auto;
   }
 
+  /* A slow read of an older chat: one quiet line in the reply's voice,
+     shown only after a beat so a fast read never flashes it. */
+  .message-list__loading {
+    padding-block: var(--space-8);
+    text-align: center;
+    font-family: var(--font-serif-assistant);
+    font-style: italic;
+    font-size: 0.95rem;
+    color: var(--color-fg-muted);
+    opacity: 0;
+    animation: message-list-loading-in 240ms var(--ease-standard) 400ms forwards;
+  }
+
+  @keyframes message-list-loading-in {
+    to {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .message-list__loading {
+      animation-duration: 1ms;
+    }
+  }
+
   @media (max-width: 767px) {
     .message-list {
       padding: var(--space-2);
