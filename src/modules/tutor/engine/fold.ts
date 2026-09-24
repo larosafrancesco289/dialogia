@@ -189,6 +189,10 @@ function reduce(state: TutorState, event: TutorEvent): TutorState {
         counts: {
           ...reopened.counts,
           quizzesByNode: { ...reopened.counts.quizzesByNode, [event.nodeId]: 0 },
+          evidenceAtReopen: {
+            ...reopened.counts.evidenceAtReopen,
+            [event.nodeId]: reopened.mastery[event.nodeId]?.evidence.length ?? 0,
+          },
         },
       };
     }

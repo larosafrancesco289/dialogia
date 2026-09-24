@@ -642,7 +642,7 @@ function decideTutor(
           const missing = MASTERY_EVIDENCE_MIN - shown;
           return err(
             'not_ready',
-            `${node.name} is at ${percent(confidence)}%, but only ${shown} of the ${MASTERY_EVIDENCE_MIN} pieces of evidence mastery needs come from the learner's work this session; a starting estimate does not count.`,
+            `${node.name} is at ${percent(confidence)}%, but only ${shown} of the ${MASTERY_EVIDENCE_MIN} pieces of evidence mastery needs show the learner getting it right in this session, since the topic was last opened; a starting estimate or a mistake does not count.`,
             `Get ${missing} more: give_quiz, or record_evidence for something the learner did on their own. Then call complete_topic again.`,
           );
         }
