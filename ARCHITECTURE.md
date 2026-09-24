@@ -377,7 +377,7 @@ keep their numbers so `tutorSeq` holds. The legacy import belongs to no reply, s
 reaches it; a proposal still pending at import is a `plan_proposed` on its own reply.
 
 Cards (quiz, intake, diagnostic, plan proposal) are `content` tools that end the turn after text,
-so a card put up without a word gets one round to introduce it; state tools are `action` tools. Tool arguments are parsed leniently (`engine/tools.ts`): placeholders in
+so a card put up without a word gets one round to introduce it; state tools are `action` tools. Tool arguments are parsed leniently (`engine/tools/leniency.ts`): placeholders in
 optional fields and fields that do not apply are dropped and named back in the result as
 `adjusted`; only what changes a call's meaning is refused, with a hint naming the field and its
 valid values. A field a tool no longer has (record_evidence's `setTo`) is dropped without a word.
