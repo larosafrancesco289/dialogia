@@ -34,8 +34,32 @@ test('filters reasoning options', () => {
   assert.equal(suggestions[0]?.insert, '/reasoning high');
 });
 
-test('falls back to base commands for unknown input', () => {
-  const suggestions = getSlashSuggestions('/unknown', MODELS);
-  assert.ok(suggestions.length > 0);
-  assert.ok(suggestions.every((s) => s.insert.startsWith('/')));
+test('text that only starts with a slash gets no suggestions', () => {
+  assert.deepEqual(getSlashSuggestions('/unknown', MODELS), []);
+  assert.deepEqual(getSlashSuggestions('/etc/hosts: what is this file for?', MODELS), []);
+});
+
+test('a unique prefix narrows to its command', () => {
+  const suggestions = getSlashSuggestions('/re', MODELS);
+  assert.deepEqual(
+    suggestions.map((s) => s.insert),
+    ['/reasoning '],
+  );
+});
+
+test('a command followed by prose it does not take gets no suggestions', () => {
+  assert.deepEqual(getSlashSuggestions('/search for cats in Rome', MODELS), []);
+  assert.deepEqual(getSlashSuggestions('/reasoning about this', MODELS), []);
+});
+
+test('a complete command still offers itself, so Enter can run it', () => {
+  const suggestions = getSlashSuggestions('/search on', MODELS);
+  assert.deepEqual(
+    suggestions.map((s) => s.insert),
+    ['/search on'],
+  );
+  assert.deepEqual(
+    getSlashSuggestions('/help', MODELS).map((s) => s.insert),
+    ['/help'],
+  );
 });

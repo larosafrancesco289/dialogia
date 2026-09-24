@@ -36,11 +36,14 @@ export function ComposerInput({
     [value, models],
   );
 
+  // Escape puts the list away until the text changes.
+  const [dismissedFor, setDismissedFor] = useState<string | null>(null);
+
   useEffect(() => {
     setActiveIndex(0);
   }, [value]);
 
-  const hasSuggestions = isFocused && suggestions.length > 0;
+  const hasSuggestions = isFocused && suggestions.length > 0 && dismissedFor !== value;
 
   return (
     <>
@@ -78,9 +81,11 @@ export function ComposerInput({
               setActiveIndex((index) => (index - 1 + suggestions.length) % suggestions.length);
               return;
             }
-            if (event.key === 'Tab' || event.key === 'Enter') {
+            const pick = suggestions[activeIndex] || suggestions[0];
+            // Enter on a command already typed out in full runs it.
+            const complete = suggestions.some((s) => s.insert.trim() === value.trim());
+            if (event.key === 'Tab' || (event.key === 'Enter' && !complete)) {
               event.preventDefault();
-              const pick = suggestions[activeIndex] || suggestions[0];
               if (pick) {
                 onChange(pick.insert + (pick.insert.endsWith(' ') ? '' : ' '));
               }
@@ -88,7 +93,7 @@ export function ComposerInput({
             }
             if (event.key === 'Escape') {
               event.preventDefault();
-              setActiveIndex(0);
+              setDismissedFor(value);
               return;
             }
           }
