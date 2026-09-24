@@ -62,6 +62,24 @@ test('buildAnthropicBody enables top-level automatic caching for supported Anthr
   assert.deepEqual(body.cache_control, { type: 'ephemeral' });
 });
 
+test('buildAnthropicBody converts image_url parts to Anthropic image blocks', () => {
+  const body = buildAnthropicBody({
+    model: 'claude-opus-4-6',
+    messages: [
+      { role: 'system', content: 'You are helpful.' },
+      {
+        role: 'user',
+        content: [{ type: 'image_url', image_url: { url: 'data:image/png;base64,AAA=' } }],
+      },
+    ],
+    stream: false,
+  });
+
+  assert.deepEqual(body.messages[0]?.content, [
+    { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'AAA=' } },
+  ]);
+});
+
 test('buildAnthropicBody preserves assistant text block cache_control markers', () => {
   const body = buildAnthropicBody({
     model: 'anthropic/claude-sonnet-4.6',

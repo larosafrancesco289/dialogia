@@ -93,12 +93,10 @@ export {
   getSupportedParameters,
   isAudioInputSupported,
   isImageOutputSupported,
-  isReasoningMandatory,
   isReasoningSupported,
   isToolCallingSupported,
   isVisionSupported,
   REASONING_EFFORT_ORDER,
-  supportsXhighReasoningEffort,
   type ModelCapabilityFlags,
   type ModelReasoningInfo,
 } from '@/lib/models/capabilities';

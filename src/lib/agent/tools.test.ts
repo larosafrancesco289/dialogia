@@ -1,6 +1,6 @@
 import { before, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { detectPlanningToolCalls } from '@/lib/agent/tools';
+import { detectPlanningToolCalls } from '@/lib/agent/tools/router';
 import { loadModuleRuntimes } from '@/lib/modules';
 import { extractWebSearchArgs } from '@/lib/search';
 import { parseJsonAfter } from '@/lib/tools/json';
