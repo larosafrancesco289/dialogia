@@ -104,6 +104,29 @@ either in `tests/` or beside the code they cover.
   stream handling, store mutations and capability gating.
 - A bug fix should land with a test that fails without it.
 
+## Simulating tutoring sessions
+
+`bun run tutor:simulate` is the tutor's automated QA harness. It runs one session through the
+app's own store, engine and agent loop in Node, with the in-memory database, and an LLM playing a
+student from one of the paper's four scenarios (`--list`). The student answers cards the way the
+UI does, with learner commands followed by the UI's short message, so the whole protocol is
+exercised. It needs `OPENROUTER_API_KEY` in the environment, `.env.local` or `--env-file`, and a
+short run costs well under a cent.
+
+```bash
+bun run tutor:simulate -- --scenario linear_equations --turns 6 --check
+bun run tutor:simulate -- --scenario bayes_rule --plan-editable=false --learner-edits
+bun run tutor:simulate -- --help
+```
+
+Each run writes a JSON transcript (every exchange, tool call, request, learner action, the final
+event log and folded state) and a readable report to `tmp/tutor-sim/`. `--check` exits 1 when a
+protocol health check fails: a tool error the tutor never fixed, a card the learner could not
+answer, evidence recorded twice for one answer, mastery outside [0, 1], an answer key in replayed
+history, a request without the state block, or no approved plan or completed topic in time.
+The harness itself is covered by `src/modules/tutor/tooling/simulation.test.ts`, with scripted
+models and no network.
+
 ## Pull requests
 
 - Imperative, concise commit subjects. Explain _why_ in the body when it is not obvious.

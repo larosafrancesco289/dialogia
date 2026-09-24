@@ -1,314 +1,270 @@
+// Module: tutor tooling session
+// Responsibility: one tutor chat driven headlessly through the app's own turn pipeline
+// (store, compose, agent loop, tool registry, engine) with the in-memory database, plus
+// the learner's side: card commands through `dispatchTutor` and the messages the UI sends.
+
 import type { StoreApi } from 'zustand/vanilla';
-import { createHeadlessStore, type HeadlessStoreOptions } from '@/modules/tutor/tooling/store';
-import type { StoreState, UIState } from '@/lib/store/types';
-import type { Chat, Message, ModelDescriptor, ProviderEndpoint } from '@/lib/types';
-import { type PlanTurnResult, type PersistMessage, type TurnContext } from '@/lib/agent/types';
 import { composeTurn } from '@/lib/agent/compose';
-import { planTurn } from '@/lib/agent/planning';
-import { applyPlanSideEffects } from '@/lib/agent/planning/sideEffects';
-import { streamFinal } from '@/lib/agent/streaming';
-import type { PipelineClient } from '@/lib/agent/pipelineClient';
-import { DEFAULT_BASE_SYSTEM } from '@/lib/agent/prompts/baseSystem';
-import { getModelEndpoint } from '@/lib/providers';
-import { setTurnController, clearTurnController } from '@/lib/turns/runtime';
-import type { ModelIndex } from '@/lib/models';
-import { runTurn } from '@/lib/agent/orchestrator/turn';
 import { createTurnLifecycle } from '@/lib/agent/orchestrator/lifecycle';
-import { finalizeShortCircuitMessage } from '@/lib/services/turns/shortCircuit';
-import type { HeadlessTurnArtifacts, HeadlessTurnResult } from '@/modules/tutor/tooling/types';
+import { runTurn } from '@/lib/agent/orchestrator/turn';
+import { planTurn } from '@/lib/agent/planning';
+import { streamFinal } from '@/lib/agent/streaming';
+import {
+  createPipelineClient,
+  getStreamChatCompletion,
+  type PipelineClient,
+} from '@/lib/agent/pipelineClient';
+import type { TransportAuth } from '@/lib/auth/transport';
+import { repository } from '@/lib/db';
 import { createAssistantMessage, createUserMessage } from '@/lib/messages/createMessage';
 import { appendMessagesToChat, getMessagesForChat } from '@/lib/messages/indexing';
+import { updateMessageById } from '@/lib/messages/updateMessageById';
+import { createModelIndex } from '@/lib/models';
+import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { resolveTurnSettings } from '@/lib/settings/resolve';
-import { adjustActiveTurnCount } from '@/lib/ui/streaming';
-import type { TransportAuth } from '@/lib/auth/transport';
-import { EMPTY_TUTOR_SESSION } from '@/modules/tutor/store/tutorSlice';
-import { cardsForMessage } from '@/modules/tutor/ui/messageViews';
+import type { StoreState } from '@/lib/store/types';
+import type { ModelMessage } from '@/lib/transport/contracts';
+import type { TransportStreamParams } from '@/lib/transport/types';
+import type { Chat, Message, ModelDescriptor } from '@/lib/types';
+import type { LearnerCommand, TutorEvent } from '@/modules/tutor/engine';
+import {
+  EMPTY_TUTOR_SESSION,
+  type TutorDispatchResult,
+  type TutorSession,
+} from '@/modules/tutor/store/tutorSlice';
+import { createHeadlessStore } from '@/modules/tutor/tooling/store';
 
-export type AuthResolver = (params: {
-  modelId: string;
-  endpoint: ProviderEndpoint;
-}) => TransportAuth | null;
+/** Distributes Omit over the command union: a learner command without its actor. */
+type WithoutBy<T> = T extends unknown ? Omit<T, 'by'> : never;
+export type LearnerAction = WithoutBy<LearnerCommand>;
 
-export type ApiKeyResolver = AuthResolver;
+/** What the harness keeps of one request the tutor model received. */
+export type RequestRecord = {
+  round: number;
+  model: string;
+  toolChoice?: TransportStreamParams['toolChoice'];
+  tools: string[];
+  /** The state block the engine rendered into the system prompt, if it is there. */
+  stateBlock?: string;
+  /** Replayed tool calls from earlier turns that still carry an answer key. */
+  answerKeyLeaks: number;
+  messageCount: number;
+};
+
+export type TurnRecord = {
+  user: Message;
+  assistant: Message;
+  requests: RequestRecord[];
+  /** Tool results the loop answered for calls it did not run. */
+  droppedCalls: string[];
+  /** Events appended while the turn ran (the tutor's, and nothing else). */
+  events: TutorEvent[];
+  error?: string;
+};
 
 export type HeadlessTutorSessionOptions = {
   chat: Chat;
-  models?: ModelDescriptor[];
-  modelIndex?: ModelIndex;
-  uiOverrides?: Partial<UIState>;
-  initialMessages?: Message[];
-  resolveAuth: AuthResolver;
-  store?: StoreApi<StoreState>;
+  models: ModelDescriptor[];
+  resolveAuth: (modelId: string) => TransportAuth;
+  /** Replaces the network; tests script the tutor model here. */
   pipeline?: PipelineClient;
 };
 
-export class HeadlessTutorSession {
-  private readonly store: StoreApi<StoreState>;
-  private readonly resolveAuth: AuthResolver;
-  private readonly chatId: string;
-  private readonly pipeline?: PipelineClient;
+const STATE_BLOCK_START = 'Tutor state\n';
+const NOT_RUN_MARKER = 'This call was not run.';
 
-  constructor(private readonly options: HeadlessTutorSessionOptions) {
-    this.resolveAuth = options.resolveAuth;
-    this.pipeline = options.pipeline;
-    if (options.store) {
-      this.store = options.store;
-    } else {
-      const storeOptions: HeadlessStoreOptions = {
-        chat: options.chat,
-        models: options.models,
-        modelIndex: options.modelIndex,
-        messages: options.initialMessages,
-        uiOverrides: options.uiOverrides,
-      };
-      this.store = createHeadlessStore(storeOptions);
+function textOf(content: ModelMessage['content'] | undefined): string {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+  return content
+    .map((block) => ('text' in block && typeof block.text === 'string' ? block.text : ''))
+    .join('\n\n');
+}
+
+/** Everything before the newest user message is replayed history. */
+function replayedHistory(messages: ModelMessage[]): ModelMessage[] {
+  let lastUser = -1;
+  messages.forEach((m, i) => {
+    if (m.role === 'user') lastUser = i;
+  });
+  return lastUser < 0 ? [] : messages.slice(0, lastUser);
+}
+
+function countAnswerKeys(messages: ModelMessage[]): number {
+  let leaks = 0;
+  for (const message of replayedHistory(messages)) {
+    if (message.role !== 'assistant' || !message.tool_calls) continue;
+    for (const call of message.tool_calls) {
+      if (/"correct"\s*:/.test(call.function.arguments ?? '')) leaks += 1;
     }
+  }
+  return leaks;
+}
+
+function recordRequest(params: TransportStreamParams, round: number): RequestRecord {
+  const system = textOf(params.messages.find((m) => m.role === 'system')?.content);
+  const at = system.indexOf(STATE_BLOCK_START);
+  return {
+    round,
+    model: params.model,
+    ...(params.toolChoice ? { toolChoice: params.toolChoice } : {}),
+    tools: (params.tools ?? []).map((tool) => tool.function.name),
+    ...(at >= 0 ? { stateBlock: system.slice(at).trim() } : {}),
+    answerKeyLeaks: countAnswerKeys(params.messages),
+    messageCount: params.messages.length,
+  };
+}
+
+/** Calls of the previous round the loop answered without running. */
+function droppedIn(params: TransportStreamParams): string[] {
+  const names: string[] = [];
+  const messages = params.messages;
+  for (let i = messages.length - 1; i >= 0 && messages[i].role === 'tool'; i -= 1) {
+    const message = messages[i];
+    if (message.role === 'tool' && textOf(message.content).includes(NOT_RUN_MARKER)) {
+      names.push(message.name ?? 'unknown');
+    }
+  }
+  return names;
+}
+
+export class HeadlessTutorSession {
+  readonly chatId: string;
+  readonly store: StoreApi<StoreState>;
+  private readonly pipeline: PipelineClient;
+  private readonly resolveAuth: (modelId: string) => TransportAuth;
+  private readonly persistMessage = createMessagePersister(repository);
+  private requests: RequestRecord[] = [];
+  private dropped: string[] = [];
+  private clock = Date.now();
+
+  constructor(options: HeadlessTutorSessionOptions) {
     this.chatId = options.chat.id;
+    this.resolveAuth = options.resolveAuth;
+    this.store = createHeadlessStore({
+      chat: options.chat,
+      models: options.models,
+      modelIndex: createModelIndex(options.models),
+    });
+    const stream = getStreamChatCompletion(options.pipeline);
+    this.pipeline = createPipelineClient({
+      ...(options.pipeline ? { chatCompletion: options.pipeline.chatCompletion } : {}),
+      streamChatCompletion: (params) => {
+        this.dropped.push(...droppedIn(params));
+        this.requests.push(recordRequest(params, this.requests.length + 1));
+        return stream(params);
+      },
+    });
   }
 
-  getState(): StoreState {
-    return this.store.getState();
+  get chat(): Chat {
+    const chat = this.store.getState().chats.find((c) => c.id === this.chatId);
+    if (!chat) throw new Error('The headless chat is missing from the store');
+    return chat;
   }
 
-  getMessages(): Message[] {
+  messages(): Message[] {
     return getMessagesForChat(this.store.getState(), this.chatId);
   }
 
-  private persistMessage: PersistMessage = async (message) => {
-    this.store.setState((state) => {
-      const existing = state.messagesById[message.id];
-      if (!existing) return state;
-      return {
-        messagesById: {
-          ...state.messagesById,
-          [message.id]: { ...message },
-        },
-      };
-    });
-  };
-
-  private updateMessage(messageId: string, patch: Partial<Message>): Message | undefined {
-    let updated: Message | undefined;
-    this.store.setState((state) => {
-      const message = state.messagesById[messageId];
-      if (!message) return state;
-      updated = { ...message, ...patch } as Message;
-      return {
-        messagesById: {
-          ...state.messagesById,
-          [messageId]: updated,
-        },
-      };
-    });
-    return updated;
+  tutor(): TutorSession {
+    return this.store.getState().tutorSessions[this.chatId] ?? EMPTY_TUTOR_SESSION;
   }
 
-  async runTurn(content: string): Promise<HeadlessTurnResult> {
-    const state = this.store.getState();
-    let chat = state.chats.find((c) => c.id === this.chatId);
-    if (!chat) throw new Error('Headless tutor chat not found');
+  /** A learner command, exactly as a card or the Hub dispatches it. */
+  learner(action: LearnerAction, messageId?: string): Promise<TutorDispatchResult> {
+    return this.store
+      .getState()
+      .dispatchTutor(this.chatId, { ...action, by: 'learner' } as LearnerCommand, {
+        by: 'learner',
+        ...(messageId ? { messageId } : {}),
+      });
+  }
 
-    const now = Date.now();
-    const userMessage = createUserMessage({
+  /** Sends a user message and runs the tutor's turn to its end, as the composer would. */
+  async runTurn(content: string, metadata?: Message['metadata']): Promise<TurnRecord> {
+    await this.store.getState().ensureTutorSession(this.chatId);
+    const chat = this.chat;
+    const modelId = chat.settings.modelId;
+    const priorMessages = this.messages();
+    const seqBefore = this.tutor().state.lastSeq;
+    this.requests = [];
+    this.dropped = [];
+
+    const user = createUserMessage({
       chatId: this.chatId,
       content,
-      createdAt: now,
+      createdAt: (this.clock += 1),
+      ...(metadata ? { metadata } : {}),
     });
-    const assistantMessage = createAssistantMessage({
+    const assistant = createAssistantMessage({
       chatId: this.chatId,
       content: '',
-      createdAt: now + 1,
-      model: chat.settings.modelId,
+      createdAt: (this.clock += 1),
+      model: modelId,
     });
+    this.store.setState((s) => appendMessagesToChat(s, this.chatId, [user, assistant]));
+    await this.persistMessage(user);
+    await this.persistMessage(assistant);
 
-    const priorMessages = getMessagesForChat(this.store.getState(), this.chatId);
-    this.store.setState((draft) => {
-      return {
-        ...appendMessagesToChat(draft, this.chatId, [userMessage, assistantMessage]),
-        ui: adjustActiveTurnCount(draft.ui, this.chatId, 1),
-      };
-    });
-
-    const controller = new AbortController();
-    setTurnController(this.chatId, controller);
-
-    const baseTurnContext: Omit<TurnContext, 'auth'> = {
-      set: this.store.setState.bind(this.store),
-      get: this.store.getState.bind(this.store),
-      models: this.store.getState().models,
-      modelIndex: this.store.getState().modelIndex,
-      persistMessage: this.persistMessage,
-    };
-
-    let finalAssistant: Message | undefined;
-    let runArtifacts: Awaited<ReturnType<typeof runTurn>> | undefined;
-
-    const authResolver = (modelId: string) => {
-      const modelMeta = baseTurnContext.modelIndex.get(modelId);
-      const endpoint = getModelEndpoint(modelMeta ?? { id: modelId });
-      const auth = this.resolveAuth({ modelId, endpoint });
-      if (!auth) throw new Error(`Missing auth for the ${endpoint.label} endpoint`);
-      return auth;
-    };
-
+    const { setState: set, getState: get } = this.store;
     const lifecycle = createTurnLifecycle({
       chatId: this.chatId,
-      assistantMessageId: assistantMessage.id,
+      assistantMessageId: assistant.id,
       isPrimary: true,
       priorMessages,
-      getChatForTurn: () => {
-        const found = this.store.getState().chats.find((c) => c.id === this.chatId);
-        const fallback = this.store.getState().chats[0];
-        return found ?? chat ?? fallback!;
-      },
-      set: this.store.setState.bind(this.store),
-      get: this.store.getState.bind(this.store),
-      updateChat: (nextChat) => {
-        chat = nextChat;
-      },
-      updateMessage: (patch) => {
-        this.updateMessage(assistantMessage.id, patch);
-      },
+      getChatForTurn: () => this.chat,
+      set,
+      get,
+      updateMessage: (patch) =>
+        set(
+          (s) => updateMessageById(s, this.chatId, assistant.id, (m) => ({ ...m, ...patch })) ?? {},
+        ),
     });
 
+    let error: string | undefined;
     try {
-      const settings = resolveTurnSettings({
-        chat,
-        ui: this.store.getState().ui,
-        modelIndex: baseTurnContext.modelIndex,
-        modelId: chat.settings.modelId,
-      });
-
-      const plan = (options: Parameters<typeof planTurn>[0]) =>
-        planTurn({ ...options, pipeline: this.pipeline });
-      const stream = (options: Parameters<typeof streamFinal>[0]) =>
-        streamFinal({ ...options, pipeline: this.pipeline });
-
-      runArtifacts = await runTurn({
+      await runTurn({
         chat,
         chatId: this.chatId,
-        modelId: chat.settings.modelId,
+        modelId,
         userContent: content,
-        assistantMessage,
+        assistantMessage: assistant,
         priorMessages,
-        ui: this.store.getState().ui,
-        settings,
-        controller,
-        baseTurnContext,
-        compose: composeTurn,
-        plan,
-        streamFinal: stream,
-        authResolver,
-        attachmentPreparer: async () => [],
-        hooks: {
-          ...lifecycle.hooks,
-          onPlanSideEffects: (effects) =>
-            applyPlanSideEffects({
-              sideEffects: effects,
-              set: this.store.setState.bind(this.store),
-            }),
+        ui: get().ui,
+        settings: resolveTurnSettings({
+          chat,
+          ui: get().ui,
+          modelIndex: get().modelIndex,
+          modelId,
+        }),
+        controller: new AbortController(),
+        baseTurnContext: {
+          set,
+          get,
+          models: get().models,
+          modelIndex: get().modelIndex,
+          persistMessage: this.persistMessage,
         },
+        compose: composeTurn,
+        plan: (options) => planTurn({ ...options, pipeline: this.pipeline }),
+        streamFinal: (options) => streamFinal({ ...options, pipeline: this.pipeline }),
+        authResolver: this.resolveAuth,
+        hooks: lifecycle.hooks,
         pipeline: this.pipeline,
       });
-
-      if (runArtifacts.shortCircuited) {
-        const finalMsg = await finalizeShortCircuitMessage({
-          assistantMessage,
-          lifecycle,
-          getState: () => this.store.getState(),
-          updateMessage: (messageId, patch) => {
-            this.updateMessage(messageId, patch);
-          },
-          persistMessage: this.persistMessage,
-        });
-        const planArtifacts: PlanTurnResult = lifecycle.latestPlan() ??
-          runArtifacts.plan ?? {
-            finalSystem:
-              runArtifacts.composition.system ?? chat.settings.system ?? DEFAULT_BASE_SYSTEM,
-            usedContentTool: false,
-            hasSearchResults: false,
-          };
-        return await this.finishTurn(userMessage, finalMsg, {
-          composition: {
-            system: runArtifacts.composition.system,
-            tools: runArtifacts.composition.tools,
-            plugins: runArtifacts.composition.plugins,
-            settings: runArtifacts.composition.settings,
-            shouldPlan: runArtifacts.composition.shouldPlan,
-          },
-          plan: planArtifacts,
-          tutorUi: this.cardsFor(assistantMessage.id),
-          toolCalls: finalMsg.toolCalls,
-          debugPayload: this.store.getState().ui.debug.byMessageId?.[assistantMessage.id]?.body,
-        });
-      }
-
-      finalAssistant = this.store.getState().messagesById[assistantMessage.id];
-    } catch (error) {
-      const text =
-        error instanceof Error
-          ? error.message
-          : typeof error === 'string'
-            ? error
-            : 'Unknown error';
-      const fallback = this.updateMessage(assistantMessage.id, {
-        content: `Tutor execution error: ${text}`,
-      });
-      finalAssistant = fallback ?? assistantMessage;
-    } finally {
-      clearTurnController(this.chatId, controller);
-      this.store.setState((draft) => ({
-        ui: adjustActiveTurnCount(draft.ui, this.chatId, -1),
-      }));
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : String(caught);
     }
 
-    const assistantFinal =
-      finalAssistant ?? this.store.getState().messagesById[assistantMessage.id];
-    if (!assistantFinal) throw new Error('Assistant message missing after streaming');
-    const planArtifacts: PlanTurnResult = lifecycle.latestPlan() ??
-      runArtifacts?.plan ?? {
-        finalSystem:
-          runArtifacts?.composition.system ?? chat.settings.system ?? DEFAULT_BASE_SYSTEM,
-        usedContentTool: false,
-        hasSearchResults: false,
-      };
-
-    return this.finishTurn(userMessage, assistantFinal, {
-      composition: {
-        system: runArtifacts?.composition.system,
-        tools: runArtifacts?.composition.tools,
-        plugins: runArtifacts?.composition.plugins,
-        settings: runArtifacts?.composition.settings,
-        shouldPlan: runArtifacts?.composition.shouldPlan ?? false,
-      },
-      plan: planArtifacts,
-      tutorUi: this.cardsFor(assistantMessage.id),
-      toolCalls: assistantFinal.toolCalls,
-      debugPayload: this.store.getState().ui.debug.byMessageId?.[assistantMessage.id]?.body,
-    });
-  }
-
-  private cardsFor(messageId: string): Record<string, unknown> {
-    const session = this.store.getState().tutorSessions[this.chatId] ?? EMPTY_TUTOR_SESSION;
-    return cardsForMessage(session, messageId);
-  }
-
-  private async finishTurn(
-    user: Message,
-    assistant: Message,
-    artifacts: HeadlessTurnArtifacts,
-  ): Promise<HeadlessTurnResult> {
-    // Headless runs approve a pending proposal the way the learner's button would.
-    // B-later: the simulated student answers cards through learner commands instead.
-    const state = this.store.getState();
-    const proposal = state.tutorSessions[this.chatId]?.state.proposal;
-    if (proposal) {
-      await state.dispatchTutor(
-        this.chatId,
-        { by: 'learner', type: 'approve_plan', proposalId: proposal.proposalId },
-        { by: 'learner', messageId: proposal.messageId },
-      );
-    }
-    return { user, assistant, artifacts };
+    const final = get().messagesById[assistant.id] ?? assistant;
+    return {
+      user,
+      assistant: final,
+      requests: this.requests,
+      droppedCalls: this.dropped,
+      events: this.tutor().events.filter((e) => e.seq > seqBefore),
+      ...(error ? { error } : {}),
+    };
   }
 }
