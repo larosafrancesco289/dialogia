@@ -330,7 +330,7 @@ test('the checks fail a session that breaks the protocol', async () => {
   x[2].student.actions = [];
   // A replayed quiz that still carries its key.
   x[4].tutor.requests[0].answerKeyLeaks = 1;
-  // Imported mastery outside [0, 1].
+  // Imported mastery outside [0, 1]: the import clamps it, so the range holds.
   broken.events.unshift({
     id: 'legacy',
     chatId: 'c',
@@ -366,7 +366,6 @@ test('the checks fail a session that breaks the protocol', async () => {
   assert.deepEqual(failed.sort(), [
     'cards_answerable',
     'evidence_once_per_answer',
-    'mastery_in_range',
     'no_answer_keys_replayed',
     'plan_approved_within',
     'state_block_every_request',

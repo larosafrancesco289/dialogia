@@ -193,7 +193,14 @@ export type TopicMastery = {
 };
 
 /** Where a piece of evidence came from, as the tutor engine records it. */
-export type EvidenceSource = 'quiz' | 'diagnostic' | 'observation' | 'learner_said' | 'learner';
+export type EvidenceSource =
+  | 'quiz'
+  | 'diagnostic'
+  | 'observation'
+  | 'learner_said'
+  | 'learner'
+  /** A plan's starting estimate from intake or conversation before the plan. */
+  | 'placement';
 
 export type Evidence = {
   timestamp: number;
@@ -206,7 +213,9 @@ export type Evidence = {
     | 'misconception_detected'
     | 'insight_demonstrated'
     // The learner's own correction, not something the tutor observed.
-    | 'self_report';
+    | 'self_report'
+    // A starting estimate the approved plan gave a topic from what came before it.
+    | 'placement';
   details: string; // Description of what happened
   weight: number; // -0.5 to 0.7 — positive for correct/insight, negative for incorrect/misconception
   skill?: string;

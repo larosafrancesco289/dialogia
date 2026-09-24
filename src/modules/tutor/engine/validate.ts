@@ -102,6 +102,7 @@ const PAYLOADS: Record<TutorEventType, z.ZodTypeAny> = {
     plan,
     rationale: z.string().optional(),
     revision: z.boolean(),
+    startingEstimates: z.record(z.object({ value: z.number(), reason: z.string() })).optional(),
   }),
   plan_approved: z.object({ proposalId: id }),
   plan_declined: z.object({ proposalId: id, feedback: z.string().optional() }),
@@ -126,7 +127,7 @@ const PAYLOADS: Record<TutorEventType, z.ZodTypeAny> = {
   }),
   evidence_recorded: z.object({
     nodeId: id,
-    source: z.enum(['quiz', 'diagnostic', 'observation', 'learner_said', 'learner']),
+    source: z.enum(['quiz', 'diagnostic', 'observation', 'learner_said', 'learner', 'placement']),
     kind: z.string().min(1),
     weight: z.number().optional(),
     setTo: z.number().optional(),

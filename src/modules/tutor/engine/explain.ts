@@ -33,6 +33,7 @@ const SOURCE_LABEL: Record<NonNullable<Evidence['source']>, string | null> = {
   observation: 'The tutor observed',
   learner_said: 'You told the tutor',
   learner: 'You',
+  placement: 'Starting estimate',
 };
 
 function describe(entry: Evidence, before: number, after: number): string {

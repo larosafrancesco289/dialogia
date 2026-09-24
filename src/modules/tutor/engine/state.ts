@@ -2,7 +2,12 @@
 // Responsibility: the shape `fold` produces, and read-only views over it.
 
 import type { LearningPlan, LearningPlanNode, Misconception, TopicMastery } from '@/lib/types';
-import type { DiagnosticItem, IntakeQuestion, QuizItem } from '@/modules/tutor/engine/events';
+import type {
+  DiagnosticItem,
+  IntakeQuestion,
+  QuizItem,
+  StartingEstimate,
+} from '@/modules/tutor/engine/events';
 import { BUDGETS, MASTERY_PRIOR } from '@/modules/tutor/engine/rules';
 
 export type TutorPhase = 'intake' | 'proposal' | 'teaching' | 'interlude' | 'complete';
@@ -41,6 +46,7 @@ export type PendingProposal = {
   plan: LearningPlan;
   rationale?: string;
   revision: boolean;
+  startingEstimates?: Record<string, StartingEstimate>;
   seq: number;
   messageId?: string;
 };

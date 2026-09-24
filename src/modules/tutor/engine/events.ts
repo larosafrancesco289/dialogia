@@ -45,6 +45,9 @@ export type CardKind = 'intake' | 'diagnostic' | 'quiz';
 
 export type EvidenceRef = { quizId?: string; diagnosticId?: string; itemId?: string };
 
+/** A proposal's starting estimate for a topic, applied as evidence when the plan is approved. */
+export type StartingEstimate = { value: number; reason: string };
+
 type Payloads = {
   /** One-time import of pre-rebuild state. */
   legacy_imported: {
@@ -62,6 +65,8 @@ type Payloads = {
     plan: LearningPlan;
     rationale?: string;
     revision: boolean;
+    /** By topic id; only topics that start with no evidence of their own take theirs. */
+    startingEstimates?: Record<string, StartingEstimate>;
   };
   plan_approved: { proposalId: string };
   plan_declined: { proposalId: string; feedback?: string };

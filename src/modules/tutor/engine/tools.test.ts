@@ -11,6 +11,7 @@ import {
   tutorToolDefinitions,
   tutorToolError,
   tutorToolResult,
+  withAdjustments,
   type TutorToolCommand,
   type TutorToolName,
 } from '@/modules/tutor/engine';
@@ -325,4 +326,137 @@ test('results carry what the model needs and never an answer key', () => {
     tutorToolError({ code: 'unknown_node', message: 'No topic "x".', hint: 'Valid topic ids: a.' }),
     { ok: false, error: 'unknown_node', message: 'No topic "x".', hint: 'Valid topic ids: a.' },
   );
+});
+
+test('parsing is lenient about placeholders and fields that do not apply', () => {
+  // What GPT-6 Luna sent: every optional field filled, setTo on an observation.
+  const luna = parseTutorToolCall('record_evidence', {
+    kind: 'applied',
+    note: 'Solved 3x + 5 = 20 alone',
+    source: 'observation',
+    setTo: 0,
+    weight: 0,
+    topicId: '',
+    confidence: 'high',
+  });
+  assert.ok(luna.ok, JSON.stringify(luna));
+  assert.deepEqual(luna.command, {
+    by: 'tutor',
+    type: 'record_evidence',
+    nodeId: undefined,
+    kind: 'applied',
+    note: 'Solved 3x + 5 = 20 alone',
+    source: 'observation',
+  });
+  assert.ok(luna.adjusted?.some((line) => /setTo/.test(line) && /learner_said/.test(line)));
+  assert.ok(luna.adjusted?.some((line) => /confidence/.test(line)));
+  const h = teaching();
+  const events = h.tutor(luna.command);
+  assert.equal(events.length, 1, 'the observation is recorded');
+
+  const nulls = parseTutorToolCall('record_evidence', {
+    kind: 'partial',
+    note: 'n',
+    topic_id: 'limits',
+    weight: null,
+    setTo: null,
+    source: null,
+  });
+  assert.ok(nulls.ok && nulls.command.type === 'record_evidence');
+  assert.equal(nulls.command.nodeId, 'limits', 'snake_case keys map to the schema');
+  assert.equal(nulls.command.source, 'observation');
+  assert.equal(nulls.adjusted, undefined, 'placeholders are dropped silently');
+
+  const said = parseTutorToolCall('record_evidence', {
+    kind: 'partial',
+    note: 'Says about 60%',
+    source: 'learner_said',
+    setTo: '60',
+    weight: 0.1,
+  });
+  assert.ok(said.ok && said.command.type === 'record_evidence');
+  assert.equal(said.command.setTo, 0.6, 'a percentage and a numeric string are read');
+  assert.equal(said.command.weight, undefined);
+  assert.ok(said.adjusted?.some((line) => /weight/.test(line)));
+
+  const clamped = parseTutorToolCall('record_evidence', {
+    kind: 'insight',
+    note: 'n',
+    weight: 0.9,
+  });
+  assert.ok(clamped.ok && clamped.command.type === 'record_evidence');
+  assert.equal(clamped.command.weight, 0.7);
+
+  const quiz = parseTutorToolCall('give_quiz', {
+    title: null,
+    items: [
+      { question: 'q1', choices: ['a', 'b'], correct: 'B', explanation: '' },
+      { question: 'q2', choices: ['x', 'y', 'z'], correct: 'z' },
+      { question: 'q3', choices: ['1', '2'], correct: '0' },
+    ],
+  });
+  assert.ok(quiz.ok && quiz.command.type === 'give_quiz', JSON.stringify(quiz));
+  assert.deepEqual(
+    quiz.command.items.map((item) => item.correct),
+    [1, 2, 0],
+  );
+  assert.equal(quiz.command.title, undefined);
+
+  const resolve = parseTutorToolCall('resolve_misconception', {
+    misconceptionId: 'm',
+    topicId: 'none',
+    note: 'N/A',
+  });
+  assert.ok(resolve.ok && resolve.command.type === 'resolve_misconception');
+  assert.equal(resolve.command.nodeId, undefined);
+  assert.equal(resolve.command.note, undefined);
+});
+
+test('plan topics take a starting estimate, read leniently and capped below READY', () => {
+  const parsed = parseTutorToolCall('propose_plan', {
+    goal: 'g',
+    topics: [
+      {
+        name: 'A',
+        objectives: ['x'],
+        startingEstimate: { value: 0, reason: '' },
+        prerequisites: [''],
+      },
+      { name: 'B', objectives: ['y'], startingEstimate: { value: 90, reason: 'Uses it daily' } },
+      { name: 'C', objectives: ['z'], startingEstimate: { value: 0.5 } },
+    ],
+  });
+  assert.ok(parsed.ok && parsed.command.type === 'propose_plan', JSON.stringify(parsed));
+  const [a, b, c] = parsed.command.nodes;
+  assert.equal(a.startingEstimate, undefined);
+  assert.deepEqual(a.prerequisites, []);
+  assert.deepEqual(b.startingEstimate, { value: 0.75, reason: 'Uses it daily' });
+  assert.ok(parsed.adjusted?.some((line) => /capped at 75%/.test(line)));
+  assert.deepEqual(c.startingEstimate, { value: 0.5 });
+
+  const h = harness();
+  const before = h.state;
+  const events = h.tutor(parsed.command);
+  const result = tutorToolResult('propose_plan', before, h.state, events);
+  assert.deepEqual(result.startingEstimates, { b: 75, c: 50 });
+  assert.match(TUTOR_TOOLS.propose_plan.function.description ?? '', /startingEstimate/);
+});
+
+test('a refusal names the fields to change', () => {
+  const bad = parseTutorToolCall('complete_topic', { how: 'known' });
+  assert.ok(!bad.ok);
+  assert.match(bad.error.message, /how: .*'mastered' \| 'skipped'/);
+  assert.match(bad.error.hint, /^Change how /);
+});
+
+test('an accepted no-op says nothing changed', () => {
+  const h = teaching();
+  const before = h.state;
+  const events = h.tutor({ type: 'start_topic', nodeId: 'limits' });
+  assert.deepEqual(events, []);
+  const result = tutorToolResult('start_topic', before, h.state, events);
+  assert.equal(result.ok, true);
+  assert.match(String(result.note), /already in progress/);
+  assert.deepEqual(withAdjustments({ ok: true }, []), { ok: true });
+  assert.deepEqual(withAdjustments({ ok: true }, ['x']), { ok: true, adjusted: ['x'] });
 });
