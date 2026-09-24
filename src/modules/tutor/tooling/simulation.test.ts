@@ -147,6 +147,22 @@ function scriptedTutor(params: TransportStreamParams): void {
   return reply(params, 'Show me your working.');
 }
 
+/** The same tutor, except that it records the answers that make a topic ready and never closes it. */
+function stallingTutor(params: TransportStreamParams): void {
+  const messages = params.messages;
+  const lastUser = messages.map((m) => m.role).lastIndexOf('user');
+  const said = textOf(messages[lastUser]?.content);
+  const round = messages.slice(lastUser + 1).filter((m) => m.role === 'assistant').length + 1;
+  const teaching = textOf(messages.find((m) => m.role === 'system')?.content).includes(
+    'Current topic: ',
+  );
+  if (said.startsWith('Answered the quiz') || (teaching && said === 'Is it x = 4?')) {
+    if (round > 1) return reply(params, 'Now try another one.');
+    return reply(params, '', [call('record_evidence', { kind: 'applied', note: 'Undid a step' })]);
+  }
+  return scriptedTutor(params);
+}
+
 /** The student's model: JSON for the screen questions, a short line otherwise. */
 const scriptedStudent =
   (edits: Array<Record<string, unknown>> = []): StudentLLM =>
@@ -194,7 +210,7 @@ function chat(): Chat {
   };
 }
 
-async function simulate(): Promise<{
+async function simulate({ script = scriptedTutor, exchanges = 6 } = {}): Promise<{
   run: SimulationRun;
   requests: TransportStreamParams[];
   session: HeadlessTutorSession;
@@ -204,7 +220,7 @@ async function simulate(): Promise<{
     chat: chat(),
     models: [model],
     resolveAuth: () => buildTransportAuth({ endpoint: OPENROUTER_ENDPOINT, apiKey: 'test' }),
-    pipeline: tutorPipeline(requests),
+    pipeline: tutorPipeline(requests, script),
   });
   const student = new SimulatedStudent({
     scenario: SCENARIO,
@@ -215,7 +231,7 @@ async function simulate(): Promise<{
   const run = await runSimulation({
     session,
     student,
-    exchanges: 6,
+    exchanges,
     flags: DEFAULT_TUTOR_FLAGS,
     learnerEdits: true,
     meta: { tutorModel: TUTOR, studentModel: 'provider/student', seed: 1 },
@@ -387,7 +403,10 @@ test('the checks fail a session that breaks the protocol', async () => {
     } as never,
   });
 
-  const failed = checkRun(broken, { planWithin: 1, topicWithin: 2 })
+  // A topic left open the turn it could be closed (the tutor closed it in the same turn).
+  broken.events = broken.events.filter((e) => e.type !== 'topic_completed');
+
+  const failed = checkRun(broken, { planWithin: 1, closeWithin: 1 })
     .filter((c) => !c.ok)
     .map((c) => c.id);
   assert.deepEqual(failed.sort(), [
@@ -398,8 +417,73 @@ test('the checks fail a session that breaks the protocol', async () => {
     'plan_approved_within',
     'state_block_every_request',
     'tool_errors_recovered',
-    'topic_completed_within',
+    'topic_closed_when_ready',
   ]);
+});
+
+test('a topic ready to complete must be closed in time, and a run where none got there is not judged', async () => {
+  const verdict = (run: SimulationRun) =>
+    checkRun(run).find((c) => c.id === 'topic_closed_when_ready')!;
+
+  const healthy = verdict((await simulate()).run);
+  assert.equal(healthy.ok, true);
+  assert.equal(healthy.skipped, undefined);
+  assert.match(healthy.summary, /Closed: inverse-operations in #4/);
+
+  // Ready from #4 (quiz answers and the tutor's own evidence), then left open for three turns.
+  const { run } = await simulate({ script: stallingTutor, exchanges: 6 });
+  assert.equal(run.exchanges[3].after.mastery['inverse-operations'] >= 80, true);
+  const stalled = verdict(run);
+  assert.equal(stalled.ok, false);
+  assert.match(stalled.problems[0], /inverse-operations could be completed from #4 .*after #6/);
+
+  // Fewer turns than the tutor gets: not judged yet.
+  const pending = verdict({ ...run, exchanges: run.exchanges.slice(0, 5) });
+  assert.equal(pending.skipped, true);
+  assert.match(
+    pending.summary,
+    /Too short to judge: inverse-operations could be completed from #4/,
+  );
+
+  // The quiz not yet answered: no topic got there, which says nothing about the tutor.
+  const early = run.exchanges.slice(0, 3);
+  const learning = verdict({
+    ...run,
+    exchanges: early,
+    events: run.events.filter((e) => e.seq <= early[2].after.lastSeq),
+  });
+  assert.equal(learning.ok, true);
+  assert.equal(learning.skipped, true);
+  assert.match(
+    learning.summary,
+    /no topic reached 80%.*inverse-operations at 30% on 0 of the learner's own answers/,
+  );
+});
+
+test('a misconception an earlier answer showed does not count against the reply’s gain', async () => {
+  const { run } = await simulate();
+  const observed = run.events.find(
+    (e) => e.type === 'evidence_recorded' && e.source === 'observation',
+  ) as TutorEventOf<'evidence_recorded'>;
+  const noted = (id: string, seq: number, shownBy?: 'earlier_answer'): TutorEvent => ({
+    id,
+    chatId: observed.chatId,
+    seq,
+    at: observed.at,
+    by: 'tutor',
+    messageId: observed.messageId,
+    type: 'misconception_noted',
+    nodeId: observed.nodeId,
+    misconceptionId: 'm',
+    description: 'm',
+    ...(shownBy ? { shownBy } : {}),
+  });
+  const verdict = (event: TutorEvent) =>
+    checkRun({ ...run, events: [...run.events, event] }).find(
+      (c) => c.id === 'no_gain_with_misconception',
+    )?.ok;
+  assert.equal(verdict(noted('earlier', run.state.lastSeq + 1, 'earlier_answer')), true);
+  assert.equal(verdict(noted('latest', run.state.lastSeq + 1)), false);
 });
 
 test('the CLI writes the transcript and report, and --check sets the exit code', async () => {
