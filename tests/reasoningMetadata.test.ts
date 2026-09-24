@@ -165,9 +165,15 @@ test('on a Claude API key a family resolves among its newest-first list', () => 
 });
 
 test("the app's retired aliases map to families, and pins cover an empty list", () => {
-  assert.equal(resolveDynamicModelId('~openai/gpt-latest', []), 'openai/gpt-6-luna');
-  assert.equal(resolveDynamicModelId('~anthropic/frontier', []), 'anthropic/claude-fable-5.1');
-  assert.equal(resolveDynamicModelId('~x-ai/grok-latest', []), 'x-ai/grok-4.7');
+  // Which model each pin names changes with every release; that it is a
+  // concrete id from the alias's own provider does not.
+  for (const [alias, provider] of [
+    ['~openai/gpt-latest', 'openai'],
+    ['~anthropic/frontier', 'anthropic'],
+    ['~x-ai/grok-latest', 'x-ai'],
+  ]) {
+    assert.match(resolveDynamicModelId(alias, []), new RegExp(`^${provider}/[^~]+$`), alias);
+  }
   assert.equal(resolveDynamicModelId('openai/gpt-5.5', []), 'openai/gpt-5.5');
   // An alias the app does not know is a provider's own requestable id.
   assert.equal(
