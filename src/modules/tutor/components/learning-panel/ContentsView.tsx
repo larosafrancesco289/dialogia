@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { LearningPlan, LearningPlanNode, TopicMastery } from '@/lib/types';
 import { unmetPrerequisites, type TopicExplanation } from '@/modules/tutor/engine';
-import { inSentence } from '@/modules/tutor/lib/text';
 import type { TutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 
 const EVIDENCE_SHOWN = 4;
@@ -141,7 +140,7 @@ function ContentsItem({
   const waitingOn = locked
     ? plan.nodes
         .filter((p) => node.prerequisites.includes(p.id) && p.status !== 'completed')
-        .map((p) => inSentence(p.name))
+        .map((p) => p.name)
     : [];
   const measured = isMeasured(mastery);
   const showMastery = affordances.showMastery && measured && !locked;
@@ -184,7 +183,7 @@ function ContentsItem({
           </span>
           {showMastery && <Meter value={mastery!.confidence} weak={weak} />}
           {locked && waitingOn.length > 0 && (
-            <span className="hub-contents__after">After {waitingOn.join(' and ')}</span>
+            <span className="hub-contents__after">After: {waitingOn.join(', ')}</span>
           )}
         </span>
         {showMastery && (
@@ -267,7 +266,7 @@ type WhyStep = TopicExplanation['steps'][number] & { evidence?: TopicMastery['ev
 
 /** One line of "Why N%": what a piece of evidence did, or where it set the estimate. */
 function WhyLine({ step: { evidence, before, after } }: { step: WhyStep }) {
-  if (!evidence || typeof evidence.setTo === 'number') {
+  if (!evidence || (typeof evidence.setTo === 'number' && evidence.kind !== 'misconception')) {
     return (
       <li>
         <span className="hub-contents__sign">=</span>
@@ -294,6 +293,8 @@ function WhyLine({ step: { evidence, before, after } }: { step: WhyStep }) {
 /** What the latest direct setting was, to head the history before it. */
 function beforeLabel(evidence: WhyStep['evidence']): string {
   if (evidence?.kind === 'placement') return 'Before the starting estimate';
+  if (evidence?.kind === 'more_practice') return 'Before you asked for more practice';
+  if (evidence?.kind === 'marked_known') return 'Before you marked it known';
   if (evidence?.source === 'learner') return 'Before your correction';
   if (evidence?.source === 'learner_said') return 'Before what you told the tutor';
   return 'Before it was set';
@@ -344,7 +345,9 @@ function Why({ mastery, explanation }: { mastery: TopicMastery; explanation?: To
               onClick={() => setShowEarlier((open) => !open)}
             >
               {beforeLabel(steps[settledAt]?.evidence)}
-              {earlier.length ? ` (${earlier.length})` : ''}
+              {earlier.length
+                ? ` · ${earlier.length} earlier step${earlier.length === 1 ? '' : 's'}`
+                : ''}
             </button>
             {showEarlier && (
               <ul>

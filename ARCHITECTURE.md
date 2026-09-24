@@ -303,7 +303,8 @@ nothing more, and a backup import (which reruns bootstrap) forgets every session
 tools are the engine's; each handler parses the call into a command and dispatches it.
 The UI renders from the same log: cards from their `*_given` / `plan_proposed` events by message id,
 margin notes from a message's `evidence_recorded` events, a chapter break from its
-`topic_completed` event, "Why N%" from `explainTopic`. A learner action that needs the tutor's
+`topic_completed` event and the first topic started or reopened after it (what the learner chose at
+that seam, whatever became of the topic later), "Why N%" from `explainTopic`. A learner action that needs the tutor's
 answer (a finished card, approving the plan, Go on) dispatches its command and then sends a
 visible user message with `Message.ledger` set, which the transcript shows as a quiet line and the
 model reads as an ordinary message; quiet corrections only dispatch. The lines' words live in
@@ -328,8 +329,22 @@ Cards (quiz, intake, diagnostic, plan proposal) are `content` tools that end the
 so a card put up without a word gets one round to introduce it; state tools are `action` tools. Tool arguments are parsed leniently (`engine/tools.ts`): placeholders in
 optional fields and fields that do not apply are dropped and named back in the result as
 `adjusted`; only what changes a call's meaning is refused, with a hint naming the field and its
-valid values. A plan's topics may carry a `startingEstimate` (capped below `READY`) from intake or
-a diagnostic, recorded as evidence when the learner approves the plan. Every tutor turn runs the
+valid values. A field a tool no longer has (record_evidence's `setTo`) is dropped without a word.
+A plan's topics may carry a `startingEstimate`, recorded as evidence when the learner approves the
+plan: at most `PRACTISING` on the learner's word, and up to just below `READY` once a diagnostic has
+tested them. A plan proposal closes an unanswered intake, so a learner who skips the questions is
+not kept waiting on the card.
+
+The tutor's own evidence is judged per reply, from a record `fold` keeps of the tutor's latest
+reply: one piece per topic, and none that gains on a topic the same reply noted a misconception
+on. Evidence recorded after the note moves nothing; a gain recorded before it is taken back
+exactly by a `misconception` evidence event naming the evidence it cancels, which then stops
+counting toward mastery. `partial` never lowers an estimate and, led to (`helped`), moves nothing.
+These rules live in `decide`, and `fold` replays what was decided, so older logs keep their values.
+Reopening a topic (more practice at a chapter break, or taking it up again) keeps its estimate;
+completing it again as mastered needs fresh work counted from the reopening.
+
+Every tutor turn runs the
 agent loop, reads a state block rendered from the log, and records on its reply
 (`Message.tutorSeq`) the log position it saw, so the next turn can tell the tutor what the learner
 changed since. The tools offered follow the state, and the agent loop reads them again after each

@@ -5,6 +5,7 @@ import { PlanFeedbackModal } from '@/modules/tutor/components/plan/PlanFeedbackM
 import type { ProposalView } from '@/modules/tutor/ui/messageViews';
 import { LEDGER } from '@/modules/tutor/lib/ledger';
 import { useLedger } from '@/modules/tutor/ui/ledger';
+import { useRequestPlanChanges } from '@/modules/tutor/ui/usePlanCallbacks';
 import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 
 export function PlanProposalCard({
@@ -23,14 +24,16 @@ export function PlanProposalCard({
   const setUI = useChatStore((s) => s.setUI);
   const setNotice = useChatStore((s) => s.setNotice);
   const ledger = useLedger();
+  const requestPlanChanges = useRequestPlanChanges();
   // A second click lands before the disabled state renders; without this it
   // would find the proposal already approved and report a failure.
   const acting = useRef(false);
   // Declining is negotiating the plan; a read-only plan only takes approval.
   const { revisePlan } = useTutorAffordances();
 
+  // Once answered, the card is a record: its choices go, and only what became of it stays.
   const resolved = proposal.status !== 'pending';
-  const disableActions = resolved || approving || declining;
+  const disableActions = approving || declining;
   const nodesCount = proposal.plan.nodes.length;
   const estimatedHours = proposal.plan.metadata?.estimatedHours;
 
@@ -81,13 +84,7 @@ export function PlanProposalCard({
     acting.current = true;
     setDeclining(true);
     try {
-      const result = await dispatchTutor(
-        chatId,
-        { by: 'learner', type: 'decline_plan', proposalId: proposal.proposalId, feedback },
-        { by: 'learner', messageId },
-      );
-      if (!result.ok) return;
-      await ledger(LEDGER.planDeclined(feedback));
+      await requestPlanChanges(feedback, { proposalId: proposal.proposalId, messageId });
     } finally {
       acting.current = false;
       setDeclining(false);
@@ -108,7 +105,15 @@ export function PlanProposalCard({
     <>
       <div className="exercise">
         <div>
-          <h4 className="exercise__title">Your learning plan is ready</h4>
+          <h4 className="exercise__title">
+            {proposal.revision
+              ? resolved
+                ? 'Revised plan'
+                : 'Your revised plan is ready'
+              : resolved
+                ? 'Learning plan'
+                : 'Your learning plan is ready'}
+          </h4>
           <p className="exercise__meta">
             {nodesCount} topics{estimatedHours ? ` · about ${estimatedHours} hours` : ''}
           </p>
@@ -116,10 +121,12 @@ export function PlanProposalCard({
         <p className="exercise__question">{proposal.plan.goal}</p>
         {!resolved && proposal.rationale && <p className="exercise__aside">{proposal.rationale}</p>}
         <div className="flex flex-wrap items-center gap-2">
-          <button className="btn btn-sm" onClick={handleApprove} disabled={disableActions}>
-            {approving ? 'Applying…' : 'Approve plan'}
-          </button>
-          {revisePlan && (
+          {!resolved && (
+            <button className="btn btn-sm" onClick={handleApprove} disabled={disableActions}>
+              {approving ? 'Applying…' : 'Approve plan'}
+            </button>
+          )}
+          {!resolved && revisePlan && (
             <button
               className="btn-outline btn-sm"
               onClick={handleRequestChanges}

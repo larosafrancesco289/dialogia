@@ -240,55 +240,63 @@ function reduce(state: TutorState, event: TutorEvent): TutorState {
     }
 
     case 'evidence_recorded':
-      return withMastery(state, event.nodeId, (topic) => {
-        const weight = typeof event.weight === 'number' ? clampWeight(event.weight) : undefined;
-        const setTo = typeof event.setTo === 'number' ? clamp01(event.setTo) : undefined;
-        const entry: Evidence = {
-          timestamp: event.at,
-          type: legacyEvidenceType(event.kind),
-          details: event.note,
-          weight: weight ?? 0,
-          ...(setTo != null ? { setTo } : {}),
-          eventId: event.id,
-          source: event.source,
-          kind: event.kind,
-          ...(event.ref ? { ref: event.ref } : {}),
-        };
-        return {
-          ...topic,
-          confidence: applyEvidence(topic.confidence, { weight, setTo }),
-          evidence: [...topic.evidence, entry],
-          interactions: topic.interactions + (event.source === 'learner' ? 0 : 1),
-          lastInteraction: event.at,
-        };
-      });
+      return noteReply(
+        withMastery(state, event.nodeId, (topic) => {
+          const weight = typeof event.weight === 'number' ? clampWeight(event.weight) : undefined;
+          const setTo = typeof event.setTo === 'number' ? clamp01(event.setTo) : undefined;
+          const entry: Evidence = {
+            timestamp: event.at,
+            type: legacyEvidenceType(event.kind),
+            details: event.note,
+            weight: weight ?? 0,
+            ...(setTo != null ? { setTo } : {}),
+            eventId: event.id,
+            source: event.source,
+            kind: event.kind,
+            ...(event.ref ? { ref: event.ref } : {}),
+          };
+          return {
+            ...topic,
+            confidence: applyEvidence(topic.confidence, { weight, setTo }),
+            evidence: [...topic.evidence, entry],
+            interactions: topic.interactions + (event.source === 'learner' ? 0 : 1),
+            lastInteraction: event.at,
+          };
+        }),
+        event,
+        state,
+      );
 
     case 'misconception_noted':
-      return withMastery(state, event.nodeId, (topic) => {
-        const existing = topic.misconceptions.find((m) => m.id === event.misconceptionId);
-        const misconceptions = existing
-          ? topic.misconceptions.map((m) =>
-              m.id === event.misconceptionId
-                ? {
-                    ...m,
-                    occurrences: m.occurrences + 1,
-                    resolved: false,
-                    resolvedBy: undefined,
-                  }
-                : m,
-            )
-          : [
-              ...topic.misconceptions,
-              {
-                id: event.misconceptionId,
-                description: event.description,
-                firstObserved: event.at,
-                occurrences: 1,
-                resolved: false,
-              },
-            ];
-        return { ...topic, misconceptions, lastInteraction: event.at };
-      });
+      return noteReply(
+        withMastery(state, event.nodeId, (topic) => {
+          const existing = topic.misconceptions.find((m) => m.id === event.misconceptionId);
+          const misconceptions = existing
+            ? topic.misconceptions.map((m) =>
+                m.id === event.misconceptionId
+                  ? {
+                      ...m,
+                      occurrences: m.occurrences + 1,
+                      resolved: false,
+                      resolvedBy: undefined,
+                    }
+                  : m,
+              )
+            : [
+                ...topic.misconceptions,
+                {
+                  id: event.misconceptionId,
+                  description: event.description,
+                  firstObserved: event.at,
+                  occurrences: 1,
+                  resolved: false,
+                },
+              ];
+          return { ...topic, misconceptions, lastInteraction: event.at };
+        }),
+        event,
+        state,
+      );
 
     case 'misconception_resolved':
       return withMastery(state, event.nodeId, (topic) => ({
@@ -338,6 +346,40 @@ function reduce(state: TutorState, event: TutorEvent): TutorState {
       };
     }
   }
+}
+
+/**
+ * Keeps the tutor's latest reply's record: its evidence per topic and the
+ * topics it noted a misconception on. A learner's or the engine's events are
+ * not the reply's own, and a topic outside the plan is not tracked.
+ */
+function noteReply(
+  next: TutorState,
+  event: TutorEventOf<'evidence_recorded'> | TutorEventOf<'misconception_noted'>,
+  before: TutorState,
+): TutorState {
+  if (event.by !== 'tutor' || !event.messageId || !next.mastery[event.nodeId]) return next;
+  const record =
+    next.reply?.messageId === event.messageId
+      ? next.reply
+      : { messageId: event.messageId, evidence: {}, misconceptions: [] };
+  if (event.type === 'misconception_noted') {
+    if (record.misconceptions.includes(event.nodeId)) return { ...next, reply: record };
+    return {
+      ...next,
+      reply: { ...record, misconceptions: [...record.misconceptions, event.nodeId] },
+    };
+  }
+  const first = record.evidence[event.nodeId];
+  const change = {
+    eventId: first?.eventId ?? event.id,
+    before: first?.before ?? before.mastery[event.nodeId].confidence,
+    after: next.mastery[event.nodeId].confidence,
+  };
+  return {
+    ...next,
+    reply: { ...record, evidence: { ...record.evidence, [event.nodeId]: change } },
+  };
 }
 
 function withNodes(

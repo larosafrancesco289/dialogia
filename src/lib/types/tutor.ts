@@ -229,7 +229,7 @@ export type Evidence = {
   source?: EvidenceSource;
   /** The engine's own name for what happened; `type` is its legacy equivalent. */
   kind?: string;
-  ref?: { quizId?: string; diagnosticId?: string; itemId?: string };
+  ref?: { quizId?: string; diagnosticId?: string; itemId?: string; eventId?: string };
 };
 
 export type Misconception = {

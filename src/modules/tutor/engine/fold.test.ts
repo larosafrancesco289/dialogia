@@ -397,3 +397,48 @@ test('imported history changes no state and spends no quiz budget', () => {
   assert.equal(remainingBudgets(state).quizzesLeft, 3);
   assert.ok(state.quizzes['legacy-quiz-a1'], 'the old quiz still renders');
 });
+
+test('logs from before the evidence rules changed replay to the values they had', () => {
+  // Recorded when partial could go down, learner_said could place the
+  // estimate, and one reply could record twice on a topic it noted a
+  // misconception on. The rules live in `decide`; `fold` replays what was decided.
+  const h = teaching();
+  const from = h.events.length;
+  const envelope = (seq: number) => ({
+    id: `old-${seq}`,
+    chatId: 'chat-1',
+    seq: from + seq,
+    at: 50_000,
+    by: 'tutor',
+    messageId: 'reply-old',
+  });
+  const evidence = (seq: number, fields: Record<string, unknown>) =>
+    parseTutorEvent({
+      ...envelope(seq),
+      type: 'evidence_recorded',
+      nodeId: 'limits',
+      source: 'observation',
+      ...fields,
+    });
+  const old = [
+    evidence(1, { kind: 'partial', weight: -0.1, note: 'Wrong, recorded as partial' }),
+    evidence(2, { kind: 'applied', weight: 0.3, note: 'And again in the same reply' }),
+    parseTutorEvent({
+      ...envelope(3),
+      type: 'misconception_noted',
+      nodeId: 'limits',
+      misconceptionId: 'm',
+      description: 'm',
+    }),
+    evidence(4, { kind: 'partial', source: 'learner_said', setTo: 0.2, note: 'Says 20%' }),
+    evidence(5, { kind: 'partial', weight: 0.1, note: 'After the misconception' }),
+  ];
+  assert.ok(old.every(Boolean), 'old events still parse');
+  const state = fold([...h.events, ...(old as TutorEvent[])]);
+  const expected = 0.2 + 0.1 * (1 - 0.2);
+  assert.ok(Math.abs(state.mastery.limits.confidence - expected) < 1e-9);
+  assert.equal(state.mastery.limits.evidence.length, 4);
+  const steps = explainTopic(state, 'limits')!.steps;
+  assert.ok(Math.abs(steps[0].after - MASTERY_PRIOR * 0.9) < 1e-9, 'partial went down then');
+  assert.equal(explainTopic(state, 'limits')?.confidence, state.mastery.limits.confidence);
+});
