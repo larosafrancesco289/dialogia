@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { LearningPlan, LearningPlanNode, TopicMastery } from '@/lib/types';
 import { unmetPrerequisites, type TopicExplanation } from '@/modules/tutor/engine';
-import { inSentence } from '@/modules/tutor/ui/text';
+import { inSentence } from '@/modules/tutor/lib/text';
 import type { TutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 
 const EVIDENCE_SHOWN = 4;

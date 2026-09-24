@@ -5,7 +5,7 @@ import type { Evidence, Message } from '@/lib/types';
 import { nextReadyNode, percent as toPercent } from '@/modules/tutor/engine';
 import type { Completion } from '@/modules/tutor/ui/messageViews';
 import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
-import { inSentence } from '@/modules/tutor/ui/text';
+import { inSentence } from '@/modules/tutor/lib/text';
 import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 import { seamChoices } from '@/modules/tutor/ui/tutorFlags';
 
