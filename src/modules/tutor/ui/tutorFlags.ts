@@ -21,7 +21,7 @@ export function tutorAffordances(flags: TutorFlags): TutorAffordances {
 }
 
 export type SeamChoices = {
-  /** "Go on to …": follows the plan, so it needs only a next topic to go to. */
+  /** "Go on: …": follows the plan, so it needs only a next topic to go to. */
   goOn: boolean;
   /** "More practice" (reopens the topic) and "Change the path" both change the plan. */
   negotiate: boolean;

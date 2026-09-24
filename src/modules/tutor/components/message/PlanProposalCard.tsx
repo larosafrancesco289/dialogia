@@ -31,8 +31,9 @@ export function PlanProposalCard({
   // Declining is negotiating the plan; a read-only plan only takes approval.
   const { revisePlan } = useTutorAffordances();
 
+  // Once answered, the card is a record: its choices go, and only what became of it stays.
   const resolved = proposal.status !== 'pending';
-  const disableActions = resolved || approving || declining;
+  const disableActions = approving || declining;
   const nodesCount = proposal.plan.nodes.length;
   const estimatedHours = proposal.plan.metadata?.estimatedHours;
 
@@ -104,7 +105,15 @@ export function PlanProposalCard({
     <>
       <div className="exercise">
         <div>
-          <h4 className="exercise__title">Your learning plan is ready</h4>
+          <h4 className="exercise__title">
+            {proposal.revision
+              ? resolved
+                ? 'Revised plan'
+                : 'Your revised plan is ready'
+              : resolved
+                ? 'Learning plan'
+                : 'Your learning plan is ready'}
+          </h4>
           <p className="exercise__meta">
             {nodesCount} topics{estimatedHours ? ` · about ${estimatedHours} hours` : ''}
           </p>
@@ -112,10 +121,12 @@ export function PlanProposalCard({
         <p className="exercise__question">{proposal.plan.goal}</p>
         {!resolved && proposal.rationale && <p className="exercise__aside">{proposal.rationale}</p>}
         <div className="flex flex-wrap items-center gap-2">
-          <button className="btn btn-sm" onClick={handleApprove} disabled={disableActions}>
-            {approving ? 'Applying…' : 'Approve plan'}
-          </button>
-          {revisePlan && (
+          {!resolved && (
+            <button className="btn btn-sm" onClick={handleApprove} disabled={disableActions}>
+              {approving ? 'Applying…' : 'Approve plan'}
+            </button>
+          )}
+          {!resolved && revisePlan && (
             <button
               className="btn-outline btn-sm"
               onClick={handleRequestChanges}

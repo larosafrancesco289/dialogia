@@ -21,6 +21,8 @@ export type ProposalView = {
   proposalId: string;
   plan: LearningPlan;
   rationale?: string;
+  /** It revises an approved plan. */
+  revision: boolean;
   status: 'pending' | 'approved' | 'declined' | 'replaced';
 };
 
@@ -58,6 +60,7 @@ function proposalFor(events: readonly TutorEvent[], messageId: string): Proposal
           proposalId: event.proposalId,
           plan: event.plan,
           ...(event.rationale ? { rationale: event.rationale } : {}),
+          revision: event.revision,
           status: 'pending',
         };
       } else if (view?.status === 'pending' || view?.status === 'declined') {
@@ -68,6 +71,7 @@ function proposalFor(events: readonly TutorEvent[], messageId: string): Proposal
         proposalId: event.proposalId,
         plan: event.plan,
         ...(event.rationale ? { rationale: event.rationale } : {}),
+        revision: false,
         status: event.status,
       };
     } else if (view && event.type === 'plan_approved' && event.proposalId === view.proposalId) {

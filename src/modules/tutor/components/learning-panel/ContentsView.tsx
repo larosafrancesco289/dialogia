@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { LearningPlan, LearningPlanNode, TopicMastery } from '@/lib/types';
 import { unmetPrerequisites, type TopicExplanation } from '@/modules/tutor/engine';
-import { inSentence } from '@/modules/tutor/lib/text';
 import type { TutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 
 const EVIDENCE_SHOWN = 4;
@@ -141,7 +140,7 @@ function ContentsItem({
   const waitingOn = locked
     ? plan.nodes
         .filter((p) => node.prerequisites.includes(p.id) && p.status !== 'completed')
-        .map((p) => inSentence(p.name))
+        .map((p) => p.name)
     : [];
   const measured = isMeasured(mastery);
   const showMastery = affordances.showMastery && measured && !locked;
@@ -184,7 +183,7 @@ function ContentsItem({
           </span>
           {showMastery && <Meter value={mastery!.confidence} weak={weak} />}
           {locked && waitingOn.length > 0 && (
-            <span className="hub-contents__after">After {waitingOn.join(' and ')}</span>
+            <span className="hub-contents__after">After: {waitingOn.join(', ')}</span>
           )}
         </span>
         {showMastery && (
