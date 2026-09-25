@@ -2,7 +2,7 @@ import { useId, useMemo, useState } from 'react';
 import {
   CheckIcon,
   ChevronDownIcon,
-  ClipboardDocumentIcon,
+  ClipboardIcon,
   ExclamationCircleIcon,
   LightBulbIcon,
   MagnifyingGlassIcon,
@@ -177,7 +177,7 @@ export function ResponseContextPanel({
                   {copied ? (
                     <CheckIcon className="h-3.5 w-3.5" />
                   ) : (
-                    <ClipboardDocumentIcon className="h-3.5 w-3.5" />
+                    <ClipboardIcon className="h-3.5 w-3.5" />
                   )}
                 </button>
               </div>
