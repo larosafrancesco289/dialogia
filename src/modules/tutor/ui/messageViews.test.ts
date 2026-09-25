@@ -11,6 +11,7 @@ import {
   cardsForMessage,
   effectsByMessage,
   evidenceBehind,
+  marginChanges,
   marginReason,
 } from '@/modules/tutor/ui/messageViews';
 
@@ -139,4 +140,20 @@ test('what a break says the estimate rests on names a request for practice as on
     'one answer and your request for more practice',
   );
   assert.equal(evidenceBehind([entry('adjusted', 'learner')]), 'your correction');
+});
+
+test('the reply that finishes a topic keeps its margin note beside the chapter break', () => {
+  const h = teaching();
+  master(h);
+  h.tutor(
+    { type: 'record_evidence', kind: 'explained', note: 'Explained why', source: 'observation' },
+    'reply-1',
+  );
+  h.tutor({ type: 'complete_topic', how: 'mastered' }, 'reply-1');
+  const effects = effectsByMessage(h.events).get('reply-1')!;
+  assert.equal(effects.completed?.nodeId, 'limits');
+  const [note] = marginChanges(effects);
+  assert.equal(note?.nodeId, 'limits', 'the change sits beside the exchange that earned it');
+  assert.ok(note.to > note.from);
+  assert.deepEqual(note.notes, ['Explained why']);
 });
