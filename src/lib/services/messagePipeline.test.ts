@@ -1,4 +1,5 @@
-import { deleteKey } from '@/lib/keys/store';
+import { deleteKey, setKey } from '@/lib/keys/store';
+import type { TransportStreamParams } from '@/lib/transport/types';
 import { OPENROUTER_ENDPOINT } from '@/lib/transport/endpoints';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -20,7 +21,7 @@ const baseModels: ModelDescriptor[] = [
     name: 'Provider Model',
     context_length: 16000,
     pricing: undefined,
-    raw: {},
+    raw: { supported_parameters: ['tools', 'tool_choice'] },
   },
 ];
 
@@ -50,6 +51,7 @@ async function runRegenerate(chat: Chat, reply: Partial<Message>, content: strin
   state.ui.debug = { ...state.ui.debug, mode: true };
 
   const saved: Message[] = [];
+  const requests: TransportStreamParams[] = [];
   await regenerate({
     chat,
     chatId: chat.id,
@@ -67,7 +69,9 @@ async function runRegenerate(chat: Chat, reply: Partial<Message>, content: strin
     } satisfies TurnContext,
     controller: new AbortController(),
     pipeline: createPipelineClient({
-      streamChatCompletion: async ({ callbacks }) => {
+      streamChatCompletion: async (params) => {
+        requests.push(params);
+        const { callbacks } = params;
         callbacks?.onStart?.();
         callbacks?.onToken?.(content);
         callbacks?.onDone?.(content, { usage: { prompt_tokens: 5 } });
@@ -79,6 +83,7 @@ async function runRegenerate(chat: Chat, reply: Partial<Message>, content: strin
   return {
     state,
     saved,
+    requests,
     updated: state.messagesById[assistant.id],
     request: debugBody ? JSON.parse(debugBody) : undefined,
   };
@@ -145,4 +150,64 @@ test('regenerate keeps search alive when a keyless provider degrades to native',
   );
 
   assert.deepEqual(request?.plugins, [{ id: 'web' }]);
+});
+
+const systemText = (request?: TransportStreamParams) =>
+  JSON.stringify(request?.messages.find((message) => message.role === 'system')?.content ?? '');
+
+test('a regenerate is composed like a fresh send: the date preamble is in the request', async () => {
+  const chat = makeChat({
+    id: 'chat-regen-date',
+    settings: {
+      system: 'Be brief.',
+      generation: { maxTokens: 200 },
+      features: { search: { enabled: true, provider: 'openrouter' } },
+    },
+  });
+
+  // An old snapshot must not stand in for today's composition.
+  const { requests } = await runRegenerate(
+    chat,
+    {
+      systemSnapshot: 'Be brief.',
+      genSettings: { searchEnabled: true, searchProvider: 'openrouter' },
+    },
+    'Hi',
+  );
+
+  assert.equal(requests.length, 1);
+  assert.match(systemText(requests[0]), /Be brief\./);
+  assert.match(systemText(requests[0]), /Current date: /);
+  assert.deepEqual(requests[0].plugins, [{ id: 'web' }]);
+});
+
+test('a regenerate with tool-based search offers the web_search tool', async () => {
+  await setKey('tavily', 'tvly-test-key');
+  try {
+    const chat = makeChat({
+      id: 'chat-regen-tools',
+      settings: {
+        system: 'Be brief.',
+        generation: { maxTokens: 200 },
+        features: { search: { enabled: true, provider: 'tavily' } },
+      },
+    });
+
+    const { requests, updated } = await runRegenerate(
+      chat,
+      { genSettings: { searchEnabled: true, searchProvider: 'tavily' } },
+      'Answer',
+    );
+
+    assert.ok(requests.length >= 1);
+    const names = (requests[0].tools ?? []).map((tool) => tool.function.name);
+    assert.ok(names.includes('web_search'), `tools offered: ${names.join(', ') || 'none'}`);
+    assert.equal(requests[0].toolChoice, 'auto');
+    assert.match(systemText(requests[0]), /Current date: /);
+    // Tool-based search is a tool call, never the provider's `web` plugin.
+    assert.equal(requests[0].plugins, undefined);
+    assert.equal(updated.content, 'Answer');
+  } finally {
+    await deleteKey('tavily');
+  }
 });
