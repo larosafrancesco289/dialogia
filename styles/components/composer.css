@@ -63,9 +63,9 @@
     z-index: 60;
   }
 
-  /* ===== Composer "Quill & Inkwell" Redesign ===== */
+  /* ===== The writing surface ===== */
 
-  /* Borderless textarea — let the card be the container */
+  /* Borderless textarea: the composer's own hairline is the frame. */
   .composer-field {
     flex: 1;
     min-width: 0;
@@ -189,7 +189,7 @@
     height: var(--stop-height);
     padding: 0 var(--space-2) 0 0;
     border: 0;
-    border-radius: 4px;
+    border-radius: var(--radius-inner);
     background: transparent;
     color: var(--color-fg-muted);
     text-align: left;
@@ -202,7 +202,7 @@
     outline: none;
   }
   .reasoning-scale__stop:focus-visible .reasoning-scale__dot {
-    box-shadow: 0 0 0 3px var(--focus-ring);
+    box-shadow: 0 0 0 2px var(--focus-ring);
   }
   .reasoning-scale__dot {
     justify-self: center;
@@ -238,7 +238,7 @@
   }
   .reasoning-scale__default {
     font-size: 0.625rem;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--color-rubric);
   }

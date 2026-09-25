@@ -22,16 +22,16 @@ import type { RenderSection } from '@/components/settings/types';
 function EndpointStatus({ endpoint }: { endpoint: ProviderEndpoint }) {
   const { hasKey } = useProviderKeys();
   if (hasKey(endpoint.apiKeyRef)) {
-    return <span className="text-xs text-muted-foreground">Using your key</span>;
+    return <span className="text-xs text-fg-muted">Using your key</span>;
   }
   if (endpoint.kind === 'openai-compatible') {
     return (
-      <span className="text-xs text-muted-foreground">
+      <span className="text-xs text-fg-muted">
         {allowsKeylessCalls(endpoint) ? 'Ready (no key needed)' : 'Needs a base URL'}
       </span>
     );
   }
-  return <span className="text-xs text-muted-foreground">Needs a key</span>;
+  return <span className="text-xs text-fg-muted">Needs a key</span>;
 }
 
 function CustomEndpointEditor({
@@ -149,7 +149,7 @@ function CustomEndpointEditor({
             />
             <span>
               {label}
-              <span className="block text-xs text-muted-foreground">{hint}</span>
+              <span className="block text-xs text-fg-muted">{hint}</span>
             </span>
           </label>
         ))}

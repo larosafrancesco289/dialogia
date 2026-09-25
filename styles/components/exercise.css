@@ -75,7 +75,7 @@
   }
   .exercise__tag {
     font-size: 0.6875rem;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--color-fg-muted);
   }
@@ -325,36 +325,6 @@
     background: var(--color-fg);
   }
 
-  /* Plan recommendations: ruled rows. */
-  .suggestions {
-    display: flex;
-    flex-direction: column;
-  }
-  .suggestion {
-    padding: var(--space-3) 0;
-    border-top: 1px solid var(--chrome-rule);
-    font-size: 0.875rem;
-    color: var(--color-fg-muted);
-  }
-  .suggestion__action {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    font-weight: 500;
-    color: var(--color-fg);
-  }
-  .suggestion__priority {
-    font-size: 0.6875rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--color-fg-muted);
-  }
-  .suggestion__priority.is-high {
-    color: var(--color-danger);
-  }
-  .suggestion p {
-    margin: 2px 0 0;
-  }
   /* Phones: the dots are a thumb's width apart, not the 44px floor every
      other button gets, which pushed the question count onto two lines. */
   @media (max-width: 767px) {

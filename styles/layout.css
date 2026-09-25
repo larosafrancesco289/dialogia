@@ -1,16 +1,7 @@
 @layer base {
-  #__next {
-    height: 100%;
-  }
-
   body {
     position: relative;
     background: var(--color-canvas);
-  }
-
-  body::before,
-  body::after {
-    content: none;
   }
 
   :root {
@@ -134,20 +125,20 @@
     width: 320px;
     min-width: 0;
     transition:
-      width var(--duration-slow) var(--ease-emphasized),
+      width var(--duration-slow) var(--ease-out-expo),
       visibility 0s;
   }
   .sidebar-slot .sidebar {
     width: 320px;
     transition:
-      transform var(--duration-slow) var(--ease-emphasized),
+      transform var(--duration-slow) var(--ease-out-expo),
       opacity var(--duration-med) var(--ease-standard);
   }
   .sidebar-slot.is-collapsed {
     width: 0;
     visibility: hidden;
     transition:
-      width var(--duration-slow) var(--ease-emphasized),
+      width var(--duration-slow) var(--ease-out-expo),
       visibility 0s var(--duration-slow);
   }
   .sidebar-slot.is-collapsed .sidebar {
@@ -167,21 +158,21 @@
     width: var(--right-panel-width);
     min-width: 0;
     transition:
-      width var(--duration-slow) var(--ease-emphasized),
+      width var(--duration-slow) var(--ease-out-expo),
       visibility 0s;
   }
   .right-panel-body {
     width: var(--right-panel-width);
     height: 100%;
     transition:
-      transform var(--duration-slow) var(--ease-emphasized),
+      transform var(--duration-slow) var(--ease-out-expo),
       opacity var(--duration-med) var(--ease-standard);
   }
   .right-panel-slot.is-collapsed {
     width: 0;
     visibility: hidden;
     transition:
-      width var(--duration-slow) var(--ease-emphasized),
+      width var(--duration-slow) var(--ease-out-expo),
       visibility 0s var(--duration-slow);
   }
   .right-panel-slot.is-collapsed .right-panel-body {

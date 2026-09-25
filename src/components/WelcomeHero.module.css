@@ -271,7 +271,7 @@
   cursor: pointer;
   transition:
     background-color var(--duration-fast) var(--ease-standard),
-    transform var(--duration-fast) var(--ease-spring);
+    transform var(--duration-fast) var(--ease-out-quint);
 }
 
 .heroMobileChip:hover {

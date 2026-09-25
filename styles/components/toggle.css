@@ -87,9 +87,4 @@
   .toggle-switch[data-checked='true']:not(:disabled):hover {
     --toggle-track-bg: color-mix(in oklab, var(--color-fg) 85%, var(--color-canvas));
   }
-
-  /* Active press state */
-  .toggle-switch:not(:disabled):active .toggle-switch-thumb {
-    transform: scaleX(1.1);
-  }
 }

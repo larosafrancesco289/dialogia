@@ -213,14 +213,6 @@
     margin: var(--space-1) var(--space-4);
     background: var(--chrome-rule);
   }
-  .sheet-hint {
-    margin: 0;
-    padding: var(--space-2) var(--space-4) var(--space-3);
-    font-family: var(--font-serif-assistant);
-    font-style: italic;
-    font-size: 0.9375rem;
-    color: var(--color-fg-muted);
-  }
   /* "Select text": the message's words on a page of their own, the one
      place on a phone where they can be selected. */
   .select-text {

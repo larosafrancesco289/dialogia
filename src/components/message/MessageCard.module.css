@@ -1,8 +1,5 @@
-/* Base message: passage-like, not bubble-like */
+/* Base message: a passage on the page, not a bubble or a card. */
 .messageCard {
-  border-color: transparent !important;
-  box-shadow: none;
-  background: transparent;
   overflow: visible;
   max-width: none;
   border-radius: 0;
@@ -10,10 +7,6 @@
   padding: 0;
   position: relative;
   touch-action: manipulation;
-}
-
-.messageCard:hover {
-  box-shadow: none;
 }
 
 /* Assistant: Clean, full-width scholarly passage — no box, just text */
@@ -27,7 +20,7 @@
   width: 100%;
   max-width: none;
 
-  /* Scholarly serif typography for authoritative voice — comfortably readable */
+  /* The model's voice, in the book face. */
   font-family: var(--font-serif-assistant);
   font-size: 1.25rem;
   line-height: 1.72;
@@ -81,7 +74,7 @@
   text-align: left;
   box-shadow: none;
 
-  /* Contemporary sans for user — clear and direct */
+  /* The reader's voice, in the sans. */
   font-family: var(--font-sans);
   font-size: 0.985rem;
   line-height: 1.5;
@@ -94,8 +87,8 @@
   pointer-events: none;
 }
 
-/* Raise the hovered card above siblings so its overlaid menu is not painted
-   behind the next message's bubble (each card is its own stacking context). */
+/* Raise the hovered message above its siblings so its overlaid menu is not
+   painted behind the next one (each message is its own stacking context). */
 .messageCard:hover,
 .messageCard:focus-within {
   z-index: 1;

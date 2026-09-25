@@ -15,7 +15,7 @@
     height: 30px;
     min-width: 56px;
     padding: 0 12px;
-    border-radius: 4px;
+    border-radius: var(--radius-inner);
     background: transparent;
     color: var(--color-fg-muted);
     font-size: 0.875rem;
@@ -72,7 +72,7 @@
   /* Menu item: a row of text; a tint on hover; the checked one in ink. */
   .menu-item {
     padding: 8px 10px;
-    border-radius: 4px;
+    border-radius: var(--radius-inner);
     cursor: pointer;
     color: var(--color-fg);
   }

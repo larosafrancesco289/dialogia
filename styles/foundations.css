@@ -24,7 +24,7 @@ html {
    tuned; the default plus-lighter blend keeps the fade flash-free. */
 ::view-transition-old(root),
 ::view-transition-new(root) {
-  animation-duration: 280ms;
+  animation-duration: var(--duration-med);
 }
 
 /* Fallback cross-fade for browsers without view transitions (see
@@ -35,12 +35,12 @@ html {
 .theme-transition *::before,
 .theme-transition *::after {
   transition:
-    background-color 180ms ease,
-    border-color 180ms ease,
-    color 180ms ease,
-    fill 180ms ease,
-    stroke 180ms ease,
-    box-shadow 180ms ease !important;
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    fill var(--duration-fast) var(--ease-standard),
+    stroke var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard) !important;
 }
 ::selection {
   background: color-mix(in oklab, var(--color-accent) 30%, transparent);
@@ -72,13 +72,6 @@ html {
    single primary action of a view (it is the live, go-ahead thing); a pressed
    or selected control darkens in ink and never turns gold. */
 
-/* Card: a raised sheet of paper with a hairline, no drop shadow. */
-.card {
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-editorial);
-}
-
 /* Buttons */
 .btn,
 .btn-outline,
@@ -101,14 +94,12 @@ html {
     color var(--duration-fast) var(--ease-standard);
 }
 /* Primary: the one go-ahead action (Save, Send, Start). */
-.btn,
-.btn-primary {
+.btn {
   background: var(--color-accent);
   color: var(--color-on-accent);
   border: 1px solid transparent;
 }
-.btn:hover,
-.btn-primary:hover {
+.btn:hover {
   background: color-mix(in oklab, var(--color-accent) 88%, var(--color-fg));
 }
 .btn:active {
@@ -316,26 +307,4 @@ pre {
 /* A dialog holding focus as the place it opened on is not a control to ring. */
 [role='dialog'][tabindex='-1']:focus-visible {
   outline: none;
-}
-
-/* Feedback states for interactive tutor elements */
-.feedback-correct {
-  background: var(--feedback-correct-bg);
-  border-color: var(--feedback-correct-border);
-  color: var(--feedback-correct-text);
-}
-.feedback-incorrect {
-  background: var(--feedback-incorrect-bg);
-  border-color: var(--feedback-incorrect-border);
-  color: var(--feedback-incorrect-text);
-}
-.feedback-correct-icon {
-  background: var(--color-success);
-  border-color: var(--color-success);
-  color: var(--color-surface);
-}
-.feedback-incorrect-icon {
-  background: var(--color-danger);
-  border-color: var(--color-danger);
-  color: var(--color-surface);
 }

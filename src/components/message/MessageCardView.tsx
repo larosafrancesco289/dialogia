@@ -107,8 +107,6 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
   const isLatestAssistant = message.role === 'assistant' && message.id === lastMessageId;
 
   const messageClassName = cn(
-    'card',
-    'p-0',
     'group',
     styles.messageCard,
     isAssistant ? styles.assistant : styles.user,

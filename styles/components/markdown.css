@@ -142,7 +142,7 @@
     font-size: 0.82em;
     background: color-mix(in oklab, var(--color-fg) 6%, transparent);
     border: 0;
-    border-radius: 4px;
+    border-radius: var(--radius-inner);
     padding: 0.1em 0.35em;
   }
   .markdown kbd {
@@ -150,7 +150,7 @@
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-bottom-width: 2px;
-    border-radius: 6px;
+    border-radius: var(--radius-editorial);
     padding: 0 0.3rem;
     font-size: 0.85em;
   }
@@ -188,7 +188,7 @@
   .code-block__action {
     padding: 0.2rem 0.5rem;
     border: 0;
-    border-radius: 4px;
+    border-radius: var(--radius-inner);
     background: transparent;
     font: inherit;
     color: inherit;
