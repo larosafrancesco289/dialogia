@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import {
   PencilSquareIcon,
   CheckIcon,
@@ -15,9 +15,9 @@ import { ActionButton, MessageEditBar } from '@/components/message/MessageAction
 import { MessageColophon } from '@/components/message/MessageColophon';
 import { StreamingMarkdown } from '@/components/message/StreamingMarkdown';
 import { useChatStore } from '@/lib/store';
+import { rendersAsBlocks } from '@/lib/markdown/blocks';
 import { messageHasModuleContent } from '@/lib/modules';
 import type { Chat, Message, ModelDescriptor, PersistedAttachment } from '@/lib/types';
-import { isRecord } from '@/lib/utils/guards';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { toolCallInFlight } from '@/lib/ui/streaming';
 import styles from './MessageCard.module.css';
@@ -60,6 +60,7 @@ export type AssistantMessageProps = {
   upperPanelsNode: ReactNode;
   /** Tutor panel - rendered below message content so tutor's text appears first */
   tutorPanelNode: ReactNode;
+  /** The reply's sources, numbered as its [n] markers cite them (`resolveMessageSources`). */
   citationSources?: MarkdownCitationSource[];
 };
 
@@ -69,27 +70,6 @@ const CUT_OFF_NOTES: Record<NonNullable<Message['cutOff']>, string> = {
   failed: 'Cut off by an error before the end.',
   interrupted: 'Cut off: the page closed while this was being written.',
 };
-
-function annotationSources(value: unknown): MarkdownCitationSource[] {
-  if (Array.isArray(value)) return value.flatMap(annotationSources);
-  if (!isRecord(value)) return [];
-
-  const directUrl = typeof value.url === 'string' ? value.url : undefined;
-  const directTitle = typeof value.title === 'string' ? value.title : undefined;
-  const directDescription =
-    typeof value.content === 'string'
-      ? value.content
-      : typeof value.description === 'string'
-        ? value.description
-        : undefined;
-  const nested = ['annotations', 'citations', 'sources'].flatMap((key) =>
-    annotationSources(value[key]),
-  );
-
-  return directUrl
-    ? [{ title: directTitle, url: directUrl, description: directDescription }, ...nested]
-    : nested;
-}
 
 export function AssistantMessage({
   message,
@@ -127,11 +107,7 @@ export function AssistantMessage({
   const hasModuleContent = useChatStore((s) => messageHasModuleContent(s, message));
   // A canned greeting was never generated: nothing to redo, branch from or edit.
   const canned = !!message.tutorWelcome;
-  const resolvedCitationSources = useMemo(() => {
-    if (citationSources?.length) return citationSources;
-    const fromAnnotations = annotationSources(message.annotations);
-    return fromAnnotations.length ? fromAnnotations : undefined;
-  }, [citationSources, message.annotations]);
+  const resolvedCitationSources = citationSources?.length ? citationSources : undefined;
 
   let messageBody: ReactNode = null;
   if (isEditing) {
@@ -165,13 +141,19 @@ export function AssistantMessage({
         </p>
       </div>
     );
-  } else if (isStreaming && isLatestAssistant) {
+  } else if ((isStreaming && isLatestAssistant) || rendersAsBlocks(displayContent)) {
+    // One renderer from the first flush to the finished reply (and for replies
+    // opened from history), so finishing never rebuilds what is on screen.
     messageBody = (
       <>
-        <StreamingMarkdown content={displayContent} sources={resolvedCitationSources} />
+        <StreamingMarkdown
+          content={displayContent}
+          sources={resolvedCitationSources}
+          streaming={isStreaming && isLatestAssistant}
+        />
         {/* The words are out but a tool call is still being written or run
             (a card, a search): the mark keeps answering where its result lands. */}
-        {toolCallInFlight(message) && (
+        {isStreaming && isLatestAssistant && toolCallInFlight(message) && (
           <div className="markdown" role="status" aria-label="Still working">
             <p>
               <LogoMark className={styles.pen} live />
