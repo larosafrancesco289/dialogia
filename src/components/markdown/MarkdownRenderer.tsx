@@ -1,5 +1,14 @@
-import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
-import ReactMarkdown, { type Components } from 'react-markdown';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentProps,
+} from 'react';
+import ReactMarkdown, { type Components, type ExtraProps } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeSlug from 'rehype-slug';
@@ -82,64 +91,71 @@ export function MarkdownRenderer({
 
   useImageZoom(rootRef, processedContent, streaming);
 
-  const components: Components = useMemo(
-    () => ({
-      // A wide table scrolls sideways in its own frame instead of squeezing
-      // its columns until words break mid-letter.
-      table: ({ node: _node, ...tableProps }) => (
-        <div className="table-scroll">
-          <table {...tableProps} />
-        </div>
-      ),
-      pre: ({ children, node: _node, ...preProps }) => {
-        // Detect Mermaid blocks and render as diagrams instead of <pre>
-        const lang = detectLanguageFromPreChildren(children);
-        if (lang === 'mermaid') {
-          const code = extractCodeText(children);
-          return <MermaidBlock code={code} streaming={streaming} />;
-        }
-        const code = extractCodeText(children);
-        return (
-          <CodeFrame {...preProps} language={lang} rawText={code}>
-            <CodeBlock code={code} language={lang} streaming={streaming} />
-          </CodeFrame>
-        );
-      },
-      // react-markdown 9 passes no `inline` flag; a fenced block's <code> is
-      // read and replaced by the <pre> override above.
-      code: ({ className, children, node: _node, ...codeProps }) => (
-        <code className={className || ''} {...codeProps}>
-          {children}
-        </code>
-      ),
-      // `node` is react-markdown's syntax tree; spread onto the DOM it
-      // becomes node="[object Object]".
-      a: ({ href, children, node: _node, ...props }) => {
-        const isExternal = href && /^https?:\/\//.test(href);
-        return (
-          <a
-            href={href}
-            target={isExternal ? '_blank' : undefined}
-            rel={isExternal ? 'noopener noreferrer' : undefined}
-            {...props}
-          >
-            {children}
-          </a>
-        );
-      },
-    }),
-    [streaming],
-  );
-
   return (
-    <div ref={rootRef} className="markdown">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={rehypePlugins}
-        components={components}
-      >
-        {processedContent}
-      </ReactMarkdown>
-    </div>
+    <StreamingContext.Provider value={!!streaming}>
+      <div ref={rootRef} className="markdown">
+        <ReactMarkdown
+          remarkPlugins={REMARK_PLUGINS}
+          rehypePlugins={rehypePlugins}
+          components={COMPONENTS}
+        >
+          {processedContent}
+        </ReactMarkdown>
+      </div>
+    </StreamingContext.Provider>
   );
 }
+
+// Whether the block is still arriving, read by the overrides below through
+// context: were it a dependency of the components map, the map would change
+// identity when the stream ends, and React would remount every table and code
+// block in the reply because their element types changed.
+const StreamingContext = createContext(false);
+
+const REMARK_PLUGINS = [remarkGfm, remarkMath];
+
+function Pre({ children, node: _node, ...preProps }: ComponentProps<'pre'> & ExtraProps) {
+  const streaming = useContext(StreamingContext);
+  // Detect Mermaid blocks and render as diagrams instead of <pre>
+  const lang = detectLanguageFromPreChildren(children);
+  const code = extractCodeText(children);
+  if (lang === 'mermaid') return <MermaidBlock code={code} streaming={streaming} />;
+  return (
+    <CodeFrame {...preProps} language={lang} rawText={code}>
+      <CodeBlock code={code} language={lang} streaming={streaming} />
+    </CodeFrame>
+  );
+}
+
+const COMPONENTS: Components = {
+  // A wide table scrolls sideways in its own frame instead of squeezing
+  // its columns until words break mid-letter.
+  table: ({ node: _node, ...tableProps }) => (
+    <div className="table-scroll">
+      <table {...tableProps} />
+    </div>
+  ),
+  pre: Pre,
+  // react-markdown 9 passes no `inline` flag; a fenced block's <code> is
+  // read and replaced by the <pre> override above.
+  code: ({ className, children, node: _node, ...codeProps }) => (
+    <code className={className || ''} {...codeProps}>
+      {children}
+    </code>
+  ),
+  // `node` is react-markdown's syntax tree; spread onto the DOM it
+  // becomes node="[object Object]".
+  a: ({ href, children, node: _node, ...props }) => {
+    const isExternal = href && /^https?:\/\//.test(href);
+    return (
+      <a
+        href={href}
+        target={isExternal ? '_blank' : undefined}
+        rel={isExternal ? 'noopener noreferrer' : undefined}
+        {...props}
+      >
+        {children}
+      </a>
+    );
+  },
+};

@@ -15,6 +15,7 @@ import { ActionButton, MessageEditBar } from '@/components/message/MessageAction
 import { MessageColophon } from '@/components/message/MessageColophon';
 import { StreamingMarkdown } from '@/components/message/StreamingMarkdown';
 import { useChatStore } from '@/lib/store';
+import { rendersAsBlocks } from '@/lib/markdown/blocks';
 import { messageHasModuleContent } from '@/lib/modules';
 import type { Chat, Message, ModelDescriptor, PersistedAttachment } from '@/lib/types';
 import { LogoMark } from '@/components/ui/LogoMark';
@@ -139,8 +140,16 @@ export function AssistantMessage({
         </p>
       </div>
     );
-  } else if (isStreaming && isLatestAssistant) {
-    messageBody = <StreamingMarkdown content={displayContent} sources={resolvedCitationSources} />;
+  } else if ((isStreaming && isLatestAssistant) || rendersAsBlocks(displayContent)) {
+    // One renderer from the first flush to the finished reply (and for replies
+    // opened from history), so finishing never rebuilds what is on screen.
+    messageBody = (
+      <StreamingMarkdown
+        content={displayContent}
+        sources={resolvedCitationSources}
+        streaming={isStreaming && isLatestAssistant}
+      />
+    );
   } else {
     messageBody = <Markdown content={displayContent} sources={resolvedCitationSources} />;
   }
