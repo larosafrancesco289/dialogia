@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChatSidebar } from '@/components/sidebar/ChatSidebar';
 import { ChatPane } from '@/components/chat/ChatPane';
 import { TopHeader } from '@/components/TopHeader';
@@ -15,6 +15,9 @@ import { MotionConfig } from 'framer-motion';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import { preloadMarkdown } from '@/components/Markdown';
+
+// How long after the page loads the side panels take their saved state without sliding.
+const LOAD_SETTLE_MS = 1000;
 
 const SettingsDrawer = lazyClient(() =>
   import(/* webpackPrefetch: true */ '@/components/settings/SettingsDrawer').then((mod) => ({
@@ -82,7 +85,16 @@ export function HomeClient() {
   // When the window is too narrow for both side panels, the one opened last
   // wins: opening the sidebar closes the right panel, and anything else (the
   // panel opening, the window shrinking) collapses the sidebar.
-  const showRightPanel = rightPanelOpen && (hasPlan || !!planSheetOverride);
+  const panelHasContent = hasPlan || !!planSheetOverride;
+  const showRightPanel = rightPanelOpen && panelHasContent;
+  // The side panels arrive with the saved state (a plan loads a moment after
+  // the page): what is open on load appears open, and only a change after
+  // that slides.
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    const id = setTimeout(() => setSettled(true), LOAD_SETTLE_MS);
+    return () => clearTimeout(id);
+  }, []);
   const prevPanelsRef = useRef({ collapsed, showRightPanel });
   useEffect(() => {
     const prev = prevPanelsRef.current;
@@ -103,7 +115,7 @@ export function HomeClient() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className="app-shell">
+      <div className={`app-shell${settled ? '' : ' is-settling'}`}>
         {/* Sidebar column */}
         <div className={`sidebar-slot${collapsed ? ' is-collapsed' : ''}`} aria-hidden={collapsed}>
           <aside className="sidebar sidebar-panel">
@@ -128,7 +140,8 @@ export function HomeClient() {
           className={`right-panel-slot${showRightPanel ? '' : ' is-collapsed'}`}
           aria-hidden={!showRightPanel}
         >
-          {showRightPanel && (
+          {/* Kept while it closes, so its content eases out with the slot. */}
+          {panelHasContent && (
             <div className="right-panel-body">
               <ModuleSlot slot="rightPanel" />
             </div>
