@@ -1,9 +1,9 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import {
-  CheckCircleIcon,
-  MinusCircleIcon,
+  CheckIcon,
+  MinusIcon,
   QuestionMarkCircleIcon,
-  XCircleIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { CAPABILITY_LABELS } from '@/components/settings/endpointCapabilityLabels';
 import { useChatStore } from '@/lib/store';
@@ -42,31 +42,31 @@ const VERDICT_LABELS: Record<ProbeVerdict, string> = {
   skipped: 'Skipped',
 };
 
+// Accepted in ink, rejected in crimson, the rest muted: the chrome has no green.
 function VerdictIcon({ verdict }: { verdict: ProbeVerdict }) {
-  const className = 'h-4 w-4 shrink-0 mt-0.5';
   switch (verdict) {
     case 'ok':
-      return <CheckCircleIcon className={className} style={{ color: 'var(--color-success)' }} />;
+      return <CheckIcon className="endpoint-probe__icon is-ok" aria-hidden="true" />;
     case 'no':
-      return <XCircleIcon className={className} style={{ color: 'var(--color-danger)' }} />;
+      return <XMarkIcon className="endpoint-probe__icon is-no" aria-hidden="true" />;
     case 'unknown':
-      return <QuestionMarkCircleIcon className={`${className} text-muted-foreground`} />;
+      return <QuestionMarkCircleIcon className="endpoint-probe__icon" aria-hidden="true" />;
     case 'skipped':
-      return <MinusCircleIcon className={`${className} text-muted-foreground`} />;
+      return <MinusIcon className="endpoint-probe__icon" aria-hidden="true" />;
   }
 }
 
 function Line({ verdict, children }: { verdict: ProbeVerdict; children: ReactNode }) {
   return (
-    <div className="flex items-start gap-2">
+    <div className="endpoint-probe__line">
       <VerdictIcon verdict={verdict} />
-      <div className="min-w-0 text-sm">{children}</div>
+      <div>{children}</div>
     </div>
   );
 }
 
 function Detail({ children }: { children: ReactNode }) {
-  return <span className="block text-xs text-muted-foreground break-words">{children}</span>;
+  return <span className="field__hint block break-words">{children}</span>;
 }
 
 function ServerLine({ result, baseUrl }: { result: EndpointProbeResult; baseUrl: string }) {
@@ -157,22 +157,21 @@ function ProbeReport({
   const checked = result.chat.verdict === 'ok';
 
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="rounded-[var(--radius-editorial)] border border-[var(--color-border)] p-3 space-y-2"
-    >
+    <div role="status" aria-live="polite" className="endpoint-probe__report">
       <ServerLine result={result} baseUrl={endpoint.baseUrl ?? ''} />
       <ChatLine result={result} />
       {checked ? (
-        <ul className="space-y-1 border-t border-[var(--color-border)] pt-2">
+        <ul className="endpoint-probe__checks">
           {CAPABILITY_LABELS.map(({ key, label }) => {
             const check = result.capabilities[key];
             return (
               <li key={key}>
                 <Line verdict={check.verdict}>
                   {label}
-                  <span className="text-muted-foreground"> · {VERDICT_LABELS[check.verdict]}</span>
+                  <span className="endpoint-probe__verdict">
+                    {' '}
+                    · {VERDICT_LABELS[check.verdict]}
+                  </span>
                   {check.detail ? <Detail>{check.detail}</Detail> : null}
                 </Line>
               </li>
@@ -182,11 +181,11 @@ function ProbeReport({
       ) : null}
       {checked ? (
         differs ? (
-          <div className="flex flex-wrap items-center gap-2 pt-1">
+          <div className="endpoint-probe__apply">
             <button type="button" className="btn btn-sm" onClick={() => onApply(detected)}>
               Apply to the checkboxes below
             </button>
-            <span className="text-xs text-muted-foreground">
+            <span className="field__hint">
               Turns on what was accepted and off what was rejected.
             </span>
           </div>
@@ -227,11 +226,13 @@ export function EndpointProbe({
 
   return (
     <div className="space-y-2">
-      <div className="text-sm">Test the connection</div>
+      <div className="field__label">Test the connection</div>
       <div className="flex flex-wrap items-center gap-2">
+        {/* Gold only until there is an answer: after that, applying it is the
+            go-ahead and testing again is the secondary action. */}
         <button
           type="button"
-          className={running ? 'btn-outline btn-sm' : 'btn btn-sm'}
+          className={running || state.status === 'done' ? 'btn-outline btn-sm' : 'btn btn-sm'}
           onClick={() => (running ? cancel() : run(modelId))}
         >
           {running ? 'Cancel' : state.status === 'done' ? 'Test again' : 'Test connection'}
@@ -252,7 +253,7 @@ export function EndpointProbe({
           </select>
         ) : null}
         {running ? (
-          <span className="text-xs text-muted-foreground" role="status" aria-live="polite">
+          <span className="field__hint" role="status" aria-live="polite">
             {STEP_LABELS[state.step]}
           </span>
         ) : null}
@@ -266,7 +267,7 @@ export function EndpointProbe({
         <ProbeReport endpoint={endpoint} result={state.result} onApply={onApply} />
       ) : null}
       {state.status === 'failed' ? (
-        <p className="text-xs" role="alert" style={{ color: 'var(--color-danger)' }}>
+        <p className="endpoint-probe__error" role="alert">
           {state.message}
         </p>
       ) : null}
