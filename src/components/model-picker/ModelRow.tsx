@@ -8,7 +8,7 @@ import {
 import { getHighlightSegments, type ModelSearchResult } from '@/lib/models/search';
 
 /** The parts of `text` that match the query's words, underlined. */
-export function HighlightedText({ text, words }: { text: string; words: string[] }) {
+function HighlightedText({ text, words }: { text: string; words: string[] }) {
   return (
     <>
       {getHighlightSegments(text, words).map((segment, index) =>
@@ -25,7 +25,7 @@ export function HighlightedText({ text, words }: { text: string; words: string[]
 }
 
 /** What a model can do, as a row of small icons; nothing when it has none of them. */
-export function ModelCapabilities({ result }: { result?: ModelSearchResult }) {
+function ModelCapabilities({ result }: { result?: ModelSearchResult }) {
   if (!result) return null;
   const { reasoning, vision, audio, image, zdr } = result.capabilities;
   if (!reasoning && !vision && !audio && !image && !zdr) return null;
@@ -41,33 +41,55 @@ export function ModelCapabilities({ result }: { result?: ModelSearchResult }) {
 }
 
 /**
- * A model row's meta line: provider, optionally the full id (highlighted
- * against the query), context length and price. Goes inside `.model-row__meta`,
- * which puts the separators between them.
+ * A model row's meta line: provider, context length and price. Goes inside
+ * `.model-row__meta`, which puts the separators between them.
  */
-export function ModelRowFacts({
-  result,
-  words = [],
-  showId = false,
-}: {
-  result: ModelSearchResult;
-  words?: string[];
-  showId?: boolean;
-}) {
+function ModelRowFacts({ result }: { result: ModelSearchResult }) {
   return (
     <>
       <span>{result.providerLabel || result.provider}</span>
-      {showId && (
-        <span className="model-row__id">
-          <HighlightedText text={result.fullId} words={words} />
-        </span>
-      )}
       {result.contextLength && (
         <span title="Context length">
           {Intl.NumberFormat().format(result.contextLength)} tokens
         </span>
       )}
       {result.price && <span>{result.price}</span>}
+    </>
+  );
+}
+
+/**
+ * What every model row shows, in the header picker and the settings searches
+ * alike: the name with its matches underlined, one line of detail (a note when
+ * there is one, else the facts) and the capability glyphs. The row element and
+ * whatever trails it, a check or a remove button, belong to the caller.
+ */
+export function ModelRowContent({
+  name,
+  words = [],
+  note,
+  result,
+}: {
+  name: string;
+  words?: string[];
+  note?: string;
+  result?: ModelSearchResult;
+}) {
+  return (
+    <>
+      <span className="model-row__main">
+        <span className="model-row__name">
+          <HighlightedText text={name} words={words} />
+        </span>
+        <span className="model-row__meta">
+          {note ? (
+            <span className="model-row__note">{note}</span>
+          ) : (
+            result && <ModelRowFacts result={result} />
+          )}
+        </span>
+      </span>
+      <ModelCapabilities result={result} />
     </>
   );
 }

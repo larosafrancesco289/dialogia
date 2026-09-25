@@ -13,11 +13,7 @@ import {
   type ModelSearchResult,
 } from '@/lib/models/search';
 import { PortalDropdown } from '@/components/PortalDropdown';
-import {
-  HighlightedText,
-  ModelCapabilities,
-  ModelRowFacts,
-} from '@/components/model-picker/ModelRow';
+import { ModelRowContent } from '@/components/model-picker/ModelRow';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { useModelPickerController } from '@/components/model-picker/useModelPickerController';
 import { useReturnFocus } from '@/lib/hooks/useModalFocus';
@@ -295,19 +291,12 @@ export function ModelPicker({
                     onClick={() => choose(row)}
                     onMouseMove={() => setActiveIndex(rowIndex)}
                   >
-                    <span className="model-row__main">
-                      <span className="model-row__name">
-                        <HighlightedText text={row.name} words={queryWords} />
-                      </span>
-                      <span className="model-row__meta">
-                        {row.note ? (
-                          <span className="model-row__note">{row.note}</span>
-                        ) : (
-                          row.result && <ModelRowFacts result={row.result} />
-                        )}
-                      </span>
-                    </span>
-                    <ModelCapabilities result={row.result} />
+                    <ModelRowContent
+                      name={row.name}
+                      words={queryWords}
+                      note={row.note}
+                      result={row.result}
+                    />
                     {/* The rubric tick marks the model in use; the removable
                         favourite keeps its button while it is not in use. */}
                     {!isSelected && row.removable ? (
