@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react';
 import {
-  CheckCircleIcon,
-  XCircleIcon,
-  ClockIcon,
+  CheckIcon,
   ChevronDownIcon,
-  ChevronUpIcon,
-  DocumentDuplicateIcon,
-} from '@heroicons/react/20/solid';
+  ClipboardIcon,
+  ClockIcon,
+  ExclamationTriangleIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
 import type { ToolCallLogEntry } from '@/lib/types';
+import { IconButton } from '@/components/ui/IconButton';
 import { copyText } from '@/lib/clipboard';
 
 type ToolCallLogMode = 'compact' | 'full';
@@ -85,14 +86,17 @@ function summaryForCall(call: ToolCallLogEntry): string {
   }
 }
 
+// Muted for done and pending, crimson for failed. Pending never turns gold: the log cannot tell
+// a call still running from one a stopped turn left behind, so it never
+// claims the gold that marks live work.
 function statusIcon(status: ToolCallLogEntry['status']) {
   if (status === 'success') {
-    return <CheckCircleIcon className="h-4 w-4" style={{ color: 'var(--color-success)' }} />;
+    return <CheckIcon className="tool-log__status" aria-hidden="true" />;
   }
   if (status === 'error') {
-    return <XCircleIcon className="h-4 w-4" style={{ color: 'var(--color-danger)' }} />;
+    return <XMarkIcon className="tool-log__status is-error" aria-hidden="true" />;
   }
-  return <ClockIcon className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />;
+  return <ClockIcon className="tool-log__status" aria-hidden="true" />;
 }
 
 function stringify(value: unknown) {
@@ -150,6 +154,26 @@ function metadataEntries(metadata: ToolCallLogEntry['metadata']): Array<[string,
   return entries;
 }
 
+function JsonBlock({ label, value }: { label: 'Input' | 'Output'; value: unknown }) {
+  return (
+    <div>
+      <div className="devtools__section-head">
+        <span className="devtools__label">{label}</span>
+        <IconButton
+          size="sm"
+          title={`Copy ${label.toLowerCase()} JSON`}
+          onClick={() => void copyText(stringify(value))}
+        >
+          <ClipboardIcon className="h-4 w-4" />
+        </IconButton>
+      </div>
+      <pre className="devtools__code">
+        <code>{stringify(value)}</code>
+      </pre>
+    </div>
+  );
+}
+
 export function ToolCallLog({
   toolCalls,
   mode = 'compact',
@@ -171,50 +195,36 @@ export function ToolCallLog({
 
   const toggleCall = (id: string) => setExpandedCalls((prev) => ({ ...prev, [id]: !prev[id] }));
 
-  const containerClassName = [
-    'border border-[var(--color-border)] rounded-[var(--radius-editorial)] overflow-hidden my-2',
-    className,
-  ]
-    .filter(Boolean)
-    .join(' ');
+  const heading = <span className="devtools__label">Tool calls ({sortedCalls.length})</span>;
 
   return (
-    <div className={containerClassName}>
-      <div
-        className={`flex items-center justify-between px-3 py-2 border-b border-[var(--chrome-rule)] ${
-          collapsible ? 'cursor-pointer' : ''
-        }`}
-        onClick={() => {
-          if (!collapsible) return;
-          setExpanded((prev) => !prev);
-        }}
-      >
-        <div className="flex items-center gap-2 text-xs font-semibold text-[var(--color-fg-muted)] uppercase tracking-wider">
-          <span>Tool Calls ({sortedCalls.length})</span>
-        </div>
-        {collapsible && (
-          <span className="text-[var(--color-fg-muted)]">
-            {expanded ? (
-              <ChevronUpIcon className="h-4 w-4" />
-            ) : (
-              <ChevronDownIcon className="h-4 w-4" />
-            )}
-          </span>
-        )}
-      </div>
+    <div className={['tool-log', className].filter(Boolean).join(' ')}>
+      {collapsible ? (
+        <button
+          type="button"
+          className="tool-log__head"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((prev) => !prev)}
+        >
+          {heading}
+          <ChevronDownIcon
+            className={`devtools__chevron${expanded ? ' is-open' : ''}`}
+            aria-hidden="true"
+          />
+        </button>
+      ) : (
+        <div className="tool-log__head">{heading}</div>
+      )}
       {expanded && (
-        <div className="divide-y divide-[var(--color-border)]">
+        <div className="tool-log__calls">
           {sortedCalls.map((call) => {
             const isExpanded = mode === 'full' || !!expandedCalls[call.id];
-            const recentHighlight =
-              highlightRecent && Date.now() - call.timestamp < 10_000
-                ? 'bg-[var(--color-fg)]/[0.04]'
-                : '';
+            const isRecent = highlightRecent && Date.now() - call.timestamp < 10_000;
             const durationLabel = formatDuration(call.duration);
             const badges = collectBadges(call);
             const metadataPairs = metadataEntries(call.metadata);
             return (
-              <div key={call.id} className={`bg-[var(--color-surface)] ${recentHighlight}`}>
+              <div key={call.id} className={`tool-log__call${isRecent ? ' is-recent' : ''}`}>
                 <button
                   type="button"
                   onClick={() => {
@@ -224,113 +234,54 @@ export function ToolCallLog({
                       onToolClick(call);
                     }
                   }}
-                  className="w-full text-left px-3 py-2 flex items-center justify-between gap-3 hover:bg-[var(--color-muted)]/40 focus:outline-none"
+                  className="tool-log__row"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
+                  <span className="tool-log__lead">
                     {statusIcon(call.status)}
                     {showTimestamps && (
-                      <span className="text-[11px] text-[var(--color-fg-muted)] font-mono">
-                        {formatTimestamp(call.timestamp)}
-                      </span>
+                      <span className="tool-log__time">{formatTimestamp(call.timestamp)}</span>
                     )}
-                    <span className="text-sm font-medium text-[var(--color-fg)] truncate">
-                      {call.name}
-                    </span>
-                    <span className="text-xs text-[var(--color-fg-muted)] truncate">
-                      {summaryForCall(call)}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
+                    <span className="tool-log__name">{call.name}</span>
+                    <span className="tool-log__summary">{summaryForCall(call)}</span>
+                  </span>
+                  <span className="tool-log__trail">
                     {badges.length > 0 && (
-                      <span className="flex flex-wrap items-center justify-end gap-1">
-                        {badges.map((badge) => (
-                          <span
-                            key={badge.id}
-                            className="badge text-[10px] uppercase tracking-wider"
-                          >
-                            {badge.label}
-                          </span>
-                        ))}
+                      <span className="tool-log__tags">
+                        {badges.map((badge) => badge.label).join(' · ')}
                       </span>
                     )}
-                    {durationLabel && (
-                      <span className="text-[11px] text-[var(--color-fg-muted)] font-mono">
-                        {durationLabel}
-                      </span>
-                    )}
+                    {durationLabel && <span className="tool-log__duration">{durationLabel}</span>}
                     {mode !== 'full' && (
-                      <span className="text-[var(--color-fg-muted)]">
-                        {isExpanded ? (
-                          <ChevronUpIcon className="h-3 w-3" />
-                        ) : (
-                          <ChevronDownIcon className="h-3 w-3" />
-                        )}
-                      </span>
+                      <ChevronDownIcon
+                        className={`devtools__chevron${isExpanded ? ' is-open' : ''}`}
+                        aria-hidden="true"
+                      />
                     )}
-                  </div>
+                  </span>
                 </button>
                 {isExpanded && (
-                  <div className="px-3 pb-3 space-y-3">
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] font-semibold text-[var(--color-rubric)] uppercase tracking-wider">
-                          Input
-                        </span>
-                        <button
-                          type="button"
-                          className="p-1 rounded-[var(--radius-editorial)] hover:bg-[var(--color-muted)]"
-                          onClick={() => void copyText(stringify(call.input))}
-                          aria-label="Copy input JSON"
-                        >
-                          <DocumentDuplicateIcon className="h-3.5 w-3.5 text-[var(--color-fg-muted)]" />
-                        </button>
-                      </div>
-                      <pre className="text-xs bg-[var(--color-muted)]/30 rounded-[var(--radius-editorial)] p-2 overflow-x-auto border border-[var(--color-border)]/30 font-mono">
-                        <code>{stringify(call.input)}</code>
-                      </pre>
-                    </div>
+                  <div className="tool-log__detail">
+                    <JsonBlock label="Input" value={call.input} />
 
-                    {call.output && (
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[11px] font-semibold text-[var(--color-rubric)] uppercase tracking-wider">
-                            Output
-                          </span>
-                          <button
-                            type="button"
-                            className="p-1 rounded-[var(--radius-editorial)] hover:bg-[var(--color-muted)]"
-                            onClick={() => void copyText(stringify(call.output))}
-                            aria-label="Copy output JSON"
-                          >
-                            <DocumentDuplicateIcon className="h-3.5 w-3.5 text-[var(--color-fg-muted)]" />
-                          </button>
-                        </div>
-                        <pre className="text-xs bg-[var(--color-muted)]/30 rounded-[var(--radius-editorial)] p-2 overflow-x-auto border border-[var(--color-border)]/30 font-mono">
-                          <code>{stringify(call.output)}</code>
-                        </pre>
-                      </div>
-                    )}
+                    {call.output && <JsonBlock label="Output" value={call.output} />}
 
                     {call.error && (
-                      <div className="text-xs text-[var(--color-danger)] bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/20 rounded-[var(--radius-editorial)] p-2">
-                        {call.error}
-                      </div>
+                      <p className="tool-log__error">
+                        <ExclamationTriangleIcon aria-hidden="true" />
+                        <span>{call.error}</span>
+                      </p>
                     )}
 
                     {metadataPairs.length > 0 && (
                       <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[11px] font-semibold text-[var(--color-rubric)] uppercase tracking-wider">
-                            Metadata
-                          </span>
+                        <div className="devtools__section-head">
+                          <span className="devtools__label">Metadata</span>
                         </div>
-                        <dl className="grid grid-cols-1 gap-1 text-xs">
+                        <dl className="tool-log__metadata">
                           {metadataPairs.map(([key, value]) => (
-                            <div key={key} className="flex justify-between gap-2">
-                              <dt className="font-medium text-[var(--color-fg-muted)]">{key}</dt>
-                              <dd className="text-right text-[var(--color-fg)] break-words">
-                                {value}
-                              </dd>
+                            <div key={key}>
+                              <dt>{key}</dt>
+                              <dd>{value}</dd>
                             </div>
                           ))}
                         </dl>

@@ -184,4 +184,190 @@
     white-space: pre-wrap;
     overflow-wrap: anywhere;
   }
+
+  /* ----- Tool-call log (ToolCallLog) ----- */
+  .tool-log__head {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    min-height: 28px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    text-align: left;
+    color: var(--color-fg-muted);
+    border-radius: var(--radius-editorial);
+  }
+  button.tool-log__head {
+    cursor: pointer;
+  }
+  button.tool-log__head:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+
+  .tool-log__calls {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding-top: var(--space-1);
+  }
+
+  /* The tint reaches past the text, so the text itself never moves off the
+     column. */
+  .tool-log__call {
+    margin-inline: calc(-1 * var(--space-2));
+    padding-inline: var(--space-2);
+    border-radius: var(--radius-editorial);
+  }
+  .tool-log__call.is-recent {
+    background: color-mix(in oklab, var(--color-fg) 4%, transparent);
+  }
+
+  .tool-log__row {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-1) 0;
+    border: none;
+    background: transparent;
+    text-align: left;
+    color: var(--color-fg);
+    cursor: pointer;
+    border-radius: var(--radius-editorial);
+  }
+  .tool-log__row:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+  .tool-log__row:hover .tool-log__name {
+    color: color-mix(in oklab, var(--color-rubric) 70%, var(--color-fg));
+  }
+
+  .tool-log__lead {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .tool-log__status {
+    width: 16px;
+    height: 16px;
+    flex: none;
+    color: var(--color-fg-muted);
+  }
+  .tool-log__status.is-error {
+    color: var(--color-danger);
+  }
+
+  .tool-log__time,
+  .tool-log__duration {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-fg-muted);
+  }
+
+  .tool-log__name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-fg);
+    transition: color var(--duration-fast) var(--ease-standard);
+  }
+
+  .tool-log__summary {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.75rem;
+    color: var(--color-fg-muted);
+  }
+
+  .tool-log__trail {
+    display: flex;
+    flex: none;
+    max-width: 50%;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  /* Category, provider, round and the like: a muted run, not a row of tags. */
+  .tool-log__tags {
+    min-width: 0;
+    font-size: 0.6875rem;
+    text-align: right;
+    color: var(--color-fg-muted);
+  }
+
+  /* Details hang under the call, clear of the status glyph. */
+  .tool-log__detail {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-1) 0 var(--space-3) calc(16px + var(--space-3));
+  }
+
+  .tool-log__error {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin: 0;
+    font-size: 0.75rem;
+    overflow-wrap: anywhere;
+    color: var(--color-danger);
+  }
+  .tool-log__error svg {
+    width: 16px;
+    height: 16px;
+    flex: none;
+  }
+
+  .tool-log__metadata {
+    display: grid;
+    gap: var(--space-1);
+    margin: 0;
+    font-size: 0.75rem;
+  }
+  .tool-log__metadata > div {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+  .tool-log__metadata dt {
+    font-weight: 500;
+    color: var(--color-fg-muted);
+  }
+  .tool-log__metadata dd {
+    margin: 0;
+    min-width: 0;
+    text-align: right;
+    overflow-wrap: anywhere;
+    color: var(--color-fg);
+  }
+
+  @media (max-width: 767px) {
+    /* The tags and duration drop under the call instead of crowding it. */
+    .tool-log__row {
+      flex-wrap: wrap;
+      row-gap: 2px;
+    }
+    .tool-log__trail {
+      max-width: none;
+      padding-left: calc(16px + var(--space-3));
+    }
+    .tool-log__tags {
+      text-align: left;
+    }
+  }
 }
