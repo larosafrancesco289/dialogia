@@ -1,4 +1,4 @@
-import type { PointerEventHandler } from 'react';
+import { useMemo, type PointerEventHandler } from 'react';
 import { MessagePanelsUpper } from '@/components/message/MessagePanels';
 import { MessageModuleSlot } from '@/components/ModuleSlot';
 import { AssistantMessage } from '@/components/message/AssistantMessage';
@@ -6,6 +6,7 @@ import { UserMessage } from '@/components/message/UserMessage';
 import type { MessageCardViewModel } from '@/components/message/useMessageCardViewModel';
 import type { MessagePanelState } from '@/components/message/hooks/useMessagePanels';
 import { cn } from '@/lib/ui/cn';
+import { resolveMessageSources } from '@/lib/ui/messageSources';
 import styles from './MessageCard.module.css';
 
 export type MessageCardViewData = MessageCardViewModel & {
@@ -85,6 +86,14 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
     onPointerCancel,
   } = viewModel;
 
+  // A tool-based search's results, or a provider-native search's citations:
+  // the ledger and the reply's [n] links read the same list.
+  const annotations = message?.annotations;
+  const sources = useMemo(
+    () => resolveMessageSources({ searchEntry: tavilyEntry, annotations }),
+    [tavilyEntry, annotations],
+  );
+
   if (!message) return null;
 
   // An action the learner took in the interface, recorded as a quiet line
@@ -125,7 +134,7 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
       message={message}
       chat={chat}
       models={models}
-      tavilyEntry={tavilyEntry}
+      sources={sources}
       isSourcesExpanded={panels.sources.expanded}
       onToggleSources={panels.sources.onToggle}
       debugMode={debugMode}
@@ -188,7 +197,7 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
           tutorEnabled={tutorEnabled}
           upperPanelsNode={upperPanelsNode}
           tutorPanelNode={tutorPanelNode}
-          citationSources={tavilyEntry?.results}
+          citationSources={sources?.results}
         />
       ) : (
         <UserMessage
