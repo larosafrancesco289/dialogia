@@ -57,6 +57,9 @@ function normalizeScrollBehavior(behavior: ScrollBehavior): ScrollBehavior {
   return behavior === 'instant' ? 'auto' : behavior;
 }
 
+// How long a freshly opened chat keeps to its end while its content settles.
+const OPEN_SETTLE_MS = 1500;
+
 export function useMessageScrolling(options: MessageScrollingOptions) {
   const {
     messages,
@@ -84,6 +87,13 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
   const programmaticClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [atBottom, setAtBottom] = useState(true);
   const [showJump, setShowJump] = useState(false);
+  // A chat that does not follow new content (the tutor's) still needs the
+  // jump button when something lands below the fold.
+  const autoScrollRef = useRef(autoScrollPreference);
+  autoScrollRef.current = autoScrollPreference;
+  // Until then, a freshly opened chat keeps to its end while its content
+  // settles (fonts, math, cards measuring themselves), whatever it follows.
+  const settleUntilRef = useRef(0);
 
   const bottomThresholdPx = isMobile ? 56 : 40;
 
@@ -128,7 +138,10 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
 
     setAtBottom((prev) => (prev === snapshot.atBottom ? prev : snapshot.atBottom));
     setShowJump((prev) => {
-      const next = snapshot.hasOverflow && !snapshot.atBottom && !followAllowedRef.current;
+      const next =
+        snapshot.hasOverflow &&
+        !snapshot.atBottom &&
+        (!followAllowedRef.current || !autoScrollRef.current);
       return prev === next ? prev : next;
     });
   }, []);
@@ -297,7 +310,8 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     if (!contentEl || typeof ResizeObserver === 'undefined') return;
 
     const observer = new ResizeObserver(() => {
-      if (autoScrollPreference && followAllowedRef.current) {
+      const settling = performance.now() < settleUntilRef.current;
+      if ((autoScrollPreference || settling) && followAllowedRef.current) {
         followToBottom();
       } else {
         applySnapshot(readSnapshot());
@@ -317,6 +331,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     programmaticScrollRef.current = false;
     touchStartYRef.current = null;
     lastMessageMetaRef.current = undefined;
+    settleUntilRef.current = performance.now() + OPEN_SETTLE_MS;
     scrollToBottom('auto');
   }, [chatId, scrollToBottom]);
 
