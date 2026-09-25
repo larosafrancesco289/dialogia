@@ -62,7 +62,7 @@ export function MessageAttachments({
           key={attachment.id}
           className="p-0 m-0 border-none bg-transparent"
           onClick={() => handleOpenLightbox(index, array)}
-          title="Click to enlarge"
+          title="Open larger"
           type="button"
         >
           <img
@@ -97,7 +97,7 @@ export function MessageAttachments({
         <span
           key={attachment.id}
           className="badge"
-          title={`${attachment.name || 'PDF'}${attachment.pageCount ? ` • ${attachment.pageCount} pages` : ''}`}
+          title={`${attachment.name || 'PDF'}${attachment.pageCount ? ` · ${attachment.pageCount} pages` : ''}`}
         >
           {attachment.name || 'PDF'}
           {attachment.pageCount ? ` (${attachment.pageCount}p)` : ''}

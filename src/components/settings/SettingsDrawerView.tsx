@@ -113,7 +113,7 @@ function SettingsPhoneView({
               <SettingsSearch
                 value={searchQuery}
                 onChange={setSearchQuery}
-                placeholder="Search settings"
+                placeholder="Search settings…"
               />
             </div>
             {searching ? (

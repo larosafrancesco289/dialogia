@@ -97,9 +97,10 @@
     font-size: 0.95rem;
     color: var(--color-rubric);
   }
-  /* Gold as text needs ink mixed in to stay legible on paper. */
+  /* The topic in hand is a place, not something live: ink, like every
+     selection, where the other numerals are rubric. */
   .hub-contents__item.is-current .hub-contents__num {
-    color: color-mix(in oklab, var(--color-accent) 70%, var(--color-fg));
+    color: var(--color-fg);
   }
   .hub-contents__num.is-done {
     font-family: var(--font-sans);
@@ -163,7 +164,7 @@
     transition: transform var(--duration-slow) var(--ease-out-expo);
   }
   .hub-contents__item.is-current .hub-contents__meter > span {
-    background: var(--color-accent);
+    background: var(--color-fg);
   }
   .hub-contents__meter.is-weak > span {
     background: var(--color-danger);
