@@ -1,12 +1,10 @@
 // Module: agent/regenerate
 // Responsibility: Support regeneration of assistant messages with preserved settings.
-// A reply in a chat whose composition asks for the agent loop is regenerated as a whole
-// turn instead (fresh composition, tools, agent loop), so a card comes back as a card.
+// The new attempt is a whole turn composed the way a fresh send of those settings is
+// (preambles, tools, loop), so a retried answer can search, and a card comes back as a card.
 
-import { buildChatCompletionMessages } from '@/lib/agent/prompt-builder';
-import { composePlugins } from '@/lib/agent/request';
 import type { Chat, Message } from '@/lib/types';
-import type { ModelMessage, RegenerateOptions } from '@/lib/agent/types';
+import type { RegenerateOptions } from '@/lib/agent/types';
 import { resolveRegenerationSettings } from '@/lib/agent/regenerateSettings';
 import { streamFinal } from '@/lib/agent/streaming';
 import { setTurnController } from '@/lib/turns/runtime';
@@ -21,30 +19,13 @@ import { updateMessageById } from '@/lib/messages/updateMessageById';
 export async function regenerate(opts: RegenerateOptions): Promise<void> {
   const { chat, chatId, targetMessageId, messages, turn, controller, overrideModelId, pipeline } =
     opts;
-  const { models, modelIndex, set } = turn;
+  const { modelIndex, set } = turn;
 
   const index = messages.findIndex((msg) => msg.id === targetMessageId);
   if (index < 0) return;
 
   const original = messages[index];
   const priorMessages = messages.slice(0, index);
-  const payload = buildChatCompletionMessages({
-    chat,
-    priorMessages,
-    models,
-    timestamps: turn.get().ui.messageTimestamps === true,
-  });
-  const systemSnapshot = original.systemSnapshot;
-  const convo: ModelMessage[] = systemSnapshot
-    ? [
-        { role: 'system', content: systemSnapshot },
-        ...payload.filter((entry) => entry.role !== 'system'),
-      ]
-    : payload;
-
-  const hadPdfEarlier = priorMessages.some(
-    (msg) => Array.isArray(msg.attachments) && msg.attachments.some((att) => att.kind === 'pdf'),
-  );
 
   const modelIdForTurn = overrideModelId || chat.settings.modelId;
   const caps = modelIndex.caps(modelIdForTurn);
@@ -63,7 +44,8 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
     createdAt: original.createdAt,
     model: modelIdForTurn,
     attachments: [],
-    systemSnapshot,
+    // The old reply's system snapshot is not carried over: it holds that
+    // turn's search results. This turn records its own.
     genSettings,
   });
 
@@ -86,15 +68,6 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
   });
   settings.generation.providerSort = providerSort;
 
-  // Built after `resolveTurnSettings`, never before: that is where a tool-based
-  // search provider with no key on this machine degrades to provider-native
-  // search, and native search is exactly what needs the `web` plugin.
-  const plugins = composePlugins({
-    hasPdf: hadPdfEarlier,
-    searchEnabled: settings.searchEnabled,
-    searchProvider: settings.searchProvider,
-  });
-
   // Counted in only here, right before the try whose finally counts it out.
   set((state) => ({
     messagesById: {
@@ -106,9 +79,11 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
   setTurnController(chatId, controller);
 
   try {
-    // Composed from today's state, after any module has let go of what the old
-    // reply recorded. A module that runs its turns as an agent loop gets one
-    // here too; every other chat regenerates exactly as before, from the snapshot.
+    // Composed as a fresh send of these settings is, from today's state and
+    // after any module has let go of what the old reply recorded: the same
+    // preambles (the date among them), the tools the settings enable, the
+    // plugins (after `resolveTurnSettings`, where a keyless tool provider
+    // degrades to native search) and the loop a module asks for.
     const composition = await composeTurn({
       chat: chatForStream,
       ui: { ...uiSnapshot, overrides: undefined },
@@ -117,54 +92,38 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
       prior: priorMessages,
       store: { set, get: turn.get },
     });
-    if (composition.loop === 'agent') {
-      const lastUser = [...priorMessages].reverse().find((msg) => msg.role === 'user');
-      const lifecycle = createTurnLifecycle({
-        chatId,
-        assistantMessageId: replacement.id,
-        isPrimary: true,
-        priorMessages,
-        getChatForTurn: () => chatForStream,
-        set,
-        get: turn.get,
-        updateMessage: (patch) =>
-          set(
-            (state) =>
-              updateMessageById(state, chatId, replacement.id, (msg) => ({ ...msg, ...patch })) ??
-              state,
-          ),
-      });
-      const { auth: _auth, ...baseTurnContext } = regenTurn;
-      await runTurn({
-        chat: chatForStream,
-        chatId,
-        modelId: modelIdForTurn,
-        userContent: lastUser?.content ?? '',
-        assistantMessage: replacement,
-        priorMessages,
-        ui: uiSnapshot,
-        settings,
-        controller,
-        baseTurnContext,
-        compose: async () => composition,
-        streamFinal: (options) => streamFinal({ ...options, pipeline }),
-        authResolver: () => turn.auth,
-        hooks: lifecycle.hooks,
-        pipeline,
-      });
-      return;
-    }
-
-    await streamFinal({
+    const lastUser = [...priorMessages].reverse().find((msg) => msg.role === 'user');
+    const lifecycle = createTurnLifecycle({
+      chatId,
+      assistantMessageId: replacement.id,
+      isPrimary: true,
+      priorMessages,
+      getChatForTurn: () => chatForStream,
+      set,
+      get: turn.get,
+      updateMessage: (patch) =>
+        set(
+          (state) =>
+            updateMessageById(state, chatId, replacement.id, (msg) => ({ ...msg, ...patch })) ??
+            state,
+        ),
+    });
+    const { auth: _auth, ...baseTurnContext } = regenTurn;
+    await runTurn({
       chat: chatForStream,
       chatId,
+      modelId: modelIdForTurn,
+      userContent: lastUser?.content ?? '',
       assistantMessage: replacement,
-      messages: convo,
-      controller,
-      turn: regenTurn,
+      priorMessages,
+      ui: uiSnapshot,
       settings,
-      plugins,
-      toolDefinition: undefined,
+      controller,
+      baseTurnContext,
+      compose: async () => composition,
+      streamFinal: (options) => streamFinal({ ...options, pipeline }),
+      authResolver: () => turn.auth,
+      hooks: lifecycle.hooks,
       pipeline,
     });
   } catch (error) {
