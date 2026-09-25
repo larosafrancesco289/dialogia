@@ -55,17 +55,6 @@ export type UiPlanSnapshot = {
   rightPanelTab?: 'plan' | 'progress';
   /** The Learning Hub shows its editing controls (Revise) instead of the contents. */
   revising?: boolean;
-  generationByChatId?: Record<
-    string,
-    {
-      status: 'idle' | 'loading' | 'ready' | 'error';
-      goal?: string;
-      startedAt?: number;
-      completedAt?: number;
-      error?: string;
-      modelId?: string;
-    }
-  >;
 };
 
 export type UiMobileSnapshot = {
