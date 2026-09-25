@@ -53,7 +53,7 @@ export function createMessageSlice(
   // interleave two turns neither model saw together.
   const busyInOtherTab = (chatId?: string) => {
     if (!chatId || !get().repliesInOtherTabs[chatId]?.length) return false;
-    notify(get, NOTICE_REPLY_IN_OTHER_TAB);
+    notify(get, NOTICE_REPLY_IN_OTHER_TAB, 'info');
     return true;
   };
   return {

@@ -61,6 +61,7 @@ export const selectIsTutorEnabledForChat = (chatId?: string) => (state: StoreSta
   resolveTutorEnabled(state, chatId ? state.chats.find((chat) => chat.id === chatId) : undefined);
 
 export const selectNotice = (state: StoreState) => state.ui.notice;
+export const selectNoticeTone = (state: StoreState) => state.ui.noticeTone ?? 'error';
 
 export const selectNextOverrides = (state: StoreState) => readNextOverrides(state.ui);
 

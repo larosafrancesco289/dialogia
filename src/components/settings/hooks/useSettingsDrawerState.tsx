@@ -168,7 +168,7 @@ export function useSettingsDrawerState(): SettingsDrawerState {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      setNotice(NOTICE_EXPORTED_CHATS);
+      setNotice(NOTICE_EXPORTED_CHATS, 'success');
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Export failed';
       setNotice(message);
@@ -185,7 +185,7 @@ export function useSettingsDrawerState(): SettingsDrawerState {
         return;
       }
       await initializeApp();
-      setNotice(NOTICE_IMPORTED_DATA);
+      setNotice(NOTICE_IMPORTED_DATA, 'success');
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Import failed';
       setNotice(message);

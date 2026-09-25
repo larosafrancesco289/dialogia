@@ -83,7 +83,7 @@ export async function performWebSearchTool(opts: {
         error: result.error || 'No results',
       });
       if (result.error === NOTICE_MISSING_SEARCH_KEY) {
-        notify(get, NOTICE_MISSING_SEARCH_KEY);
+        notify(get, NOTICE_MISSING_SEARCH_KEY, 'info');
       }
       return { ok: false, results: [], error: result.error, query: rawQuery };
     } catch (err: unknown) {

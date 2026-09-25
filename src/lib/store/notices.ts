@@ -3,15 +3,15 @@
 
 export const NOTICE_CATALOG = {
   invalidKey: 'That API key was rejected. Check it in Settings › Connections.',
-  rateLimited: 'Rate limited. Retry later.',
+  rateLimited: 'The provider is limiting requests. Wait a moment, then try again.',
   missingSearchKey: 'Add a web search key in Settings › Connections to use tool-based search.',
   searchUnavailable: 'Web search is unavailable for this chat; answering without it.',
-  modelsUnavailable: 'Unable to load models.',
+  modelsUnavailable: 'Could not load the model list.',
   unknownEndpoint:
     'This chat uses a provider endpoint that no longer exists. Re-add it in Settings › Connections, or pick another model.',
   exportedChats: 'Exported chats to JSON',
   importedData: 'Imported data',
-  planApplyFailed: 'Failed to apply learning plan. Please try again.',
+  planApplyFailed: 'The plan could not be applied. Try again.',
   copyFailed: 'Could not copy: the browser blocked clipboard access.',
   replyInOtherTab:
     'Another tab is writing a reply in this chat. Send once it has finished, so both tabs keep the same conversation.',
@@ -38,16 +38,6 @@ export function resolveNotice(notice?: NoticeId | string): string | undefined {
   return NOTICE_CATALOG[notice as NoticeId] ?? notice;
 }
 
-/** Notices that confirm an action rather than report a problem. */
-const SUCCESS_NOTICES = new Set<string>([
-  NOTICE_CATALOG.exportedChats,
-  NOTICE_CATALOG.importedData,
-]);
-
-export function isSuccessNotice(message: string): boolean {
-  return SUCCESS_NOTICES.has(message);
-}
-
 const MAX_NOTICE_LENGTH = 200;
 
 export function isAbortLike(error: unknown): boolean {
@@ -71,12 +61,12 @@ export function describeErrorNotice(error: unknown): string | undefined {
   if (isAbortLike(error)) return undefined;
   const message = error instanceof Error ? error.message : '';
   if (/failed to fetch|load failed|networkerror|network request failed/i.test(message)) {
-    return 'Network error. Check your connection and try again.';
+    return 'Could not reach the provider. Check your connection, or that your local server is running.';
   }
   if (/timed? ?out/i.test(message)) {
-    return 'The request timed out. Please try again.';
+    return 'The request timed out. Try again.';
   }
-  if (!message.trim()) return 'An unexpected error occurred';
+  if (!message.trim()) return 'Something went wrong, and the provider did not say what.';
   const text = readable(message);
   return text.length > MAX_NOTICE_LENGTH ? `${text.slice(0, MAX_NOTICE_LENGTH - 1)}…` : text;
 }

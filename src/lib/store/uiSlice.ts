@@ -1,3 +1,4 @@
+import type { NoticeTone } from '@/lib/contracts/ui';
 import type {
   PersistFragment,
   StoreState,
@@ -16,7 +17,7 @@ export type UiSliceState = { ui: UIState };
 
 export type UiSliceActions = {
   setUI: (partial: UIStatePartial) => void;
-  setNotice: (notice?: string) => void;
+  setNotice: (notice?: string, tone?: NoticeTone) => void;
   setSearchStatus: (
     messageId: string,
     entry: NonNullable<UISearchState['tavilyByMessageId']>[string],
@@ -67,12 +68,13 @@ export const createUiSlice = createStoreSlice<UiSliceState & UiSliceActions>((se
         return { ui: nextUi };
       });
     },
-    setNotice(notice?: string) {
+    setNotice(notice?: string, tone: NoticeTone = 'error') {
       const resolved = resolveNotice(notice);
       set((state) => ({
         ui: {
           ...state.ui,
           notice: resolved,
+          noticeTone: resolved ? tone : undefined,
         },
       }));
     },

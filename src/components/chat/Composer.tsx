@@ -221,12 +221,12 @@ export function Composer({
       if (snapshot.scope === activeDraftScopeRef.current) {
         setText(snapshot.text);
         replaceAttachments(snapshot.attachments);
-        setNotice('Failed to send. Your draft was restored.');
+        setNotice('The message could not be sent. Your draft is back in the composer.');
         taRef.current?.focus();
         return;
       }
       recoveredAttachmentsByScopeRef.current[snapshot.scope] = snapshot.attachments;
-      setNotice('Failed to send. Your draft was restored in the original chat.');
+      setNotice('The message could not be sent. Your draft is back in its chat.');
     }
   };
 

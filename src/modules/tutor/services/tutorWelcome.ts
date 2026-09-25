@@ -14,29 +14,29 @@ import { joinSentences, withoutEnd } from '@/modules/tutor/lib/text';
 
 export const buildPlanWelcomeMessage = (plan?: LearningPlan): string => {
   if (!plan || !Array.isArray(plan.nodes) || plan.nodes.length === 0) {
-    return "Welcome! Share what you want to learn and I'll build a personalized plan with adaptive mastery tracking. Feel free to upload any materials you have to help me understand your learning context.";
+    return "Tell me what you want to learn, and why. I'll sketch a plan for us, you can reshape it, and as we work we'll keep track of what you know. If you have notes or readings, add them and I'll work from those too.";
   }
 
   const goal = `"${withoutEnd(plan.goal)}"`;
   const nextNode = plan.nodes.find((n) => n.status === 'in_progress') ?? nextReadyNode(plan);
   if (!nextNode) {
     return joinSentences(
-      'Welcome back!',
-      `You've completed the learning plan for ${goal}`,
-      "Let me know if you'd like to review or start a new goal",
-      'Feel free to upload any new materials if you have them',
+      'Welcome back',
+      `We've finished the plan for ${goal}`,
+      'We can go back over any part of it, or set a new goal',
+      'New notes or readings are welcome too',
     );
   }
 
   const description = nextNode.description?.trim();
   return joinSentences(
-    'Welcome back!',
+    'Welcome back',
     `We're working toward ${goal}`,
     description
       ? `Our next focus is ${nextNode.name}: ${description}`
       : `Our next focus is ${nextNode.name}`,
-    "Ask a question or request practice when you're ready",
-    'You can also upload any relevant materials to support your learning',
+    "Ask a question, or ask for practice, whenever you're ready",
+    'You can add notes or readings at any point',
   );
 };
 

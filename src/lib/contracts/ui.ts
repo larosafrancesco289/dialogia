@@ -74,12 +74,16 @@ export type UiMobileSnapshot = {
   composerFocused: boolean;
 };
 
+export type NoticeTone = 'info' | 'success' | 'error';
+
 export type UiSnapshot = {
   showSettings: boolean;
   /** First-run provider setup sheet; session-scoped, never persisted. */
   setupOpen?: boolean;
   activeTurnByChatId: Record<string, number>;
   notice?: string;
+  /** How the notice reads: a passing fact, a confirmation, or something wrong. */
+  noticeTone?: NoticeTone;
   overrides?: UiNextOverrides;
   zdrOnly?: boolean;
   messageTimestamps?: boolean;

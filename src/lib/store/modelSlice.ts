@@ -91,7 +91,7 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
               if (endpoint.kind !== 'openrouter' && zdrOnly) {
                 modelsByEndpoint.set(endpoint.id, []);
                 noticeSegments.push(
-                  `${endpoint.label} models are hidden while ZDR-only mode is enabled.`,
+                  `${endpoint.label} models are hidden: zero data retention is on, and only OpenRouter can promise it.`,
                 );
                 return;
               }
@@ -157,7 +157,7 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
               return;
             }
             if (noticeSegments.length > 0 && !get().ui.notice) {
-              notify(get, noticeSegments.join(' '));
+              notify(get, noticeSegments.join(' '), 'info');
               return;
             }
             if (!get().ui.notice) {
@@ -183,7 +183,7 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
             }));
             if (noticeSegments.length > 0 && !get().ui.notice) {
               const message = noticeSegments.join(' ');
-              notify(get, message);
+              notify(get, message, 'info');
             }
           }
           set({ models: mergedModels, modelIndex: createModelIndex(mergedModels) });

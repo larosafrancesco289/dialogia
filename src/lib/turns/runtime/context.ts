@@ -140,7 +140,7 @@ export const prepareSendRuntime = async ({
   // Dropping an attachment the model cannot read used to be silent, which read
   // as the model ignoring the file.
   if (prepared.droppedKinds.length > 0) {
-    notify(get, describeDroppedAttachments(prepared.droppedKinds));
+    notify(get, describeDroppedAttachments(prepared.droppedKinds), 'info');
   }
 
   const persistMessage = createMessagePersister(repository);
