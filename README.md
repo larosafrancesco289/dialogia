@@ -16,14 +16,14 @@ and it will run entirely against a model on your own machine if you want it to.
   no sync, and no server at all.
 - **Tutor mode.** An optional structured-learning mode. It generates a plan, tracks mastery, and
   runs diagnostics that adapt as you go.
-- **Real model control.** A curated picker with favourites, per-model capability flags, reasoning
-  effort per turn, provider routing preference, and optional Zero-Data-Retention (ZDR) enforcement.
+- **Real model control.** A curated picker with favorites, per-model capability flags, reasoning
+  effort per turn, and optional Zero-Data-Retention (ZDR) enforcement.
 - **Rich input and output.** Images, audio, and PDFs go in. Markdown with syntax highlighting, KaTeX
   and Mermaid comes out.
 - **Grounded answers.** Provider-native web search with any model key, or tool-based search through
   your own Tavily key.
-- **Streaming with the numbers.** Time to first token, tokens/sec, token counts, and
-  provider-reported cost.
+- **The numbers, when you want them.** Turn on the colophon in **Settings › Appearance** and each
+  reply carries its model, time to first token, token count, tokens/sec and cost.
 
 ![Chat](assets/chat.png)
 
@@ -34,8 +34,9 @@ bun install
 bun run dev
 ```
 
-Open http://localhost:3000. The setup sheet appears. Pick OpenRouter or Anthropic, paste a key, and
-send a message. That is the whole setup. There is no `.env` file to write and no build flags to set.
+Open http://localhost:3000. After a short tour you can skip, the setup sheet appears. Pick
+OpenRouter or Anthropic, paste a key, and send a message. That is the whole setup. There is no
+`.env` file to write and no build flags to set.
 
 Get a key from [openrouter.ai/keys](https://openrouter.ai/keys) (one key, most models) or
 [console.anthropic.com](https://console.anthropic.com) (Claude, direct).
@@ -49,9 +50,10 @@ ollama pull qwen3:8b
 bun run dev
 ```
 
-In the setup sheet choose **Local**, name it, and give it `http://localhost:11434/v1`. Then in
-**Settings › Providers** add the model ids you want and turn on the capabilities your server
-actually supports.
+In the setup sheet choose **Local**, name it, and give it `http://localhost:11434/v1`. Whatever the
+server lists at `/models` shows up in the picker under **Your servers**. Then in **Settings ›
+Connections**, under **Your servers**, turn on the capabilities your server actually supports, and
+add any model ids it does not list.
 
 Capabilities start off and stay off until you enable them. A strict OpenAI-compatible server rejects
 an entire request over one field it does not recognise, so Dialogia sends the minimal body until you
@@ -96,18 +98,22 @@ the app and live in the browser that pasted them.
 
 ## Using it
 
-- Pick a model in the header. Favourite or hide models to shape the list.
+- Pick a model in the header. The picker searches every model, and a model you pick from a search
+  joins your favorites, so it is there next time.
 - Enter sends, Shift+Enter adds a newline.
 - Attach images (vision models), audio (mp3/wav), or PDFs. PDF text is extracted client-side and
-  sent as text, and small files can optionally be sent as file blocks.
-- Toggle reasoning effort in the composer for thinking models. Expand the Thinking panel per
+  sent as text. A small PDF with no extractable text goes as a file block instead.
+- Set reasoning effort in the composer for thinking models. Expand the Thinking panel per
   message.
 - Toggle web search in the composer. With a search-provider key stored, the same control becomes a
   picker between provider-native and tool-based search.
 - The slash commands are `/model <id|name>`, `/search on|off|toggle`,
-  `/reasoning none|low|medium|high` and `/help`.
+  `/reasoning none|minimal|low|medium|high|xhigh|max` and `/help`. A model accepts only the
+  levels it offers.
+- On a phone the chat list, Tutor and Settings sit in a drawer behind the menu button, and the
+  model picker opens as a sheet from the bottom.
 
-![Image generation](assets/image-gen.png)
+<img src="assets/phone.png" alt="A chat at phone width" width="390">
 
 ### Tutor mode
 
