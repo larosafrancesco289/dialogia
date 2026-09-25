@@ -2,14 +2,12 @@ import { useMemo, useState } from 'react';
 import {
   CheckIcon,
   ChevronDownIcon,
-  ClipboardIcon,
   ClockIcon,
   ExclamationTriangleIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import type { ToolCallLogEntry } from '@/lib/types';
-import { IconButton } from '@/components/ui/IconButton';
-import { copyText } from '@/lib/clipboard';
+import { CopyButton } from '@/components/markdown/CopyButton';
 
 type ToolCallLogMode = 'compact' | 'full';
 type ToolCallBadge = { id: string; label: string };
@@ -82,7 +80,11 @@ function summaryForCall(call: ToolCallLogEntry): string {
       return 'Web search';
     }
     default:
-      return call.status === 'success' ? 'Completed' : call.status;
+      return call.status === 'success'
+        ? 'Completed'
+        : call.status === 'error'
+          ? 'Failed'
+          : 'Pending';
   }
 }
 
@@ -159,13 +161,11 @@ function JsonBlock({ label, value }: { label: 'Input' | 'Output'; value: unknown
     <div>
       <div className="devtools__section-head">
         <span className="devtools__label">{label}</span>
-        <IconButton
-          size="sm"
-          title={`Copy ${label.toLowerCase()} JSON`}
-          onClick={() => void copyText(stringify(value))}
-        >
-          <ClipboardIcon className="h-4 w-4" />
-        </IconButton>
+        <CopyButton
+          text={stringify(value)}
+          label={`Copy ${label.toLowerCase()} JSON`}
+          className="icon-button icon-button--sm"
+        />
       </div>
       <pre className="devtools__code">
         <code>{stringify(value)}</code>

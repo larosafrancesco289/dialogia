@@ -107,14 +107,15 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
   if (command === 'model' || command === 'm') {
     const id = arg.trim();
     if (!id) return false;
-    ctx.accept();
     const byId = findModelById(ctx.models, id);
     const byName = ctx.models.find((model) => model.name?.toLowerCase() === id.toLowerCase());
     const chosen = byId || byName;
     if (!chosen) {
+      // Handled, not sent, and left in the composer so a typo can be fixed.
       ctx.setNotice(`No model is called ${id}.`);
       return true;
     }
+    ctx.accept();
     if (applyToChat) {
       await ctx.updateChatSettings({ modelId: chosen.id });
     } else {

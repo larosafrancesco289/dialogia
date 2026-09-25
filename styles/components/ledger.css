@@ -280,6 +280,13 @@
     white-space: nowrap;
     color: var(--color-fg-muted);
   }
+  /* A long note (a tool's refusal) wraps on a phone rather than running
+     off the edge. */
+  @media (max-width: 767px) {
+    .response-ledger__annotation {
+      white-space: normal;
+    }
+  }
   .response-ledger__annotation.is-error {
     color: var(--color-danger);
   }

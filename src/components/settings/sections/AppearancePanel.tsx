@@ -105,7 +105,7 @@ export function AppearancePanel(props: AppearancePanelProps) {
             checked={showThinking}
             onChange={setShowThinking}
             label="Show thinking by default"
-            description="Expand the reasoning panel automatically for new messages."
+            description="Open the reasoning panel on every reply, including earlier ones."
           />
           <ToggleSwitch
             checked={showStats}

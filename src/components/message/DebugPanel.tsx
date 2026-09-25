@@ -1,15 +1,13 @@
 import { useId, useMemo } from 'react';
 import {
   ChevronDownIcon,
-  ClipboardIcon,
   CodeBracketIcon,
   WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline';
 import type { ToolCallLogEntry } from '@/lib/types';
 import { ToolCallLog } from '@/components/message/ToolCallLog';
-import { IconButton } from '@/components/ui/IconButton';
 import { parseDebugBody } from '@/lib/agent/debug/parseDebugBody';
-import { copyText } from '@/lib/clipboard';
+import { CopyButton } from '@/components/markdown/CopyButton';
 
 export function DebugPanel({
   body,
@@ -153,9 +151,11 @@ export function DebugPanel({
             <div>
               <div className="devtools__section-head">
                 <span className="devtools__label">Raw request JSON</span>
-                <IconButton size="sm" title="Copy request" onClick={() => void copyText(rawJson)}>
-                  <ClipboardIcon className="h-4 w-4" />
-                </IconButton>
+                <CopyButton
+                  text={rawJson}
+                  label="Copy request"
+                  className="icon-button icon-button--sm"
+                />
               </div>
               <pre className="devtools__code devtools__code--wrap">{rawJson}</pre>
             </div>
