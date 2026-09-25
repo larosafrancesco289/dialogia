@@ -32,6 +32,10 @@ export type StreamTurn = {
   round: StreamRound;
   /** How many blocks the rounds before this one held. */
   blockBase: number;
+  /** Thinking has been shown; a later thinking block opens a new paragraph. */
+  thinkingShown: boolean;
+  /** A thinking block started after earlier thinking, and has not yet shown text. */
+  thinkingBreak: boolean;
 };
 
 type StreamEmit = Pick<StreamCallbacks, 'onToken' | 'onReasoningToken' | 'onToolCallDelta'>;
@@ -41,7 +45,15 @@ function newRound(): StreamRound {
 }
 
 export function createStreamTurn(): StreamTurn {
-  return { text: '', thinkingBlocks: [], toolCalls: new Map(), round: newRound(), blockBase: 0 };
+  return {
+    text: '',
+    thinkingBlocks: [],
+    toolCalls: new Map(),
+    round: newRound(),
+    blockBase: 0,
+    thinkingShown: false,
+    thinkingBreak: false,
+  };
 }
 
 /** Moves the turn on to a continuation's response. */
@@ -127,6 +139,9 @@ function appended(current: unknown, piece: string): string {
 function startBlock(turn: StreamTurn, index: number, value: unknown, emit: StreamEmit): void {
   if (!isRecord(value)) return;
   turn.round.blocks[index] = { ...value };
+  // Thinking before and after a tool call (a server-side search, say) arrives
+  // as separate blocks with nothing between them.
+  if (value.type === 'thinking' && turn.thinkingShown) turn.thinkingBreak = true;
   if (value.type !== 'tool_use') return;
 
   const key = turn.blockBase + index;
@@ -156,7 +171,13 @@ function applyDelta(turn: StreamTurn, index: number, value: unknown, emit: Strea
     return;
   }
   if (value.type === 'thinking_delta' && typeof value.thinking === 'string') {
-    emit.onReasoningToken?.(value.thinking);
+    if (value.thinking) {
+      emit.onReasoningToken?.(
+        turn.thinkingBreak ? `\n\n${value.thinking.trimStart()}` : value.thinking,
+      );
+      turn.thinkingShown = true;
+      turn.thinkingBreak = false;
+    }
     if (block?.type === 'thinking') block.thinking = appended(block.thinking, value.thinking);
     return;
   }
