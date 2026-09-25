@@ -24,10 +24,10 @@ export function getSlashSuggestions(input: string, models: ModelDescriptor[]): S
   const startsWith = (candidate: string, prefix: string) => candidate.startsWith(prefix);
 
   const baseCommands: Array<{ key: string; label: string; help?: string }> = [
-    { key: 'model', label: 'model', help: 'Set model by id or name' },
-    { key: 'search', label: 'search', help: 'Toggle web search (on/off/toggle)' },
-    { key: 'reasoning', label: 'reasoning', help: 'Set reasoning effort' },
-    { key: 'help', label: 'help', help: 'Show slash command help' },
+    { key: 'model', label: 'model', help: 'Answer with another model' },
+    { key: 'search', label: 'search', help: 'Turn web search on or off' },
+    { key: 'reasoning', label: 'reasoning', help: 'How long the model thinks' },
+    { key: 'help', label: 'help', help: 'What these commands do' },
   ];
 
   if (!cmd) {

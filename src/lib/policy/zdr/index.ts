@@ -115,4 +115,4 @@ export function getZdrBlockNotice(modelId: string, reason: 'model' | 'provider')
 }
 
 export const ZDR_UNAVAILABLE_NOTICE =
-  'Could not fetch ZDR list; enable internet or disable ZDR-only to list all.';
+  'Could not fetch the zero-data-retention list. Check your connection, or turn off ZDR-only in Settings.';

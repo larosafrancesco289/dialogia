@@ -1,39 +1,34 @@
 import { useChatStore } from '@/lib/store';
 import { useEffect, useState } from 'react';
 import { InlineNotice } from '@/components/ui/InlineNotice';
-import { selectNotice } from '@/lib/store/selectors';
-import { isSuccessNotice } from '@/lib/store/notices';
+import { selectNotice, selectNoticeTone } from '@/lib/store/selectors';
+import type { NoticeTone } from '@/lib/contracts/ui';
 
-const SUCCESS_DISMISS_MS = 4000;
-const ERROR_DISMISS_MS = 10000;
+// Confirmations go quickly, facts stay long enough to read, problems linger.
+const DISMISS_MS: Record<NoticeTone, number> = { success: 4000, info: 6000, error: 10000 };
 
 export function GlobalNotice() {
   const notice = useChatStore(selectNotice);
+  const tone = useChatStore(selectNoticeTone);
   const setNotice = useChatStore((s) => s.setNotice);
   const [visible, setVisible] = useState(false);
-
-  const isSuccess = !!notice && isSuccessNotice(notice);
 
   useEffect(() => {
     setVisible(Boolean(notice));
     if (!notice) return;
-    // Auto-dismiss: confirmations go quickly, errors linger long enough to read.
-    const tid = setTimeout(
-      () => {
-        setVisible(false);
-        setNotice(undefined);
-      },
-      isSuccessNotice(notice) ? SUCCESS_DISMISS_MS : ERROR_DISMISS_MS,
-    );
+    const tid = setTimeout(() => {
+      setVisible(false);
+      setNotice(undefined);
+    }, DISMISS_MS[tone]);
     return () => clearTimeout(tid);
-  }, [notice, setNotice]);
+  }, [notice, tone, setNotice]);
 
   if (!notice || !visible) return null;
   return (
     <div className="fixed inset-x-0 top-[calc(var(--chrome-height)+12px)] flex justify-center z-[100] px-4 pointer-events-none">
       <InlineNotice
         message={notice}
-        role={isSuccess ? 'status' : 'alert'}
+        tone={tone}
         onDismiss={() => {
           setVisible(false);
           setNotice(undefined);

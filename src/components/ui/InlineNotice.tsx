@@ -1,25 +1,31 @@
-import { CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
+import {
+  CheckCircleIcon,
+  ExclamationCircleIcon,
+  InformationCircleIcon,
+} from '@heroicons/react/24/outline';
+import type { NoticeTone } from '@/lib/contracts/ui';
 
 export type InlineNoticeProps = {
   message: string;
   onDismiss?: () => void;
-  role?: 'status' | 'alert';
+  tone?: NoticeTone;
   className?: string;
 };
 
-/** A toast: a slip of paper with a hairline; errors carry a crimson mark. */
-export function InlineNotice({
-  message,
-  onDismiss,
-  role = 'status',
-  className,
-}: InlineNoticeProps) {
+const ICONS = {
+  info: InformationCircleIcon,
+  success: CheckCircleIcon,
+  error: ExclamationCircleIcon,
+} as const;
+
+/** A toast: a slip of paper with a hairline. Only a problem carries the crimson mark. */
+export function InlineNotice({ message, onDismiss, tone = 'info', className }: InlineNoticeProps) {
   if (!message) return null;
-  const isAlert = role === 'alert';
-  const Icon = isAlert ? ExclamationCircleIcon : CheckCircleIcon;
+  const isAlert = tone === 'error';
+  const Icon = ICONS[tone];
   return (
     <div
-      role={role}
+      role={isAlert ? 'alert' : 'status'}
       aria-live={isAlert ? 'assertive' : 'polite'}
       aria-atomic="true"
       className={`toast${isAlert ? ' toast--error' : ''}${className ? ` ${className}` : ''}`}

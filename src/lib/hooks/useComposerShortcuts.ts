@@ -1,3 +1,4 @@
+import type { NoticeTone } from '@/lib/contracts/ui';
 import { useCallback } from 'react';
 import type {
   Chat,
@@ -28,7 +29,7 @@ type SlashCommandContext = {
   nextOverrides: NextOverrides;
   updateChatSettings: (partial: ChatSettingsPatch) => Promise<void>;
   setUI: (partial: Partial<UIState>) => void;
-  setNotice: (notice?: string) => void;
+  setNotice: (notice?: string, tone?: NoticeTone) => void;
   defaultModelId: string;
   /**
    * The input is a command: called once, before anything is awaited, so the
@@ -58,12 +59,12 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
     if (applyToChat && ctx.chat) {
       const next = enabled == null ? !ctx.chat.settings.features.search.enabled : enabled;
       await ctx.updateChatSettings({ features: { search: { enabled: next } } });
-      ctx.setNotice(`Web search: ${next ? 'On' : 'Off'}`);
+      ctx.setNotice(`Web search is ${next ? 'on' : 'off'} in this chat.`, 'info');
     } else {
       const prev = !!ctx.nextOverrides.search?.enabled;
       const next = enabled == null ? !prev : enabled;
       ctx.setUI({ overrides: { search: { enabled: next } } });
-      ctx.setNotice(`Web search (next): ${next ? 'On' : 'Off'}`);
+      ctx.setNotice(`Web search will be ${next ? 'on' : 'off'} in the next chat.`, 'info');
     }
     return true;
   }
@@ -74,12 +75,12 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
     if (!allowed.includes(effort)) return false;
     ctx.accept();
     if (!isReasoningSupported(currentModel)) {
-      ctx.setNotice('Reasoning not supported by current model');
+      ctx.setNotice('This model does not reason, so it has no effort to set.');
       return true;
     }
     const selectable = getSelectableReasoningEfforts(currentModel);
     if (selectable.length > 0 && !selectable.includes(effort)) {
-      ctx.setNotice(`Effort "${effort}" not supported by current model`);
+      ctx.setNotice(`This model does not offer ${effort} effort.`);
       return true;
     }
     if (applyToChat) {
@@ -99,7 +100,7 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
         },
       });
     }
-    ctx.setNotice(`Reasoning effort: ${effort}`);
+    ctx.setNotice(`Reasoning effort set to ${effort}.`, 'info');
     return true;
   }
 
@@ -111,7 +112,7 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
     const byName = ctx.models.find((model) => model.name?.toLowerCase() === id.toLowerCase());
     const chosen = byId || byName;
     if (!chosen) {
-      ctx.setNotice(`Unknown model: ${id}`);
+      ctx.setNotice(`No model is called ${id}.`);
       return true;
     }
     if (applyToChat) {
@@ -119,14 +120,15 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
     } else {
       ctx.setUI({ overrides: { modelId: chosen.id } });
     }
-    ctx.setNotice(`Model set to ${chosen.name || chosen.id}`);
+    ctx.setNotice(`Now answering with ${chosen.name || chosen.id}.`, 'info');
     return true;
   }
 
   if (command === 'help') {
     ctx.accept();
     ctx.setNotice(
-      'Slash: /model <id>, /search on|off|toggle, /reasoning none|minimal|low|medium|high|xhigh|max',
+      'Type /model and a name to change model, /search on or off for web search, and /reasoning with a level such as low or high.',
+      'info',
     );
     return true;
   }
@@ -151,7 +153,7 @@ export function useComposerShortcuts(options: {
   nextOverrides: NextOverrides;
   updateChatSettings: (partial: ChatSettingsPatch) => Promise<void>;
   setUI: (partial: Partial<UIState>) => void;
-  setNotice: (notice?: string) => void;
+  setNotice: (notice?: string, tone?: NoticeTone) => void;
   newChat: () => Promise<void>;
   sendMessage: (
     text: string,
