@@ -1,0 +1,187 @@
+@layer components {
+  /* ===== Developer corner — the request view, the tool-call log and the
+     endpoint test. Siblings of the response ledger: no cards, no tiles,
+     whitespace between parts and at most one hairline. ===== */
+
+  /* The rubric small label, as a menu heading sets it, without the menu's
+     padding. */
+  .devtools__label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-rubric);
+  }
+
+  /* ----- Request view (DebugPanel) ----- */
+  .devtools {
+    /* On the reply's text column, like the ledger above it. */
+    margin: var(--space-3) var(--space-4) var(--space-2);
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--color-fg);
+  }
+
+  .devtools__toggle {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-1) 0;
+    border: none;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    color: var(--color-fg-muted);
+    border-radius: var(--radius-editorial);
+  }
+  .devtools__toggle:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+  .devtools__toggle:hover .devtools__title {
+    color: color-mix(in oklab, var(--color-rubric) 70%, var(--color-fg));
+  }
+  .devtools__toggle:hover .devtools__rule {
+    border-color: color-mix(in oklab, var(--color-fg) 20%, transparent);
+  }
+
+  .devtools__glyph {
+    width: 16px;
+    height: 16px;
+    flex: none;
+    color: var(--color-fg-muted);
+  }
+
+  .devtools__title {
+    flex: none;
+    color: var(--color-rubric);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: color var(--duration-fast) var(--ease-standard);
+  }
+
+  .devtools__rule {
+    flex: 1;
+    min-width: var(--space-4);
+    border-top: 1px solid var(--chrome-rule);
+    transition: border-color var(--duration-fast) var(--ease-standard);
+  }
+
+  .devtools__chevron {
+    width: 14px;
+    height: 14px;
+    flex: none;
+    color: var(--color-fg-muted);
+    transition: transform var(--duration-fast) var(--ease-standard);
+  }
+  .devtools__chevron.is-open {
+    transform: rotate(180deg);
+  }
+
+  .devtools__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    padding-top: var(--space-3);
+  }
+
+  /* A section label with an optional action at its right. The row keeps the
+     height of a small icon button so labels line up with or without one. */
+  .devtools__section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    min-height: 28px;
+    margin-bottom: var(--space-1);
+  }
+
+  /* Overview: label and value pairs, set as a register. */
+  .devtools__facts {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    column-gap: var(--space-4);
+    row-gap: var(--space-1);
+    margin: 0;
+  }
+  .devtools__facts dt {
+    color: var(--color-fg-muted);
+  }
+  .devtools__facts dd {
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-fg);
+  }
+
+  /* Tool and plugin names: identifiers, so monospace, in a plain run. */
+  .devtools__names {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .devtools__name {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-fg);
+  }
+
+  .devtools__messages {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .devtools__message-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-2);
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--color-fg-muted);
+  }
+  .devtools__message-index {
+    font-variant-numeric: tabular-nums;
+  }
+  /* What the request carried, quoted as the ledger quotes a thought. */
+  .devtools__quote {
+    margin: 2px 0 0;
+    font-family: var(--font-serif-assistant);
+    font-style: italic;
+    font-size: 0.95rem;
+    line-height: 1.55;
+    color: var(--color-fg-muted);
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+  }
+  .devtools__note {
+    margin: 2px 0 0;
+    font-size: 0.75rem;
+    color: var(--color-fg-muted);
+  }
+
+  /* JSON keeps the plain code look of foundations.css (tint, radius,
+     padding); only the type is set here. */
+  .devtools__code {
+    margin: 0;
+    font-size: 0.75rem;
+    line-height: 1.6;
+    color: var(--color-fg);
+  }
+  .devtools__code--wrap {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+}
