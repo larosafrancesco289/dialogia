@@ -50,7 +50,7 @@ export function DataPanel({ renderSection, onExport, onImportPicked }: DataPanel
       <ConfirmDialog
         open={!!pending}
         title={`Import ${pending?.name ?? 'this file'}?`}
-        description="Chats in the file replace chats here with the same id, and its settings replace yours: servers, favourites and chat defaults. Everything else here is kept. Export first if you may want to go back."
+        description="Chats in the file replace chats here with the same id, and its settings replace yours: servers, favorites and chat defaults. Everything else here is kept. Export first if you may want to go back."
         confirmLabel="Import"
         tone="default"
         onConfirm={() => {

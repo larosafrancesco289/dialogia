@@ -106,8 +106,8 @@
   .markdown .contains-task-list {
     margin-left: 0.75rem; /* align with checkbox */
   }
+  /* In ink, like every checkbox: a ticked task is not live. */
   .markdown input[type='checkbox'] {
-    accent-color: var(--color-accent);
     margin-right: 0.5rem;
     transform: translateY(1px);
     pointer-events: none; /* keep static in chat */
