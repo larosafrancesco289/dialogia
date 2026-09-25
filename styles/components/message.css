@@ -215,38 +215,6 @@
     color: var(--color-fg);
   }
 
-  /* ===== Plan drafting: a chapter break while the plan is written ===== */
-  .plan-drafting {
-    width: 100%;
-    max-width: 30rem;
-    margin: var(--space-4) auto var(--space-6);
-    text-align: center;
-  }
-  .plan-drafting__kicker {
-    margin: 0;
-    font-family: var(--font-serif-assistant);
-    font-variant: small-caps;
-    text-transform: lowercase;
-    letter-spacing: 0.08em;
-    font-size: 0.95rem;
-    color: var(--color-rubric);
-  }
-  .plan-drafting__line {
-    margin: 0.2em 0 0;
-    font-family: var(--font-serif-assistant);
-    font-style: italic;
-    font-size: 1.05rem;
-    color: var(--color-fg-muted);
-    text-wrap: balance;
-  }
-  .plan-drafting__mark {
-    display: block;
-    height: 0.9rem;
-    aspect-ratio: 55 / 27.2;
-    margin: var(--space-4) auto 0;
-    color: var(--color-fg-muted);
-  }
-
   /* ===== Image lightbox: a darkroom, whatever the theme ===== */
   .lightbox {
     background: var(--lightbox-scrim);

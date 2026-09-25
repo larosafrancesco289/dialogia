@@ -1,8 +1,5 @@
-import { BookOpenIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { BookOpenIcon } from '@heroicons/react/24/outline';
 import type { LearningPlan } from '@/lib/types';
-import type { UiPlanSnapshot } from '@/lib/contracts/ui';
-
-type PlanGeneration = NonNullable<UiPlanSnapshot['generationByChatId']>[string];
 
 type PlanProgress = {
   completed: number;
@@ -10,43 +7,18 @@ type PlanProgress = {
 };
 
 export function PlanStatusBadge({
-  planGeneration,
   hasPlan,
   planProgress,
   learningPlan,
   panelOpen,
   onToggleRightPanel,
 }: {
-  planGeneration?: PlanGeneration;
   hasPlan: boolean;
   planProgress: PlanProgress | null;
   learningPlan?: LearningPlan;
   panelOpen?: boolean;
   onToggleRightPanel: () => void;
 }) {
-  if (planGeneration?.status === 'loading') {
-    return (
-      <span className="plan-status" title={planGeneration.goal || undefined} role="status">
-        {/* The drafting itself is shown in the chat; the head only names it. */}
-        <BookOpenIcon className="plan-status__icon" />
-        <span className="plan-status__text">Drafting a plan…</span>
-      </span>
-    );
-  }
-
-  if (planGeneration?.status === 'error' && !hasPlan) {
-    return (
-      <span
-        className="plan-status plan-status--error"
-        title={planGeneration.error || 'Plan generation failed'}
-        role="status"
-      >
-        <ExclamationTriangleIcon className="plan-status__icon" />
-        <span className="plan-status__text">No plan yet</span>
-      </span>
-    );
-  }
-
   if (!hasPlan || !planProgress || !learningPlan) return null;
 
   return (

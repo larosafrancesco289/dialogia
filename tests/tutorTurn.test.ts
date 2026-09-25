@@ -19,6 +19,7 @@ import { OPENROUTER_ENDPOINT } from '@/lib/transport/endpoints';
 import type { StreamCallbacks, TransportStreamParams } from '@/lib/transport/types';
 import type { ModelMessage, ToolCall } from '@/lib/agent/types';
 import type { Message, ModelDescriptor } from '@/lib/types';
+import { toolCallInFlight } from '@/lib/ui/streaming';
 import { TUTOR_SYSTEM_PROMPT } from '@/modules/tutor/agent/systemPrompt';
 import { createTestStore } from './helpers/createTestStoreState';
 import { makeChat } from './helpers/makeChat';
@@ -410,4 +411,23 @@ test('regenerating a tutor reply reruns the whole turn, so its card comes back a
     proposal.plan.nodes.map((n) => n.id),
     ['limits'],
   );
+});
+
+test('a reply still reads as working while the plan it introduced is being written', async () => {
+  const s = session();
+  let midway: boolean | undefined;
+  const first = await s.turn('Teach me calculus.', (_, cb) => {
+    cb?.onToken?.('Here is a plan.');
+    // The words are out; the plan's arguments are still streaming, which
+    // takes seconds with a real model.
+    cb?.onToolCallDelta?.([{ index: 0, id: 'call-plan', function: { name: 'propose_plan' } }]);
+    midway = toolCallInFlight(getMessagesForChat(s.store.getState(), s.chatId).at(-1)!);
+    cb?.onDone?.('Here is a plan.', {
+      finishReason: 'tool_calls',
+      toolCalls: [call('propose_plan', PLAN, 'call-plan')],
+    });
+  });
+  assert.equal(midway, true, 'the reply shows its live mark under the words');
+  assert.equal(toolCallInFlight(first.message()), false, 'settled once the card is up');
+  assert.equal(s.tutor().state.proposal?.messageId, first.message().id);
 });

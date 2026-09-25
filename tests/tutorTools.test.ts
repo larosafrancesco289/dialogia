@@ -201,3 +201,54 @@ test('two state tools in one round both land, in order', async () => {
   const kinds = t.session().events.map((e) => e.type);
   assert.deepEqual(kinds.slice(-3), ['evidence_recorded', 'evidence_recorded', 'topic_completed']);
 });
+
+const revisedArgs = {
+  ...planArgs,
+  topics: [
+    ...planArgs.topics,
+    {
+      name: 'Implicit differentiation',
+      objectives: ['Differentiate a relation'],
+      prerequisites: ['Chain rule'],
+    },
+  ],
+};
+
+test('a Hub previewing a proposal follows the revision that replaces it', async () => {
+  const t = setup();
+  t.store.setState({ selectedChatId: t.chatId });
+  await t.call('propose_plan', planArgs, 'reply-plan');
+  const first = t.session().state.proposal!;
+  // "View full plan" on the card, then "Suggest changes" on it.
+  t.store.getState().setUI({ plan: { rightPanelOpen: true, sheetPlanOverride: first.plan } });
+  const declined = await t.store.getState().dispatchTutor(
+    t.chatId,
+    {
+      by: 'learner',
+      type: 'decline_plan',
+      proposalId: first.proposalId,
+      feedback: 'Add one more topic',
+    },
+    { by: 'learner', messageId: 'reply-plan' },
+  );
+  assert.equal(declined.ok, true);
+
+  await t.call('propose_plan', revisedArgs, 'reply-revision');
+  const revision = t.session().state.proposal!;
+  assert.notEqual(revision.proposalId, first.proposalId);
+  assert.equal(revision.plan.nodes.length, 4);
+  assert.equal(t.store.getState().ui.plan?.sheetPlanOverride, revision.plan);
+});
+
+test('a proposal leaves a Hub that previews no proposal, or another chat, alone', async () => {
+  const t = setup();
+  t.store.setState({ selectedChatId: t.chatId });
+  await t.call('propose_plan', planArgs, 'reply-plan');
+  assert.equal(t.store.getState().ui.plan?.sheetPlanOverride, null, 'nothing opens by itself');
+
+  const first = t.session().state.proposal!;
+  t.store.getState().setUI({ plan: { sheetPlanOverride: first.plan } });
+  t.store.setState({ selectedChatId: 'another-chat' });
+  await t.call('propose_plan', revisedArgs, 'reply-revision');
+  assert.equal(t.store.getState().ui.plan?.sheetPlanOverride, first.plan);
+});

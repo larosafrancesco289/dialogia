@@ -105,7 +105,27 @@ export function cardsForMessage(session: TutorSession, messageId: string): Messa
 }
 
 /** One topic's movement from a message's evidence, with the notes that moved it. */
-export type MasteryChange = { nodeId: string; from: number; to: number; notes: string[] };
+export type MasteryChange = {
+  nodeId: string;
+  from: number;
+  to: number;
+  notes: string[];
+  /**
+   * Where the learner's correction put the estimate, when they corrected it
+   * while this note was still the estimate (from the note or from the Hub).
+   */
+  corrected?: number;
+};
+
+/**
+ * The changes a message's margin notes show: every topic whose estimate it
+ * moved, the topic it finished included. The chapter break states where that
+ * topic stands; the note says what the exchange changed and why, and is
+ * where the learner answers it.
+ */
+export function marginChanges(effects: MessageEffects): MasteryChange[] {
+  return effects.masteryChanges.filter((change) => change.from !== change.to);
+}
 
 /** A margin note's reasons folded to this many (the latest); the rest wait behind "+N more". */
 const REASONS_SHOWN = 2;
@@ -121,11 +141,15 @@ export function marginReason(notes: string[], unfolded: boolean): { text: string
   return { text: joinSentences(...shown), more: clean.length - shown.length };
 }
 
-/** A topic the message's events completed, as it stood at that moment. */
+/** A topic the message's events completed, and what the learner made of it at that seam. */
 export type Completion = {
   nodeId: string;
   how: CompletionHow;
-  /** The topic's estimate and evidence when it completed, not today's. */
+  /**
+   * The topic's estimate and evidence at the seam: as it stands while the seam
+   * is open (a correction there shows at once), and as it stood when the
+   * learner went on, not today's.
+   */
   mastery?: TopicMastery;
   /** The topic started after this one, once one has been. */
   nextNodeId?: string;
@@ -139,10 +163,11 @@ const effectsCache = new WeakMap<readonly TutorEvent[], Map<string, MessageEffec
 
 /**
  * Per message, what its events did: each topic's estimate before and after
- * (with the notes that moved it), and the topic it finished, as of then, with
- * what the learner did next at that seam: the first topic started or reopened
- * after it. What happens to the topic later is not that seam's to show. One
- * replay of the (retraction-aware) log per log, shared by every message.
+ * (with the notes that moved it), and the topic it finished, with what the
+ * learner did next at that seam: the first topic started or reopened after
+ * it, and the estimate they decided on. What happens to the topic later is
+ * not that seam's to show. One replay of the (retraction-aware) log per log,
+ * shared by every message.
  */
 export function effectsByMessage(events: readonly TutorEvent[]): Map<string, MessageEffects> {
   const cached = effectsCache.get(events);
@@ -150,6 +175,8 @@ export function effectsByMessage(events: readonly TutorEvent[]): Map<string, Mes
   const out = new Map<string, MessageEffects>();
   let state = emptyTutorState();
   let awaitingNext: Completion | undefined;
+  // Per topic, the note whose estimate still stands: a correction now answers it.
+  const standing = new Map<string, MasteryChange>();
   for (const event of effectiveEvents(events)) {
     const before = state;
     state = apply(state, event);
@@ -159,33 +186,48 @@ export function effectsByMessage(events: readonly TutorEvent[]): Map<string, Mes
       } else {
         awaitingNext.nextNodeId = event.nodeId;
       }
+      awaitingNext.mastery = before.mastery[awaitingNext.nodeId];
       awaitingNext = undefined;
     }
     const messageId = event.messageId;
-    if (!messageId) continue;
+    if (!messageId) {
+      if (event.type !== 'evidence_recorded') continue;
+      const to = confidenceOf(state, event.nodeId);
+      const note = standing.get(event.nodeId);
+      if (note && event.source === 'learner' && event.kind === 'adjusted') note.corrected = to;
+      else if (to !== confidenceOf(before, event.nodeId)) standing.delete(event.nodeId);
+      continue;
+    }
     if (event.type === 'evidence_recorded') {
       const entry = out.get(messageId) ?? { masteryChanges: [] };
-      const change = entry.masteryChanges.find((c) => c.nodeId === event.nodeId);
+      let change = entry.masteryChanges.find((c) => c.nodeId === event.nodeId);
       const to = confidenceOf(state, event.nodeId);
+      const moved = to !== confidenceOf(before, event.nodeId);
       if (change) {
         change.to = to;
         change.notes.push(event.note);
+        if (moved) delete change.corrected;
       } else {
-        entry.masteryChanges.push({
+        change = {
           nodeId: event.nodeId,
           from: confidenceOf(before, event.nodeId),
           to,
           notes: [event.note],
-        });
+        };
+        entry.masteryChanges.push(change);
       }
+      if (moved) standing.set(event.nodeId, change);
       out.set(messageId, entry);
     } else if (event.type === 'topic_completed') {
       const entry = out.get(messageId) ?? { masteryChanges: [] };
-      awaitingNext = { nodeId: event.nodeId, how: event.how, mastery: state.mastery[event.nodeId] };
+      if (awaitingNext) awaitingNext.mastery = before.mastery[awaitingNext.nodeId];
+      awaitingNext = { nodeId: event.nodeId, how: event.how };
       entry.completed = awaitingNext;
       out.set(messageId, entry);
     }
   }
+  // Still open: the break asks about the estimate as it is now.
+  if (awaitingNext) awaitingNext.mastery = state.mastery[awaitingNext.nodeId];
   effectsCache.set(events, out);
   return out;
 }

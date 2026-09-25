@@ -41,8 +41,7 @@
   /* A narrow bar (both side panels open, or a small window) keeps the tutor
      controls as icons so the model name stays readable. */
   @container (max-width: 720px) {
-    .top-header .tutor-toggle__text,
-    .top-header .plan-status__text {
+    .top-header .tutor-toggle__text {
       display: none;
     }
   }
@@ -294,30 +293,8 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* Plan drafting and failure: a quiet line of status in the bar's own
-     voice, not a pill. */
-  .plan-status {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    height: 36px;
-    padding: 0 var(--space-2);
-    color: var(--color-fg-muted);
-    font-size: 0.875rem;
-    white-space: nowrap;
-  }
-  .plan-status__icon {
-    width: 18px;
-    height: 18px;
-    flex: none;
-  }
-  .plan-status--error {
-    color: var(--color-danger);
-  }
-
   @media (max-width: 480px) {
-    .tutor-toggle__text,
-    .plan-status__text {
+    .tutor-toggle__text {
       display: none;
     }
   }
