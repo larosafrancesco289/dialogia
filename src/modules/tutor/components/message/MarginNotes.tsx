@@ -13,7 +13,6 @@ import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 export function MarginNotes({ changes }: { changes: MasteryChange[] }) {
   const { state, learningPlan, onContestMastery } = usePlanCallbacks();
   const { correctMastery } = useTutorAffordances();
-  const [adjusted, setAdjusted] = useState<Record<string, number>>({});
   const [contesting, setContesting] = useState<string | null>(null);
   const [unfolded, setUnfolded] = useState<Record<string, boolean>>({});
 
@@ -28,8 +27,7 @@ export function MarginNotes({ changes }: { changes: MasteryChange[] }) {
   const contest = async (nodeId: string, direction: 'up' | 'down') => {
     setContesting(nodeId);
     try {
-      const next = await onContestMastery(nodeId, direction);
-      if (next != null) setAdjusted((prev) => ({ ...prev, [nodeId]: next }));
+      await onContestMastery(nodeId, direction);
     } finally {
       setContesting(null);
     }
@@ -39,7 +37,8 @@ export function MarginNotes({ changes }: { changes: MasteryChange[] }) {
     <aside className="margin-notes" aria-label="What the tutor noted">
       {changes.map((change) => {
         const reason = marginReason(change.notes, !!unfolded[change.nodeId]);
-        const corrected = adjusted[change.nodeId];
+        // From the log, so the note keeps its correction after a reload.
+        const corrected = change.corrected;
         const answerable = correctMastery && current(change.nodeId) === change.to;
         return (
           <div key={change.nodeId} className="margin-note">
@@ -70,7 +69,11 @@ export function MarginNotes({ changes }: { changes: MasteryChange[] }) {
               </p>
             )}
             {corrected != null ? (
-              <p className="margin-note__answer">Now {percent(corrected)}%, from your correction</p>
+              <p className="margin-note__answer">
+                {current(change.nodeId) === corrected
+                  ? `Now ${percent(corrected)}%, from your correction`
+                  : `You corrected it to ${percent(corrected)}%`}
+              </p>
             ) : answerable ? (
               <p className="margin-note__answer">
                 <span>Not how it feels?</span>

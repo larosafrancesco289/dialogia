@@ -105,7 +105,17 @@ export function cardsForMessage(session: TutorSession, messageId: string): Messa
 }
 
 /** One topic's movement from a message's evidence, with the notes that moved it. */
-export type MasteryChange = { nodeId: string; from: number; to: number; notes: string[] };
+export type MasteryChange = {
+  nodeId: string;
+  from: number;
+  to: number;
+  notes: string[];
+  /**
+   * Where the learner's correction put the estimate, when they corrected it
+   * while this note was still the estimate (from the note or from the Hub).
+   */
+  corrected?: number;
+};
 
 /**
  * The changes a message's margin notes show: every topic whose estimate it
@@ -165,6 +175,8 @@ export function effectsByMessage(events: readonly TutorEvent[]): Map<string, Mes
   const out = new Map<string, MessageEffects>();
   let state = emptyTutorState();
   let awaitingNext: Completion | undefined;
+  // Per topic, the note whose estimate still stands: a correction now answers it.
+  const standing = new Map<string, MasteryChange>();
   for (const event of effectiveEvents(events)) {
     const before = state;
     state = apply(state, event);
@@ -178,22 +190,33 @@ export function effectsByMessage(events: readonly TutorEvent[]): Map<string, Mes
       awaitingNext = undefined;
     }
     const messageId = event.messageId;
-    if (!messageId) continue;
+    if (!messageId) {
+      if (event.type !== 'evidence_recorded') continue;
+      const to = confidenceOf(state, event.nodeId);
+      const note = standing.get(event.nodeId);
+      if (note && event.source === 'learner' && event.kind === 'adjusted') note.corrected = to;
+      else if (to !== confidenceOf(before, event.nodeId)) standing.delete(event.nodeId);
+      continue;
+    }
     if (event.type === 'evidence_recorded') {
       const entry = out.get(messageId) ?? { masteryChanges: [] };
-      const change = entry.masteryChanges.find((c) => c.nodeId === event.nodeId);
+      let change = entry.masteryChanges.find((c) => c.nodeId === event.nodeId);
       const to = confidenceOf(state, event.nodeId);
+      const moved = to !== confidenceOf(before, event.nodeId);
       if (change) {
         change.to = to;
         change.notes.push(event.note);
+        if (moved) delete change.corrected;
       } else {
-        entry.masteryChanges.push({
+        change = {
           nodeId: event.nodeId,
           from: confidenceOf(before, event.nodeId),
           to,
           notes: [event.note],
-        });
+        };
+        entry.masteryChanges.push(change);
       }
+      if (moved) standing.set(event.nodeId, change);
       out.set(messageId, entry);
     } else if (event.type === 'topic_completed') {
       const entry = out.get(messageId) ?? { masteryChanges: [] };
