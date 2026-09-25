@@ -80,6 +80,8 @@
   /* Modal scrim. Stays dark in both themes: a light veil over the parchment
      would not read as a layer above the app. */
   --overlay-scrim: rgba(30, 27, 22, 0.44);
+  /* An image viewed large: a darkroom in both themes. */
+  --lightbox-scrim: color-mix(in oklab, black 86%, transparent);
 
   /* Editorial surfaces */
   --surface-paper: var(--color-surface);
