@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
 import { motionTransition } from '@/lib/ui/motion';
@@ -17,6 +17,7 @@ export function CollapsibleSection({
   className = '',
 }: CollapsibleSectionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
+  const contentId = useId();
 
   return (
     <div className={`collapsible-section ${className}`}>
@@ -25,6 +26,8 @@ export function CollapsibleSection({
         className="collapsible-section-trigger"
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
+        // The panel is only in the document while open.
+        aria-controls={isOpen ? contentId : undefined}
       >
         <span className="collapsible-section-title">{title}</span>
         <motion.span
@@ -38,6 +41,7 @@ export function CollapsibleSection({
       <AnimatePresence initial={false}>
         {isOpen && (
           <motion.div
+            id={contentId}
             className="collapsible-section-content"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}

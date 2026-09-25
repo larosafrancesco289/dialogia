@@ -139,10 +139,6 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .model-row__id {
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
-  }
   .model-row__match {
     background: transparent;
     color: inherit;
@@ -167,18 +163,6 @@
   .model-row:hover .model-row__remove,
   .model-row__remove:focus-visible {
     opacity: 1;
-  }
-  .model-row__action {
-    flex: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--color-fg-muted);
-  }
-  .model-row__action.is-selected {
-    color: var(--color-fg);
   }
 
   /* Model search field (settings): the sidebar's tinted field. */

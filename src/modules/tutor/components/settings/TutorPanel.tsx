@@ -1,6 +1,9 @@
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { ModelSearch } from '@/components/ModelSearch';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
+import { useChatStore } from '@/lib/store';
+import { findModelById, formatModelLabel, isDynamicModelId } from '@/lib/models';
+import { getModelProviderLabel } from '@/lib/providers';
 import type { StoreState } from '@/lib/store/types';
 import type { RenderSection } from '@/components/settings/types';
 
@@ -24,6 +27,16 @@ export function TutorPanel(props: TutorPanelProps) {
     tutorDefaultModel,
     setTutorDefaultModel,
   } = props;
+  const models = useChatStore((s) => s.models);
+  // Named as the header's model picker names it, with the provider beneath as
+  // the favorites list has it; the raw id only for a model the list lacks.
+  const modelMeta = findModelById(models, tutorDefaultModel);
+  const modelName = formatModelLabel({ model: modelMeta, fallbackId: tutorDefaultModel });
+  const modelDetail = isDynamicModelId(tutorDefaultModel)
+    ? 'Always the newest release'
+    : modelMeta
+      ? getModelProviderLabel(modelMeta)
+      : tutorDefaultModel;
 
   return (
     <>
@@ -54,30 +67,19 @@ export function TutorPanel(props: TutorPanelProps) {
                 description="Scroll to the latest message while the tutor responds."
               />
               <div className="field">
-                <label className="field__label" htmlFor="tutor-model-id">
-                  Tutor model
-                </label>
+                <span className="field__label">Tutor model</span>
+                <div>
+                  <span className="settings-list__name">{modelName}</span>
+                  <span className="settings-list__meta">{modelDetail}</span>
+                </div>
                 <ModelSearch
-                  placeholder="Search models"
+                  placeholder="Search for another model"
                   ariaLabel="Search for a tutor model"
                   selectedIds={tutorDefaultModel ? [tutorDefaultModel] : []}
-                  actionLabel="Use"
-                  selectedLabel="Selected"
                   clearOnSelect
                   onSelect={(result) => setTutorDefaultModel(result.id)}
                 />
-                <input
-                  id="tutor-model-id"
-                  className="input w-full font-mono text-sm"
-                  value={tutorDefaultModel}
-                  onChange={(e) => setTutorDefaultModel(e.target.value)}
-                  placeholder="provider/model"
-                  spellCheck={false}
-                />
-                <p className="field__hint">
-                  Every tutoring session uses this model. Search to change it, or type an id; an id
-                  starting with ~ follows the newest release.
-                </p>
+                <p className="field__hint">Every tutoring session uses this model.</p>
               </div>
               <p className="field__hint">
                 Each session drafts a learning plan from your first message and keeps the learner

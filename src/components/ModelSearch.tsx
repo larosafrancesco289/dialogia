@@ -23,15 +23,9 @@ import {
   splitModelQuery,
   type ModelSearchResult,
 } from '@/lib/models/search';
-import { CheckIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
-import {
-  HighlightedText,
-  ModelCapabilities,
-  ModelRowFacts,
-} from '@/components/model-picker/ModelRow';
+import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { ModelRowContent } from '@/components/model-picker/ModelRow';
 import { useFieldDropdownPosition } from '@/components/model-picker/useFieldDropdownPosition';
-
-const ICON_SIZE = 'h-4 w-4';
 
 export type ModelSearchHandle = {
   focus: () => void;
@@ -52,8 +46,6 @@ export type ModelSearchProps = {
   clearOnSelect?: boolean;
   autoFocus?: boolean;
   onOpenChange?: (isOpen: boolean) => void;
-  actionLabel?: string;
-  selectedLabel?: string;
   dropdownRef?: RefObject<HTMLDivElement>;
 };
 
@@ -71,8 +63,6 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
       clearOnSelect = false,
       autoFocus = false,
       onOpenChange,
-      actionLabel = 'Add',
-      selectedLabel = 'Added',
       dropdownRef: dropdownRefProp,
     },
     ref,
@@ -238,9 +228,7 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
                 overscrollBehavior: 'contain',
               }}
             >
-              {results.length === 0 && (
-                <div className="p-3 text-sm text-fg-muted">{emptyMessage}</div>
-              )}
+              {results.length === 0 && <p className="model-picker__empty">{emptyMessage}</p>}
               {results.map((result, index) => {
                 const isSelected = selectedSet.has(result.id);
                 const isActive = index === highlightedIndex;
@@ -250,7 +238,7 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
                     type="button"
                     role="option"
                     aria-selected={isSelected}
-                    className={`model-row${isActive ? ' is-active' : ''}`}
+                    className={`model-row${isActive ? ' is-active' : ''}${isSelected ? ' is-selected' : ''}`}
                     onClick={() => handleSelect(result)}
                     onMouseEnter={() => setHighlightedIndex(index)}
                     onMouseDown={(event: MouseEvent<HTMLButtonElement>) => {
@@ -258,28 +246,7 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
                       event.preventDefault();
                     }}
                   >
-                    <span className="model-row__main">
-                      <span className="model-row__name">
-                        <HighlightedText text={result.displayName} words={queryWords} />
-                      </span>
-                      <span className="model-row__meta">
-                        <ModelRowFacts result={result} words={queryWords} showId />
-                      </span>
-                    </span>
-                    <ModelCapabilities result={result} />
-                    <span className={`model-row__action${isSelected ? ' is-selected' : ''}`}>
-                      {isSelected ? (
-                        <>
-                          <CheckIcon className={ICON_SIZE} />
-                          {selectedLabel}
-                        </>
-                      ) : (
-                        <>
-                          <PlusSymbol />
-                          {actionLabel}
-                        </>
-                      )}
-                    </span>
+                    <ModelRowContent name={result.displayName} words={queryWords} result={result} />
                   </button>
                 );
               })}
@@ -290,14 +257,3 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
     );
   },
 );
-
-function PlusSymbol() {
-  return (
-    <svg className={ICON_SIZE} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path
-        d="M12 5.25a.75.75 0 0 1 .75.75v5.25h5.25a.75.75 0 1 1 0 1.5H12.75v5.25a.75.75 0 0 1-1.5 0V12.75H6a.75.75 0 0 1 0-1.5h5.25V6a.75.75 0 0 1 .75-.75Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
