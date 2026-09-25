@@ -190,6 +190,40 @@ html {
   outline: none;
   box-shadow: 0 0 0 2px var(--focus-ring);
 }
+/* A native select wears the field above: the OS still draws the open menu,
+   but the closed control is the text input's, with a chevron in muted ink.
+   The chevron is two gradient strokes rather than an SVG so its colour is a
+   token and follows the theme. */
+select.input {
+  appearance: none;
+  padding-inline-end: calc(var(--space-3) + 20px);
+  background-image:
+    linear-gradient(
+      45deg,
+      transparent calc(50% - 1.2px),
+      var(--color-fg-muted) calc(50% - 0.6px),
+      var(--color-fg-muted) calc(50% + 0.6px),
+      transparent calc(50% + 1.2px)
+    ),
+    linear-gradient(
+      135deg,
+      transparent calc(50% - 1.2px),
+      var(--color-fg-muted) calc(50% - 0.6px),
+      var(--color-fg-muted) calc(50% + 0.6px),
+      transparent calc(50% + 1.2px)
+    );
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  background-position:
+    right calc(var(--space-3) + 5px) center,
+    right var(--space-3) center;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+select.input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 /* Multiline text input */
 .textarea {
   min-height: 48px;
