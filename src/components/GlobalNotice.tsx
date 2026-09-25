@@ -25,7 +25,7 @@ export function GlobalNotice() {
 
   if (!notice || !visible) return null;
   return (
-    <div className="fixed inset-x-0 top-[calc(var(--chrome-height)+12px)] flex justify-center z-[100] px-4 pointer-events-none">
+    <div className="notice-slot">
       <InlineNotice
         message={notice}
         tone={tone}

@@ -1,10 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import {
-  CheckIcon,
-  ChevronDownIcon,
-  MagnifyingGlassIcon,
-  XMarkIcon,
-} from '@heroicons/react/24/outline';
+import { ChevronDownIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { formatModelLabel } from '@/lib/models';
 import { useAvailableModels, useCuratedModels } from '@/lib/hooks/useModelCatalog';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
@@ -313,9 +308,9 @@ export function ModelPicker({
                       </span>
                     </span>
                     <ModelCapabilities result={row.result} />
-                    {isSelected ? (
-                      <CheckIcon className="model-row__check" aria-label="Selected" />
-                    ) : row.removable ? (
+                    {/* The rubric tick marks the model in use; the removable
+                        favourite keeps its button while it is not in use. */}
+                    {!isSelected && row.removable ? (
                       <button
                         type="button"
                         className="icon-button icon-button--sm model-row__remove"

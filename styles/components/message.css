@@ -249,7 +249,7 @@
 
   /* ===== Image lightbox: a darkroom, whatever the theme ===== */
   .lightbox {
-    background: color-mix(in oklab, black 86%, transparent);
+    background: var(--lightbox-scrim);
     color: color-mix(in oklab, white 88%, transparent);
   }
   .lightbox__bar {

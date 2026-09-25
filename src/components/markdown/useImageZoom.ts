@@ -31,7 +31,7 @@ export function useImageZoom(
         const mediumZoom = (await import('medium-zoom')).default as MediumZoomFactory;
         if (!cancelled) {
           // The same darkroom as the attachment lightbox.
-          zoom = mediumZoom(images, { background: 'rgb(0 0 0 / 0.86)', margin: 24 });
+          zoom = mediumZoom(images, { background: 'var(--lightbox-scrim)', margin: 24 });
         }
       } catch (error) {
         logger.error('Failed to initialize image zoom', error);

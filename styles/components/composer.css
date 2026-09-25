@@ -386,3 +386,16 @@
 .reasoning-scale__stop:focus-visible {
   outline: none;
 }
+
+/* On the welcome page the composer sits under the headline, so its menus
+   open downward over the suggestions instead of up over the title.
+   Unlayered: the Tailwind placement utilities they carry would beat a
+   components-layer rule. */
+.composer-hero .popover {
+  top: 100%;
+  bottom: auto;
+  margin-top: var(--space-2);
+  margin-bottom: 0;
+  transform-origin: top left;
+  animation-name: drop-in;
+}

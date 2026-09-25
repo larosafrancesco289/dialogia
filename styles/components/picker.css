@@ -160,12 +160,6 @@
     width: 15px;
     height: 15px;
   }
-  .model-row__check {
-    flex: none;
-    width: 16px;
-    height: 16px;
-    color: var(--color-fg);
-  }
   .model-row__remove {
     flex: none;
     opacity: 0;
