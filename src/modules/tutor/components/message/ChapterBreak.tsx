@@ -15,8 +15,10 @@ import { seamChoices } from '@/modules/tutor/ui/tutorFlags';
  * the tutor states its estimate and the learner goes on, asks for more
  * practice, or goes to change the path. Only the newest seam is live; older
  * ones settle into a quiet record of the session. The estimate is the one the
- * topic had when it finished, and what came next is what the learner chose at
- * this seam, both from the log: a topic finished again later has its own.
+ * learner is deciding on (a correction while the break is open shows at once)
+ * and, once settled, the one they went on with; what came next is what they
+ * chose at this seam. Both come from the log: a topic finished again later has
+ * its own.
  */
 export function ChapterBreak({
   message,

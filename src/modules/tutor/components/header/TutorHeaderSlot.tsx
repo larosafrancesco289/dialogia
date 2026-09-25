@@ -1,4 +1,3 @@
-import { useChatStore } from '@/lib/store';
 import { HeaderDivider } from '@/components/top-header/HeaderDivider';
 import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
 import { useTutorToggle } from '@/modules/tutor/ui/useTutorToggle';
@@ -12,9 +11,6 @@ import { TutorToggle } from '@/modules/tutor/components/header/TutorToggle';
  */
 export function TutorHeaderSlot() {
   const tutor = useTutorToggle();
-  const planGeneration = useChatStore((s) =>
-    s.selectedChatId ? s.ui.plan?.generationByChatId?.[s.selectedChatId] : undefined,
-  );
 
   const { learningPlan, hasPlan, planProgress, rightPanelOpen, onToggleRightPanel } =
     usePlanCallbacks();
@@ -35,7 +31,6 @@ export function TutorHeaderSlot() {
       {tutor.active && hasPlan && (
         <>
           <PlanStatusBadge
-            planGeneration={planGeneration}
             hasPlan={hasPlan}
             planProgress={planProgress}
             learningPlan={learningPlan}

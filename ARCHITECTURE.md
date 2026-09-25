@@ -355,7 +355,8 @@ tools are the engine's; each handler parses the call into a command and dispatch
 The UI renders from the same log: cards from their `*_given` / `plan_proposed` events by message id,
 margin notes from a message's `evidence_recorded` events, a chapter break from its
 `topic_completed` event and the first topic started or reopened after it (what the learner chose at
-that seam, whatever became of the topic later), "Why N%" from `explainTopic`. A learner action that needs the tutor's
+that seam, and the estimate they chose on: current while the seam is open, fixed once it closes,
+whatever became of the topic later), "Why N%" from `explainTopic`. A learner action that needs the tutor's
 answer (a finished card, approving the plan, Go on) dispatches its command and then sends a
 visible user message with `Message.ledger` set, which the transcript shows as a quiet line and the
 model reads as an ordinary message; quiet corrections only dispatch. The lines' words live in

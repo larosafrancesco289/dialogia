@@ -12,11 +12,12 @@ import {
   tutorToolResult,
   withAdjustments,
   type TutorError,
+  type TutorEvent,
   type TutorToolName,
 } from '@/modules/tutor/engine';
 import { tutorStore } from '@/modules/tutor/store/access';
 import { registerTool, type PlanningToolHandler } from '@/lib/tools/registry';
-import type { ToolResult } from '@/lib/tools/execution';
+import type { ToolExecutionContext, ToolResult } from '@/lib/tools/execution';
 
 export const TUTOR_MODULE_ID = 'tutor';
 
@@ -46,6 +47,22 @@ function replayArguments(raw: string | undefined): Record<string, unknown> | und
       return rest;
     }),
   };
+}
+
+/**
+ * A Learning Hub previewing a proposal (a card's "View full plan") follows the
+ * proposal that replaces it: a revision asked for with the draft open beside
+ * the chat would otherwise land behind a draft that no longer stands. A Hub
+ * showing the approved plan, or another chat, is left alone.
+ */
+function followPreview(context: ToolExecutionContext, events: TutorEvent[]): void {
+  const proposed = events.find((event) => event.type === 'plan_proposed');
+  if (!proposed) return;
+  const { selectedChatId, ui } = context.get();
+  if (selectedChatId !== context.chatId || !ui.plan?.sheetPlanOverride) return;
+  context.set((state) => ({
+    ui: { ...state.ui, plan: { ...state.ui.plan, sheetPlanOverride: proposed.plan } },
+  }));
 }
 
 function createHandler(name: TutorToolName): PlanningToolHandler {
@@ -84,6 +101,7 @@ function createHandler(name: TutorToolName): PlanningToolHandler {
       messageId: context.assistantMessage.id,
     });
     if (!outcome.ok) return refuse(outcome.error);
+    followPreview(context, outcome.events);
 
     const result = withAdjustments(
       tutorToolResult(name, outcome.before, outcome.state, outcome.events, parsed.command),

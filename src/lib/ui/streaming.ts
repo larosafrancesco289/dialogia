@@ -1,4 +1,5 @@
 import type { UIState } from '@/lib/store/types';
+import type { Message } from '@/lib/types';
 
 export function getActiveTurnCount(ui: UIState, chatId?: string): number {
   if (!chatId) return 0;
@@ -45,4 +46,13 @@ export function replyInProgress(
     isWriting: (messageId) =>
       streamingHere ? messageId === latestMessageId : repliesInOtherTab.includes(messageId),
   };
+}
+
+/**
+ * A tool call on the reply is still being written or run. A card's arguments
+ * can take many seconds to stream after the reply's words, and until the call
+ * resolves the reply must not read as finished.
+ */
+export function toolCallInFlight(message: Pick<Message, 'toolCalls'>): boolean {
+  return !!message.toolCalls?.some((call) => call.status === 'pending');
 }

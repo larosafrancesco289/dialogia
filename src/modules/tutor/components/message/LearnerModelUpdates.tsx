@@ -4,7 +4,11 @@ import { ChapterBreak } from './ChapterBreak';
 import { MarginNotes } from './MarginNotes';
 import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 import { useTutorSession } from '@/modules/tutor/ui/useTutorSession';
-import { effectsByMessage, type MessageEffects } from '@/modules/tutor/ui/messageViews';
+import {
+  effectsByMessage,
+  marginChanges,
+  type MessageEffects,
+} from '@/modules/tutor/ui/messageViews';
 
 function useMessageEffects(messageId: string): MessageEffects | undefined {
   const { session } = useTutorSession();
@@ -16,9 +20,10 @@ function useMessageEffects(messageId: string): MessageEffects | undefined {
 
 /**
  * What a message's events changed, set beneath it: every mastery change is a
- * margin note with its reason. A finished topic is a chapter break, set after
- * the reply's actions by `TopicCompleted` so it closes the exchange. The whole
- * learner model lives in the Learning Hub, not under each message.
+ * margin note with its reason, the finished topic's too. A finished topic is
+ * also a chapter break, set after the reply's actions by `TopicCompleted` so
+ * it closes the exchange. The whole learner model lives in the Learning Hub,
+ * not under each message.
  */
 export function LearnerModelUpdates({ message }: { message: Message }) {
   const affordances = useTutorAffordances();
@@ -26,14 +31,7 @@ export function LearnerModelUpdates({ message }: { message: Message }) {
   // With the learner model hidden, no mastery reaches the chat at all.
   if (!effects || !affordances.showMastery) return null;
 
-  // The chapter break states the finished topic's estimate. Where the break
-  // offers no plan choices but the model may be corrected, the finished topic
-  // keeps its note so the estimate can still be contested.
-  const breakCarriesEstimate = affordances.revisePlan || !affordances.correctMastery;
-  const completedId = effects.completed?.nodeId;
-  const shown = effects.masteryChanges.filter(
-    (c) => c.from !== c.to && !(breakCarriesEstimate && c.nodeId === completedId),
-  );
+  const shown = marginChanges(effects);
   if (!shown.length) return null;
 
   return (

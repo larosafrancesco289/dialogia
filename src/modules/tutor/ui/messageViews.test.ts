@@ -11,6 +11,7 @@ import {
   cardsForMessage,
   effectsByMessage,
   evidenceBehind,
+  marginChanges,
   marginReason,
 } from '@/modules/tutor/ui/messageViews';
 
@@ -139,4 +140,73 @@ test('what a break says the estimate rests on names a request for practice as on
     'one answer and your request for more practice',
   );
   assert.equal(evidenceBehind([entry('adjusted', 'learner')]), 'your correction');
+});
+
+test('the reply that finishes a topic keeps its margin note beside the chapter break', () => {
+  const h = teaching();
+  master(h);
+  h.tutor(
+    { type: 'record_evidence', kind: 'explained', note: 'Explained why', source: 'observation' },
+    'reply-1',
+  );
+  h.tutor({ type: 'complete_topic', how: 'mastered' }, 'reply-1');
+  const effects = effectsByMessage(h.events).get('reply-1')!;
+  assert.equal(effects.completed?.nodeId, 'limits');
+  const [note] = marginChanges(effects);
+  assert.equal(note?.nodeId, 'limits', 'the change sits beside the exchange that earned it');
+  assert.ok(note.to > note.from);
+  assert.deepEqual(note.notes, ['Explained why']);
+});
+
+test('a correction at an open chapter break moves its estimate, and the settled break keeps it', () => {
+  const h = teaching();
+  master(h);
+  h.tutor({ type: 'complete_topic', how: 'mastered' }, 'reply-1');
+  const atCompletion = h.state.mastery.limits.confidence;
+  // A copy each time: the app's log is a new array per change, and the replay is cached per array.
+  const breakOf = () => effectsByMessage([...h.events]).get('reply-1')!.completed!;
+  assert.equal(breakOf().mastery?.confidence, atCompletion);
+
+  // "Too high" in the Hub while the break still asks whether to move on.
+  h.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.65 });
+  assert.equal(breakOf().mastery?.confidence, 0.65, 'the live break states the estimate as it is');
+
+  h.learner({ type: 'start_topic', nodeId: 'derivatives' });
+  assert.equal(breakOf().nextNodeId, 'derivatives');
+  assert.equal(breakOf().mastery?.confidence, 0.65, 'settled on what the learner went on with');
+
+  // Later changes to the topic belong to later exchanges, not to this seam.
+  h.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.4 });
+  assert.equal(breakOf().mastery?.confidence, 0.65);
+});
+
+test('a margin note keeps the correction that answered it, from the log alone', () => {
+  const h = teaching();
+  h.tutor(
+    {
+      type: 'record_evidence',
+      kind: 'explained',
+      note: 'Explained a limit',
+      source: 'observation',
+    },
+    'reply-1',
+  );
+  const noteOf = (messageId: string) =>
+    effectsByMessage([...h.events]).get(messageId)!.masteryChanges[0];
+  assert.equal(noteOf('reply-1').corrected, undefined);
+
+  // "Too low" on the note: a quiet correction, attached to no message.
+  h.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.59 });
+  const answered = noteOf('reply-1');
+  assert.equal(answered.corrected, 0.59, 'what a reload reads, as the live note did');
+  assert.notEqual(answered.to, 0.59, 'the note still says what the exchange did');
+
+  // Once a later exchange moves the estimate, a correction answers that one instead.
+  h.tutor(
+    { type: 'record_evidence', kind: 'applied', note: 'Applied it', source: 'observation' },
+    'reply-2',
+  );
+  h.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.5 });
+  assert.equal(noteOf('reply-1').corrected, 0.59);
+  assert.equal(noteOf('reply-2').corrected, 0.5);
 });
