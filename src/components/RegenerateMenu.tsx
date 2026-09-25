@@ -11,6 +11,7 @@ import { useDismissOnOutside } from '@/lib/hooks/useDismissOnOutside';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import { focusComposer } from '@/lib/ui/focus';
+import { BottomSheet, SheetItem } from '@/components/ui/BottomSheet';
 
 export function RegenerateMenu({
   onChoose,
@@ -33,8 +34,13 @@ export function RegenerateMenu({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeMenu = useCallback(() => setOpen(false), []);
   // Focus on the first model, arrows between them, Escape back to the button.
-  const onMenuKeyDown = useMenuKeyboard({ open, menuRef, onClose: closeMenu, triggerRef });
   const isMobile = useMediaQuery(MEDIA_QUERIES.mobile);
+  const onMenuKeyDown = useMenuKeyboard({
+    open: open && !isMobile,
+    menuRef,
+    onClose: closeMenu,
+    triggerRef,
+  });
   const curatedModels = useCuratedModels();
   const defaultModelId = useDefaultModelId();
   const modelMap = useMemo(() => {
@@ -52,8 +58,13 @@ export function RegenerateMenu({
     if (!acc.find((x) => x.id === m.id)) acc.push(m);
     return acc;
   }, []);
-  // Escape is the menu keyboard's, which also hands focus back.
-  useDismissOnOutside({ open, insideRefs: [rootRef, menuRef], onOutsidePress: closeMenu });
+  // Escape is the menu keyboard's, which also hands focus back. A phone's
+  // sheet closes itself (scrim, Back, pulled down).
+  useDismissOnOutside({
+    open: open && !isMobile,
+    insideRefs: [rootRef, menuRef],
+    onOutsidePress: closeMenu,
+  });
 
   // Fixed-position portal coordinates to avoid stacking-context issues
   const [coords, setCoords] = useState<{ left: number; top: number; placement: 'up' | 'down' }>({
@@ -154,10 +165,36 @@ export function RegenerateMenu({
       >
         <ArrowPathIcon className="h-4 w-4" />
       </button>
+      {/* A phone's menus are all the one bottom sheet. */}
+      {isMobile && (
+        <BottomSheet open={open} label="Try again with" title="Try again with" onClose={closeMenu}>
+          {options.map((o) => (
+            <SheetItem
+              key={o.id}
+              onClick={() => {
+                onChoose(o.id);
+                setOpen(false);
+              }}
+            >
+              <span className="flex items-baseline justify-between gap-3">
+                <span className="truncate">
+                  {formatModelLabel({
+                    model: modelMap.get(o.id),
+                    fallbackId: o.id,
+                    fallbackName: o.name,
+                  })}
+                </span>
+                {o.id === currentId && <span className="text-xs text-fg-muted">same model</span>}
+              </span>
+            </SheetItem>
+          ))}
+        </BottomSheet>
+      )}
       {open &&
+        !isMobile &&
         createPortal(
           <div
-            className="popover fixed p-1 w-60"
+            className={`popover fixed p-1 w-60${coords.placement === 'up' ? ' popover--up' : ''}`}
             style={{
               zIndex: 80,
               left: coords.left,

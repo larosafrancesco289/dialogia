@@ -1,7 +1,7 @@
 /* IntroTour: the first-run tour.
-   A single plate of manuscript laid over the app, in the dialog's paper and
-   the book's rubric: the head rule, the step, and one line in each drawing.
-   Gold appears only on the button that moves on.
+   The app's one dialog shell (paper, hairline, 6px, a title in the book
+   face), paged, with the rubric kept to the step and one line in each
+   drawing. Gold appears only on the button that moves on.
 */
 
 .overlay {
@@ -23,22 +23,12 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
-  padding: var(--space-6);
+  padding: var(--space-5);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-editorial);
   box-shadow: var(--shadow-2);
   outline: none;
-}
-
-/* Rubric rule across the head of the plate */
-.rule {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: var(--color-rubric);
 }
 
 .topBar {
@@ -50,7 +40,7 @@
 
 .step {
   font-family: var(--font-sans);
-  font-size: 0.68rem;
+  font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -122,7 +112,7 @@
 .title {
   margin: 0;
   font-family: var(--font-serif-assistant);
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   font-weight: 400;
   line-height: 1.2;
   color: var(--color-fg);
@@ -269,10 +259,6 @@
     padding-bottom: calc(var(--space-5) + env(safe-area-inset-bottom));
     border-radius: var(--radius-editorial-mobile) var(--radius-editorial-mobile) 0 0;
     border-bottom: none;
-  }
-
-  .title {
-    font-size: 1.3rem;
   }
 
   .plate {

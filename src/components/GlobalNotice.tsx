@@ -5,7 +5,7 @@ import { selectNotice, selectNoticeTone } from '@/lib/store/selectors';
 import type { NoticeTone } from '@/lib/contracts/ui';
 
 // Confirmations go quickly, facts stay long enough to read, problems linger.
-const DISMISS_MS: Record<NoticeTone, number> = { success: 4000, info: 6000, error: 10000 };
+const DISMISS_MS: Record<NoticeTone, number> = { success: 3000, info: 6000, error: 10000 };
 
 export function GlobalNotice() {
   const notice = useChatStore(selectNotice);

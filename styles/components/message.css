@@ -93,7 +93,7 @@
     color: var(--color-fg);
   }
   .message-action-btn:disabled {
-    opacity: 0.4;
+    opacity: 0.5;
     cursor: not-allowed;
   }
   .message-action-btn.is-success {
@@ -275,7 +275,7 @@
     background: color-mix(in oklab, white 10%, transparent);
   }
   .lightbox__btn:disabled {
-    opacity: 0.35;
+    opacity: 0.5;
   }
   .lightbox__nav {
     width: var(--control-md);

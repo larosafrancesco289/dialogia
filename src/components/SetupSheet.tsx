@@ -94,7 +94,7 @@ export function SetupSheet() {
             aria-labelledby="setup-title"
             // A click on its text keeps focus in the dialog instead of dropping it.
             tabIndex={-1}
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={motionTransition.quick}
           >

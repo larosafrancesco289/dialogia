@@ -39,7 +39,7 @@ export function ChatSidebarView({
           </div>
           <div className="flex items-center gap-2">
             <IconButton onClick={onNewChat} title="New chat" className="w-11 h-11 sm:w-9 sm:h-9">
-              <PlusIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+              <PlusIcon className="h-5 w-5" />
             </IconButton>
             {!collapsed && (
               <IconButton
@@ -47,7 +47,7 @@ export function ChatSidebarView({
                 title="Create folder"
                 className="w-11 h-11 sm:w-9 sm:h-9"
               >
-                <FolderPlusIcon className="h-5 w-5 sm:h-4 sm:w-4" />
+                <FolderPlusIcon className="h-5 w-5" />
               </IconButton>
             )}
           </div>
