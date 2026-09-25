@@ -1,5 +1,5 @@
 import type { Chat, Message, ModelDescriptor, ToolCallLogEntry } from '@/lib/types';
-import type { UISearchState } from '@/lib/store/types';
+import type { SearchSourcesData } from '@/lib/ui/responseActivity';
 import { ResponseContextPanel } from '@/components/message/ResponseContextPanel';
 import { DebugPanel } from '@/components/message/DebugPanel';
 import { resolveDeveloperPanel } from '@/lib/ui/developerPanel';
@@ -8,7 +8,8 @@ export type MessagePanelsProps = {
   message: Message;
   chat?: Chat | null;
   models: ModelDescriptor[];
-  tavilyEntry?: NonNullable<UISearchState['tavilyByMessageId']>[string];
+  /** The reply's search sources, tool-based or provider-native (`resolveMessageSources`). */
+  sources?: SearchSourcesData;
   isSourcesExpanded: boolean;
   onToggleSources: () => void;
   debugMode: boolean;
@@ -48,13 +49,13 @@ export function getReasoningPanelState({
 
 /**
  * Renders panels that appear ABOVE the message content:
- * - Tavily sources
+ * - Search sources
  * - Debug panel
  * - Reasoning panel
  */
 export function MessagePanelsUpper({
   message,
-  tavilyEntry,
+  sources,
   isSourcesExpanded: _isSourcesExpanded,
   onToggleSources: _onToggleSources,
   debugMode,
@@ -75,7 +76,7 @@ export function MessagePanelsUpper({
   const toolCallList = Array.isArray(toolCalls) ? toolCalls : undefined;
   const contextPanel = buildResponseContextPanel({
     message,
-    tavilyEntry,
+    sources,
     toolCalls: toolCallList,
     isStreaming,
     lastMessageId,
@@ -111,7 +112,7 @@ export function MessagePanelsUpper({
 
 function buildResponseContextPanel({
   message,
-  tavilyEntry,
+  sources,
   toolCalls,
   isStreaming,
   lastMessageId,
@@ -119,7 +120,7 @@ function buildResponseContextPanel({
   onToggle,
 }: {
   message: Message;
-  tavilyEntry?: NonNullable<UISearchState['tavilyByMessageId']>[string];
+  sources?: SearchSourcesData;
   toolCalls?: ToolCallLogEntry[];
   isStreaming: boolean;
   lastMessageId?: string;
@@ -132,7 +133,7 @@ function buildResponseContextPanel({
     lastMessageId,
   });
 
-  const hasSearch = !!tavilyEntry;
+  const hasSearch = !!sources;
   const hasTools = Array.isArray(toolCalls) && toolCalls.length > 0;
 
   if (!shouldRender && !hasSearch && !hasTools) return null;
@@ -143,7 +144,7 @@ function buildResponseContextPanel({
       reasoning={reasoningText}
       toolCalls={toolCalls}
       activity={message.activity}
-      sources={tavilyEntry}
+      sources={sources}
       expanded={expanded}
       onToggle={onToggle}
       isStreaming={shouldStream}
