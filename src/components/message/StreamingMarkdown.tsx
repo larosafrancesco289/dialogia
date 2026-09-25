@@ -1,30 +1,33 @@
 import { useMemo } from 'react';
 import { Markdown, type MarkdownCitationSource } from '@/components/Markdown';
-import { splitMarkdownBlocks } from '@/lib/markdown/blocks';
+import { markdownRenderBlocks } from '@/lib/markdown/blocks';
 
 /**
- * Streaming renderer that splits content into completed blocks plus a growing
- * tail. Completed blocks are memoized `<Markdown>` instances whose content
- * never changes, so each stream flush only re-parses the trailing block
- * instead of the whole document. The final (non-streaming) render in
- * AssistantMessage falls back to a single full-document `<Markdown>`, so any
- * block boundary is transient.
+ * A reply rendered block by block. Each block is a memoized `<Markdown>` keyed
+ * by its index, so a stream flush re-parses only the block that changed (the
+ * tail), and the end of the stream only tells each block it is finished: React
+ * keeps every block it already rendered (a table's scroll, a selection, a
+ * highlighted code block, typeset math) rather than rebuilding the reply.
+ * AssistantMessage keeps a finished reply here unless `rendersAsBlocks` says it
+ * must be parsed whole.
  */
 export function StreamingMarkdown({
   content,
   sources,
+  streaming,
 }: {
   content: string;
   sources?: MarkdownCitationSource[];
+  /** True while the reply is still arriving. */
+  streaming: boolean;
 }) {
-  const { stable, tail } = useMemo(() => splitMarkdownBlocks(content), [content]);
+  const blocks = useMemo(() => markdownRenderBlocks(content), [content]);
   if (!content) return null;
   return (
     <>
-      {stable.map((block, index) => (
-        <Markdown key={index} content={block} sources={sources} streaming />
+      {blocks.map((block, index) => (
+        <Markdown key={index} content={block} sources={sources} streaming={streaming} />
       ))}
-      {tail && <Markdown content={tail} sources={sources} streaming />}
     </>
   );
 }

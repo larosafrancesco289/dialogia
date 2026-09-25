@@ -169,8 +169,12 @@ Preserve both when touching this path.
 
 During streaming the UI renders through `StreamingMarkdown`, which memoizes completed blocks
 (`src/lib/markdown/blocks.ts`) and re-parses only the growing tail. Never render the full document
-per flush. The `streaming` prop on `Markdown` gates Prism caching, Mermaid rendering and image zoom.
-Thread it through any embedded renderer you add.
+per flush. A finished reply stays in `StreamingMarkdown`, its blocks under the same index keys, so
+the end of a stream rebuilds nothing on screen. Only a reply with a link reference or footnote
+definition (`rendersAsBlocks`) is parsed whole, because another block may use it. The `streaming`
+prop on `Markdown` gates Prism caching, Mermaid rendering and image zoom, and reaches the renderer's
+overrides through context, so the overrides keep their identity when it flips. Thread it through any
+embedded renderer you add.
 
 ## Providers and keys
 

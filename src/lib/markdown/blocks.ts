@@ -9,9 +9,11 @@
 const FENCE_OPEN_RE = /^ {0,3}(`{3,}(?=[^`]*$)|~{3,})/;
 const FENCE_CLOSE_RE = /^ {0,3}(`{3,}|~{3,})[ \t]*$/;
 // Lines that continue a construct from the previous segment (lists, quotes,
-// tables, indented code). Splitting before these could change list numbering
-// or break tables, so such segments are merged into the previous block.
-const CONTINUATION_RE = /^ {0,3}(?:[-*+] |\d{1,9}[.)] |>|\|)| {4,}\S/;
+// tables, indented code, a list item's own later paragraphs). Splitting before
+// these could change list numbering or break tables, so such segments are
+// merged into the previous block. Merging is always safe: a bigger block only
+// parses closer to how the whole document does.
+const CONTINUATION_RE = /^(?:[ \t]+\S| {0,3}(?:[-*+] |\d{1,9}[.)] |>|\|))/;
 
 export type MarkdownBlockSplit = {
   /** Completed blocks whose content will never change as the stream grows. */
@@ -102,4 +104,28 @@ export function splitMarkdownBlocks(content: string): MarkdownBlockSplit {
 
   const tail = merged.pop() ?? '';
   return { stable: merged, tail };
+}
+
+/**
+ * The blocks a reply renders as, in order, the tail last. A block's index is
+ * its render key, so a block keeps its key as the stream grows past it, when
+ * the tail turns into a completed block, and when the stream ends: React
+ * reuses what it already rendered instead of rebuilding the reply.
+ */
+export function markdownRenderBlocks(content: string): string[] {
+  const { stable, tail } = splitMarkdownBlocks(content);
+  return tail ? [...stable, tail] : stable;
+}
+
+// A link reference or footnote definition: `[id]: url`, `[^1]: text`.
+const DEFINITION_RE = /^ {0,3}\[[^\]\n]+\]:/m;
+
+/**
+ * Whether rendering block by block reads the same as parsing the whole
+ * document. A definition can be used from any other block, so a document
+ * with one (or with a line that could be one, even inside code) must be
+ * parsed whole once it is finished.
+ */
+export function rendersAsBlocks(content: string): boolean {
+  return !DEFINITION_RE.test(content);
 }
