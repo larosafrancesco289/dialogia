@@ -1,4 +1,4 @@
-/* Brand lockup in the sidebar header: the Two voices mark beside a serif
+/* Brand lockup in the sidebar header: the Ionic mark beside a serif
    wordmark set in the assistant's book face. */
 .brand {
   display: flex;
@@ -7,8 +7,8 @@
   color: var(--color-fg);
 }
 .brand__mark {
-  width: 1.75rem;
-  height: 1.75rem;
+  height: 0.95rem;
+  aspect-ratio: 55 / 27.2;
   flex-shrink: 0;
 }
 .brand__name {
@@ -17,4 +17,49 @@
   font-weight: 450;
   letter-spacing: -0.012em;
   line-height: 1;
+}
+
+/* Live (a reply waiting for its first word): the ink voice rests while the
+   gold one answers, draws its line into the scroll, holds, and lets it go
+   from the join. The eye appears when the line reaches it. */
+.logo-mark--live .logo-mark__voice--close {
+  stroke-dasharray: 1;
+  animation: logo-answer 3.2s var(--ease-standard) infinite;
+}
+.logo-mark--live .logo-mark__eye--close {
+  animation: logo-answer-eye 3.2s linear infinite;
+}
+
+@keyframes logo-answer {
+  0% {
+    stroke-dashoffset: 1;
+  }
+  50%,
+  78% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -1;
+  }
+}
+
+@keyframes logo-answer-eye {
+  0%,
+  46% {
+    opacity: 0;
+  }
+  50%,
+  98% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-mark--live .logo-mark__voice--close,
+  .logo-mark--live .logo-mark__eye--close {
+    animation: none;
+  }
 }
