@@ -202,7 +202,12 @@ export function createMessageStreamCallbacks(
       const result = updateMessageById(state, chatId, assistantMessage.id, (msg) => {
         const activity = Array.isArray(msg.activity) ? msg.activity : [];
         let nextActivity = activity;
+        const previous = msg.reasoning || '';
+        // A new round's (or a new stream's) thinking is a new paragraph of the
+        // reply's reasoning, not a continuation of the last sentence.
+        let appendix = delta;
         if (!reasoningActivityId) {
+          if (previous.trim()) appendix = `${/\n$/.test(previous) ? '\n' : '\n\n'}${delta}`;
           reasoningActivityId = uuidv4();
           nextActivity = [
             ...activity,
@@ -223,7 +228,7 @@ export function createMessageStreamCallbacks(
         }
         return {
           ...msg,
-          reasoning: (msg.reasoning || '') + delta,
+          reasoning: previous + appendix,
           activity: nextActivity,
         };
       });
