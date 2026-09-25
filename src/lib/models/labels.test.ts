@@ -25,4 +25,6 @@ test('formatModelLabel prefers a real name and only humanizes id-shaped ones', (
   );
   // A local server's model id is what the user typed; leave it alone.
   assert.equal(formatModelLabel({ fallbackName: 'llama-4-70b-instruct' }), 'llama-4-70b-instruct');
+  // An Ollama tag is part of the name, not a provider prefix.
+  assert.equal(formatModelLabel({ fallbackName: 'qwen3:32b' }), 'qwen3:32b');
 });

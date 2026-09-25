@@ -2,9 +2,11 @@ import type { ModelDescriptor } from '@/lib/types';
 import { isRecord } from '@/lib/utils/guards';
 import { getModelFamily } from '@/lib/models/dynamicDefaults';
 
+// "Anthropic: Claude Opus" loses its provider; "qwen3:32b" is an Ollama tag
+// with no space after the colon, and keeps its name.
 export function stripProviderPrefix(label?: string): string {
   return String(label ?? '')
-    .replace(/^[^:]+:\s*/, '')
+    .replace(/^[^:]+:\s+/, '')
     .trim();
 }
 
