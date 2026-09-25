@@ -149,9 +149,10 @@
     color: var(--color-fg-muted);
   }
 
-  /* Collapsible Section */
+  /* Collapsible section: ruled off by the chrome hairline, as flat
+     surfaces are; --color-border is for floating layers. */
   .collapsible-section {
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--chrome-rule);
   }
 
   .collapsible-section:last-child {

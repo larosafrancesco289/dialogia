@@ -189,7 +189,7 @@
   background: color-mix(in oklab, var(--color-border) 85%, var(--color-fg-muted));
   transition:
     background-color var(--duration-fast) var(--ease-standard),
-    transform var(--duration-fast) var(--ease-spring);
+    transform var(--duration-fast) var(--ease-out-quint);
 }
 
 .dot:hover::after {

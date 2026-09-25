@@ -136,7 +136,7 @@ export function ComposerInput({
               >
                 {suggestion.title}
                 {suggestion.subtitle ? (
-                  <span className="ml-2 text-xs text-muted-foreground">{suggestion.subtitle}</span>
+                  <span className="ml-2 text-xs text-fg-muted">{suggestion.subtitle}</span>
                 ) : null}
               </div>
             ))}

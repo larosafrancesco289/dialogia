@@ -78,7 +78,7 @@
     height: 28px;
     padding: 0;
     border: none;
-    border-radius: calc(var(--radius-editorial) - 2px);
+    border-radius: var(--radius-inner);
     background: transparent;
     color: var(--color-fg-muted);
     cursor: pointer;
@@ -186,9 +186,6 @@
   }
 
   /* Smoother auto-resize for message textarea */
-  .textarea {
-    transition: height 120ms ease;
-  }
 
   /* ===== Attachments ===== */
   .attachment-chip {

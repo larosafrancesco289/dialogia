@@ -204,14 +204,11 @@ export function AssistantMessage({
             <div className="flex items-start gap-2.5">
               <ShieldExclamationIcon
                 className="mt-0.5 h-4 w-4 shrink-0"
-                style={{ color: 'var(--feedback-incorrect-text)' }}
+                style={{ color: 'var(--color-danger)' }}
                 aria-hidden="true"
               />
               <div className="min-w-0 flex-1 space-y-1">
-                <p
-                  className="text-sm font-semibold"
-                  style={{ color: 'var(--feedback-incorrect-text)' }}
-                >
+                <p className="text-sm font-semibold" style={{ color: 'var(--color-danger)' }}>
                   Declined by the model&rsquo;s safety filter
                 </p>
                 <p className="text-xs text-fg-muted">

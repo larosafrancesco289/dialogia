@@ -102,7 +102,7 @@ export function SearchModeControl({
                 }}
               >
                 {option.label}
-                <span className="block text-xs text-muted-foreground">{option.description}</span>
+                <span className="block text-xs text-fg-muted">{option.description}</span>
               </button>
             ))}
           </motion.div>

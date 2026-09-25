@@ -25,43 +25,35 @@
   --mobile-header-height: 56px;
   --chrome-rule: color-mix(in oklab, var(--color-fg) 8%, transparent);
 
-  /* Typography — Distinctive fonts for Imperial Archive aesthetic */
+  /* Typography: the sans is the reader's voice and the interface; the book
+     face is the model's voice, headings and the wordmark. */
   --font-sans:
     var(--font-sans-display), 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Text',
     'Helvetica Neue', ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
   --font-mono:
     'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
     'Courier New', monospace;
-  --font-serif: 'Charter', 'Bitstream Charter', 'Sitka Text', 'Cambria', 'Times New Roman', serif;
-  /* Scholarly serif for assistant messages — refined, authoritative */
   --font-serif-assistant:
     var(--font-serif-display), 'Newsreader', 'Source Serif 4', 'Literata', Georgia,
     'Times New Roman', serif;
 
-  /* Radius & Elevation */
-  --radius-xs: 8px;
-  --radius-sm: 10px;
-  --radius-md: 12px;
-  --radius-lg: 14px;
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06);
+  /* Elevation: one shadow, and only for what floats (popovers, dialogs,
+     toasts, sheets). Chrome is flat. */
   --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.08);
-  --shadow-3: 0 24px 48px rgba(0, 0, 0, 0.12);
 
-  /* Motion */
+  /* Motion: three curves, three durations (src/lib/ui/motion.ts mirrors
+     them for framer-motion). Standard for almost everything; quint a touch
+     quicker off the mark; expo for large surfaces sliding. */
   --ease-standard: cubic-bezier(0.25, 1, 0.5, 1);
-  --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
-  --spring-snappy: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --duration-fast: 180ms;
   --duration-med: 280ms;
   --duration-slow: 340ms;
 
-  /* Surface palette — Imperial Archive (light). The page you read is the
-     brightest thing on screen; the chrome around it (sidebar, Learning Hub)
-     sits one step back, like a book's binding. */
+  /* Surfaces: ink on paper. The page you read is the brightest thing on
+     screen; the chrome around it (sidebar, Learning Hub) sits one step
+     back, like a book's binding. */
   --color-canvas: #fbf8f1;
   --color-surface: #fffdf8;
   --color-chrome: #f0e9dc;
@@ -69,6 +61,7 @@
   --color-fg: #1f1912;
   --color-fg-muted: #5b534b;
   --color-accent: #b9975b;
+  /* Violet, only for names in code syntax. */
   --color-accent-2: #6d2a8a;
   /* Ink printed on a gold fill: dark in both themes. */
   --color-on-accent: #1f1912;
@@ -77,18 +70,10 @@
      (headings, numerals, rules, labels). Gold stays for what is live. */
   --color-rubric: #b23a26;
 
-  /* Status palette — muted, scholarly tones */
+  /* Status: success for a right answer, crimson for anything wrong. */
   --color-success: #4a8c5a;
   /* Crimson, cooler than the rubric so an error never reads as a heading. */
   --color-danger: #9c2a44;
-
-  /* Interactive feedback — correct/incorrect states */
-  --feedback-correct-bg: color-mix(in oklab, var(--color-success) 10%, var(--marginalia-bg));
-  --feedback-correct-border: color-mix(in oklab, var(--color-success) 35%, var(--color-border));
-  --feedback-correct-text: color-mix(in oklab, var(--color-success) 75%, var(--color-fg));
-  --feedback-incorrect-bg: color-mix(in oklab, var(--color-danger) 10%, var(--marginalia-bg));
-  --feedback-incorrect-border: color-mix(in oklab, var(--color-danger) 35%, var(--color-border));
-  --feedback-incorrect-text: color-mix(in oklab, var(--color-danger) 75%, var(--color-fg));
 
   /* Effects */
   --focus-ring: color-mix(in oklab, var(--color-accent) 50%, transparent);
@@ -96,15 +81,17 @@
      would not read as a layer above the app. */
   --overlay-scrim: rgba(30, 27, 22, 0.44);
 
-  /* Editorial: Solid paper-like surfaces */
+  /* Editorial surfaces */
   --surface-paper: var(--color-surface);
   --surface-inset: color-mix(in oklab, var(--color-muted) 70%, var(--color-canvas));
 
   /* Editorial: Ornamental rules */
   --rule-light: color-mix(in oklab, var(--color-border) 50%, transparent);
 
-  /* Editorial: Tighter radius for print feel */
+  /* Radius: 6px for every surface; 4px for a row or chip set inside one
+     (menu items, model rows, segments, inline code), so the corners nest. */
   --radius-editorial: 6px;
+  --radius-inner: 4px;
   /* Slightly larger on mobile for better touch affordance */
   --radius-editorial-mobile: 10px;
 
@@ -117,16 +104,10 @@
 }
 
 /* ============================================================================
-   Dark theme — "Candlelit Study"
-   A warm charcoal sibling of the light Imperial Archive parchment. Built on
-   three principles to keep it tasteful:
-     1. No pure black — canvas is a warm dark grey so surfaces can lift via
-        lightness (Material elevation), and gold glows instead of glaring.
-     2. Accents are lifted + slightly desaturated (Material "200 tone") so they
-        sit calmly on the dark ground instead of vibrating.
-     3. Gold stays the rationed metal accent; purple is the soft secondary.
-   The reasoning/thinking panels inherit these tokens, so the old cool-blue
-   clash cannot return — everything stays in the warm gold/purple family.
+   Dark theme: the same book by lamplight. A warm brown-black page, never pure
+   black, so surfaces can step by lightness; gold, rubric and status colours
+   are lifted and softened to sit calmly on the dark ground. Gold stays for
+   what is live, the rubric for the book's marks.
    ========================================================================== */
 .dark {
   color-scheme: dark;
@@ -139,7 +120,7 @@
   --color-muted: #2a2219;
   --color-fg: #f0e6d4;
   --color-fg-muted: #a89e8e;
-  /* Lifted, softened gold + lavender — glow, don't glare */
+  /* Gold and the syntax violet, lifted and softened for the dark page. */
   --color-accent: #cda85f;
   --color-accent-2: #b48ad0;
   --color-on-accent: #1a1510;
@@ -152,15 +133,5 @@
   --focus-ring: color-mix(in oklab, var(--color-accent) 50%, transparent);
   --overlay-scrim: rgba(6, 5, 3, 0.62);
 
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.45);
-  --shadow-3: 0 24px 48px rgba(0, 0, 0, 0.6);
-
-  /* Interactive feedback — readable correct/incorrect on dark */
-  --feedback-correct-bg: color-mix(in oklab, var(--color-success) 12%, var(--color-muted));
-  --feedback-correct-border: color-mix(in oklab, var(--color-success) 40%, var(--color-border));
-  --feedback-correct-text: var(--color-success);
-  --feedback-incorrect-bg: color-mix(in oklab, var(--color-danger) 12%, var(--color-muted));
-  --feedback-incorrect-border: color-mix(in oklab, var(--color-danger) 40%, var(--color-border));
-  --feedback-incorrect-text: var(--color-danger);
 }

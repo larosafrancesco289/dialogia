@@ -216,13 +216,13 @@
   margin: -3px -6px;
   padding: 3px 6px;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--radius-inner);
   background: color-mix(in oklab, var(--color-fg) 5%, transparent);
   color: var(--color-fg);
   font: inherit;
   font-size: 0.875rem;
   outline: none;
-  box-shadow: 0 0 0 1.5px var(--focus-ring);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 .row-edit::placeholder {
   color: var(--color-fg-muted);

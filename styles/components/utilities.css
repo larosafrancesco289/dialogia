@@ -1,25 +1,12 @@
 @layer utilities {
   /* Semantic color helpers (Tailwind-like names mapped to tokens) */
-  .bg-surface {
-    background-color: var(--color-surface);
-  }
-  .bg-muted {
-    background-color: var(--color-muted);
-  }
   .bg-canvas {
     background-color: var(--color-canvas);
   }
   .text-fg {
     color: var(--color-fg) !important;
   }
-  .text-fg-muted,
-  .text-muted-foreground {
+  .text-fg-muted {
     color: var(--color-fg-muted);
-  }
-  .border-border {
-    border-color: var(--color-border);
-  }
-  .hover\:bg-muted:hover {
-    background-color: var(--color-muted) !important;
   }
 }
