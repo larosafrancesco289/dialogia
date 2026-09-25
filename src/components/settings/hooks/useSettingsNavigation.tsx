@@ -4,14 +4,14 @@ import type { RenderSection, SectionId, TabId } from '@/components/settings/type
 import { useSettingsTabs } from '@/components/settings/hooks/useSettingsTabs';
 import { useSettingsScrollSync } from '@/components/settings/hooks/useSettingsScrollSync';
 import { TAB_LIST, TAB_SECTIONS, sectionMatches } from '@/components/settings/sections/config';
-import { springs } from '@/lib/mobile/springConfig';
+import { motionTransition } from '@/lib/ui/motion';
 
 const staggerItem = {
   hidden: { opacity: 0, y: 8 },
   show: {
     opacity: 1,
     y: 0,
-    transition: springs.gentle,
+    transition: motionTransition.reveal,
   },
 };
 

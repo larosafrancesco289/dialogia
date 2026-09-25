@@ -9,9 +9,9 @@ export function safeKey(val: unknown, idx: number, prefix = 'item'): string {
 }
 
 export const cardVariants = {
-  hidden: { opacity: 0, y: 8, scale: 0.985 },
-  visible: { opacity: 1, y: 0, scale: 1, transition: motionTransition.reveal },
-  exit: { opacity: 0, y: -4, scale: 0.99, transition: motionTransition.exit },
+  hidden: { opacity: 0, y: 6 },
+  visible: { opacity: 1, y: 0, transition: motionTransition.reveal },
+  exit: { opacity: 0, y: -4, transition: motionTransition.exit },
 };
 
 export const contentVariants = {

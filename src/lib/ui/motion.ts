@@ -1,4 +1,4 @@
-import type { Transition, Variants } from 'framer-motion';
+import type { Transition } from 'framer-motion';
 
 export const motionEase = {
   outQuart: [0.25, 1, 0.5, 1],
@@ -13,27 +13,7 @@ export const motionTransition = {
   reveal: { duration: 0.34, ease: motionEase.outExpo },
   layout: { duration: 0.32, ease: motionEase.outQuint },
   exit: { duration: 0.2, ease: motionEase.outQuart },
+  /** A surface that follows the finger (the phone drawer): an overdamped
+   *  spring, so it carries the gesture's velocity without overshooting. */
+  follow: { type: 'spring', stiffness: 520, damping: 42, mass: 0.55 },
 } satisfies Record<string, Transition>;
-
-export const motionVariants = {
-  fadeLift: {
-    hidden: { opacity: 0, y: 8, scale: 0.985 },
-    visible: { opacity: 1, y: 0, scale: 1, transition: motionTransition.reveal },
-    exit: { opacity: 0, y: -4, scale: 0.99, transition: motionTransition.exit },
-  },
-  fadeSlideRight: {
-    hidden: { opacity: 0, x: 8 },
-    visible: { opacity: 1, x: 0, transition: motionTransition.standard },
-    exit: { opacity: 0, x: -6, transition: motionTransition.exit },
-  },
-  panelLeft: {
-    hidden: { opacity: 0, x: -18 },
-    visible: { opacity: 1, x: 0, transition: motionTransition.layout },
-    exit: { opacity: 0, x: -18, transition: motionTransition.exit },
-  },
-  panelRight: {
-    hidden: { opacity: 0, x: 18 },
-    visible: { opacity: 1, x: 0, transition: motionTransition.layout },
-    exit: { opacity: 0, x: 18, transition: motionTransition.exit },
-  },
-} satisfies Record<string, Variants>;

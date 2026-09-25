@@ -1,4 +1,4 @@
-import { ArrowPathIcon, BookOpenIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { BookOpenIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import type { LearningPlan } from '@/lib/types';
 import type { UiPlanSnapshot } from '@/lib/contracts/ui';
 
@@ -27,7 +27,8 @@ export function PlanStatusBadge({
   if (planGeneration?.status === 'loading') {
     return (
       <span className="plan-status" title={planGeneration.goal || undefined} role="status">
-        <ArrowPathIcon className="plan-status__icon animate-spin" />
+        {/* The drafting itself is shown in the chat; the head only names it. */}
+        <BookOpenIcon className="plan-status__icon" />
         <span className="plan-status__text">Drafting a plan…</span>
       </span>
     );

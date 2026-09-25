@@ -1,3 +1,4 @@
+import { motionTransition } from '@/lib/ui/motion';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { XMarkIcon } from '@heroicons/react/24/outline';
@@ -122,7 +123,7 @@ export function IntroTour() {
         className={styles.overlay}
         initial={{ opacity: 0 }}
         animate={{ opacity: leaving ? 0 : 1 }}
-        transition={{ duration: 0.18, ease: [0.25, 1, 0.5, 1] }}
+        transition={motionTransition.quick}
         style={leaving ? { pointerEvents: 'none' } : undefined}
         onMouseDown={(event) => {
           if (event.target === event.currentTarget) dismiss();
@@ -137,7 +138,7 @@ export function IntroTour() {
           tabIndex={-1}
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          transition={motionTransition.reveal}
         >
           <div className={styles.rule} aria-hidden="true" />
 
@@ -164,7 +165,7 @@ export function IntroTour() {
             className={styles.page}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
+            transition={motionTransition.quick}
           >
             <div className={styles.art}>
               <IntroArt plate={page.plate} />

@@ -62,8 +62,9 @@
 
   /* Pause ambient (infinite) animations while the tab is hidden to save
      battery; the .tab-hidden class is toggled from useAmbientMotionPause. */
-  .tab-hidden .plan-loading-bar,
   .tab-hidden .response-ledger__pulse,
+  .tab-hidden .logo-mark--live .logo-mark__voice--close,
+  .tab-hidden .logo-mark--live .logo-mark__eye--close,
   .tab-hidden .response-ledger.is-live .response-ledger__glyph {
     animation-play-state: paused !important;
   }

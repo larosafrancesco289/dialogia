@@ -41,17 +41,16 @@
     border-radius: var(--radius-editorial);
     box-shadow: var(--shadow-2);
     transform-origin: top right;
-    animation: popover-enter 160ms var(--ease-out-quint);
+    animation: drop-in var(--duration-fast) var(--ease-standard);
   }
-  @keyframes popover-enter {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+  /* A popover above its button rises from it instead of dropping. */
+  .popover--up {
+    transform-origin: bottom left;
+    animation-name: rise-in;
+  }
+  /* Driven by framer-motion, which owns its entrance and exit. */
+  .popover--motion {
+    animation: none;
   }
 
   /* Menu heading: the rubric label that names a menu's choices. */

@@ -24,6 +24,8 @@ export type MessageCardProps = {
   ) => void;
   waitingForFirstToken: boolean;
   lastMessageId?: string;
+  /** Added while the chat was open, so it moves into place; history does not. */
+  arrives: boolean;
   showReasoningByDefault: boolean;
   isStreaming: boolean;
   isChatStreaming: boolean;
@@ -50,6 +52,7 @@ function MessageCardComponent({
   setLightbox,
   waitingForFirstToken,
   lastMessageId,
+  arrives,
   showReasoningByDefault,
   isStreaming,
   isChatStreaming,
@@ -134,6 +137,7 @@ function MessageCardComponent({
     setLightbox,
     waitingForFirstToken,
     lastMessageId,
+    arrives,
     isStreaming,
     isChatStreaming,
     panels: {

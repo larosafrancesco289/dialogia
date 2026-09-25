@@ -50,20 +50,7 @@
     font-style: italic;
     font-size: 0.95rem;
     color: var(--color-fg-muted);
-    opacity: 0;
-    animation: message-list-loading-in 240ms var(--ease-standard) 400ms forwards;
-  }
-
-  @keyframes message-list-loading-in {
-    to {
-      opacity: 1;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .message-list__loading {
-      animation-duration: 1ms;
-    }
+    animation: fade-in var(--duration-med) var(--ease-standard) 400ms both;
   }
 
   @media (max-width: 767px) {

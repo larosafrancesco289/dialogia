@@ -1,4 +1,4 @@
-import type { PointerEvent } from 'react';
+import { useRef, type PointerEvent } from 'react';
 import { IconButton } from '@/components/ui/IconButton';
 import {
   AcademicCapIcon,
@@ -65,6 +65,10 @@ export function ChatRowView({
   onPointerUp,
   onPointerCancel,
 }: ChatRowViewProps) {
+  // The title it was drawn with. A later one (the generated title arriving,
+  // a rename) fades in; the list's first paint does not.
+  const firstTitle = useRef(title);
+  const retitled = title !== firstTitle.current;
   const showTitle = !collapsed || isEditing;
   const allowActions = !collapsed && !isEditing;
 
@@ -116,7 +120,10 @@ export function ChatRowView({
       ) : showTitle ? (
         <>
           {isTutor && <AcademicCapIcon className="chat-item__kind" aria-hidden="true" />}
-          <div className="flex-1 text-sm truncate">
+          <div
+            key={title}
+            className={`flex-1 text-sm truncate${retitled ? ' chat-item__title--new' : ''}`}
+          >
             {isTutor && <span className="sr-only">Tutoring: </span>}
             {title}
           </div>

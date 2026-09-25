@@ -48,7 +48,7 @@ export function ComposerActions({
 }: ComposerActionsProps) {
   if (isStreaming) {
     return (
-      <div className="composer-tools">
+      <div className="composer-tools composer-tools--swap">
         <span className="composer-tools__status">Writing…</span>
         <button
           type="button"
@@ -65,14 +65,14 @@ export function ComposerActions({
 
   if (writingInOtherTab) {
     return (
-      <div className="composer-tools" role="status">
+      <div className="composer-tools composer-tools--swap" role="status">
         <span className="composer-tools__status">Writing in another tab…</span>
       </div>
     );
   }
 
   return (
-    <div className="composer-tools">
+    <div className="composer-tools composer-tools--swap">
       <div className="composer-tools__left">
         <button
           type="button"

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
-import { springs } from '@/lib/mobile/springConfig';
+import { motionTransition } from '@/lib/ui/motion';
 
 export type AutoSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -69,7 +69,7 @@ export function AutoSaveToast({ status, message, autoDismissDelay = 2000 }: Auto
           initial={{ opacity: 0, x: '-50%', y: 8 }}
           animate={{ opacity: 1, x: '-50%', y: 0 }}
           exit={{ opacity: 0, x: '-50%', y: 8 }}
-          transition={springs.gentle}
+          transition={motionTransition.reveal}
         >
           {getContent()}
         </motion.div>

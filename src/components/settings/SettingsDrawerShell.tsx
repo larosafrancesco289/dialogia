@@ -3,9 +3,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeftIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { IconButton } from '@/components/ui/IconButton';
 import { SettingsSearch } from '@/components/settings/SettingsSearch';
-import { springs, variants } from '@/lib/mobile/springConfig';
+import { motionTransition } from '@/lib/ui/motion';
 import { DialogOverlay, DialogPortal } from '@/components/ui/Dialog';
 import { useModalFocus } from '@/lib/hooks/useModalFocus';
+
+const SLIDE_FROM_RIGHT = {
+  initial: { x: '100%' },
+  animate: { x: 0 },
+  exit: { x: '100%', transition: motionTransition.exit },
+};
 
 type SettingsDrawerShellProps = {
   closing: boolean;
@@ -41,11 +47,11 @@ export function SettingsDrawerShell({
             {/* Backdrop */}
             <DialogOverlay
               as={motion.div}
-              className="scrim z-[70]"
+              className="scrim scrim--motion z-[70]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              transition={motionTransition.quick}
               onClose={onClose}
             />
 
@@ -65,8 +71,8 @@ export function SettingsDrawerShell({
               initial="initial"
               animate="animate"
               exit="exit"
-              variants={variants.slideFromRight}
-              transition={springs.smooth}
+              variants={SLIDE_FROM_RIGHT}
+              transition={motionTransition.layout}
               onKeyDown={(e) => {
                 // A field that used Escape (clearing a search, closing its
                 // list) marks it handled; only a free Escape closes Settings.

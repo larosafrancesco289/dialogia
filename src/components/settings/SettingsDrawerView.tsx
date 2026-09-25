@@ -1,3 +1,4 @@
+import { motionTransition } from '@/lib/ui/motion';
 import { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { ChevronRightIcon } from '@heroicons/react/24/outline';
@@ -88,7 +89,7 @@ function SettingsPhoneView({
     : {
         initial: { opacity: 0, x: onPage ? 24 : -24 },
         animate: { opacity: 1, x: 0 },
-        transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] as const },
+        transition: motionTransition.quick,
       };
 
   return (

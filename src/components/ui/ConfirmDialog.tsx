@@ -41,7 +41,7 @@ export function ConfirmDialog({
       <DialogOverlay className="scrim z-[90]" onClose={onCancel}>
         <div className="fixed inset-0 z-[95] flex items-center justify-center p-4">
           <DialogSurface
-            className="dialog max-w-sm"
+            className="dialog dialog--rise max-w-sm"
             ariaLabel={title}
             surfaceRef={surfaceRef}
             onKeyDown={(event) => {

@@ -99,6 +99,9 @@
   .message-action-btn.is-success {
     color: var(--color-success);
   }
+  .message-action-btn.is-success svg {
+    animation: fade-in var(--duration-fast) var(--ease-standard) both;
+  }
 
   /* A reply's footer: its actions, then the colophon, on one line. */
   .message-foot {
@@ -239,11 +242,12 @@
     color: var(--color-fg-muted);
     text-wrap: balance;
   }
-  .plan-drafting__track {
-    height: 1px;
-    margin-top: var(--space-4);
-    overflow: hidden;
-    background: var(--chrome-rule);
+  .plan-drafting__mark {
+    display: block;
+    height: 0.9rem;
+    aspect-ratio: 55 / 27.2;
+    margin: var(--space-4) auto 0;
+    color: var(--color-fg-muted);
   }
 
   /* ===== Image lightbox: a darkroom, whatever the theme ===== */

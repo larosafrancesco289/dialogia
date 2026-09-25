@@ -35,7 +35,7 @@ export function MobileHeader({
   return (
     <header className={styles.header}>
       {/* The live gold thread under the head while a reply is coming in. */}
-      {isStreaming && <div className={styles.activityBar} />}
+      {isStreaming && <div className={`${styles.activityBar} motion-fade`} />}
 
       <button
         ref={menuButtonRef}

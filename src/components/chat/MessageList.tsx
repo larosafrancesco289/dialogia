@@ -20,8 +20,10 @@ import {
   selectRepliesInOtherTab,
 } from '@/lib/store/selectors';
 import { replyInProgress } from '@/lib/ui/streaming';
+import { LogoMark } from '@/components/ui/LogoMark';
 
 const EMPTY_MESSAGES: Message[] = [];
+const JUST_WRITTEN_MS = 1500;
 export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilter?: string }) {
   const {
     allMessages,
@@ -210,6 +212,25 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     return () => clearTimeout(tid);
   }, [isStreaming]);
 
+  // What was already here when the chat opened (or finished loading) is
+  // history and appears without motion; only messages added while it is
+  // open move into place. Keyed by chat and load state, so a lazily
+  // hydrated chat counts its loaded messages as history too. A message
+  // written a moment ago is never history: the first one of a new chat
+  // mounts with its list, coming over from the welcome page.
+  const historyRef = useRef<{ key: string; ids: Set<string> } | null>(null);
+  const historyKey = `${chatId}:${messagesLoaded}`;
+  if (historyRef.current?.key !== historyKey) {
+    const openedAt = Date.now();
+    historyRef.current = {
+      key: historyKey,
+      ids: new Set(
+        messages.filter((m) => openedAt - m.createdAt > JUST_WRITTEN_MS).map((m) => m.id),
+      ),
+    };
+  }
+  const history = historyRef.current.ids;
+
   // Composer is now rendered outside this scroll container in ChatPane.
 
   // Subtle indicator for long time-to-first-token
@@ -268,6 +289,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
               setLightbox={setLightbox}
               waitingForFirstToken={waitingForFirstToken && message.id === lastMessageId}
               lastMessageId={lastMessageId}
+              arrives={!history.has(message.id)}
               showReasoningByDefault={showByDefault}
               isStreaming={progress.isWriting(message.id)}
               isChatStreaming={isStreaming}
@@ -288,9 +310,8 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
                 ? planGeneration.goal
                 : 'Mapping out topics, objectives and prerequisites.'}
             </p>
-            <div className="plan-drafting__track">
-              <div className="plan-loading-bar h-full" />
-            </div>
+            {/* Waiting on the model reads the same everywhere: the mark answering. */}
+            <LogoMark className="plan-drafting__mark" live />
           </div>
         )}
 
@@ -301,7 +322,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
       {showJump && (
         <div className="jump-to-latest">
           <button
-            className="btn-fab pointer-events-auto !w-9 !h-9 !p-0"
+            className="btn-fab motion-rise pointer-events-auto !w-9 !h-9 !p-0"
             aria-label="Scroll to bottom"
             title="Scroll to bottom"
             onClick={() => {

@@ -1,3 +1,4 @@
+import { motionTransition } from '@/lib/ui/motion';
 import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { shallow } from 'zustand/shallow';
@@ -95,7 +96,7 @@ export function SetupSheet() {
             tabIndex={-1}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.18 }}
+            transition={motionTransition.quick}
           >
             <h2 id="setup-title" className="dialog__title">
               Connect a model
