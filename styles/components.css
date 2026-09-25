@@ -12,6 +12,7 @@
 @import './components/composer.css';
 @import './components/message.css';
 @import './components/ledger.css';
+@import './components/devtools.css';
 @import './components/chapter.css';
 @import './components/exercise.css';
 @import './components/contents.css';
