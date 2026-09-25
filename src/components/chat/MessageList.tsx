@@ -322,7 +322,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
       {showJump && (
         <div className="jump-to-latest">
           <button
-            className="btn-fab motion-rise pointer-events-auto !w-9 !h-9 !p-0"
+            className="btn-float motion-rise pointer-events-auto"
             aria-label="Scroll to bottom"
             title="Scroll to bottom"
             onClick={() => {

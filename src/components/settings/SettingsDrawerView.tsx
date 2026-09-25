@@ -14,7 +14,7 @@ import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { useBackToClose } from '@/lib/hooks/useBackToClose';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import type { TabId } from '@/components/settings/types';
-import { AutoSaveToast } from '@/components/settings/AutoSaveToast';
+import { useSaveNotice } from '@/components/settings/useSaveNotice';
 import type { SettingsDrawerState } from '@/components/settings/hooks/useSettingsDrawerState';
 
 const staggerContainer = {
@@ -40,6 +40,7 @@ function tabSummary(tabId: TabId, label: string): string | null {
 }
 
 export function SettingsDrawerView(props: SettingsDrawerState) {
+  useSaveNotice(props.saveStatus);
   const isMobile = useMediaQuery(MEDIA_QUERIES.mobile);
   return isMobile ? <SettingsPhoneView {...props} /> : <SettingsWideView {...props} />;
 }
@@ -58,7 +59,6 @@ function SettingsPhoneView({
   setActiveTab,
   tabContent,
   closeWithAnim,
-  saveStatus,
 }: SettingsDrawerState) {
   const [page, setPage] = useState<'list' | 'tab'>('list');
   const reducedMotion = useReducedMotion();
@@ -152,8 +152,6 @@ function SettingsPhoneView({
           </motion.div>
         )}
       </SettingsDrawerShell>
-
-      <AutoSaveToast status={saveStatus} />
     </>
   );
 }
@@ -170,7 +168,6 @@ function SettingsWideView({
   handleSidebarKeyNav,
   tabContent,
   closeWithAnim,
-  saveStatus,
 }: SettingsDrawerState) {
   const searching = searchQuery.trim().length > 0;
   const hasResults =
@@ -246,9 +243,6 @@ function SettingsWideView({
           </div>
         </div>
       </SettingsDrawerShell>
-
-      {/* Auto-Save Toast */}
-      <AutoSaveToast status={saveStatus} />
     </>
   );
 }

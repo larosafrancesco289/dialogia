@@ -136,12 +136,10 @@ export function IntroTour() {
           aria-modal="true"
           aria-labelledby={titleId}
           tabIndex={-1}
-          initial={{ opacity: 0, y: 14 }}
+          initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={motionTransition.reveal}
+          transition={motionTransition.quick}
         >
-          <div className={styles.rule} aria-hidden="true" />
-
           <div className={styles.topBar}>
             <span className={styles.step}>
               {index + 1} of {PAGES.length}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { AutoSaveStatus } from '@/components/settings/AutoSaveToast';
+export type AutoSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 export type UseAutoSaveOptions = {
   /** Debounce delay in ms (default: 500) */

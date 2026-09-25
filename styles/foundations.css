@@ -264,22 +264,25 @@ a.badge:hover {
 }
 
 /* Round floating button (scroll to latest). */
-.btn-fab {
-  height: var(--control-lg);
-  padding: 0 var(--space-4);
-  border-radius: 999px;
+/* A button floating over the page (jump to latest): a small square of
+   paper, 6px like everything else, lifted as floating layers are. */
+.btn-float {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: var(--radius-editorial);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   color: var(--color-fg-muted);
-  box-shadow: var(--shadow-1);
+  box-shadow: var(--shadow-2);
   transition:
     color var(--duration-fast) var(--ease-standard),
     border-color var(--duration-fast) var(--ease-standard);
 }
-.btn-fab:hover {
+.btn-float:hover {
   color: var(--color-fg);
   border-color: color-mix(in oklab, var(--color-fg) 28%, transparent);
 }

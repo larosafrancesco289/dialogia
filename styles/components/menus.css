@@ -1,6 +1,7 @@
 @layer components {
-  /* Segmented control: a hairline track; the chosen segment is a raised
-     sheet of paper in ink. Choosing is a setting, so never gold. */
+  /* Segmented control: a hairline track; the chosen segment is a sheet of
+     paper laid in it, edged by a hairline. Flat, like all chrome, and ink:
+     choosing is a setting, so never gold. */
   .segmented {
     display: inline-flex;
     align-items: stretch;
@@ -29,9 +30,7 @@
   .segment.is-active {
     background: var(--color-surface);
     color: var(--color-fg);
-    box-shadow:
-      0 0 0 1px var(--color-border),
-      var(--shadow-1);
+    box-shadow: 0 0 0 1px var(--color-border);
   }
 
   /* Popover: every floating menu shares one sheet. */

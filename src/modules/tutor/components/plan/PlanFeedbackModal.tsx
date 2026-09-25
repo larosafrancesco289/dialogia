@@ -49,13 +49,11 @@ export function PlanFeedbackModal({
   };
 
   const isPhaseContext = context.type === 'phase';
-  const title = 'Share feedback with your tutor';
-  const subtitle = isPhaseContext
-    ? `About ${context.phaseName}...`
-    : 'Suggest changes to your learning plan';
+  const title = 'Tell the tutor what to change';
+  const subtitle = isPhaseContext ? `About ${context.phaseName}` : 'Your plan is yours to reshape.';
   const placeholder = isPhaseContext
-    ? `What would you like to change about ${context.phaseName}?\n\nExamples:\n• "Can we go deeper on X before moving on?"\n• "I'd like to reorder these topics"\n• "This feels too advanced, can we add prerequisites?"`
-    : `What would you like to adjust?\n\nExamples:\n• "Could we add more practice for the fundamentals?"\n• "I already know X, can we skip or accelerate it?"\n• "Can we reorganize to focus more on Y?"`;
+    ? `Go deeper on something before moving on, reorder the topics, or add groundwork if ${context.phaseName} feels too advanced.`
+    : 'More practice on the fundamentals, skipping what you already know, or a different focus.';
   const canSubmit = feedback.trim().length > 0 && !isSubmitting;
 
   // Portalled to the body: inside the side panel's stacking context the
@@ -74,9 +72,9 @@ export function PlanFeedbackModal({
           />
 
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
+            exit={{ opacity: 0, y: 6 }}
             transition={motionTransition.quick}
             className="dialog fixed left-1/2 top-1/2 z-[101] w-[90vw] max-w-lg -translate-x-1/2 -translate-y-1/2"
             role="dialog"
