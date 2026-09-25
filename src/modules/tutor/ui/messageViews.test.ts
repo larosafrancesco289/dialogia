@@ -179,3 +179,34 @@ test('a correction at an open chapter break moves its estimate, and the settled 
   h.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.4 });
   assert.equal(breakOf().mastery?.confidence, 0.65);
 });
+
+test('a margin note keeps the correction that answered it, from the log alone', () => {
+  const h = teaching();
+  h.tutor(
+    {
+      type: 'record_evidence',
+      kind: 'explained',
+      note: 'Explained a limit',
+      source: 'observation',
+    },
+    'reply-1',
+  );
+  const noteOf = (messageId: string) =>
+    effectsByMessage([...h.events]).get(messageId)!.masteryChanges[0];
+  assert.equal(noteOf('reply-1').corrected, undefined);
+
+  // "Too low" on the note: a quiet correction, attached to no message.
+  h.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.59 });
+  const answered = noteOf('reply-1');
+  assert.equal(answered.corrected, 0.59, 'what a reload reads, as the live note did');
+  assert.notEqual(answered.to, 0.59, 'the note still says what the exchange did');
+
+  // Once a later exchange moves the estimate, a correction answers that one instead.
+  h.tutor(
+    { type: 'record_evidence', kind: 'applied', note: 'Applied it', source: 'observation' },
+    'reply-2',
+  );
+  h.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.5 });
+  assert.equal(noteOf('reply-1').corrected, 0.59);
+  assert.equal(noteOf('reply-2').corrected, 0.5);
+});
