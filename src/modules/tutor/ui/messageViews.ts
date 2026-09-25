@@ -107,6 +107,16 @@ export function cardsForMessage(session: TutorSession, messageId: string): Messa
 /** One topic's movement from a message's evidence, with the notes that moved it. */
 export type MasteryChange = { nodeId: string; from: number; to: number; notes: string[] };
 
+/**
+ * The changes a message's margin notes show: every topic whose estimate it
+ * moved, the topic it finished included. The chapter break states where that
+ * topic stands; the note says what the exchange changed and why, and is
+ * where the learner answers it.
+ */
+export function marginChanges(effects: MessageEffects): MasteryChange[] {
+  return effects.masteryChanges.filter((change) => change.from !== change.to);
+}
+
 /** A margin note's reasons folded to this many (the latest); the rest wait behind "+N more". */
 const REASONS_SHOWN = 2;
 
