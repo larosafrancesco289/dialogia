@@ -66,6 +66,9 @@
     display: grid;
     animation: panel-reveal var(--duration-med) var(--ease-standard);
   }
+  .panel-reveal.is-still {
+    animation: none;
+  }
   .panel-reveal > * {
     min-height: 0;
     overflow: hidden;

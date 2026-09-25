@@ -113,7 +113,7 @@ export function MessageActionSheet({
                   onClose();
                 }}
               >
-                Regenerate
+                Try again
               </SheetItem>
             )}
             <SheetItem

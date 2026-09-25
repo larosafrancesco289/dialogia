@@ -37,7 +37,7 @@ const STEP_LABELS: Record<ProbeStep, string> = {
 
 const VERDICT_LABELS: Record<ProbeVerdict, string> = {
   ok: 'Accepted',
-  no: 'Rejected',
+  no: 'Not supported',
   unknown: 'No answer',
   skipped: 'Skipped',
 };

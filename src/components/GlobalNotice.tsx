@@ -1,5 +1,6 @@
 import { useChatStore } from '@/lib/store';
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { InlineNotice } from '@/components/ui/InlineNotice';
 import { selectNotice, selectNoticeTone } from '@/lib/store/selectors';
 import type { NoticeTone } from '@/lib/contracts/ui';
@@ -7,7 +8,11 @@ import type { NoticeTone } from '@/lib/contracts/ui';
 // Confirmations go quickly, facts stay long enough to read, problems linger.
 const DISMISS_MS: Record<NoticeTone, number> = { success: 3000, info: 6000, error: 10000 };
 
-export function GlobalNotice() {
+/**
+ * The app's one toast. On a phone it is portalled to the page: the phone
+ * shell is its own stacking context, which would keep it under Settings.
+ */
+export function GlobalNotice({ portal = false }: { portal?: boolean }) {
   const notice = useChatStore(selectNotice);
   const tone = useChatStore(selectNoticeTone);
   const setNotice = useChatStore((s) => s.setNotice);
@@ -24,7 +29,7 @@ export function GlobalNotice() {
   }, [notice, tone, setNotice]);
 
   if (!notice || !visible) return null;
-  return (
+  const slot = (
     <div className="notice-slot">
       <InlineNotice
         message={notice}
@@ -36,4 +41,5 @@ export function GlobalNotice() {
       />
     </div>
   );
+  return portal ? createPortal(slot, document.body) : slot;
 }

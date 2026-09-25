@@ -79,3 +79,27 @@ test('captureRequestDebug records payloads when debug mode is enabled', () => {
   const parsed = JSON.parse(entry.body);
   assert.equal(parsed.model, 'provider/model');
 });
+
+test('the request view shows a user server the body the transport sends it', () => {
+  const { turn, state } = createStubTurn();
+  turn.auth = buildTransportAuth({
+    endpoint: {
+      id: 'ollama',
+      kind: 'openai-compatible',
+      label: 'Ollama',
+      baseUrl: 'http://localhost:11434/v1',
+    },
+  });
+  captureRequestDebug({
+    turn,
+    messageId: 'm1',
+    modelId: 'endpoint:ollama/qwen3:32b',
+    messages: [{ role: 'user', content: 'hi' }],
+    stream: true,
+    includeUsage: true,
+  });
+  const body = JSON.parse(state.ui.debug.byMessageId?.m1?.body ?? '{}');
+  assert.equal(body.model, 'qwen3:32b');
+  // Usage in stream is a capability the server has not declared.
+  assert.equal(body.stream_options, undefined);
+});

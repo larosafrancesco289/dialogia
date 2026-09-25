@@ -59,12 +59,12 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
     if (applyToChat && ctx.chat) {
       const next = enabled == null ? !ctx.chat.settings.features.search.enabled : enabled;
       await ctx.updateChatSettings({ features: { search: { enabled: next } } });
-      ctx.setNotice(`Web search is ${next ? 'on' : 'off'} in this chat.`, 'info');
+      ctx.setNotice(`Web search is ${next ? 'on' : 'off'} in this chat.`, 'success');
     } else {
       const prev = !!ctx.nextOverrides.search?.enabled;
       const next = enabled == null ? !prev : enabled;
       ctx.setUI({ overrides: { search: { enabled: next } } });
-      ctx.setNotice(`Web search will be ${next ? 'on' : 'off'} in the next chat.`, 'info');
+      ctx.setNotice(`Web search will be ${next ? 'on' : 'off'} in the next chat.`, 'success');
     }
     return true;
   }
@@ -75,12 +75,12 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
     if (!allowed.includes(effort)) return false;
     ctx.accept();
     if (!isReasoningSupported(currentModel)) {
-      ctx.setNotice('This model does not reason, so it has no effort to set.');
+      ctx.setNotice('This model does not reason, so it has no effort to set.', 'info');
       return true;
     }
     const selectable = getSelectableReasoningEfforts(currentModel);
     if (selectable.length > 0 && !selectable.includes(effort)) {
-      ctx.setNotice(`This model does not offer ${effort} effort.`);
+      ctx.setNotice(`This model does not offer ${effort} effort.`, 'info');
       return true;
     }
     if (applyToChat) {
@@ -100,7 +100,7 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
         },
       });
     }
-    ctx.setNotice(`Reasoning effort set to ${effort}.`, 'info');
+    ctx.setNotice(`Reasoning effort set to ${effort}.`, 'success');
     return true;
   }
 
@@ -120,7 +120,7 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
     } else {
       ctx.setUI({ overrides: { modelId: chosen.id } });
     }
-    ctx.setNotice(`Now answering with ${chosen.name || chosen.id}.`, 'info');
+    ctx.setNotice(`Now answering with ${chosen.name || chosen.id}.`, 'success');
     return true;
   }
 

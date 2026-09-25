@@ -48,11 +48,13 @@
     border-color: color-mix(in oklab, var(--color-fg) 20%, transparent);
   }
 
+  /* The same glyph as the reasoning ledger's head: 15px, rubric at rest. */
   .devtools__glyph {
-    width: 16px;
-    height: 16px;
+    align-self: center;
+    width: 15px;
+    height: 15px;
     flex: none;
-    color: var(--color-fg-muted);
+    color: var(--color-rubric);
   }
 
   .devtools__title {

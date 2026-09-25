@@ -13,6 +13,7 @@ import { ChatRowContainer } from '@/components/sidebar/ChatRowContainer';
 import { FolderRowView } from '@/components/sidebar/FolderRowView';
 import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import type { Folder } from '@/lib/types';
+import { useRevealOnOpen } from '@/lib/hooks/useRevealOnOpen';
 
 interface FolderRowContainerProps {
   folder: Folder;
@@ -79,6 +80,7 @@ export function FolderRowContainer({
     ? children.folders.filter((sub) => folderHasMatch(folderTreeIndex, sub, query))
     : children.folders;
   const isOpen = folder.isExpanded || !!query;
+  const revealClass = useRevealOnOpen(isOpen);
   const childQuery = nameMatches ? '' : query;
 
   const handleToggleExpanded = () => {
@@ -187,7 +189,7 @@ export function FolderRowContainer({
 
       {isOpen && (
         // Eases open like the reasoning line, instead of snapping.
-        <div className="panel-reveal">
+        <div className={revealClass}>
           <div>
             {subFolders.map((subFolder) => (
               <FolderRowContainer
