@@ -176,7 +176,7 @@ export function MobileShell() {
       {setupOpen && !introOpen && <SetupSheet />}
       {introOpen && <IntroTour />}
 
-      <GlobalNotice />
+      <GlobalNotice portal />
     </div>
   );
 }

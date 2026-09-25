@@ -376,7 +376,7 @@
 
   @media (max-width: 767px) {
     .response-ledger {
-      margin-inline: var(--space-2);
+      margin-inline: var(--space-4);
     }
     /* Tally drops under the entry instead of crowding the query. */
     .response-ledger__entry {

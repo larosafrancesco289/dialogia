@@ -17,6 +17,7 @@ import {
 } from '@/lib/ui/responseActivity';
 import { ActivityEntry } from '@/components/message/ActivityEntry';
 import { SourcesEntry } from '@/components/message/SourcesEntry';
+import { useRevealOnOpen } from '@/lib/hooks/useRevealOnOpen';
 
 type ResponseContextPanelProps = {
   reasoning: string;
@@ -39,6 +40,7 @@ export function ResponseContextPanel({
   isStreaming = false,
 }: ResponseContextPanelProps) {
   const bodyId = useId();
+  const revealClass = useRevealOnOpen(expanded);
   const [copied, setCopied] = useState(false);
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const hasReasoning = reasoning.trim().length > 0;
@@ -139,7 +141,7 @@ export function ResponseContextPanel({
       </div>
 
       {expanded && (
-        <div className="panel-reveal">
+        <div className={revealClass}>
           <div>
             <div id={bodyId} className="response-ledger__timeline">
               {orderedActivity.map((item) => (

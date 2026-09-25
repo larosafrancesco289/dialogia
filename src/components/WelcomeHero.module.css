@@ -149,7 +149,9 @@
 .headline,
 .composer,
 .prompts {
-  animation: settle var(--duration-slow) var(--ease-standard) both;
+  /* backwards, not both: a held transform would make each block its own
+     layer, and the prompts would paint over the composer's menus. */
+  animation: settle var(--duration-slow) var(--ease-standard) backwards;
 }
 .kicker {
   animation-delay: 80ms;

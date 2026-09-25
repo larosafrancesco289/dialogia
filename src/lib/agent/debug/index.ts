@@ -1,4 +1,6 @@
 import { buildChatBody } from '@/lib/openrouter/request';
+import { endpointBodyOptions, endpointWireModelId } from '@/lib/openrouter/endpointBody';
+import type { TransportAuth } from '@/lib/auth/transport';
 import type { ProviderSort } from '@/lib/models/providerSort';
 import type {
   ModelMessage,
@@ -29,11 +31,14 @@ export type BuildDebugBodyArgs = {
   zdrOnly?: boolean;
   plugins?: PluginConfig[];
   canImageOut?: boolean;
+  /** The endpoint the turn calls: a user's own server gets its gated body and bare model id, as the transport sends them. */
+  auth?: TransportAuth;
 };
 
 export function buildDebugBody(args: BuildDebugBodyArgs) {
   return buildChatBody({
-    model: args.modelId,
+    ...endpointBodyOptions(args.auth),
+    model: endpointWireModelId(args.auth, args.modelId),
     messages: args.messages,
     stream: args.stream,
     includeUsage: args.includeUsage,
@@ -69,10 +74,11 @@ export type RequestDebugOptions = {
   zdrOnly?: boolean;
   plugins?: PluginConfig[];
   canImageOut?: boolean;
+  auth?: TransportAuth;
 };
 
-export function buildRequestDebugBody(options: RequestDebugOptions) {
-  return buildDebugBody({
+function buildRequestDebugArgs(options: RequestDebugOptions): BuildDebugBodyArgs {
+  return {
     modelId: options.modelId,
     messages: options.messages,
     stream: options.stream,
@@ -89,7 +95,12 @@ export function buildRequestDebugBody(options: RequestDebugOptions) {
     zdrOnly: options.zdrOnly,
     plugins: options.plugins,
     canImageOut: options.canImageOut,
-  });
+    auth: options.auth,
+  };
+}
+
+export function buildRequestDebugBody(options: RequestDebugOptions) {
+  return buildDebugBody(buildRequestDebugArgs(options));
 }
 
 export function recordDebugIfEnabled(store: StoreAccess, messageId: string, body: unknown) {
@@ -152,7 +163,7 @@ export function captureRequestDebug({
   // Use compound key when round is provided so tool-calling rounds don't overwrite each other
   const debugKey = round != null ? `${messageId}_r${round}` : messageId;
   try {
-    captureDebugPayload(turn, debugKey, () => buildRequestDebugBody(rest));
+    captureDebugPayload(turn, debugKey, () => buildRequestDebugBody({ ...rest, auth: turn.auth }));
   } catch {
     /* ignore debug capture failures */
   }

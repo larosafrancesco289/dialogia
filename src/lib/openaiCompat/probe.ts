@@ -316,7 +316,7 @@ export async function probeEndpoint(
         const reported = chunks.some((chunk) => isRecord(chunk) && isRecord(chunk.usage));
         capabilities[capability] = reported
           ? { verdict: 'ok' }
-          : { verdict: 'no', detail: 'Accepted the field, but no usage came back.' };
+          : { verdict: 'no', detail: 'The server took the field but sent no usage back.' };
       } else {
         capabilities[capability] = { verdict: 'ok' };
       }

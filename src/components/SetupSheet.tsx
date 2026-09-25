@@ -40,7 +40,7 @@ export function SetupSheet() {
   );
   const [choice, setChoice] = useState<Choice>('openrouter');
   const [value, setValue] = useState('');
-  const [label, setLabel] = useState('Local model');
+  const [label, setLabel] = useState('');
   const [busy, setBusy] = useState(false);
 
   const surfaceRef = useRef<HTMLDivElement>(null);
@@ -57,7 +57,7 @@ export function SetupSheet() {
     onEscape: close,
   });
 
-  const canSubmit = value.trim().length > 0 && (choice !== 'local' || label.trim().length > 0);
+  const canSubmit = value.trim().length > 0;
 
   const submit = async () => {
     if (!canSubmit || busy) return;
@@ -66,7 +66,7 @@ export function SetupSheet() {
       if (choice === 'local') {
         addEndpoint({
           kind: 'openai-compatible',
-          label: label.trim(),
+          label: label.trim() || 'Local model',
           baseUrl: value.trim(),
         });
       } else {
@@ -137,6 +137,7 @@ export function SetupSheet() {
                     id="setup-label"
                     className="input w-full text-base sm:text-sm"
                     value={label}
+                    placeholder="Local model"
                     onChange={(event) => setLabel(event.target.value)}
                   />
                 </div>
