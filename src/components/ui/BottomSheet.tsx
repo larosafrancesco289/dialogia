@@ -1,7 +1,7 @@
 import { useRef, type ReactNode } from 'react';
 import { AnimatePresence, motion, useDragControls, useReducedMotion } from 'framer-motion';
 import { DialogPortal } from '@/components/ui/Dialog';
-import { springs } from '@/lib/mobile/springConfig';
+import { motionTransition } from '@/lib/ui/motion';
 import { useBackToClose } from '@/lib/hooks/useBackToClose';
 import { useModalFocus } from '@/lib/hooks/useModalFocus';
 
@@ -38,7 +38,7 @@ export function BottomSheet({
   // Focus comes in, stays in, and goes back to where the reader was.
   useModalFocus(open, sheetRef, { onEscape: onClose });
 
-  const slide = reducedMotion ? { duration: 0 } : springs.smooth;
+  const slide = reducedMotion ? { duration: 0 } : motionTransition.layout;
 
   return (
     <DialogPortal>
@@ -50,7 +50,7 @@ export function BottomSheet({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={reducedMotion ? { duration: 0 } : { duration: 0.2 }}
+              transition={reducedMotion ? { duration: 0 } : motionTransition.quick}
               onClick={onClose}
               aria-hidden="true"
             />

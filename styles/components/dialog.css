@@ -7,7 +7,11 @@
     position: fixed;
     inset: 0;
     background: var(--overlay-scrim);
-    animation: fade-in 160ms var(--ease-out-quart);
+    animation: fade-in var(--duration-fast) var(--ease-standard);
+  }
+  /* A scrim framer-motion fades itself does not fade twice. */
+  .scrim--motion {
+    animation: none;
   }
   .dialog {
     position: relative;
@@ -17,6 +21,11 @@
     border-radius: var(--radius-editorial);
     box-shadow: var(--shadow-2);
     padding: var(--space-5);
+  }
+  /* A dialog without its own motion comes up with the scrim, a little late. */
+  .dialog--rise {
+    --motion-shift: 6px;
+    animation: rise-in var(--duration-fast) var(--ease-standard) both;
   }
   .dialog__title {
     margin: 0;
@@ -75,6 +84,8 @@
     font-size: 0.875rem;
     line-height: 1.45;
     color: var(--color-fg);
+    /* Hangs from the header, so it drops a hair into place. */
+    animation: drop-in var(--duration-fast) var(--ease-standard) both;
   }
   .toast__icon {
     flex: none;

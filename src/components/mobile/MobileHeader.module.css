@@ -97,37 +97,13 @@
   color: var(--color-fg-muted);
 }
 
-/* Activity bar (streaming indicator): the live gold thread under the head. */
+/* While a reply is written: one still gold hairline under the head, faded
+   in and out, since gold is what is live. */
 .activityBar {
   position: absolute;
   left: 0;
   right: 0;
   bottom: -1px;
   height: 1px;
-  overflow: hidden;
-}
-
-.activityBar::before {
-  content: '';
-  position: absolute;
-  left: -30%;
-  top: 0;
-  bottom: 0;
-  width: 30%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    color-mix(in oklab, var(--color-accent) 80%, transparent),
-    transparent
-  );
-  animation: headerShimmer 1.2s linear infinite;
-}
-
-@keyframes headerShimmer {
-  0% {
-    transform: translateX(0%);
-  }
-  100% {
-    transform: translateX(430%);
-  }
+  background: color-mix(in oklab, var(--color-accent) 70%, transparent);
 }

@@ -132,35 +132,36 @@
   opacity: 0.8;
 }
 
-/* ===== Opening motion ===== */
-/* The ink voice draws out of its scroll to the join, then gold answers. */
+/* ===== Opening motion =====
+   Under a second: the ink voice draws out of its scroll to the join, gold
+   answers, and the page settles in a short stagger beneath it. */
 .mark :global(.logo-mark__voice) {
   stroke-dasharray: 1;
-  animation: voice-draw 900ms var(--ease-out-quint) both;
+  animation: voice-draw 600ms var(--ease-out-quint) both;
 }
 .mark :global(.logo-mark__voice--close) {
-  animation-delay: 650ms;
+  animation-delay: 400ms;
 }
 .mark :global(.logo-mark__eye--close) {
-  animation: settle-eye 240ms ease-out 1300ms both;
+  animation: settle-eye var(--duration-fast) var(--ease-standard) 900ms both;
 }
 .kicker,
 .headline,
 .composer,
 .prompts {
-  animation: settle 700ms var(--ease-out-quint) both;
+  animation: settle var(--duration-slow) var(--ease-standard) both;
 }
 .kicker {
-  animation-delay: 160ms;
+  animation-delay: 80ms;
 }
 .headline {
-  animation-delay: 220ms;
+  animation-delay: 120ms;
 }
 .composer {
-  animation-delay: 320ms;
+  animation-delay: 180ms;
 }
 .prompts {
-  animation-delay: 420ms;
+  animation-delay: 240ms;
 }
 
 @keyframes voice-draw {
@@ -184,11 +185,7 @@
 @keyframes settle {
   from {
     opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+    transform: translateY(4px);
   }
 }
 
@@ -284,9 +281,9 @@
 
 .heroMobileChip:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px var(--focus-ring);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .heroMobileChip:active {
-  transform: scale(0.97);
+  background: color-mix(in oklab, var(--color-fg) 9%, transparent);
 }

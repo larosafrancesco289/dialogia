@@ -1,3 +1,4 @@
+import { motionTransition } from '@/lib/ui/motion';
 import { useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useChatStore } from '@/lib/store';
@@ -82,7 +83,7 @@ export function DiagnosticCard({
             className="exercise-meter__fill"
             initial={{ scaleX: 0 }}
             animate={{ scaleX: percentComplete / 100 }}
-            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            transition={motionTransition.reveal}
             style={{ originX: 0 }}
           />
         </div>

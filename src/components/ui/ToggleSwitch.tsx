@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useId } from 'react';
-import { springs } from '@/lib/mobile/springConfig';
+import { motionTransition } from '@/lib/ui/motion';
 
 export type ToggleSwitchProps = {
   checked: boolean;
@@ -65,7 +65,7 @@ export function ToggleSwitch({
         animate={{
           x: checked ? thumbTravel : 0,
         }}
-        transition={springs.snappy}
+        transition={motionTransition.quick}
         style={{
           width: thumbSize,
           height: thumbSize,

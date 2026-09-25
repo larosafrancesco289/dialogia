@@ -1,70 +1,15 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
-import { LightBulbIcon as LightBulbSolidIcon } from '@heroicons/react/24/solid';
-import { Lightbulb as LucideLightbulb, LightbulbOff as LucideLightbulbOff } from 'lucide-react';
+import { LightBulbIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
-import { springs } from '@/lib/mobile/springConfig';
+import { motionTransition } from '@/lib/ui/motion';
 import type { ReasoningEffort } from '@/lib/types';
 import { useBackToClose } from '@/lib/hooks/useBackToClose';
 import { useDismissOnOutside } from '@/lib/hooks/useDismissOnOutside';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Reasoning effort: "Lightbulb, off to radiant". The icon fills in along the
-// effort scale (off, outline, bold outline, solid, larger solid), in ink.
-// ─────────────────────────────────────────────────────────────────────────────
-
 const effortLabel = (e: ReasoningEffort) =>
   e === 'none' ? 'Off' : e === 'xhigh' ? 'Extra high' : e.charAt(0).toUpperCase() + e.slice(1);
 
-type BulbKind = 'off' | 'outline' | 'outline-bold' | 'solid' | 'solid-plus';
-
-const EFFORT_KIND: Record<ReasoningEffort, BulbKind> = {
-  none: 'off',
-  minimal: 'outline',
-  low: 'outline',
-  medium: 'outline-bold',
-  high: 'solid',
-  xhigh: 'solid-plus',
-  max: 'solid-plus',
-};
-
 const DEFAULT_EFFORTS: ReasoningEffort[] = ['none', 'low', 'medium', 'high'];
-
-function ReasoningBulbIcon({ effort, size = 16 }: { effort: ReasoningEffort; size?: number }) {
-  const kind = EFFORT_KIND[effort];
-  let node: React.ReactNode;
-  switch (kind) {
-    case 'off':
-      node = <LucideLightbulbOff size={size} strokeWidth={1.5} />;
-      break;
-    case 'outline':
-      node = <LucideLightbulb size={size} strokeWidth={1.5} />;
-      break;
-    case 'outline-bold':
-      node = <LucideLightbulb size={size} strokeWidth={2} />;
-      break;
-    case 'solid':
-      node = <LightBulbSolidIcon width={size} height={size} />;
-      break;
-    case 'solid-plus':
-      node = <LightBulbSolidIcon width={size} height={size} />;
-      break;
-  }
-  const scale = kind === 'solid-plus' ? 1.12 : 1;
-  return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.span
-        key={kind}
-        initial={{ opacity: 0, scale: scale * 0.82 }}
-        animate={{ opacity: 1, scale }}
-        exit={{ opacity: 0, scale: scale * 0.82 }}
-        transition={{ duration: 0.14 }}
-        className="composer-reasoning-icon"
-      >
-        {node}
-      </motion.span>
-    </AnimatePresence>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Reasoning effort: an upright scale in a popover, rising from the button:
@@ -140,12 +85,12 @@ function ReasoningMenu({
       ref={menuRef}
       role="radiogroup"
       aria-label="Reasoning effort"
-      className="popover reasoning-scale absolute bottom-full left-0 z-30 mb-2"
+      className="popover popover--motion reasoning-scale absolute bottom-full left-0 z-30 mb-2"
       style={{ ['--stops' as string]: efforts.length, translate: `${shift}px 0` }}
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 4 }}
-      transition={springs.snappy}
+      transition={motionTransition.quick}
       onKeyDown={(event) => {
         // Read the position from focus, not state, so quick presses add up.
         const at = stopsRef.current.indexOf(document.activeElement as HTMLButtonElement);
@@ -260,7 +205,8 @@ export function ReasoningEffortControl({
         title={reasoningActive ? `Reasoning: ${effortLabel(effort)}` : 'Reasoning effort'}
         onClick={() => setReasoningOpen((v) => !v)}
       >
-        <ReasoningBulbIcon effort={effort} size={16} />
+        {/* One outline bulb, like every other tool: the label beside it says how hard. */}
+        <LightBulbIcon className="h-4 w-4" aria-hidden="true" />
         {reasoningActive && <span className="composer-tool-label">{effortLabel(effort)}</span>}
       </button>
       <AnimatePresence>

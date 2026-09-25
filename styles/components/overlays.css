@@ -1,4 +1,8 @@
 @layer components {
+  /* The three motions every surface shares: a fade, a rise into place from
+     below, and a drop from what it hangs off. A few pixels (--motion-shift),
+     never a scale or a bounce. Keyframe names in CSS modules are local, so
+     components reach these through the .motion-* classes. */
   @keyframes fade-in {
     from {
       opacity: 0;
@@ -6,6 +10,27 @@
     to {
       opacity: 1;
     }
+  }
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(var(--motion-shift, 4px));
+    }
+  }
+  @keyframes drop-in {
+    from {
+      opacity: 0;
+      transform: translateY(calc(-1 * var(--motion-shift, 4px)));
+    }
+  }
+  .motion-fade {
+    animation: fade-in var(--duration-fast) var(--ease-standard) both;
+  }
+  .motion-rise {
+    animation: rise-in var(--duration-fast) var(--ease-standard) both;
+  }
+  .motion-drop {
+    animation: drop-in var(--duration-fast) var(--ease-standard) both;
   }
   @media (max-width: 767px) {
     /* Make small utility icon buttons larger for touch */
@@ -25,28 +50,6 @@
       -webkit-user-select: text;
       user-select: text;
       -webkit-touch-callout: default;
-    }
-  }
-
-  .plan-loading-bar {
-    background: linear-gradient(
-        90deg,
-        transparent,
-        color-mix(in oklab, var(--color-accent) 70%, transparent),
-        transparent
-      )
-      0 0 / 200% 100%;
-    animation: plan-loading-bar 1.6s ease-in-out infinite;
-  }
-  @keyframes plan-loading-bar {
-    0% {
-      background-position: 180% 0;
-    }
-    50% {
-      background-position: 50% 0;
-    }
-    100% {
-      background-position: -80% 0;
     }
   }
 

@@ -1,3 +1,4 @@
+import { motionTransition } from '@/lib/ui/motion';
 import { useState, useEffect, useRef } from 'react';
 import { useBackToClose } from '@/lib/hooks/useBackToClose';
 import { useModalFocus } from '@/lib/hooks/useModalFocus';
@@ -67,8 +68,8 @@ export function PlanFeedbackModal({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="scrim z-[100]"
+            transition={motionTransition.quick}
+            className="scrim scrim--motion z-[100]"
             onClick={onClose}
           />
 
@@ -76,7 +77,7 @@ export function PlanFeedbackModal({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
-            transition={{ duration: 0.18 }}
+            transition={motionTransition.quick}
             className="dialog fixed left-1/2 top-1/2 z-[101] w-[90vw] max-w-lg -translate-x-1/2 -translate-y-1/2"
             role="dialog"
             aria-modal="true"

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { animate, useMotionValue, useReducedMotion, type MotionValue } from 'framer-motion';
 import { useChatStore } from '@/lib/store';
 import { createDrawerGesture } from '@/lib/mobile/drawerGesture';
-import { springs } from '@/lib/mobile/springConfig';
+import { motionTransition } from '@/lib/ui/motion';
 
 const drawerWidthFor = (viewportWidth: number) => Math.round(Math.min(viewportWidth * 0.86, 340));
 
@@ -67,7 +67,9 @@ export function useMobileDrawer(): MobileDrawer {
     const controls = animate(
       offset,
       target,
-      reducedMotion ? { duration: 0 } : { ...springs.responsive, velocity: offset.getVelocity() },
+      reducedMotion
+        ? { duration: 0 }
+        : { ...motionTransition.follow, velocity: offset.getVelocity() },
     );
     return () => controls.stop();
   }, [open, width, offset, reducedMotion]);
@@ -104,7 +106,7 @@ export function useMobileDrawer(): MobileDrawer {
           next ? widthRef.current : 0,
           reducedMotion
             ? { duration: 0 }
-            : { ...springs.responsive, velocity: offset.getVelocity() },
+            : { ...motionTransition.follow, velocity: offset.getVelocity() },
         );
       },
     });

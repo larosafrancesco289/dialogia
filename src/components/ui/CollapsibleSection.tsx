@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
-import { springs } from '@/lib/mobile/springConfig';
+import { motionTransition } from '@/lib/ui/motion';
 
 export type CollapsibleSectionProps = {
   title: string;
@@ -30,7 +30,7 @@ export function CollapsibleSection({
         <motion.span
           className="collapsible-section-icon"
           animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={springs.snappy}
+          transition={motionTransition.quick}
         >
           <ChevronDownIcon className="h-4 w-4" />
         </motion.span>
@@ -43,8 +43,8 @@ export function CollapsibleSection({
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{
-              height: { ...springs.gentle, duration: 0.25 },
-              opacity: { duration: 0.2 },
+              height: motionTransition.standard,
+              opacity: motionTransition.quick,
             }}
           >
             <div className="collapsible-section-inner">{children}</div>

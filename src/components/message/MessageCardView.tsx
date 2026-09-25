@@ -31,6 +31,7 @@ export type MessageCardViewData = MessageCardViewModel & {
   ) => void;
   waitingForFirstToken: boolean;
   lastMessageId?: string;
+  arrives: boolean;
   panels: MessagePanelState;
   isStreaming: boolean;
   isChatStreaming: boolean;
@@ -71,6 +72,7 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
     setLightbox,
     waitingForFirstToken,
     lastMessageId,
+    arrives,
     panels,
     isStreaming,
     isChatStreaming,
@@ -89,7 +91,10 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
   // rather than a bubble: nothing to copy, edit or regenerate from.
   if (message.role === 'user' && message.ledger) {
     return (
-      <div className={cn(styles.messageCard, styles.ledger)} data-mid={message.id}>
+      <div
+        className={cn(styles.messageCard, styles.ledger, arrives && 'motion-fade')}
+        data-mid={message.id}
+      >
         <p className={styles.ledgerLine}>
           <span className="sr-only">You: </span>
           {message.content}
@@ -107,6 +112,10 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
     'group',
     styles.messageCard,
     isAssistant ? styles.assistant : styles.user,
+    // Only a message added while the chat is open moves: the learner's own
+    // words rise into place; a reply, already announced by the waiting mark,
+    // fades up. History opens still.
+    arrives && (isAssistant ? 'motion-fade' : 'motion-rise'),
     isMobile && isActive && styles.active,
   );
 

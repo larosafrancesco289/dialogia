@@ -1,39 +1,12 @@
 import { useRef, useState } from 'react';
 import { GlobeAltIcon } from '@heroicons/react/24/outline';
-import { GlobeAltIcon as GlobeSolidIcon } from '@heroicons/react/24/solid';
 import { motion, AnimatePresence } from 'framer-motion';
-import { springs } from '@/lib/mobile/springConfig';
+import { motionTransition } from '@/lib/ui/motion';
 import { searchModeLabel } from '@/lib/search/ui/labels';
 import { listSearchModeOptions } from '@/lib/search/ui/modes';
 import type { SearchMode } from '@/lib/search/providers/types';
 import { useProviderKeys } from '@/lib/hooks/useProviderKeys';
 import { useDismissOnOutside } from '@/lib/hooks/useDismissOnOutside';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Web search — globe toggle. Same physical-icon language as the reasoning bulb:
-// off is a thin outline, on is the solid glyph in accent.
-// ─────────────────────────────────────────────────────────────────────────────
-
-function SearchGlobeIcon({ enabled, size = 16 }: { enabled: boolean; size?: number }) {
-  return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.span
-        key={enabled ? 'on' : 'off'}
-        initial={{ opacity: 0, scale: 0.82, rotate: enabled ? -24 : 24 }}
-        animate={{ opacity: 1, scale: 1, rotate: 0 }}
-        exit={{ opacity: 0, scale: 0.82, rotate: enabled ? 24 : -24 }}
-        transition={{ duration: 0.14 }}
-        className="composer-search-icon"
-      >
-        {enabled ? (
-          <GlobeSolidIcon width={size} height={size} />
-        ) : (
-          <GlobeAltIcon width={size} height={size} strokeWidth={1.5} />
-        )}
-      </motion.span>
-    </AnimatePresence>
-  );
-}
 
 /**
  * The composer's web search button: a plain on/off toggle, or a menu of
@@ -89,7 +62,7 @@ export function SearchModeControl({
         }
         onClick={() => (hasSearchChoice ? setSearchMenuOpen((open) => !open) : toggleSearch())}
       >
-        <SearchGlobeIcon enabled={searchEnabled} size={16} />
+        <GlobeAltIcon className="h-4 w-4" aria-hidden="true" />
         {searchEnabled && <span className="composer-tool-label">Search</span>}
       </button>
       <AnimatePresence>
@@ -98,11 +71,11 @@ export function SearchModeControl({
             ref={searchMenuRef}
             role="menu"
             aria-label="Web search"
-            className="popover absolute bottom-full left-0 z-30 mb-2 w-56 p-1"
+            className="popover popover--motion absolute bottom-full left-0 z-30 mb-2 w-56 p-1"
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 4 }}
-            transition={springs.snappy}
+            transition={motionTransition.quick}
           >
             <button
               type="button"
