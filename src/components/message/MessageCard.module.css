@@ -203,34 +203,14 @@
   background: var(--chrome-rule);
 }
 
-/* Waiting for the first word: one gold caret, since waiting is live, where
-   the reply will begin. It breathes rather than blinks: a pen resting on the
-   page, not a text field asking for input. */
+/* Waiting for the first word: the mark, small, where the reply will begin.
+   The ink voice is quiet; the gold one answers, since waiting is live. */
 .pen {
   display: inline-block;
-  width: 2px;
-  height: 1.1em;
-  vertical-align: -0.2em;
-  border-radius: 1px;
-  background: var(--color-accent);
-  animation: pen-breathe 1.6s var(--ease-standard) infinite;
-}
-
-@keyframes pen-breathe {
-  0%,
-  100% {
-    opacity: 0.35;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pen {
-    animation: none;
-    opacity: 0.7;
-  }
+  height: 0.62em;
+  aspect-ratio: 55 / 27.2;
+  vertical-align: 0.05em;
+  color: var(--color-fg-muted);
 }
 
 /* Older replies keep their footer out of the way until hovered. */

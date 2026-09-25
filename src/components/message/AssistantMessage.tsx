@@ -18,6 +18,7 @@ import { useChatStore } from '@/lib/store';
 import { messageHasModuleContent } from '@/lib/modules';
 import type { Chat, Message, ModelDescriptor, PersistedAttachment } from '@/lib/types';
 import { isRecord } from '@/lib/utils/guards';
+import { LogoMark } from '@/components/ui/LogoMark';
 import styles from './MessageCard.module.css';
 
 export type AssistantMessageProps = {
@@ -154,12 +155,12 @@ export function AssistantMessage({
       />
     );
   } else if (waitingForFirstToken && message.id === lastMessageId && !displayContent) {
-    // The pen, poised: a gold caret where the first word will land, set in the
-    // reply's own paragraph so the text arrives exactly where it waited.
+    // The mark, answering: set where the first word will land, in the reply's
+    // own paragraph, so the text arrives exactly where it waited.
     messageBody = (
       <div className="markdown" role="status" aria-label="Writing a reply">
         <p>
-          <span className={styles.pen} aria-hidden="true" />
+          <LogoMark className={styles.pen} live />
         </p>
       </div>
     );
