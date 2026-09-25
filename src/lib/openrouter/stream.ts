@@ -88,6 +88,8 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
   let finishReason: FinishReason | undefined;
   let reasoningDetails: unknown;
   let reasoningTail = '';
+  // Which reasoning block the text is in, when `reasoning_details` says.
+  let reasoningBlock: number | undefined;
   const toolCallAccumulator = new Map<number, Partial<ToolCall>>();
 
   const emitImages = (arr: unknown) => {
@@ -156,7 +158,13 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
       emitImages(message?.images);
 
       if (deltaReasoning) {
-        const piece = separateSummaryParts(reasoningTail, deltaReasoning);
+        const block = reasoningDetailIndex(deltaReasoningDetails);
+        const newBlock =
+          block !== undefined && reasoningBlock !== undefined && block !== reasoningBlock;
+        if (block !== undefined) reasoningBlock = block;
+        const piece = newBlock
+          ? `${reasoningTail === '\n' ? '\n' : '\n\n'}${deltaReasoning.trimStart()}`
+          : separateSummaryParts(reasoningTail, deltaReasoning);
         reasoningTail = piece.slice(-1);
         callbacks?.onReasoningToken?.(piece);
       }
@@ -258,6 +266,24 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
  * and nothing between them: "…the formula.**Checking the base rate**". A part
  * that opens right after a finished sentence starts a new paragraph.
  */
+/**
+ * The reasoning block a delta's text belongs to: the `index` of its
+ * `reasoning_details` entry. `reasoning` concatenates every block with nothing
+ * between them, so thinking before and after a tool call (a native web search,
+ * say) would run together as "…this time.The results…"; a change of index is
+ * where a new paragraph starts.
+ */
+function reasoningDetailIndex(details: unknown): number | undefined {
+  if (!Array.isArray(details)) return undefined;
+  for (const detail of details) {
+    if (!isRecord(detail) || typeof detail.index !== 'number') continue;
+    if (detail.type === 'reasoning.text' || detail.type === 'reasoning.summary') {
+      return detail.index;
+    }
+  }
+  return undefined;
+}
+
 export function separateSummaryParts(previousChar: string, piece: string): string {
   return piece.startsWith('**') && /[.!?:)]/.test(previousChar) ? `\n\n${piece}` : piece;
 }
