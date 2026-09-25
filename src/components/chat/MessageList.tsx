@@ -20,7 +20,6 @@ import {
   selectRepliesInOtherTab,
 } from '@/lib/store/selectors';
 import { replyInProgress } from '@/lib/ui/streaming';
-import { LogoMark } from '@/components/ui/LogoMark';
 
 const EMPTY_MESSAGES: Message[] = [];
 const JUST_WRITTEN_MS = 1500;
@@ -29,7 +28,6 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     allMessages,
     isStreamingHere,
     repliesInOtherTab,
-    planGeneration,
     composerFocused,
     autoScrollPref,
     messagesLoaded,
@@ -39,7 +37,6 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
       allMessages: selectMessagesForChat(chatId)(state) ?? EMPTY_MESSAGES,
       isStreamingHere: selectIsStreamingForChat(chatId)(state),
       repliesInOtherTab: selectRepliesInOtherTab(chatId)(state),
-      planGeneration: state.ui.plan?.generationByChatId?.[chatId],
       composerFocused: state.ui.mobile.composerFocused,
       autoScrollPref: selectIsTutorEnabledForChat(chatId)(state)
         ? (state.ui.tutor?.autoScroll ?? false)
@@ -300,20 +297,6 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
             />
           );
         })}
-
-        {planGeneration?.status === 'loading' && (
-          // Set like a chapter break: the plan is the book's first contents.
-          <div className="plan-drafting" role="status">
-            <p className="plan-drafting__kicker">Drafting your plan</p>
-            <p className="plan-drafting__line">
-              {planGeneration.goal
-                ? planGeneration.goal
-                : 'Mapping out topics, objectives and prerequisites.'}
-            </p>
-            {/* Waiting on the model reads the same everywhere: the mark answering. */}
-            <LogoMark className="plan-drafting__mark" live />
-          </div>
-        )}
 
         {/* Typing indicator is now rendered inline within the latest assistant message */}
         <div ref={endRef} className="message-list__bottom-sentinel" aria-hidden="true" />

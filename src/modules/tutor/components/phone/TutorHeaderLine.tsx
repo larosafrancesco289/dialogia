@@ -13,7 +13,7 @@ import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
  * model picker.
  */
 export function TutorHeaderLine() {
-  const { models, modelId, planGeneration } = useChatStore((s) => {
+  const { models, modelId } = useChatStore((s) => {
     const chat = selectCurrentChat(s);
     return {
       models: s.models,
@@ -21,9 +21,6 @@ export function TutorHeaderLine() {
         chat?.settings?.features.tutor?.defaultModelId ||
         chat?.settings?.modelId ||
         s.ui.tutor?.defaultModelId,
-      planGeneration: s.selectedChatId
-        ? s.ui.plan?.generationByChatId?.[s.selectedChatId]
-        : undefined,
     };
   }, shallow);
   const { learningPlan, hasPlan, planProgress, onOpenRightPanel, rightPanelOpen } =
@@ -37,13 +34,10 @@ export function TutorHeaderLine() {
     [models, modelId],
   );
 
-  const drafting = planGeneration?.status === 'loading';
   const canOpen = hasPlan && !!planProgress && !!learningPlan;
-  const detail = drafting
-    ? 'Drafting a plan…'
-    : canOpen
-      ? `${planProgress.completed} of ${learningPlan.nodes.length} topics`
-      : modelLabel;
+  const detail = canOpen
+    ? `${planProgress.completed} of ${learningPlan.nodes.length} topics`
+    : modelLabel;
 
   return (
     <button

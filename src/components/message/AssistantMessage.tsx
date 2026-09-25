@@ -19,6 +19,7 @@ import { messageHasModuleContent } from '@/lib/modules';
 import type { Chat, Message, ModelDescriptor, PersistedAttachment } from '@/lib/types';
 import { isRecord } from '@/lib/utils/guards';
 import { LogoMark } from '@/components/ui/LogoMark';
+import { toolCallInFlight } from '@/lib/ui/streaming';
 import styles from './MessageCard.module.css';
 
 export type AssistantMessageProps = {
@@ -165,7 +166,20 @@ export function AssistantMessage({
       </div>
     );
   } else if (isStreaming && isLatestAssistant) {
-    messageBody = <StreamingMarkdown content={displayContent} sources={resolvedCitationSources} />;
+    messageBody = (
+      <>
+        <StreamingMarkdown content={displayContent} sources={resolvedCitationSources} />
+        {/* The words are out but a tool call is still being written or run
+            (a card, a search): the mark keeps answering where its result lands. */}
+        {toolCallInFlight(message) && (
+          <div className="markdown" role="status" aria-label="Still working">
+            <p>
+              <LogoMark className={styles.pen} live />
+            </p>
+          </div>
+        )}
+      </>
+    );
   } else {
     messageBody = <Markdown content={displayContent} sources={resolvedCitationSources} />;
   }
