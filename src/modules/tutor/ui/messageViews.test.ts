@@ -157,3 +157,25 @@ test('the reply that finishes a topic keeps its margin note beside the chapter b
   assert.ok(note.to > note.from);
   assert.deepEqual(note.notes, ['Explained why']);
 });
+
+test('a correction at an open chapter break moves its estimate, and the settled break keeps it', () => {
+  const h = teaching();
+  master(h);
+  h.tutor({ type: 'complete_topic', how: 'mastered' }, 'reply-1');
+  const atCompletion = h.state.mastery.limits.confidence;
+  // A copy each time: the app's log is a new array per change, and the replay is cached per array.
+  const breakOf = () => effectsByMessage([...h.events]).get('reply-1')!.completed!;
+  assert.equal(breakOf().mastery?.confidence, atCompletion);
+
+  // "Too high" in the Hub while the break still asks whether to move on.
+  h.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.65 });
+  assert.equal(breakOf().mastery?.confidence, 0.65, 'the live break states the estimate as it is');
+
+  h.learner({ type: 'start_topic', nodeId: 'derivatives' });
+  assert.equal(breakOf().nextNodeId, 'derivatives');
+  assert.equal(breakOf().mastery?.confidence, 0.65, 'settled on what the learner went on with');
+
+  // Later changes to the topic belong to later exchanges, not to this seam.
+  h.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.4 });
+  assert.equal(breakOf().mastery?.confidence, 0.65);
+});
