@@ -49,7 +49,6 @@ export function ComposerActions({
   if (isStreaming) {
     return (
       <div className="composer-tools composer-tools--swap">
-        <span className="composer-tools__status">Writing…</span>
         <button
           type="button"
           className="composer-btn-stop"

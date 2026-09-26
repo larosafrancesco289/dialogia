@@ -2,6 +2,7 @@ import {
   CheckCircleIcon,
   ExclamationCircleIcon,
   InformationCircleIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import type { NoticeTone } from '@/lib/contracts/ui';
 
@@ -33,8 +34,14 @@ export function InlineNotice({ message, onDismiss, tone = 'info', className }: I
       <Icon className="toast__icon" aria-hidden="true" />
       <div className="toast__message">{message}</div>
       {onDismiss ? (
-        <button className="btn-ghost btn-sm" onClick={onDismiss} type="button">
-          Dismiss
+        <button
+          className="icon-button icon-button--sm"
+          onClick={onDismiss}
+          type="button"
+          aria-label="Dismiss"
+          title="Dismiss"
+        >
+          <XMarkIcon />
         </button>
       ) : null}
     </div>

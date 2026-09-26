@@ -254,6 +254,11 @@
   .composer-tools--swap {
     animation: fade-in var(--duration-fast) var(--ease-standard) both;
   }
+  /* While a reply streams the live mark in it says so; Stop stands alone,
+     where Send was. */
+  .composer-tools--swap .composer-btn-stop {
+    margin-left: auto;
+  }
 
   /* Primary send button */
   .composer-btn-send {

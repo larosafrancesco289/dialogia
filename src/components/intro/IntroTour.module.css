@@ -1,7 +1,6 @@
 /* IntroTour: the first-run tour.
    The app's one dialog shell (paper, hairline, 6px, a title in the book
-   face), paged, with the rubric kept to the step and one line in each
-   drawing. Gold appears only on the button that moves on.
+   face), paged, with the rubric kept to one line in each drawing. Gold appears only on the button that moves on.
 */
 
 .overlay {
@@ -34,17 +33,8 @@
 .topBar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: var(--space-3);
-}
-
-.step {
-  font-family: var(--font-sans);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-rubric);
 }
 
 .close {
@@ -214,29 +204,6 @@
   gap: var(--space-2);
 }
 
-.skip {
-  margin-right: auto;
-  height: var(--control-sm);
-  padding: 0 var(--space-2);
-  border: 1px solid transparent;
-  border-radius: var(--radius-editorial);
-  background: transparent;
-  font-family: var(--font-sans);
-  font-size: 0.85rem;
-  color: var(--color-fg-muted);
-  cursor: pointer;
-  transition: color var(--duration-fast) var(--ease-standard);
-}
-
-.skip:hover {
-  color: var(--color-fg);
-}
-
-.skip:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--focus-ring);
-}
-
 @media (min-width: 768px) {
   /* Keeps the footer from walking up and down between pages. */
   .page {
@@ -273,7 +240,6 @@
 @media (prefers-reduced-motion: reduce) {
   .close,
   .link,
-  .skip,
   .dot::after {
     transition: none;
   }

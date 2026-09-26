@@ -268,10 +268,7 @@ export function ProvidersPanel({ renderSection, loadModels }: ProvidersPanelProp
                   />
                 </div>
               ))}
-            <p className="field__hint">
-              Keys are stored in this browser only. They are never included in an export and never
-              leave the page except in a request to that provider.
-            </p>
+            <p className="field__hint">Keys stay in this browser and are never exported.</p>
           </div>
         </SettingsSection>,
       )}

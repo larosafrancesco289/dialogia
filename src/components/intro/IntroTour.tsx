@@ -30,7 +30,6 @@ const PAGES: IntroPage[] = [
     title: 'Welcome to Dialogia',
     paragraphs: [
       'Dialogia is a chat app for language models. It runs entirely in your browser. You bring a key from a provider, pick a model, and start.',
-      'This tour takes a minute. You can close it at any time.',
     ],
   },
   {
@@ -40,7 +39,6 @@ const PAGES: IntroPage[] = [
     paragraphs: [
       'Dialogia has no accounts and no subscription. You connect a key from a model provider and pay the provider directly for what you use.',
       'OpenRouter is the simplest start. One key there reaches models from many labs, with a single balance to top up. You can also use an Anthropic key directly.',
-      'Your key is saved in this browser and sent only to the provider it belongs to.',
     ],
   },
   {
@@ -141,9 +139,6 @@ export function IntroTour() {
           transition={motionTransition.quick}
         >
           <div className={styles.topBar}>
-            <span className={styles.step}>
-              {index + 1} of {PAGES.length}
-            </span>
             <button
               type="button"
               className={styles.close}
@@ -203,23 +198,21 @@ export function IntroTour() {
             </nav>
 
             <div className={styles.actions}>
-              <button type="button" className={styles.skip} onClick={dismiss}>
-                Skip
-              </button>
-              <button
-                type="button"
-                className="btn-outline btn-sm"
-                onClick={() => goTo(index - 1)}
-                disabled={index === 0}
-              >
-                Back
-              </button>
+              {index > 0 && (
+                <button
+                  type="button"
+                  className="btn-outline btn-sm"
+                  onClick={() => goTo(index - 1)}
+                >
+                  Back
+                </button>
+              )}
               <button
                 type="button"
                 className="btn btn-sm"
                 onClick={() => (isLast ? dismiss() : goTo(index + 1))}
               >
-                {isLast ? 'Begin' : 'Next'}
+                {isLast ? 'Get started' : 'Next'}
               </button>
             </div>
           </div>

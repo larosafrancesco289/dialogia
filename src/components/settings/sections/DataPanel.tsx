@@ -22,9 +22,9 @@ export function DataPanel({ renderSection, onExport, onImportPicked }: DataPanel
         <SettingsSection title="Import and export">
           <div className="settings-row">
             <div className="settings-row-label">
-              <div className="settings-row-label-text">Your library</div>
+              <div className="settings-row-label-text">Chats and settings</div>
               <div className="settings-row-label-description">
-                All chats and settings as one JSON file. Keys are never included.
+                Everything as one JSON file. Keys are never included.
               </div>
             </div>
             <div className="settings-row-control flex gap-2">
