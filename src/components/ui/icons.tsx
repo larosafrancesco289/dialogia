@@ -25,3 +25,39 @@ export function SidebarIcon(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+/**
+ * Reasoning effort as a level meter: four bars rising left to right, the
+ * first `filled` in ink and the rest faint. (A column of dots, like the
+ * effort menu's own scale, read as the "more" icon at Max.)
+ */
+export function EffortMeterIcon({
+  filled,
+  ...props
+}: SVGProps<SVGSVGElement> & { filled: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+      data-slot="icon"
+      {...props}
+    >
+      {[0, 1, 2, 3].map((bar) => {
+        const height = 5 + bar * 4;
+        return (
+          <rect
+            key={bar}
+            x={4.25 + bar * 4.5}
+            y={20 - height}
+            width={2.5}
+            height={height}
+            rx={1.25}
+            opacity={bar < filled ? 1 : 0.28}
+          />
+        );
+      })}
+    </svg>
+  );
+}

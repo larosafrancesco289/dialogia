@@ -1,10 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
-import { LightBulbIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import { motionTransition } from '@/lib/ui/motion';
 import type { ReasoningEffort } from '@/lib/types';
 import { useBackToClose } from '@/lib/hooks/useBackToClose';
 import { useDismissOnOutside } from '@/lib/hooks/useDismissOnOutside';
+import { EffortMeterIcon } from '@/components/ui/icons';
 
 const effortLabel = (e: ReasoningEffort) =>
   e === 'none' ? 'Off' : e === 'xhigh' ? 'Extra high' : e.charAt(0).toUpperCase() + e.slice(1);
@@ -192,6 +192,12 @@ export function ReasoningEffortControl({
 
   const effort: ReasoningEffort = currentEffort ?? 'none';
   const reasoningActive = effort !== 'none';
+  // The meter's four bars stand for this model's own levels above Off.
+  const levels: ReasoningEffort[] = (availableEfforts ?? DEFAULT_EFFORTS).filter(
+    (e) => e !== 'none',
+  );
+  const rank = levels.indexOf(effort) + 1;
+  const filled = !reasoningActive ? 0 : rank > 0 ? Math.ceil((4 * rank) / levels.length) : 2;
 
   return (
     <div>
@@ -205,8 +211,8 @@ export function ReasoningEffortControl({
         title={reasoningActive ? `Reasoning: ${effortLabel(effort)}` : 'Reasoning effort'}
         onClick={() => setReasoningOpen((v) => !v)}
       >
-        {/* One outline bulb, like every other tool: the label beside it says how hard. */}
-        <LightBulbIcon className="h-4 w-4" aria-hidden="true" />
+        {/* A level meter filled to the effort; the word beside it names it. */}
+        <EffortMeterIcon className="h-4 w-4" filled={filled} />
         {reasoningActive && <span className="composer-tool-label">{effortLabel(effort)}</span>}
       </button>
       <AnimatePresence>
