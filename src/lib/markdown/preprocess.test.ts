@@ -46,6 +46,17 @@ test('currency is escaped, but numbers that open math are not', () => {
   assert.equal(escapeCurrency('$x_1$ and $\\frac{1}{2}$'), '$x_1$ and $\\frac{1}{2}$');
 });
 
+test('a number opening a spaced formula is math, and a second price never closes a first', () => {
+  const formula = 'No. $391 = 17 \\times 23$, so it is composite.';
+  assert.equal(escapeCurrency(formula), formula);
+  assert.equal(escapeCurrency('$3 + 4 = 7$'), '$3 + 4 = 7$');
+  assert.equal(escapeCurrency('from $5 = cheap to $10'), 'from \\$5 = cheap to \\$10');
+  assert.equal(escapeCurrency('$5 and $10'), '\\$5 and \\$10');
+  assert.equal(escapeCurrency('$5 or $x$'), '\\$5 or $x$');
+  assert.equal(escapeCurrency('pay $20 - $30 total'), 'pay \\$20 - \\$30 total');
+  assert.equal(escapeCurrency('$5 each\n$x = 1$'), '\\$5 each\n$x = 1$');
+});
+
 test('fenced code and inline code pass through untouched', () => {
   const sources = [{ url: 'https://example.com/a' }];
   const content = [
