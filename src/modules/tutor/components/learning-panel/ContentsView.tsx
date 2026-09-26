@@ -198,22 +198,25 @@ function ContentsItem({
           {showMastery && affordances.correctMastery && (
             <div className="hub-topic__correct">
               <span>Seems wrong?</span>
-              <button
-                type="button"
-                className="btn-outline btn-sm"
-                disabled={busy}
-                onClick={() => void act(() => corrections.onContestMastery(node.id, 'down'))}
-              >
-                Too high
-              </button>
-              <button
-                type="button"
-                className="btn-outline btn-sm"
-                disabled={busy}
-                onClick={() => void act(() => corrections.onContestMastery(node.id, 'up'))}
-              >
-                Too low
-              </button>
+              {/* The pair wraps as one: never "Too high" on a line and "Too low" alone below. */}
+              <span className="hub-topic__choices" role="group" aria-label="Correct the estimate">
+                <button
+                  type="button"
+                  className="btn-outline btn-sm"
+                  disabled={busy}
+                  onClick={() => void act(() => corrections.onContestMastery(node.id, 'down'))}
+                >
+                  Too high
+                </button>
+                <button
+                  type="button"
+                  className="btn-outline btn-sm"
+                  disabled={busy}
+                  onClick={() => void act(() => corrections.onContestMastery(node.id, 'up'))}
+                >
+                  Too low
+                </button>
+              </span>
             </div>
           )}
 
