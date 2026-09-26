@@ -52,7 +52,7 @@ export function ComposerInput({
         enterKeyHint={touchKeyboard ? 'enter' : 'send'}
         className="composer-field focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none"
         rows={1}
-        placeholder="Your turn…"
+        placeholder="Ask anything"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         style={{ maxHeight: `${maxHeight}px` }}
