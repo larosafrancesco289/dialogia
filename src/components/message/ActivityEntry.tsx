@@ -79,10 +79,18 @@ export function ActivityEntry({ item }: { item: MessageActivityItem }) {
         <span className="response-ledger__tool-name">{toolDisplayName(item.name)}</span>
         {object && <span className="response-ledger__tool-object">{object}</span>}
       </span>
-      <span className={`response-ledger__annotation${annotation.error ? ' is-error' : ''}`}>
-        {annotation.live && <span className="response-ledger__pulse" aria-hidden="true" />}
-        {annotation.text}
-      </span>
+      {annotation.text && (
+        <span
+          className={`response-ledger__annotation${annotation.error ? ' is-error' : ''}`}
+          title={annotation.hint}
+        >
+          {annotation.live && <span className="response-ledger__pulse" aria-hidden="true" />}
+          {annotation.text}
+        </span>
+      )}
+      {annotation.detail && (
+        <span className="response-ledger__tool-detail is-error">{annotation.detail}</span>
+      )}
     </div>
   );
 }

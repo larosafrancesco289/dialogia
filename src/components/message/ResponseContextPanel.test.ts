@@ -5,6 +5,8 @@ import {
   currentThoughtLine,
   formatThinkingTime,
   summarizeActivity,
+  toolAnnotation,
+  type ToolActivityItem,
 } from '@/lib/ui/responseActivity';
 import type { MessageActivityItem, ToolCallLogEntry } from '@/lib/types';
 
@@ -162,4 +164,27 @@ test('the summary names a running tool and, while live, the line of thought', ()
     }),
     'First point.',
   );
+});
+
+test('a tool row speaks plainly: refusals quietly, failures on their own line, no clock for quick work', () => {
+  const tool = (patch: Partial<ToolActivityItem>): ToolActivityItem => ({
+    id: 't',
+    type: 'tool_call',
+    name: 'record_evidence',
+    timestamp: 1,
+    status: 'success',
+    ...patch,
+  });
+  const refused = toolAnnotation(
+    tool({ status: 'error', category: 'tutor', error: 'You already recorded evidence.' }),
+  );
+  assert.equal(refused.text, 'Not applied');
+  assert.equal(refused.error, undefined);
+  assert.equal(refused.hint, 'You already recorded evidence.');
+
+  const failed = toolAnnotation(tool({ status: 'error', error: 'Network down' }));
+  assert.deepEqual([failed.text, failed.error, failed.detail], ['Failed', true, 'Network down']);
+
+  assert.equal(toolAnnotation(tool({ duration: 34 })).text, '');
+  assert.equal(toolAnnotation(tool({ duration: 2300 })).text, '2.3s');
 });
