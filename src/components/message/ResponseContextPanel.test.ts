@@ -131,7 +131,7 @@ test('the summary at rest counts thinking time and searches', () => {
     reasoning: '',
     isLive: false,
   });
-  assert.equal(summary, '8 seconds, 1 search');
+  assert.equal(summary, 'for 8 seconds, 1 search');
 });
 
 test('the summary names a running tool and, while live, the line of thought', () => {

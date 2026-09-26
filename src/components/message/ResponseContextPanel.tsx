@@ -4,8 +4,6 @@ import {
   ChevronDownIcon,
   ClipboardIcon,
   ExclamationCircleIcon,
-  LightBulbIcon,
-  MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 import type { MessageActivityItem, ToolCallLogEntry } from '@/lib/types';
 import { copyText } from '@/lib/clipboard';
@@ -17,6 +15,7 @@ import {
 } from '@/lib/ui/responseActivity';
 import { ActivityEntry } from '@/components/message/ActivityEntry';
 import { SourcesEntry } from '@/components/message/SourcesEntry';
+import { LogoMark } from '@/components/ui/LogoMark';
 import { useRevealOnOpen } from '@/lib/hooks/useRevealOnOpen';
 
 type ResponseContextPanelProps = {
@@ -77,6 +76,10 @@ export function ResponseContextPanel({
       !latestActivity ||
       (latestActivity.type === 'reasoning' && latestActivity.status !== 'done'));
 
+  // Opened while the model is at work: the mark is already where the reply
+  // waited, and the words fade in beside it (once; later phases do not replay).
+  const [arrivedLive] = useState(isLive);
+
   const summary = summarizeActivity({
     orderedActivity,
     toolCalls: sortedToolCalls,
@@ -104,9 +107,15 @@ export function ResponseContextPanel({
   };
 
   const showSourcesEntry = hasSources || isSearching || hasSearchError;
+  // The label names the phase: "Reasoning" only while the model is at it,
+  // then what it came to ("Thought for 8 seconds", "Used 1 search").
+  const hasThought = hasReasoning || orderedActivity.some((item) => item.type === 'reasoning');
+  const title = isLive ? 'Reasoning' : hasThought ? 'Thought' : 'Used';
 
   return (
-    <section className={`response-ledger${isLive ? ' is-live' : ''}`}>
+    <section
+      className={`response-ledger${isLive ? ' is-live' : ''}${arrivedLive ? ' is-arriving' : ''}`}
+    >
       <div className="response-ledger__head">
         <button
           type="button"
@@ -115,13 +124,9 @@ export function ResponseContextPanel({
           aria-controls={bodyId}
           onClick={onToggle}
         >
-          {toolRunning ? (
-            <MagnifyingGlassIcon className="response-ledger__glyph" />
-          ) : (
-            <LightBulbIcon className="response-ledger__glyph" />
-          )}
+          <LogoMark className="response-ledger__mark" live={isLive} />
           <span className="response-ledger__label">
-            <span className="response-ledger__title">Reasoning</span>
+            <span className="response-ledger__title">{title}</span>
             {summary && (
               // Keyed while live so each new line of thought fades in.
               <span key={isLive ? summary : 'rest'} className="response-ledger__summary">

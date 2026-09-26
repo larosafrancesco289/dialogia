@@ -65,7 +65,8 @@ function thinkingMeasure(activity: MessageActivityItem[], reasoning: string): st
   );
   const timed = thoughts.filter((item) => typeof item.duration === 'number');
   if (timed.length > 0) {
-    return formatThinkingTime(timed.reduce((sum, item) => sum + (item.duration ?? 0), 0));
+    // Read after the ledger's "Thought" label: "Thought for 8 seconds".
+    return `for ${formatThinkingTime(timed.reduce((sum, item) => sum + (item.duration ?? 0), 0))}`;
   }
   const text = thoughts.length > 0 ? thoughts.map((item) => item.text).join(' ') : reasoning;
   const words = text.trim() ? text.trim().split(/\s+/).length : 0;
