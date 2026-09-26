@@ -41,7 +41,7 @@ export type PlanCallbacks = {
   onReopenTopic: (nodeId: string) => Promise<void>;
   onRequestMorePractice: (nodeId: string) => Promise<void>;
   onContestMastery: (nodeId: string, direction: 'up' | 'down') => Promise<number | undefined>;
-  onResolveMisconceptionQuietly: (nodeId: string, misconceptionId: string) => Promise<void>;
+  onClearMisconception: (nodeId: string, misconceptionId: string) => Promise<void>;
   onToggleRightPanel: () => void;
   onOpenRightPanel: (tab?: 'plan' | 'progress') => void;
   onCloseRightPanel: () => void;
@@ -153,13 +153,11 @@ export function usePlanCallbacks(): PlanCallbacks {
     [act, setUI],
   );
 
-  // Quiet: the learner's own call about what they know needs no reply; the
-  // next turn's state block tells the tutor.
+  // Every change the learner makes to the plan or the learner model leaves a
+  // line in the chat and gets the tutor's answer, so they can see it was heard.
   const onMarkKnown = useCallback(
-    async (nodeId: string) => {
-      await dispatch({ type: 'mark_known', nodeId });
-    },
-    [dispatch],
+    (nodeId: string) => act({ type: 'mark_known', nodeId }, LEDGER.markedKnown),
+    [act],
   );
 
   const onReopenTopic = useCallback(
@@ -177,22 +175,30 @@ export function usePlanCallbacks(): PlanCallbacks {
       // From the store at click time, not this render's state: a second click
       // before the re-render must step from where the first one left it.
       const latest = chatId ? useChatStore.getState().tutorSessions[chatId]?.state : undefined;
+      const felt = direction === 'down' ? 'high' : 'low';
       const result = await dispatch({
         type: 'adjust_mastery',
         nodeId,
         setTo: contestTarget(confidenceOf(latest ?? state, nodeId), direction),
-        note: `You said the estimate was too ${direction === 'down' ? 'high' : 'low'}.`,
+        note: `You said the estimate felt too ${felt}.`,
       });
-      return result?.ok ? confidenceOf(result.state, nodeId) : undefined;
+      if (!result?.ok) return undefined;
+      // The change stands at once; the line asks the tutor to answer it.
+      await ledger(LEDGER.contested(felt, nameOf(nodeId)));
+      return confidenceOf(result.state, nodeId);
     },
-    [chatId, dispatch, state],
+    [chatId, dispatch, ledger, nameOf, state],
   );
 
-  const onResolveMisconceptionQuietly = useCallback(
+  const onClearMisconception = useCallback(
     async (nodeId: string, misconceptionId: string) => {
-      await dispatch({ type: 'resolve_misconception', nodeId, misconceptionId });
+      const description = state.mastery[nodeId]?.misconceptions.find(
+        (m) => m.id === misconceptionId,
+      )?.description;
+      const result = await dispatch({ type: 'resolve_misconception', nodeId, misconceptionId });
+      if (result?.ok && description) await ledger(LEDGER.clearedUp(description));
     },
-    [dispatch],
+    [dispatch, ledger, state],
   );
 
   const onToggleRightPanel = useCallback(() => {
@@ -240,7 +246,7 @@ export function usePlanCallbacks(): PlanCallbacks {
     onReopenTopic,
     onRequestMorePractice,
     onContestMastery,
-    onResolveMisconceptionQuietly,
+    onClearMisconception,
     onToggleRightPanel,
     onOpenRightPanel,
     onCloseRightPanel,

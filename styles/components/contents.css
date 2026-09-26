@@ -255,7 +255,8 @@
   .hub-topic__correct > span:first-child {
     margin-right: var(--space-1);
   }
-  .hub-topic__choices {
+  /* Too high / Too low, here and under a margin note: one pair, wrapping as one. */
+  .estimate-choices {
     display: inline-flex;
     flex: none;
     gap: var(--space-2);
@@ -305,36 +306,6 @@
   .hub-why__list li.is-now .hub-why__figure {
     color: var(--color-fg);
   }
-  /* History from before the estimate was set directly: folded, and muted
-     when open, since it no longer adds up to the number below. */
-  .hub-why__list.is-history {
-    opacity: 0.65;
-    margin-bottom: var(--space-2);
-    padding-bottom: var(--space-1);
-    border-bottom: 1px solid var(--chrome-rule);
-  }
-  .hub-why__earlier {
-    margin-top: var(--space-1);
-    padding: 0;
-    border: 0;
-    background: transparent;
-    font: inherit;
-    font-size: 0.75rem;
-    color: var(--color-fg-muted);
-    text-decoration: underline;
-    text-decoration-color: var(--rule-light);
-    text-underline-offset: 2px;
-    cursor: pointer;
-  }
-  .hub-why__earlier:hover {
-    color: var(--color-fg);
-  }
-  .hub-why__earlier:focus-visible {
-    outline: none;
-    border-radius: 2px;
-    box-shadow: 0 0 0 2px var(--focus-ring);
-  }
-
   /* Something to clear up: a misconception, said plainly, with the way to
      close it. Crimson rule, the colour of anything wrong. */
   .hub-clear {

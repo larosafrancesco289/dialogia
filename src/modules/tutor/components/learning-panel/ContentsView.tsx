@@ -144,6 +144,10 @@ function ContentsItem({
     ? (mastery?.misconceptions?.filter((m) => !m.resolved) ?? [])
     : [];
   const toClear = openMisconceptions.length;
+  const explanation = open && showMastery ? explain(node.id) : undefined;
+  // The learner's own correction is the latest word on this topic: say what
+  // they told the tutor, rather than offer the same two buttons again.
+  const saidFelt = feltBy(mastery, explanation);
 
   const act = async (fn: () => Promise<unknown>) => {
     setBusy(true);
@@ -193,13 +197,16 @@ function ContentsItem({
             </div>
           )}
 
-          {showMastery && <Why mastery={mastery!} explanation={explain(node.id)} />}
+          {showMastery && <Why mastery={mastery!} explanation={explanation} />}
 
-          {showMastery && affordances.correctMastery && (
+          {showMastery && affordances.correctMastery && saidFelt && (
+            <p className="hub-topic__note">You told the tutor this felt too {saidFelt}.</p>
+          )}
+          {showMastery && affordances.correctMastery && !saidFelt && (
             <div className="hub-topic__correct">
               <span>Seems wrong?</span>
               {/* The pair wraps as one: never "Too high" on a line and "Too low" alone below. */}
-              <span className="hub-topic__choices" role="group" aria-label="Correct the estimate">
+              <span className="estimate-choices" role="group" aria-label="Correct the estimate">
                 <button
                   type="button"
                   className="btn-outline btn-sm"
@@ -248,6 +255,18 @@ function ContentsItem({
 
 type WhyStep = TopicExplanation['steps'][number] & { evidence?: TopicMastery['evidence'][number] };
 
+/** "high" or "low" when the topic's latest evidence is the learner saying its estimate felt off. */
+function feltBy(
+  mastery: TopicMastery | undefined,
+  explanation: TopicExplanation | undefined,
+): 'high' | 'low' | null {
+  const last = mastery?.evidence.at(-1);
+  if (last?.source !== 'learner' || last.kind !== 'adjusted') return null;
+  const step = explanation?.steps.at(-1);
+  if (!step) return null;
+  return step.after < step.before ? 'high' : 'low';
+}
+
 // A step that placed the estimate rather than moving it.
 const isSetting = (evidence: WhyStep['evidence']) =>
   !evidence || (typeof evidence.setTo === 'number' && evidence.kind !== 'misconception');
@@ -263,15 +282,21 @@ function settingLabel(evidence: WhyStep['evidence']): string {
 }
 
 /** One line of "Why N%": what a piece of evidence did, or where it set the estimate. */
-function WhyLine({ step: { evidence, before, after } }: { step: WhyStep }) {
+function WhyLine({ step: { evidence, before, after }, first }: { step: WhyStep; first: boolean }) {
   if (isSetting(evidence)) {
     const details = evidence?.details ? toLearner(evidence.details) : '';
+    // Where it was set from, so the story reads through: 61%, then your 46%.
+    const was = !first && pct(before) !== pct(after) ? `It was ${pct(before)}%.` : '';
+    // The learner's own correction is its own label ("You said the estimate
+    // felt too high."); other settings are named, with their reason under.
+    const own = evidence?.source === 'learner' && evidence.kind === 'adjusted' && !!details;
+    const note = (own ? [was] : [details, was]).filter(Boolean).join(' ');
     return (
       <li className="is-edge">
         <span className="hub-why__figure">{pct(after)}%</span>
         <span>
-          {settingLabel(evidence)}
-          {details && <span className="hub-why__note">{details}</span>}
+          {own ? details : settingLabel(evidence)}
+          {note && <span className="hub-why__note">{note}</span>}
         </span>
       </li>
     );
@@ -292,59 +317,44 @@ function WhyLine({ step: { evidence, before, after } }: { step: WhyStep }) {
 }
 
 /**
- * "Why N%": where the estimate started, each change in the order it came, and
- * where it stands now, so the lines add up in front of the learner. Once the
- * estimate has been set directly (a correction, more practice), the count
- * starts again there; what came before is folded away, since it no longer
- * adds up to today's number.
+ * "Why N%": the whole story, oldest first: where the estimate started, each
+ * change, and where it stands now. A direct setting (a correction, more
+ * practice, a starting estimate) says what it was set from, so a learner who
+ * corrected it still sees why it was what it was, and the count reads on from
+ * the new value.
  */
 function Why({ mastery, explanation }: { mastery: TopicMastery; explanation?: TopicExplanation }) {
-  const [showEarlier, setShowEarlier] = useState(false);
   const start = explanation?.start ?? mastery.confidence;
   const steps: WhyStep[] = (explanation?.steps ?? []).map((step) => ({
     ...step,
     evidence: mastery.evidence.find((entry) => entry.eventId === step.eventId),
   }));
-  const settledAt = explanation?.settledAt ?? -1;
-  const counting = settledAt >= 0 ? steps.slice(settledAt) : steps;
-  const earlier = settledAt >= 0 ? steps.slice(0, settledAt) : [];
-  const startLine = (
-    <li className="is-edge">
-      <span className="hub-why__figure">{pct(start)}%</span>
-      <span>{mastery.baseline != null ? 'Carried over from before' : 'Starting estimate'}</span>
-    </li>
-  );
+  // A starting estimate set by the plan is the start: no prior line above it.
+  const opensWithSetting = steps.length > 0 && isSetting(steps[0].evidence);
+  // A setting as the last line already states today's value.
+  const endsWithSetting = steps.length > 0 && isSetting(steps[steps.length - 1].evidence);
 
   return (
     <div className="hub-why">
       <p className="hub-label">Why {pct(mastery.confidence)}%</p>
-      {settledAt >= 0 && (
-        <button
-          type="button"
-          className="hub-why__earlier"
-          aria-expanded={showEarlier}
-          onClick={() => setShowEarlier((open) => !open)}
-        >
-          {showEarlier ? 'Hide' : 'Show'} what came before
-        </button>
-      )}
-      {settledAt >= 0 && showEarlier && (
-        <ol className="hub-why__list is-history">
-          {startLine}
-          {earlier.map((step, i) => (
-            <WhyLine key={i} step={step} />
-          ))}
-        </ol>
-      )}
       <ol className="hub-why__list">
-        {settledAt < 0 && startLine}
-        {counting.map((step, i) => (
-          <WhyLine key={i} step={step} />
+        {!opensWithSetting && (
+          <li className="is-edge">
+            <span className="hub-why__figure">{pct(start)}%</span>
+            <span>
+              {mastery.baseline != null ? 'Carried over from before' : 'Starting estimate'}
+            </span>
+          </li>
+        )}
+        {steps.map((step, i) => (
+          <WhyLine key={i} step={step} first={i === 0 && opensWithSetting} />
         ))}
-        <li className="is-now">
-          <span className="hub-why__figure">{pct(mastery.confidence)}%</span>
-          <span>Now</span>
-        </li>
+        {!endsWithSetting && (
+          <li className="is-now">
+            <span className="hub-why__figure">{pct(mastery.confidence)}%</span>
+            <span>Now</span>
+          </li>
+        )}
       </ol>
     </div>
   );

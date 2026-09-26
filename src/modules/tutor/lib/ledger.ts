@@ -18,4 +18,8 @@ export const LEDGER = {
   morePractice: (topic: string) => `Asked for more practice: ${topic}`,
   startedTopic: (topic: string) => `Chose what comes next: ${topic}`,
   reopenedTopic: (topic: string) => `Took a topic up again: ${topic}`,
+  markedKnown: (topic: string) => `Marked as known: ${topic}`,
+  contested: (direction: 'high' | 'low', topic: string) =>
+    `Said the estimate felt too ${direction}: ${topic}`,
+  clearedUp: (misconception: string) => `Marked as cleared up: ${misconception.trim()}`,
 } as const;

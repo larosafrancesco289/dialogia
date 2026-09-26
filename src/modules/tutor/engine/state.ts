@@ -130,6 +130,12 @@ export function currentNode(state: TutorState): LearningPlanNode | undefined {
   return state.plan?.nodes.find((n) => n.id === state.currentNodeId);
 }
 
+/** The topic's latest evidence is the learner's own correction of its estimate. */
+export function followsCorrection(state: TutorState, nodeId: string): boolean {
+  const last = state.mastery[nodeId]?.evidence.at(-1);
+  return last?.source === 'learner' && last.kind === 'adjusted';
+}
+
 export function confidenceOf(state: TutorState, nodeId: string): number {
   return state.mastery[nodeId]?.confidence ?? MASTERY_PRIOR;
 }

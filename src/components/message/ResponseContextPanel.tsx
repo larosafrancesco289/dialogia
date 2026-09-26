@@ -62,10 +62,6 @@ export function ResponseContextPanel({
   const hasActivity = orderedActivity.length > 0;
 
   const latestActivity = orderedActivity[orderedActivity.length - 1];
-  const toolRunning =
-    isSearching ||
-    sortedToolCalls.some((call) => call.status === 'pending') ||
-    toolItems.some((item) => item.status === 'pending');
   // Before the reply's first word, the line is the one mark answering for
   // the whole turn: thinking, writing or running a tool, or waiting on the
   // model's next round. Once the words begin below it comes to rest (a tool

@@ -37,6 +37,13 @@ export const STARTING_ESTIMATE_SAID_MAX = PRACTISING;
 /** "Too high" / "Too low" on an estimate moves it by this much, as a direct setting. */
 export const CONTEST_STEP = 0.15;
 
+/**
+ * The first gain on a topic after the learner corrected its estimate counts
+ * this much. Their own sense of the topic is evidence too: one good answer
+ * should move it, not simply undo what they said.
+ */
+export const AFTER_CORRECTION_FACTOR = 0.5;
+
 export const WEIGHT_MIN = -0.5;
 export const WEIGHT_MAX = 0.7;
 

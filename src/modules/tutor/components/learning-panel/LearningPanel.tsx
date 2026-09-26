@@ -26,7 +26,7 @@ export function LearningPanel() {
     onMarkKnown,
     onReopenTopic,
     onContestMastery,
-    onResolveMisconceptionQuietly,
+    onClearMisconception,
     onRequestPlanChanges,
     onCloseRightPanel,
   } = usePlanCallbacks();
@@ -81,7 +81,7 @@ export function LearningPanel() {
             }
             corrections={{
               onContestMastery,
-              onResolveMisconception: onResolveMisconceptionQuietly,
+              onResolveMisconception: onClearMisconception,
             }}
           />
         )}
