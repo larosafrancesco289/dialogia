@@ -96,8 +96,9 @@
     opacity: 0.5;
     cursor: not-allowed;
   }
+  /* Copied: the check in ink. Green is kept for grading a right answer. */
   .message-action-btn.is-success {
-    color: var(--color-success);
+    color: var(--color-fg);
   }
   .message-action-btn.is-success svg {
     animation: fade-in var(--duration-fast) var(--ease-standard) both;
