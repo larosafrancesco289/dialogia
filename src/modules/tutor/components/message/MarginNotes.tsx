@@ -86,31 +86,34 @@ export function MarginNotes({
             <ToClearUp items={misconceptions.filter((m) => m.nodeId === change.nodeId)} />
             {corrected != null ? (
               <p className="margin-note__answer">
+                You told the tutor this felt too {corrected < change.to ? 'high' : 'low'}
                 {current(change.nodeId) === corrected
-                  ? `Now ${percent(corrected)}%, from your correction`
-                  : `You corrected it to ${percent(corrected)}%`}
+                  ? `. Now ${percent(corrected)}%.`
+                  : ` (${percent(corrected)}%).`}
               </p>
             ) : answerable ? (
-              <p className="margin-note__answer">
+              // The same control as the Learning Hub's, in the same words.
+              <div className="margin-note__answer">
                 <span>Seems wrong?</span>
-                <button
-                  type="button"
-                  className="margin-note__contest"
-                  disabled={contesting === change.nodeId}
-                  onClick={() => void contest(change.nodeId, 'down')}
-                >
-                  Too high
-                </button>
-                <span aria-hidden="true">·</span>
-                <button
-                  type="button"
-                  className="margin-note__contest"
-                  disabled={contesting === change.nodeId}
-                  onClick={() => void contest(change.nodeId, 'up')}
-                >
-                  Too low
-                </button>
-              </p>
+                <span className="estimate-choices" role="group" aria-label="Correct the estimate">
+                  <button
+                    type="button"
+                    className="btn-outline btn-sm"
+                    disabled={contesting === change.nodeId}
+                    onClick={() => void contest(change.nodeId, 'down')}
+                  >
+                    Too high
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-outline btn-sm"
+                    disabled={contesting === change.nodeId}
+                    onClick={() => void contest(change.nodeId, 'up')}
+                  >
+                    Too low
+                  </button>
+                </span>
+              </div>
             ) : null}
           </div>
         );

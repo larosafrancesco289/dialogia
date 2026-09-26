@@ -9,6 +9,7 @@ import type {
 } from '@/modules/tutor/engine/events';
 import { buildPlan, slugify, uniqueId } from '@/modules/tutor/engine/plan';
 import {
+  AFTER_CORRECTION_FACTOR,
   LIMITS,
   MASTERY_EVIDENCE_MIN,
   OBSERVATION_KINDS,
@@ -26,6 +27,7 @@ import {
   confidenceOf,
   demonstratedEvidence,
   earlierMistake,
+  followsCorrection,
   openMisconceptions,
   replyRecord,
   startingEstimateCap,
@@ -253,7 +255,11 @@ export function decideTutor(
             : `Change weight to a number from ${WEIGHT_MIN} to 0 (or leave it out for ${OBSERVATION_WEIGHTS[cmd.kind]}), or change kind to one of ${upward} if the learner did well.`,
         );
       }
-      const scaled = observationWeight(cmd.kind, weight, !!cmd.helped);
+      const observed = observationWeight(cmd.kind, weight, !!cmd.helped);
+      const scaled =
+        observed > 0 && followsCorrection(state, node.id)
+          ? observed * AFTER_CORRECTION_FACTOR
+          : observed;
       // A reply that noted a misconception its answer showed gains nothing on the topic.
       const gains = scaled > 0 && !reply?.misconceptions.includes(node.id);
       out.push({

@@ -85,7 +85,7 @@ test('the evidence behind an estimate is counted whole, every source named', () 
   h.tutor({ type: 'record_evidence', kind: 'explained', note: 'Two', source: 'observation' });
   assert.equal(
     evidenceBehind(h.state.mastery.limits.evidence),
-    'one answer, two things the tutor noticed and a starting estimate',
+    'one answer, two things it noticed and a starting estimate',
   );
   assert.equal(evidenceBehind([]), undefined);
 });

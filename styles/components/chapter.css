@@ -175,34 +175,13 @@
   .margin-note__answer {
     display: flex;
     flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.4em;
-    margin: 0.3em 0 0;
+    align-items: center;
+    gap: var(--space-2);
+    margin: var(--space-2) 0 0;
     font-size: 0.75rem;
     color: var(--color-fg-muted);
   }
-  .margin-note__contest {
-    padding: 0;
-    border: 0;
-    background: transparent;
-    font: inherit;
-    color: var(--color-fg-muted);
-    text-decoration: underline;
-    text-decoration-color: var(--rule-light);
-    text-underline-offset: 2px;
-    cursor: pointer;
-  }
-  .margin-note__contest:hover {
-    color: var(--color-fg);
-    text-decoration-color: currentColor;
-  }
-  .margin-note__contest:focus-visible {
-    outline: none;
-    border-radius: 2px;
-    box-shadow: 0 0 0 2px var(--focus-ring);
-  }
-  .margin-note__contest:disabled {
-    cursor: progress;
-    opacity: 0.6;
+  .margin-note__answer > span:first-child {
+    margin-right: var(--space-1);
   }
 }

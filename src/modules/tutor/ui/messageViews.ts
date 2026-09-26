@@ -292,8 +292,8 @@ type EvidenceGroup =
 
 const GROUP_WORDS: Record<EvidenceGroup, (n: number) => string> = {
   answer: (n) => `${countWord(n)} answer${n === 1 ? '' : 's'}`,
-  observation: (n) =>
-    n === 1 ? 'something the tutor noticed' : `${countWord(n)} things the tutor noticed`,
+  // Read after "The tutor puts you at N%, from …", so "it" is the tutor.
+  observation: (n) => (n === 1 ? 'something it noticed' : `${countWord(n)} things it noticed`),
   said: (n) =>
     n === 1 ? 'something you told the tutor' : `${countWord(n)} things you told the tutor`,
   correction: (n) => (n === 1 ? 'your correction' : `${countWord(n)} corrections of yours`),

@@ -4,6 +4,7 @@
 import { apply } from '@/modules/tutor/engine/fold';
 import { nextReadyNode } from '@/modules/tutor/engine/plan';
 import {
+  AFTER_CORRECTION_FACTOR,
   clamp01,
   diagnosticWeight,
   markKnownTarget,
@@ -13,6 +14,7 @@ import {
 import {
   confidenceOf,
   diagnosed,
+  followsCorrection,
   quizFinished,
   startingEstimateCap,
   type TutorState,
@@ -190,7 +192,10 @@ export function decideLearner(
             nodeId: quiz.nodeId,
             source: 'quiz',
             kind: correct ? 'correct_answer' : 'incorrect_answer',
-            weight: quizWeight(correct),
+            weight:
+              correct && followsCorrection(state, quiz.nodeId)
+                ? quizWeight(correct) * AFTER_CORRECTION_FACTOR
+                : quizWeight(correct),
             note: `Quiz, ${correct ? 'right' : 'wrong'}: "${shorten(item.question)}"`,
             ref: { quizId: quiz.quizId, itemId: item.id },
           },

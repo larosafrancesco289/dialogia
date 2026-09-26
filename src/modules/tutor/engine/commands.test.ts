@@ -591,6 +591,28 @@ describe('quizzes', () => {
 });
 
 describe('evidence and misconceptions', () => {
+  test('the first gain after the learner corrects an estimate counts half, so one answer never simply undoes it', () => {
+    const h = teaching();
+    h.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.46 });
+    h.tutor(
+      { type: 'record_evidence', kind: 'applied', note: 'Solved one', source: 'observation' },
+      'reply-1',
+    );
+    // 0.46 + 0.15 × 0.54, where a full "applied" would have reached 0.62.
+    assert.equal(Math.round(h.state.mastery.limits.confidence * 100), 54);
+    h.tutor(
+      { type: 'record_evidence', kind: 'applied', note: 'Solved another', source: 'observation' },
+      'reply-2',
+    );
+    assert.equal(Math.round(h.state.mastery.limits.confidence * 100), 68, 'then full weight again');
+
+    h.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.5 });
+    h.tutor({ type: 'give_quiz', items: QUIZ_ITEMS.slice(0, 1) }, 'reply-3');
+    h.learner({ type: 'answer_quiz_item', quizId: h.state.awaiting!.id, itemId: 'q1', choice: 0 });
+    // A quiz answer too: 0.5 + 0.2 × 0.5.
+    assert.equal(Math.round(h.state.mastery.limits.confidence * 100), 60);
+  });
+
   test('record_evidence counts a step the tutor led them to for less, and never softens a struggle', () => {
     const h = teaching();
     const [a] = h.tutor({
