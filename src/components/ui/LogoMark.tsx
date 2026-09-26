@@ -1,3 +1,6 @@
+import { useMemo, type CSSProperties } from 'react';
+import { liveMarkPhase } from '@/lib/ui/liveMark';
+
 // "Ionic": the two volutes of an Ionic capital drawn as one line. The ink
 // voice curls out of its eye to the join and the gold voice answers into its
 // own; ink is the text colour and gold the accent, so the mark follows the
@@ -11,12 +14,21 @@ const GOLD =
 // Cropped to the line, about 2:1; CSS sizes the mark by its height.
 const VIEWBOX = '4.5 19 55 27.2';
 
-/** `live` sets the gold voice answering on a loop (styles/logo.css). */
+/**
+ * `live` sets the gold voice answering on a loop (styles/logo.css), in step
+ * with every other live mark: a mark that takes another's place (the reply's
+ * waiting mark becoming the reasoning line's, on the same pixel) carries the
+ * line on instead of starting it over.
+ */
 export function LogoMark({ className, live = false }: { className?: string; live?: boolean }) {
+  // Read each time the mark goes live, so the loop joins the shared clock.
+  const phase = useMemo(() => (live ? liveMarkPhase() : undefined), [live]);
+
   return (
     <svg
       viewBox={VIEWBOX}
       className={`logo-mark${live ? ' logo-mark--live' : ''}${className ? ` ${className}` : ''}`}
+      style={phase ? ({ '--logo-phase': phase } as CSSProperties) : undefined}
       aria-hidden="true"
       focusable="false"
     >

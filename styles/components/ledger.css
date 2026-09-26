@@ -4,6 +4,21 @@
      vertical rail that fades from rubric to nothing, like collation marks
      in a manuscript margin. No box; the prose below stays the loudest
      thing on the page. */
+  /* Where the head's mark rests, for the reply's waiting mark to wait on the
+     same pixel: centred in the head's row, the summary's line plus the
+     toggle's padding (a thumb tall on phones). */
+  :root {
+    --ledger-mark-width: 20px;
+    --ledger-mark-height: calc(var(--ledger-mark-width) * 27.2 / 55);
+    --ledger-row: calc(0.9rem * 1.5 + 2 * var(--space-1));
+    --ledger-mark-top: calc((var(--ledger-row) - var(--ledger-mark-height)) / 2);
+  }
+  @media (max-width: 767px) {
+    :root {
+      --ledger-row: var(--touch-target-min);
+    }
+  }
+
   .response-ledger {
     margin: var(--space-3) var(--space-4) var(--space-2);
     font-family: var(--font-sans);
@@ -44,20 +59,40 @@
     border-color: color-mix(in oklab, var(--color-fg) 20%, transparent);
   }
 
-  .response-ledger__glyph {
+  /* The Ionic mark heads the line. At rest it is one rubric stroke, like the
+     book's other marks; while the model works, its gold voice answers, as it
+     does wherever the app waits on the model. */
+  .response-ledger__mark {
     align-self: center;
-    width: 15px;
-    height: 15px;
+    width: var(--ledger-mark-width);
+    height: auto;
+    aspect-ratio: 55 / 27.2;
     flex: none;
     color: var(--color-rubric);
-    transition:
-      color var(--duration-med) var(--ease-standard),
-      opacity var(--duration-med) var(--ease-standard);
+    transition: color var(--duration-med) var(--ease-standard);
   }
-  /* Gold only while the model is still at work, breathing slowly. */
-  .response-ledger.is-live .response-ledger__glyph {
-    color: var(--color-accent);
-    animation: ledger-breathe 2.4s var(--ease-standard) infinite;
+  .response-ledger__mark .logo-mark__voice {
+    transition: stroke var(--duration-med) var(--ease-standard);
+  }
+  .response-ledger__mark .logo-mark__eye {
+    transition: fill var(--duration-med) var(--ease-standard);
+  }
+  .response-ledger:not(.is-live) .response-ledger__mark .logo-mark__voice {
+    stroke: currentColor;
+  }
+  .response-ledger:not(.is-live) .response-ledger__mark .logo-mark__eye {
+    fill: currentColor;
+  }
+  .response-ledger.is-live .response-ledger__mark {
+    color: var(--color-fg-muted);
+  }
+
+  /* Arriving live, the line grows out of the mark, which stays on the pixel
+     where the reply waited (.penWaiting): the words and rule fade in. */
+  .response-ledger.is-arriving .response-ledger__label,
+  .response-ledger.is-arriving .response-ledger__rule,
+  .response-ledger.is-arriving .response-ledger__chevron {
+    animation: fade-in var(--duration-slow) var(--ease-standard) both;
   }
 
   .response-ledger__label {
@@ -166,11 +201,11 @@
     gap: var(--space-2);
     padding: var(--space-2) 0 var(--space-1);
   }
-  /* The rail hangs from the bulb in the head. */
+  /* The rail hangs from the mark in the head. */
   .response-ledger__timeline::before {
     content: '';
     position: absolute;
-    left: 7px;
+    left: 9.5px;
     top: 0;
     bottom: 0;
     width: 1px;
@@ -190,13 +225,13 @@
   .response-ledger__entry {
     position: relative;
     display: grid;
-    grid-template-columns: 15px minmax(0, 1fr) auto;
+    grid-template-columns: 20px minmax(0, 1fr) auto;
     /* The same gap as the head, so the thought starts under the label. */
     column-gap: var(--space-2);
     align-items: baseline;
   }
 
-  /* A thought is a bead on the rail; the bulb above already names it. */
+  /* A thought is a bead on the rail; the label above already names it. */
   .response-ledger__entry-bead {
     align-self: start;
     justify-self: center;
@@ -213,6 +248,7 @@
   .response-ledger__entry-glyph {
     position: relative;
     align-self: start;
+    justify-self: center;
     width: 15px;
     height: 15px;
     margin-top: 2px;
@@ -387,7 +423,7 @@
     }
     /* Tally drops under the entry instead of crowding the query. */
     .response-ledger__entry {
-      grid-template-columns: 15px minmax(0, 1fr);
+      grid-template-columns: 20px minmax(0, 1fr);
     }
     .response-ledger__entry .response-ledger__annotation {
       grid-column: 2;

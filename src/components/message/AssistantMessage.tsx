@@ -137,8 +137,23 @@ export function AssistantMessage({
     messageBody = (
       <div className="markdown" role="status" aria-label="Writing a reply">
         <p>
+          <LogoMark className={`${styles.pen} ${styles.penWaiting}`} live />
+        </p>
+      </div>
+    );
+  } else if (isStreaming && isLatestAssistant && !displayContent && !hasModuleContent) {
+    // Thinking or at a tool, no words yet: the reply keeps the line its first
+    // word will land on, so neither the reasoning's arrival nor the answer's
+    // shifts anything. A tool call being written (a card) keeps the mark there.
+    messageBody = toolCallInFlight(message) ? (
+      <div className="markdown" role="status" aria-label="Still working">
+        <p>
           <LogoMark className={styles.pen} live />
         </p>
+      </div>
+    ) : (
+      <div className="markdown" aria-hidden="true">
+        <p>{'\u00a0'}</p>
       </div>
     );
   } else if ((isStreaming && isLatestAssistant) || rendersAsBlocks(displayContent)) {

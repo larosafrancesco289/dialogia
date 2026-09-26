@@ -184,13 +184,27 @@
 }
 
 /* Waiting for the first word: the mark, small, where the reply will begin.
-   The ink voice is quiet; the gold one answers, since waiting is live. */
+   The ink voice is quiet; the gold one answers, since waiting is live. About
+   x-height tall: the size of the reasoning line's mark, which takes over
+   from it when the model starts to think. */
 .pen {
   display: inline-block;
-  height: 0.62em;
+  height: 0.5em;
   aspect-ratio: 55 / 27.2;
   vertical-align: 0.05em;
   color: var(--color-fg-muted);
+}
+
+/* The first-word wait: on the pixel where the reasoning line's mark rests
+   (the reply's padding matches the ledger's margin; the paragraph's 0.5rem
+   top margin in markdown.css is taken back), so when the model starts to
+   think the mark stays put and the line grows out of it. */
+.penWaiting {
+  width: var(--ledger-mark-width);
+  height: auto;
+  vertical-align: top;
+  position: relative;
+  top: calc(var(--ledger-mark-top) - 0.5rem);
 }
 
 /* Older replies keep their footer out of the way until hovered. */

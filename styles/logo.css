@@ -21,13 +21,15 @@
 
 /* Live (a reply waiting for its first word): the ink voice rests while the
    gold one answers, draws its line into the scroll, holds, and lets it go
-   from the join. The eye appears when the line reaches it. */
+   from the join. The eye appears when the line reaches it. The phase comes
+   from one clock (src/lib/ui/liveMark.ts, the same 3.2s), so
+   a mark that takes another's place carries the line on. */
 .logo-mark--live .logo-mark__voice--close {
   stroke-dasharray: 1;
-  animation: logo-answer 3.2s var(--ease-standard) infinite;
+  animation: logo-answer 3.2s var(--ease-standard) var(--logo-phase, 0s) infinite;
 }
 .logo-mark--live .logo-mark__eye--close {
-  animation: logo-answer-eye 3.2s linear infinite;
+  animation: logo-answer-eye 3.2s linear var(--logo-phase, 0s) infinite;
 }
 
 @keyframes logo-answer {
