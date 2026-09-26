@@ -1,10 +1,6 @@
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  Cog6ToothIcon,
-  PlusIcon,
-} from '@heroicons/react/24/outline';
+import { Cog6ToothIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { ModuleSlot } from '@/components/ModuleSlot';
+import { SidebarIcon } from '@/components/ui/icons';
 import { HeaderDivider } from '@/components/top-header/HeaderDivider';
 import { ModelPickerTrigger } from '@/components/top-header/ModelPickerTrigger';
 import type { TopHeaderState } from '@/components/top-header/useTopHeaderState';
@@ -28,14 +24,11 @@ export function TopHeaderView({
         <button
           className="icon-button"
           aria-label="Toggle sidebar"
+          aria-expanded={!collapsed}
           onClick={onToggleSidebar}
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
-          {collapsed ? (
-            <ChevronRightIcon className="h-5 w-5" />
-          ) : (
-            <ChevronLeftIcon className="h-5 w-5" />
-          )}
+          <SidebarIcon className="h-5 w-5" />
         </button>
 
         <HeaderDivider />

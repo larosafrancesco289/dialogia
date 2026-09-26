@@ -1,4 +1,4 @@
-import { StopIcon, PaperClipIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';
+import { ArrowUpIcon, StopIcon, PaperClipIcon } from '@heroicons/react/24/outline';
 import type { SearchMode } from '@/lib/search/providers/types';
 import type { ReasoningEffort } from '@/lib/types';
 import { ReasoningEffortControl } from '@/components/composer/ReasoningEffortControl';
@@ -113,7 +113,7 @@ export function ComposerActions({
         title="Send"
         disabled={!hasContent}
       >
-        <PaperAirplaneIcon className="h-4 w-4" />
+        <ArrowUpIcon className="h-4 w-4" />
       </button>
     </div>
   );

@@ -63,7 +63,7 @@ export function SourcesEntry({
                 {source.url && (
                   <span className="response-ledger__source-host">{hostname(source.url)}</span>
                 )}
-                <ArrowTopRightOnSquareIcon className="h-3 w-3 shrink-0 text-[var(--color-fg-muted)]" />
+                <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5 shrink-0 text-[var(--color-fg-muted)]" />
               </li>
             ))}
           </ol>
