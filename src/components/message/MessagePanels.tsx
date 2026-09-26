@@ -137,6 +137,9 @@ function buildResponseContextPanel({
   const hasTools = Array.isArray(toolCalls) && toolCalls.length > 0;
 
   if (!shouldRender && !hasSearch && !hasTools) return null;
+  // A turn that only used tools is still at work while it streams: its line
+  // answers for it, reasoning or none.
+  const streaming = shouldStream || (isStreaming && message.id === lastMessageId);
 
   return (
     <ResponseContextPanel
@@ -147,7 +150,8 @@ function buildResponseContextPanel({
       sources={sources}
       expanded={expanded}
       onToggle={onToggle}
-      isStreaming={shouldStream}
+      isStreaming={streaming}
+      answering={!!message.content?.trim()}
     />
   );
 }

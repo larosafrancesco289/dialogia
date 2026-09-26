@@ -21,6 +21,8 @@ type ResponseContextPanelProps = {
   expanded: boolean;
   onToggle: () => void;
   isStreaming?: boolean;
+  /** The reply's words have begun: a tool it runs now is marked where they end. */
+  answering?: boolean;
   provider?: 'Tavily' | 'OpenRouter';
 };
 
@@ -32,6 +34,7 @@ export function ResponseContextPanel({
   expanded,
   onToggle,
   isStreaming = false,
+  answering = false,
 }: ResponseContextPanelProps) {
   const bodyId = useId();
   const revealClass = useRevealOnOpen(expanded);
@@ -63,13 +66,14 @@ export function ResponseContextPanel({
     isSearching ||
     sortedToolCalls.some((call) => call.status === 'pending') ||
     toolItems.some((item) => item.status === 'pending');
-  // Live only while the model is still at work: thinking, or waiting on a
-  // tool. Once the answer begins below, the line comes to rest.
+  // Before the reply's first word, the line is the one mark answering for
+  // the whole turn: thinking, writing or running a tool, or waiting on the
+  // model's next round. Once the words begin below it comes to rest (a tool
+  // run after them is marked where they end), unless the model goes back to
+  // thinking. One live mark at a time, never hopping between two.
   const isLive =
     isStreaming &&
-    (toolRunning ||
-      !latestActivity ||
-      (latestActivity.type === 'reasoning' && latestActivity.status !== 'done'));
+    (!answering || (latestActivity?.type === 'reasoning' && latestActivity.status !== 'done'));
 
   // Opened while the model is at work: the mark is already where the reply
   // waited, and the words fade in beside it (once; later phases do not replay).
@@ -106,7 +110,7 @@ export function ResponseContextPanel({
   // then "Thought for 8 seconds". Without thinking the summary speaks alone
   // ("1 search", or the search's failure).
   const hasThought = hasReasoning || orderedActivity.some((item) => item.type === 'reasoning');
-  const title = isLive ? 'Reasoning' : hasThought ? 'Thought' : null;
+  const title = hasThought ? (isLive ? 'Reasoning' : 'Thought') : null;
 
   return (
     <section

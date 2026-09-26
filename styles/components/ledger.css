@@ -95,11 +95,15 @@
     animation: fade-in var(--duration-slow) var(--ease-standard) both;
   }
 
+  /* One summary line tall whatever it holds (a title alone, a summary
+     alone, both), so the head never changes height as the reply moves from
+     thinking to a tool: the mark stays on its pixel. */
   .response-ledger__label {
     display: flex;
     align-items: baseline;
     gap: var(--space-2);
     min-width: 0;
+    min-height: calc(0.9rem * 1.5);
   }
   .response-ledger__title {
     flex: none;
@@ -254,6 +258,15 @@
   .response-ledger__entry--tool .response-ledger__entry-glyph {
     color: color-mix(in oklab, var(--color-rubric) 75%, var(--color-fg-muted));
   }
+  /* A tool is one line: its glyph, name and time share a centre, so the
+     glyph sits on the name rather than above it. */
+  .response-ledger__entry--tool {
+    align-items: center;
+  }
+  .response-ledger__entry--tool .response-ledger__entry-glyph {
+    align-self: center;
+    margin-top: 0;
+  }
 
   .response-ledger__thought {
     grid-column: 2 / -1;
@@ -281,13 +294,21 @@
     margin-top: 0.9em;
   }
 
+  /* Sized by its own words (a flex line, not the ledger's taller strut), so
+     a name alone is centred on the glyph and an object beside it shares its
+     baseline. */
   .response-ledger__tool-line {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
     min-width: 0;
+    line-height: 1.4;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
   .response-ledger__tool-name {
+    flex: none;
     font-size: 0.6875rem;
     font-weight: 600;
     letter-spacing: 0.1em;
@@ -295,7 +316,9 @@
     color: var(--color-fg-muted);
   }
   .response-ledger__tool-object {
-    margin-left: var(--space-2);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
     font-family: var(--font-serif-assistant);
     font-size: 0.95rem;
     color: var(--color-fg);
@@ -424,6 +447,8 @@
       justify-self: start;
     }
     .response-ledger__tool-line {
+      flex-wrap: wrap;
+      row-gap: 0;
       white-space: normal;
     }
     .response-ledger__source-host {

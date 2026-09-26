@@ -108,6 +108,8 @@ export function AssistantMessage({
   // A canned greeting was never generated: nothing to redo, branch from or edit.
   const canned = !!message.tutorWelcome;
   const resolvedCitationSources = citationSources?.length ? citationSources : undefined;
+  // The reasoning line is up (thinking, or a tool call): its mark does the waiting.
+  const ledgerUp = !!message.reasoning?.trim() || !!message.toolCalls?.length;
 
   let messageBody: ReactNode = null;
   if (isEditing) {
@@ -131,7 +133,7 @@ export function AssistantMessage({
         autoFocus
       />
     );
-  } else if (waitingForFirstToken && message.id === lastMessageId && !displayContent) {
+  } else if (waitingForFirstToken && message.id === lastMessageId && !displayContent && !ledgerUp) {
     // The mark, answering: set where the first word will land, in the reply's
     // own paragraph, so the text arrives exactly where it waited.
     messageBody = (
@@ -144,14 +146,10 @@ export function AssistantMessage({
   } else if (isStreaming && isLatestAssistant && !displayContent && !hasModuleContent) {
     // Thinking or at a tool, no words yet: the reply keeps the line its first
     // word will land on, so neither the reasoning's arrival nor the answer's
-    // shifts anything. A tool call being written (a card) keeps the mark there.
-    messageBody = toolCallInFlight(message) ? (
-      <div className="markdown" role="status" aria-label="Still working">
-        <p>
-          <LogoMark className={styles.pen} live />
-        </p>
-      </div>
-    ) : (
+    // shifts anything. The reasoning line's mark is the one answering meanwhile
+    // (a tool call always puts that line up), so this one stays empty: one
+    // live mark at a time, and it never hops between the two.
+    messageBody = (
       <div className="markdown" aria-hidden="true">
         <p>{'\u00a0'}</p>
       </div>
