@@ -136,116 +136,78 @@
     box-shadow: 0 0 0 2px var(--focus-ring);
   }
 
-  /* Reasoning scale: an upright column of stops on a hairline rail, filled
-     in ink from the foot up to the level in use. Choosing is a setting, so
-     ink, never gold. */
-  .reasoning-scale {
-    --stop-height: 30px;
-    --rail-x: 13px;
+  /* Reasoning effort: a quiet list, the app's ordinary menu, the chosen row
+     with the rubric tick every menu uses. Choosing is a setting, so ink,
+     never gold. */
+  .effort-menu {
     width: 13rem;
     max-width: calc(100vw - 24px);
-    padding: var(--space-3) var(--space-2) var(--space-2);
+    padding: var(--space-1);
   }
-  .reasoning-scale__head {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 0 var(--space-2) var(--space-2);
+  .effort-menu__row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    height: 34px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: var(--radius-inner);
+    background: transparent;
+    font-size: 0.875rem;
+    color: var(--color-fg-muted);
+    text-align: left;
+    cursor: pointer;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard);
   }
-  .reasoning-scale__hint {
+  .effort-menu__row:hover,
+  .effort-menu__row:focus-visible {
+    background: color-mix(in oklab, var(--color-fg) 5%, transparent);
+    color: var(--color-fg);
+    outline: none;
+  }
+  .effort-menu__row[aria-checked='true'] {
+    background: color-mix(in oklab, var(--color-fg) 7%, transparent);
+    box-shadow: inset 2px 0 0 var(--color-rubric);
+    color: var(--color-fg);
+    font-weight: 500;
+  }
+  .effort-menu__row:focus-visible {
+    box-shadow: inset 0 0 0 1.5px var(--focus-ring);
+  }
+  .effort-menu__row[aria-checked='true']:focus-visible {
+    box-shadow:
+      inset 2px 0 0 var(--color-rubric),
+      inset 0 0 0 1.5px var(--focus-ring);
+  }
+  .effort-menu__rule {
+    display: block;
+    margin: var(--space-1) 12px;
+    border-top: 1px solid var(--rule-light);
+  }
+  .effort-menu__default {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--color-fg-muted);
+  }
+  /* What the pointed-at level does, in the book's italic: its voice sets it
+     apart from the choices, so it needs no rule of its own. */
+  .effort-menu__hint {
+    margin: 0;
+    padding: 6px 12px var(--space-2);
     font-family: var(--font-serif-assistant);
     font-style: italic;
     font-size: 0.9375rem;
     line-height: 1.3;
-    color: var(--color-fg);
-  }
-  .reasoning-scale__stops {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-  }
-  /* The rail runs from the centre of the top stop to that of the bottom one. */
-  .reasoning-scale__rail {
-    position: absolute;
-    top: calc(var(--stop-height) / 2);
-    bottom: calc(var(--stop-height) / 2);
-    left: var(--rail-x);
-    width: 1px;
-    display: flex;
-    align-items: flex-end;
-    background: color-mix(in oklab, var(--color-fg) 18%, transparent);
-  }
-  .reasoning-scale__fill {
-    display: block;
-    width: 100%;
-    background: var(--color-fg);
-    transition: height var(--duration-fast) var(--ease-standard);
-  }
-  .reasoning-scale__stop {
-    position: relative;
-    display: grid;
-    grid-template-columns: calc(var(--rail-x) * 2 + 1px) 1fr auto;
-    align-items: center;
-    height: var(--stop-height);
-    padding: 0 var(--space-2) 0 0;
-    border: 0;
-    border-radius: var(--radius-inner);
-    background: transparent;
     color: var(--color-fg-muted);
-    text-align: left;
-    cursor: pointer;
   }
-  .reasoning-scale__stop:hover,
-  .reasoning-scale__stop:focus-visible {
-    color: var(--color-fg);
-    background: color-mix(in oklab, var(--color-fg) 5%, transparent);
-    outline: none;
-  }
-  .reasoning-scale__stop:focus-visible .reasoning-scale__dot {
-    box-shadow: 0 0 0 2px var(--focus-ring);
-  }
-  .reasoning-scale__dot {
-    justify-self: center;
-    width: 9px;
-    height: 9px;
-    border-radius: 999px;
-    border: 1.5px solid color-mix(in oklab, var(--color-fg) 35%, transparent);
-    background: var(--color-surface);
-    transition:
-      transform var(--duration-fast) var(--ease-standard),
-      background-color var(--duration-fast) var(--ease-standard);
-  }
-  .reasoning-scale__stop:hover .reasoning-scale__dot {
-    border-color: var(--color-fg);
-  }
-  .reasoning-scale__stop.is-filled .reasoning-scale__dot {
-    border-color: var(--color-fg);
-    background: var(--color-fg);
-  }
-  .reasoning-scale__stop.is-current .reasoning-scale__dot {
-    transform: scale(1.4);
-    background: var(--color-surface);
-    border-width: 2.5px;
-  }
-  .reasoning-scale__label {
-    font-size: 0.875rem;
-    line-height: 1.2;
-    white-space: nowrap;
-  }
-  .reasoning-scale__stop.is-current .reasoning-scale__label {
-    color: var(--color-fg);
-    font-weight: 600;
-  }
-  .reasoning-scale__default {
-    font-size: 0.625rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--color-rubric);
-  }
-  /* Phones give every button a touch-sized floor; the rail must know it. */
+  /* Phones give every button a touch-sized floor. */
   @media (max-width: 767px) {
-    .reasoning-scale {
-      --stop-height: var(--touch-target-min);
+    .effort-menu__row {
+      height: var(--touch-target-min);
     }
   }
 
@@ -408,8 +370,8 @@
 }
 
 /* Unlayered, like the global :focus-visible outline it replaces: a focused
-   stop shows a ring around its dot, not a box around the whole stop. */
-.reasoning-scale__stop:focus-visible {
+   row shows its own inset ring. */
+.effort-menu__row:focus-visible {
   outline: none;
 }
 
