@@ -408,6 +408,13 @@
   line-height: 1.6;
 }
 
+/* KaTeX sets its maths at 1.21em, tuned for small sans text. Beside the
+   book face it shouted; this matches Latin Modern's x-height to Newsreader's
+   so a formula sits in the line like the words around it. */
+.markdown .katex {
+  font-size: 1.06em;
+}
+
 /* Display maths too wide for the column scrolls in its own frame, like a
    table, instead of pushing the page sideways. The padding leaves room for
    the scrollbar under descenders and for tall fractions and radicals.

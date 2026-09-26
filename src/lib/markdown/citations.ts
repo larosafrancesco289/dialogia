@@ -8,11 +8,31 @@ export type MarkdownCitationSource = {
   description?: string;
 };
 
+// Something only math has between the dollars: a command, a script, a
+// relation or an operator (a spaced minus, so "5-10" stays a range).
+const MATH_SIGNAL_RE = /[\\^_={}+*/<>×÷]|\s[-−]\s/;
+
+/**
+ * Whether the `$` at `start`, before a number, opens inline math: the same
+ * line closes it the way TeX does (no space before the closing `$`, no digit
+ * right after it, so a second price never closes a first) around something
+ * that reads as math. `$391 = 17 \times 23$` is math; `$5 and $10` is not.
+ */
+function opensInlineMath(text: string, start: number): boolean {
+  const lineEnd = text.indexOf('\n', start);
+  const rest = text.slice(start + 1, lineEnd === -1 ? undefined : lineEnd);
+  const close = rest.search(/(?<!\\)\$/);
+  if (close <= 0) return false;
+  if (/\s/.test(rest[close - 1]) || /\d/.test(rest[close + 1] ?? '')) return false;
+  return MATH_SIGNAL_RE.test(rest.slice(0, close));
+}
+
 /**
  * Escape dollar signs that look like currency (e.g. $5, $100, $1.5M)
  * so they don't get interpreted as LaTeX math delimiters.
- * Preserves actual math like $x^2$, $\frac{a}{b}$, $2^n$ or $2$: a number
- * followed by a math operator or a closing `$` is not a price.
+ * Preserves actual math like $x^2$, $\frac{a}{b}$, $2^n$, $2$ or
+ * $391 = 17 \times 23$: a number followed by a math operator or a closing
+ * `$`, or opening a span TeX would close, is not a price.
  */
 export function escapeCurrency(text: string): string {
   // Match $ followed by digit, optional decimals/commas, optional K/M/B suffix
@@ -21,7 +41,8 @@ export function escapeCurrency(text: string): string {
   // literal dollar, which turned every price into "$1".
   return text.replace(
     /\$(\d[\d,]*(?:\.\d+)?[KMBkmb]?)(?![\w^_{}\\$=])/g,
-    (_match, amount: string) => `\\$${amount}`,
+    (match, amount: string, offset: number) =>
+      opensInlineMath(text, offset) ? match : `\\$${amount}`,
   );
 }
 
