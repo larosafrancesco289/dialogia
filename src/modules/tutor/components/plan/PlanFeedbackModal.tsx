@@ -4,7 +4,7 @@ import { useBackToClose } from '@/lib/hooks/useBackToClose';
 import { useModalFocus } from '@/lib/hooks/useModalFocus';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { XMarkIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 export type PlanFeedbackContext =
   | { type: 'plan_proposal' }
@@ -133,7 +133,6 @@ export function PlanFeedbackModal({
                 Cancel
               </button>
               <button onClick={handleSubmit} disabled={!canSubmit} className="btn btn-sm">
-                <PaperAirplaneIcon className="h-4 w-4" />
                 {isSubmitting ? 'Sending…' : 'Send to tutor'}
               </button>
             </div>

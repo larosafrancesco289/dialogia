@@ -45,7 +45,7 @@ export function MobileHeader({
         aria-label="Open chats"
         aria-expanded={drawerOpen}
       >
-        <Bars2Icon className="h-[1.375rem] w-[1.375rem]" aria-hidden="true" />
+        <Bars2Icon className="h-5 w-5" aria-hidden="true" />
       </button>
 
       <div className={styles.center}>
@@ -60,7 +60,7 @@ export function MobileHeader({
       </div>
 
       <button type="button" className={styles.iconButton} onClick={onNewChat} aria-label="New chat">
-        <PlusIcon className="h-[1.375rem] w-[1.375rem]" aria-hidden="true" />
+        <PlusIcon className="h-5 w-5" aria-hidden="true" />
       </button>
     </header>
   );

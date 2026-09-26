@@ -50,6 +50,17 @@ html {
 /* Links: ink, underlined in rubric; gold would claim they are live. In the
    base layer so any component can restyle its own links. */
 @layer base {
+  /* Icons: one pen for every glyph. Heroicons draws a 1.5 stroke on a
+     24-unit grid, so its weight followed the icon's size (0.75px at 12px,
+     1.4px at 22px) and small icons looked spindly beside large ones. The
+     stroke is held at the Ionic mark's own line weight at every size. */
+  svg[data-slot='icon'] {
+    stroke-width: 1.3px;
+  }
+  svg[data-slot='icon'] > * {
+    vector-effect: non-scaling-stroke;
+  }
+
   a {
     color: inherit;
     text-decoration: underline;
