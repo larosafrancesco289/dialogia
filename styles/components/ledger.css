@@ -343,6 +343,17 @@
   .response-ledger__annotation.is-error {
     color: var(--color-danger);
   }
+  /* A failure's message: its own line under the name, wrapping. */
+  .response-ledger__tool-detail {
+    grid-column: 2 / -1;
+    font-size: 0.75rem;
+    line-height: 1.45;
+    color: var(--color-fg-muted);
+    overflow-wrap: anywhere;
+  }
+  .response-ledger__tool-detail.is-error {
+    color: var(--color-danger);
+  }
 
   .response-ledger__pulse {
     display: inline-block;

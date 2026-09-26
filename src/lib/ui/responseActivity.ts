@@ -88,7 +88,7 @@ export function titleForSource(source: { title?: string; url?: string }) {
 
 function labelForTool(call: ToolCallLogEntry) {
   if (call.name === 'web_search') return 'Searching the web';
-  return call.name.replace(/_/g, ' ');
+  return toolDisplayName(call.name);
 }
 
 export function toolDisplayName(name: string) {
@@ -112,9 +112,11 @@ export function toolObject(item: ToolActivityItem) {
   return '';
 }
 
+// A wait worth noting: a tool that answers in milliseconds (the tutor's own
+// bookkeeping) needs no clock beside it.
 function formatDuration(duration?: number) {
-  if (typeof duration !== 'number' || !Number.isFinite(duration) || duration <= 0) return '';
-  return duration >= 1000 ? `${(duration / 1000).toFixed(1)}s` : `${Math.round(duration)}ms`;
+  if (typeof duration !== 'number' || !Number.isFinite(duration) || duration < 1000) return '';
+  return `${(duration / 1000).toFixed(1)}s`;
 }
 
 function toolResultCount(item: ToolActivityItem) {
@@ -123,23 +125,34 @@ function toolResultCount(item: ToolActivityItem) {
   return undefined;
 }
 
+/**
+ * What a tool row says beside its name, and anything that needs a line of its
+ * own under it. A tutor tool the engine refused is the model's move declined
+ * by the session's rules (the model reads why and carries on), not a failure:
+ * it says so quietly, with the reason, which is addressed to the model, kept
+ * to a tooltip. A real failure keeps the error colour and its message on its
+ * own line, so it never squeezes the name.
+ */
 export function toolAnnotation(item: ToolActivityItem): {
   text: string;
   live?: boolean;
   error?: boolean;
+  detail?: string;
+  hint?: string;
 } {
   if (item.status === 'pending') {
     return { text: item.name === 'web_search' ? 'Searching' : 'Running', live: true };
   }
   if (item.status === 'error') {
-    return { text: item.error || 'Failed', error: true };
+    if (item.category === 'tutor') return { text: 'Not applied', hint: item.error };
+    return { text: 'Failed', error: true, detail: item.error };
   }
   if (item.name === 'web_search') {
     const results = toolResultCount(item);
     return { text: `${results ?? 0} result${results === 1 ? '' : 's'}` };
   }
   if (typeof item.metadata?.notes === 'string') return { text: item.metadata.notes };
-  return { text: formatDuration(item.duration) || 'Done' };
+  return { text: formatDuration(item.duration) };
 }
 
 function activityFromToolCall(call: ToolCallLogEntry): ToolActivityItem {
