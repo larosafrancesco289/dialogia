@@ -257,7 +257,7 @@ export function ModelPicker({
         <input
           ref={inputRef}
           className="model-picker__input"
-          placeholder="Search every model"
+          placeholder="Search models"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           aria-label="Search models"

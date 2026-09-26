@@ -110,12 +110,12 @@ export function AppearancePanel(props: AppearancePanelProps) {
           <ToggleSwitch
             checked={showStats}
             onChange={setShowStats}
-            label="Show the colophon"
+            label="Show reply details"
             description="A line under each reply: which model wrote it, how fast, and what it cost."
           />
           <div className="settings-row">
             <div className="settings-row-label">
-              <div className="settings-row-label-text">The introduction</div>
+              <div className="settings-row-label-text">Intro tour</div>
               <div className="settings-row-label-description">
                 The short tour from your first visit.
               </div>
@@ -124,10 +124,10 @@ export function AppearancePanel(props: AppearancePanelProps) {
               <button
                 type="button"
                 className="btn-ghost btn-sm"
-                aria-label="Show the introduction again"
+                aria-label="Show the intro tour"
                 onClick={onShowIntro}
               >
-                Show again
+                Show
               </button>
             </div>
           </div>

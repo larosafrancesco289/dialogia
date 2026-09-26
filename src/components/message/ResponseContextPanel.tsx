@@ -1,10 +1,5 @@
 import { useId, useMemo, useState } from 'react';
-import {
-  CheckIcon,
-  ChevronDownIcon,
-  ClipboardIcon,
-  ExclamationCircleIcon,
-} from '@heroicons/react/24/outline';
+import { CheckIcon, ChevronDownIcon, ClipboardIcon } from '@heroicons/react/24/outline';
 import type { MessageActivityItem, ToolCallLogEntry } from '@/lib/types';
 import { copyText } from '@/lib/clipboard';
 import {
@@ -107,10 +102,11 @@ export function ResponseContextPanel({
   };
 
   const showSourcesEntry = hasSources || isSearching || hasSearchError;
-  // The label names the phase: "Reasoning" only while the model is at it,
-  // then what it came to ("Thought for 8 seconds", "Used 1 search").
+  // The label names the thinking: "Reasoning" while the model is at it,
+  // then "Thought for 8 seconds". Without thinking the summary speaks alone
+  // ("1 search", or the search's failure).
   const hasThought = hasReasoning || orderedActivity.some((item) => item.type === 'reasoning');
-  const title = isLive ? 'Reasoning' : hasThought ? 'Thought' : 'Used';
+  const title = isLive ? 'Reasoning' : hasThought ? 'Thought' : null;
 
   return (
     <section
@@ -126,20 +122,17 @@ export function ResponseContextPanel({
         >
           <LogoMark className="response-ledger__mark" live={isLive} />
           <span className="response-ledger__label">
-            <span className="response-ledger__title">{title}</span>
+            {title && <span className="response-ledger__title">{title}</span>}
             {summary && (
               // Keyed while live so each new line of thought fades in.
-              <span key={isLive ? summary : 'rest'} className="response-ledger__summary">
+              <span
+                key={isLive ? summary : 'rest'}
+                className={`response-ledger__summary${hasSearchError ? ' is-error' : ''}`}
+              >
                 {summary}
               </span>
             )}
           </span>
-          {hasSearchError && !expanded && (
-            <span className="response-ledger__error">
-              <ExclamationCircleIcon className="h-3.5 w-3.5" />
-              Search failed
-            </span>
-          )}
           <span className="response-ledger__rule" aria-hidden="true" />
           <ChevronDownIcon className={`response-ledger__chevron${expanded ? ' is-open' : ''}`} />
         </button>

@@ -226,8 +226,7 @@ export function AssistantMessage({
                   {displayContent.trim()
                     ? 'The reply was cut short by a safety classifier.'
                     : 'A safety classifier blocked this request before the model could answer.'}
-                  {message.stopPolicy ? ` Flagged policy: ${message.stopPolicy}.` : ''} Rewording
-                  your message and sending it again usually resolves this.
+                  {message.stopPolicy ? ` Flagged policy: ${message.stopPolicy}.` : ''}
                 </p>
               </div>
             </div>
@@ -239,7 +238,7 @@ export function AssistantMessage({
                 </button>
                 <button className="btn-ghost btn-sm" onClick={() => onChooseRegenerateModel()}>
                   <ArrowPathIcon className="h-3.5 w-3.5" />
-                  Retry as-is
+                  Try again
                 </button>
               </div>
             )}
@@ -257,7 +256,7 @@ export function AssistantMessage({
           <div className="px-4 pb-2">
             <button className="btn-outline btn-sm" onClick={() => onChooseRegenerateModel()}>
               <ArrowPathIcon className="h-3.5 w-3.5" />
-              No answer yet. Ask again
+              Try again
             </button>
           </div>
         )}
@@ -292,8 +291,8 @@ export function AssistantMessage({
               {!canned && (
                 <ActionButton
                   icon={<ArrowUturnRightIcon className="h-4 w-4" />}
-                  title="Continue in a new chat from here"
-                  ariaLabel="Branch chat from here"
+                  title="Branch in a new chat"
+                  ariaLabel="Branch in a new chat"
                   onClick={branchFromMessage}
                   disabled={isChatStreaming}
                 />

@@ -127,14 +127,8 @@
     animation: rise-in var(--duration-med) var(--ease-standard) both;
   }
 
-  .response-ledger__error {
-    flex: none;
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
+  /* A failed search is said once, by the summary, in the error colour. */
+  .response-ledger .response-ledger__summary.is-error {
     color: var(--color-danger);
   }
 

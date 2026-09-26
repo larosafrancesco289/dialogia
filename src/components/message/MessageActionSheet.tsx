@@ -124,7 +124,7 @@ export function MessageActionSheet({
                 onClose();
               }}
             >
-              Branch to a new chat
+              Branch in a new chat
             </SheetItem>
           </>
         )}
