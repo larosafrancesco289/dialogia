@@ -1,8 +1,7 @@
 /* WelcomeHero: the opening page of a dialogue.
-   One centred column: the mark, a chapter-style count, the headline, the
-   composer, a few quiet suggestions, and a colophon at the foot. The only
-   motion is the opening: the two voices of the mark glide together while the
-   rest of the page settles in.
+   One centred group on empty paper: the mark, the headline, the composer.
+   The only motion is the opening: the two voices of the mark glide together
+   while the rest of the page settles in.
 */
 
 .hero {
@@ -46,16 +45,6 @@
   color: var(--color-fg);
 }
 
-.kicker {
-  margin: 0 0 var(--space-4);
-  font-family: var(--font-serif-assistant);
-  font-size: 0.7rem;
-  font-weight: 500;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--color-rubric);
-}
-
 .headline {
   margin: 0;
   font-family: var(--font-serif-assistant);
@@ -81,57 +70,6 @@
   width: 100%;
 }
 
-.prompts {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  margin-top: var(--space-5);
-}
-
-.prompt {
-  padding: var(--space-1) 0;
-  background: none;
-  border: 0;
-  font-family: var(--font-serif-assistant);
-  font-style: italic;
-  font-size: 1.02rem;
-  color: var(--color-fg-muted);
-  cursor: pointer;
-  transition: color var(--duration-fast) var(--ease-standard);
-}
-
-.prompt:hover {
-  color: var(--color-fg);
-}
-
-.prompt:focus-visible {
-  outline: none;
-  border-radius: 2px;
-  box-shadow: 0 0 0 2px var(--focus-ring);
-}
-
-.prompt + .prompt::before {
-  content: '\00B7';
-  display: inline-block;
-  margin: 0 0.9rem;
-  font-style: normal;
-  color: var(--color-fg-muted);
-}
-
-.colophon {
-  position: absolute;
-  bottom: var(--space-6);
-  left: 0;
-  right: 0;
-  margin: 0;
-  font-family: var(--font-serif-assistant);
-  font-size: 0.64rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--color-rubric);
-  opacity: 0.8;
-}
-
 /* ===== Opening motion =====
    Under a second: the ink voice draws out of its scroll to the join, gold
    answers, and the page settles in a short stagger beneath it. */
@@ -145,25 +83,17 @@
 .mark :global(.logo-mark__eye--close) {
   animation: settle-eye var(--duration-fast) var(--ease-standard) 900ms both;
 }
-.kicker,
 .headline,
-.composer,
-.prompts {
+.composer {
   /* backwards, not both: a held transform would make each block its own
      layer, and the prompts would paint over the composer's menus. */
   animation: settle var(--duration-slow) var(--ease-standard) backwards;
-}
-.kicker {
-  animation-delay: 80ms;
 }
 .headline {
   animation-delay: 120ms;
 }
 .composer {
   animation-delay: 180ms;
-}
-.prompts {
-  animation-delay: 240ms;
 }
 
 @keyframes voice-draw {
@@ -194,10 +124,8 @@
 @media (prefers-reduced-motion: reduce) {
   .mark :global(.logo-mark__voice),
   .mark :global(.logo-mark__eye--close),
-  .kicker,
   .headline,
-  .composer,
-  .prompts {
+  .composer {
     animation: none;
   }
 }
@@ -247,45 +175,4 @@
   letter-spacing: 0;
   color: var(--color-fg);
   margin: 0;
-}
-
-/* Mobile quick starts: the desktop's italic prompts, sized for a thumb. */
-.heroMobileQuickStarts {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--space-2);
-}
-
-.heroMobileChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: var(--control-lg);
-  padding: var(--space-2) var(--space-2);
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius-editorial);
-  font-family: var(--font-serif-assistant);
-  font-style: italic;
-  font-size: 0.95rem;
-  color: var(--color-fg-muted);
-  cursor: pointer;
-  transition:
-    background-color var(--duration-fast) var(--ease-standard),
-    transform var(--duration-fast) var(--ease-out-quint);
-}
-
-.heroMobileChip:hover {
-  background: color-mix(in oklab, var(--color-fg) 5%, transparent);
-  color: var(--color-fg);
-}
-
-.heroMobileChip:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--focus-ring);
-}
-
-.heroMobileChip:active {
-  background: color-mix(in oklab, var(--color-fg) 9%, transparent);
 }

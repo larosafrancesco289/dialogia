@@ -60,7 +60,6 @@ export function Composer({
     setUI,
     setNotice,
     overrides,
-    composerDraft,
   } = useChatStore(
     (s) => ({
       send: s.sendUserMessage,
@@ -75,7 +74,6 @@ export function Composer({
       setUI: s.setUI,
       setNotice: s.setNotice,
       overrides: s.ui.overrides,
-      composerDraft: s.ui.composerDraft,
     }),
     shallow,
   );
@@ -151,16 +149,6 @@ export function Composer({
       delete recoveredAttachmentsByScopeRef.current[draftScopeKey];
     }
   }, [draftScopeKey, replaceAttachments, text]);
-
-  // Consume pending composer draft from store (e.g., from quick start buttons)
-  useEffect(() => {
-    if (composerDraft == null) return;
-    setText(composerDraft);
-    writeDraft(activeDraftScopeRef.current, composerDraft);
-    setUI({ composerDraft: undefined });
-    // Focus the textarea after filling
-    setTimeout(() => taRef.current?.focus(), 0);
-  }, [composerDraft, setUI]);
 
   const { handleSubmit } = useComposerShortcuts({
     chat,
