@@ -27,14 +27,19 @@ export function SidebarIcon(props: SVGProps<SVGSVGElement>) {
 }
 
 /**
- * Reasoning effort as a level meter: four bars rising left to right, the
- * first `filled` in ink and the rest faint. (A column of dots, like the
- * effort menu's own scale, read as the "more" icon at Max.)
+ * Reasoning effort as a level meter: one bar per level the model offers
+ * above Off, rising left to right, the first `filled` in ink and the rest
+ * faint. (A column of dots read as the "more" icon at the top level.)
  */
 export function EffortMeterIcon({
+  levels,
   filled,
   ...props
-}: SVGProps<SVGSVGElement> & { filled: number }) {
+}: SVGProps<SVGSVGElement> & { levels: number; filled: number }) {
+  const count = Math.max(1, levels);
+  const gap = 1.4;
+  const width = Math.min(2.6, (15 - gap * (count - 1)) / count);
+  const start = 12 - (count * width + (count - 1) * gap) / 2;
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -44,16 +49,16 @@ export function EffortMeterIcon({
       data-slot="icon"
       {...props}
     >
-      {[0, 1, 2, 3].map((bar) => {
-        const height = 5 + bar * 4;
+      {Array.from({ length: count }, (_, bar) => {
+        const height = count === 1 ? 14 : 5 + (11 * bar) / (count - 1);
         return (
           <rect
             key={bar}
-            x={4.25 + bar * 4.5}
-            y={20 - height}
-            width={2.5}
+            x={start + bar * (width + gap)}
+            y={19.5 - height}
+            width={width}
             height={height}
-            rx={1.25}
+            rx={width / 2}
             opacity={bar < filled ? 1 : 0.28}
           />
         );

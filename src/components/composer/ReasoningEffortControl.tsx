@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { motionTransition } from '@/lib/ui/motion';
 import type { ReasoningEffort } from '@/lib/types';
@@ -12,11 +12,12 @@ const effortLabel = (e: ReasoningEffort) =>
 const DEFAULT_EFFORTS: ReasoningEffort[] = ['none', 'low', 'medium', 'high'];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Reasoning effort: an upright scale in a popover, rising from the button:
-// Off at the foot, the most thought at the head. Stops sit on a hairline rail
-// filled in ink up to the level in use; each is named beside its stop, the
-// model's default marked in rubric; one italic line says what the pointed-at
-// level does. Arrow keys walk the scale.
+// Reasoning effort: a quiet list rising from the button, the most thought at
+// the head and Off (when the model allows it) at the foot. Only the levels
+// this model offers are listed, Off set apart by a hairline. The chosen row
+// takes the tick every menu uses and the model's default is a quiet word.
+// One italic line at the head says what the pointed-at level does. Arrow keys
+// walk the list.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const EFFORT_HINT: Record<ReasoningEffort, string> = {
@@ -29,8 +30,13 @@ const EFFORT_HINT: Record<ReasoningEffort, string> = {
   max: 'Take all the time it needs',
 };
 
+/** How far up this model's levels an effort sits: 0 for Off, n for the top. */
+function effortRank(levels: ReasoningEffort[], effort: ReasoningEffort): number {
+  return levels.indexOf(effort) + 1;
+}
+
 type ReasoningMenuProps = {
-  availableEfforts?: ReasoningEffort[];
+  efforts: ReasoningEffort[];
   defaultEffort?: ReasoningEffort;
   currentEffort?: ReasoningEffort;
   onSelect: (e: ReasoningEffort) => void;
@@ -39,28 +45,27 @@ type ReasoningMenuProps = {
 };
 
 function ReasoningMenu({
-  availableEfforts,
+  efforts,
   defaultEffort,
   currentEffort,
   onSelect,
   onClose,
   menuRef,
 }: ReasoningMenuProps) {
-  const efforts: ReasoningEffort[] = availableEfforts?.length ? availableEfforts : DEFAULT_EFFORTS;
   const currentIndex = Math.max(0, efforts.indexOf(currentEffort ?? 'none'));
   const [focusIndex, setFocusIndex] = useState(currentIndex);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const [shift, setShift] = useState(0);
   const shown = efforts[previewIndex ?? currentIndex];
-  const stopsRef = useRef<Array<HTMLButtonElement | null>>([]);
+  const rowsRef = useRef<Array<HTMLButtonElement | null>>([]);
   // Mounted only while open, so Back puts it away.
   useBackToClose(true, onClose);
 
   useEffect(() => {
-    stopsRef.current[currentIndex]?.focus();
+    rowsRef.current[currentIndex]?.focus();
   }, [currentIndex]);
 
-  // Keep the scale on screen: the button may sit anywhere along the row.
+  // Keep the list on screen: the button may sit anywhere along the row.
   useLayoutEffect(() => {
     const rect = menuRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -72,11 +77,9 @@ function ReasoningMenu({
     const next = Math.max(0, Math.min(efforts.length - 1, to));
     setFocusIndex(next);
     setPreviewIndex(next);
-    stopsRef.current[next]?.focus();
+    rowsRef.current[next]?.focus();
   };
 
-  // The filled part of the rail rises from the lowest stop to the chosen one.
-  const fill = efforts.length > 1 ? (currentIndex / (efforts.length - 1)) * 100 : 0;
   // Drawn top-down, so the list runs from the most thought to none.
   const rows = efforts.map((e, index) => ({ e, index })).reverse();
 
@@ -85,15 +88,15 @@ function ReasoningMenu({
       ref={menuRef}
       role="radiogroup"
       aria-label="Reasoning effort"
-      className="popover popover--motion reasoning-scale absolute bottom-full left-0 z-30 mb-2"
-      style={{ ['--stops' as string]: efforts.length, translate: `${shift}px 0` }}
+      className="popover popover--motion effort-menu absolute bottom-full left-0 z-30 mb-2"
+      style={{ translate: `${shift}px 0` }}
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 4 }}
       transition={motionTransition.quick}
       onKeyDown={(event) => {
         // Read the position from focus, not state, so quick presses add up.
-        const at = stopsRef.current.indexOf(document.activeElement as HTMLButtonElement);
+        const at = rowsRef.current.indexOf(document.activeElement as HTMLButtonElement);
         const from = at >= 0 ? at : focusIndex;
         if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
           event.preventDefault();
@@ -118,29 +121,24 @@ function ReasoningMenu({
       }}
       onMouseLeave={() => setPreviewIndex(null)}
     >
-      <div className="reasoning-scale__head">
-        <span className="menu-heading p-0">Reasoning</span>
-        <span className="reasoning-scale__hint" aria-live="polite">
-          {EFFORT_HINT[shown]}
-        </span>
-      </div>
-      <div className="reasoning-scale__stops">
-        <span className="reasoning-scale__rail" aria-hidden="true">
-          <span className="reasoning-scale__fill" style={{ height: `${fill}%` }} />
-        </span>
-        {rows.map(({ e, index }) => (
+      <p className="effort-menu__hint" aria-live="polite">
+        {EFFORT_HINT[shown]}
+      </p>
+      {rows.map(({ e, index }) => (
+        <Fragment key={e}>
+          {/* Off is not a level of thought but none: a hairline sets it apart. */}
+          {e === 'none' && efforts.length > 1 && (
+            <span className="effort-menu__rule" aria-hidden="true" />
+          )}
           <button
-            key={e}
             ref={(node) => {
-              stopsRef.current[index] = node;
+              rowsRef.current[index] = node;
             }}
             type="button"
             role="radio"
             aria-checked={index === currentIndex}
             tabIndex={index === focusIndex ? 0 : -1}
-            className={`reasoning-scale__stop${index <= currentIndex ? ' is-filled' : ''}${
-              index === currentIndex ? ' is-current' : ''
-            }`}
+            className="effort-menu__row"
             aria-label={defaultEffort === e ? `${effortLabel(e)} (model default)` : effortLabel(e)}
             onMouseEnter={() => setPreviewIndex(index)}
             onFocus={() => setPreviewIndex(index)}
@@ -149,21 +147,16 @@ function ReasoningMenu({
               onClose();
             }}
           >
-            <span className="reasoning-scale__dot" aria-hidden="true" />
-            <span className="reasoning-scale__label">{effortLabel(e)}</span>
-            {defaultEffort === e && (
-              <span className="reasoning-scale__default" title="The model's default">
-                default
-              </span>
-            )}
+            <span>{effortLabel(e)}</span>
+            {defaultEffort === e && <span className="effort-menu__default">default</span>}
           </button>
-        ))}
-      </div>
+        </Fragment>
+      ))}
     </motion.div>
   );
 }
 
-/** The composer's reasoning effort button and the scale it opens. */
+/** The composer's reasoning effort button and the list it opens. */
 export function ReasoningEffortControl({
   availableEfforts,
   defaultEffort,
@@ -192,12 +185,9 @@ export function ReasoningEffortControl({
 
   const effort: ReasoningEffort = currentEffort ?? 'none';
   const reasoningActive = effort !== 'none';
-  // The meter's four bars stand for this model's own levels above Off.
-  const levels: ReasoningEffort[] = (availableEfforts ?? DEFAULT_EFFORTS).filter(
-    (e) => e !== 'none',
-  );
-  const rank = levels.indexOf(effort) + 1;
-  const filled = !reasoningActive ? 0 : rank > 0 ? Math.ceil((4 * rank) / levels.length) : 2;
+  const efforts: ReasoningEffort[] = availableEfforts?.length ? availableEfforts : DEFAULT_EFFORTS;
+  // The meter has one bar per level this model offers above Off.
+  const levels = efforts.filter((e) => e !== 'none');
 
   return (
     <div>
@@ -212,13 +202,17 @@ export function ReasoningEffortControl({
         onClick={() => setReasoningOpen((v) => !v)}
       >
         {/* A level meter filled to the effort; the word beside it names it. */}
-        <EffortMeterIcon className="h-4 w-4" filled={filled} />
+        <EffortMeterIcon
+          className="h-4 w-4"
+          levels={levels.length}
+          filled={effortRank(levels, effort)}
+        />
         {reasoningActive && <span className="composer-tool-label">{effortLabel(effort)}</span>}
       </button>
       <AnimatePresence>
         {reasoningOpen && (
           <ReasoningMenu
-            availableEfforts={availableEfforts}
+            efforts={efforts}
             defaultEffort={defaultEffort}
             currentEffort={effort}
             onSelect={(e) => void onSelectEffort(e)}
