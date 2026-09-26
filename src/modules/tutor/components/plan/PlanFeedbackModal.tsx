@@ -50,7 +50,7 @@ export function PlanFeedbackModal({
 
   const isPhaseContext = context.type === 'phase';
   const title = 'Tell the tutor what to change';
-  const subtitle = isPhaseContext ? `About ${context.phaseName}` : 'Your plan is yours to reshape.';
+  const subtitle = isPhaseContext ? `About ${context.phaseName}` : null;
   const placeholder = isPhaseContext
     ? `Go deeper on something before moving on, reorder the topics, or add groundwork if ${context.phaseName} feels too advanced.`
     : 'More practice on the fundamentals, skipping what you already know, or a different focus.';
@@ -102,7 +102,7 @@ export function PlanFeedbackModal({
                 <h3 id="feedback-dialog-title" className="dialog__title">
                   {title}
                 </h3>
-                <p className="dialog__lead">{subtitle}</p>
+                {subtitle && <p className="dialog__lead">{subtitle}</p>}
               </div>
               <button
                 type="button"

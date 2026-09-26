@@ -1,8 +1,9 @@
 @layer components {
-  /* ===== Learning Hub contents — the plan as a table of contents =====
-     Numbered topics in plan order, each with a hairline ink meter. Gold
-     marks only the topic in progress. Opening a topic shows the evidence
-     behind its estimate. Nothing here asks for action; Revise does. */
+  /* ===== Learning Hub: the plan as a path =====
+     Topics in plan order as stops on a line: a check once done, a ring
+     where the learner is. Every state is said in words, every estimate is
+     a number with an ink meter. Opening a topic shows what it covers and
+     the evidence behind its estimate. Changing the plan lives in Edit. */
   .learning-panel__title-row {
     flex: 1;
     gap: var(--space-2);
@@ -43,329 +44,329 @@
   }
 
   .hub-contents {
-    padding: var(--space-4) var(--space-4) var(--space-6);
+    padding: var(--space-5) var(--space-5) var(--space-6);
   }
-  .hub-contents__intro {
-    margin-bottom: var(--space-4);
-  }
-  .hub-contents__goal {
+  .hub-label {
     margin: 0;
-    font-family: var(--font-serif-assistant);
-    font-style: italic;
-    font-size: 1.05rem;
-    line-height: 1.4;
-    text-wrap: balance;
-    color: var(--color-fg);
-  }
-  .hub-contents__meta {
-    margin: var(--space-1) 0 0;
-    font-size: 0.8125rem;
-    font-variant-numeric: tabular-nums;
-    color: var(--color-fg-muted);
-  }
-
-  .hub-contents__list {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    border-top: 1px solid var(--chrome-rule);
-  }
-  .hub-contents__item {
-    border-bottom: 1px solid var(--chrome-rule);
-  }
-  .hub-contents__row {
-    display: grid;
-    grid-template-columns: 1.5rem minmax(0, 1fr) auto;
-    align-items: baseline;
-    gap: var(--space-2);
-    width: 100%;
-    padding: 0.7rem 0;
-    border: 0;
-    background: transparent;
-    text-align: left;
-    color: var(--color-fg);
-    cursor: pointer;
-  }
-  .hub-contents__row:focus-visible {
-    outline: none;
-    border-radius: var(--radius-editorial);
-    box-shadow: 0 0 0 2px var(--focus-ring);
-  }
-  .hub-contents__num {
-    font-family: var(--font-serif-assistant);
-    font-variant-numeric: oldstyle-nums;
-    font-size: 0.95rem;
-    color: var(--color-rubric);
-  }
-  /* The topic in hand is a place, not something live: ink, like every
-     selection, where the other numerals are rubric. */
-  .hub-contents__item.is-current .hub-contents__num {
-    color: var(--color-fg);
-  }
-  .hub-contents__num.is-done {
-    font-family: var(--font-sans);
-    font-size: 0.8125rem;
-    color: var(--color-fg-muted);
-  }
-  .hub-contents__label {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    min-width: 0;
-  }
-  .hub-contents__name {
-    font-size: 0.9375rem;
-    font-weight: 500;
-    line-height: 1.3;
-    text-wrap: pretty;
-  }
-  .hub-contents__row:hover .hub-contents__name {
-    text-decoration: underline;
-    text-decoration-color: var(--rule-light);
-    text-underline-offset: 3px;
-  }
-  .hub-contents__item.is-locked .hub-contents__name,
-  .hub-contents__item.is-untouched .hub-contents__name {
-    font-weight: 400;
-    color: var(--color-fg-muted);
-  }
-  .hub-contents__flag {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1rem;
-    height: 1rem;
-    margin-left: 0.4rem;
-    border: 1px solid color-mix(in oklab, var(--color-danger) 55%, transparent);
-    border-radius: 50%;
-    vertical-align: 0.1em;
-    font-size: 0.625rem;
-    font-weight: 600;
-    line-height: 1;
-    color: var(--color-danger);
-  }
-  .hub-contents__after {
-    font-size: 0.75rem;
-    color: var(--color-fg-muted);
-  }
-  .hub-contents__meter {
-    display: block;
-    height: 2px;
-    margin-top: 0.1rem;
-    background: color-mix(in oklab, var(--color-fg) 10%, transparent);
-    border-radius: 1px;
-    overflow: hidden;
-  }
-  .hub-contents__meter > span {
-    display: block;
-    height: 100%;
-    background: color-mix(in oklab, var(--color-fg) 55%, transparent);
-    transform-origin: left center;
-    transition: transform var(--duration-slow) var(--ease-out-expo);
-  }
-  .hub-contents__item.is-current .hub-contents__meter > span {
-    background: var(--color-fg);
-  }
-  .hub-contents__meter.is-weak > span {
-    background: var(--color-danger);
-  }
-  .hub-contents__pct {
-    font-size: 0.8125rem;
-    font-variant-numeric: tabular-nums;
-    color: var(--color-fg-muted);
-  }
-  .hub-contents__pct.is-weak {
-    color: var(--color-danger);
-  }
-
-  .hub-contents__detail {
-    padding: 0 0 var(--space-4) calc(1.5rem + var(--space-2));
-    font-size: 0.8125rem;
-    line-height: 1.5;
-    color: var(--color-fg-muted);
-  }
-  .hub-contents__desc {
-    margin: 0 0 var(--space-2);
-    font-family: var(--font-serif-assistant);
-    font-style: italic;
-    font-size: 0.9rem;
-    color: color-mix(in oklab, var(--color-fg) 72%, var(--color-canvas));
-  }
-  .hub-contents__objectives {
-    margin: 0 0 var(--space-3);
-    padding-left: 1.1em;
-  }
-  .hub-contents__objectives li::marker {
-    color: var(--color-rubric);
-  }
-  .hub-contents__why {
-    margin-top: var(--space-3);
-  }
-  .hub-contents__why-head {
-    margin: 0 0 var(--space-1);
     font-size: 0.6875rem;
     font-weight: 600;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--color-rubric);
   }
-  .hub-contents__why ul {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
+  .hub-contents__intro {
+    margin-bottom: var(--space-5);
   }
-  .hub-contents__why li {
-    display: grid;
-    grid-template-columns: 2rem minmax(0, 1fr);
+  .hub-contents__goal {
+    margin: var(--space-1) 0 0;
+    font-family: var(--font-serif-assistant);
+    font-size: 1.1rem;
+    line-height: 1.35;
+    text-wrap: pretty;
     color: var(--color-fg);
   }
-  .hub-contents__sign {
+  .hub-contents__meta {
+    margin: var(--space-2) 0 0;
+    font-size: 0.8125rem;
     font-variant-numeric: tabular-nums;
     color: var(--color-fg-muted);
   }
-  .hub-contents__why li.hub-contents__start,
-  .hub-contents__why li.hub-contents__more {
-    display: block;
-    padding-left: 2rem;
+  .hub-contents__hint {
+    margin: var(--space-5) 0 0;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    color: var(--color-fg-muted);
+  }
+
+  /* The path. Each step owns the stretch of line from its dot to the next
+     one (every dot sits the same distance below its step's top), so a done
+     step inks the way to the next. */
+  .hub-path {
+    --dot: 24px;
+    --dot-top: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .hub-path__step {
+    position: relative;
+    display: grid;
+    grid-template-columns: var(--dot) minmax(0, 1fr);
+    column-gap: var(--space-3);
+  }
+  .hub-path__step:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: calc(var(--dot) / 2 - 0.5px);
+    top: calc(var(--dot-top) + var(--dot) / 2);
+    bottom: calc(-1 * (var(--dot-top) + var(--dot) / 2));
+    width: 1px;
+    background: color-mix(in oklab, var(--color-fg) 14%, transparent);
+  }
+  .hub-path__step.is-done:not(:last-child)::before {
+    width: 1.5px;
+    left: calc(var(--dot) / 2 - 0.75px);
+    background: color-mix(in oklab, var(--color-fg) 55%, transparent);
+  }
+  .hub-path__dot {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: var(--dot);
+    height: var(--dot);
+    margin-top: var(--dot-top);
+    border-radius: 50%;
+    background: var(--color-chrome);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-fg) 22%, transparent);
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-fg-muted);
+  }
+  .hub-path__dot svg {
+    width: 13px;
+    height: 13px;
+    stroke-width: 2;
+  }
+  .hub-path__step.is-done .hub-path__dot {
+    background: color-mix(in oklab, var(--color-fg) 82%, var(--color-chrome));
+    box-shadow: none;
+    color: var(--color-chrome);
+  }
+  /* Where the learner is: a place, so ink, like every selection. */
+  .hub-path__step.is-current .hub-path__dot {
+    box-shadow: inset 0 0 0 2px var(--color-fg);
+    color: var(--color-fg);
+  }
+
+  .hub-path__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 6px var(--space-2);
+    width: 100%;
+    padding: 10px 0 var(--space-4);
+    border: 0;
+    background: transparent;
+    text-align: left;
+    color: var(--color-fg);
+    cursor: pointer;
+  }
+  .hub-path__row.is-static {
+    cursor: default;
+    padding-bottom: var(--space-2);
+  }
+  .hub-path__row:focus-visible {
+    outline: none;
+    border-radius: var(--radius-inner);
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+  .hub-path__name {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    line-height: 1.3;
+    text-wrap: pretty;
+  }
+  .hub-path__row:not(.is-static):hover .hub-path__name {
+    text-decoration: underline;
+    text-decoration-color: var(--rule-light);
+    text-underline-offset: 3px;
+  }
+  .hub-path__step.is-locked .hub-path__name,
+  .hub-path__step.is-ready.is-untouched .hub-path__name {
+    font-weight: 400;
+    color: var(--color-fg-muted);
+  }
+  .hub-path__pct {
+    font-size: 0.875rem;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+  .hub-path__sub {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .hub-path__status {
     font-size: 0.75rem;
     color: var(--color-fg-muted);
   }
-  .hub-contents__why li.is-against .hub-contents__sign {
+  .hub-path__warn {
     color: var(--color-danger);
   }
-  /* History from before the estimate was set directly: folded, and muted
-     when open, since it no longer adds up to the number above. */
-  .hub-contents__why li.hub-contents__earlier {
+  .hub-path__meter {
     display: block;
-    padding-left: 2rem;
-    font-size: 0.75rem;
-    color: var(--color-fg-muted);
-  }
-  .hub-contents__earlier > button {
-    padding: 0;
-    border: 0;
-    background: transparent;
-    font: inherit;
-    color: inherit;
-    text-decoration: underline;
-    text-decoration-color: var(--rule-light);
-    text-underline-offset: 2px;
-    cursor: pointer;
-  }
-  .hub-contents__earlier > button:hover {
-    color: var(--color-fg);
-  }
-  .hub-contents__earlier > button:focus-visible {
-    outline: none;
+    height: 4px;
     border-radius: 2px;
-    box-shadow: 0 0 0 2px var(--focus-ring);
+    background: color-mix(in oklab, var(--color-fg) 10%, transparent);
+    overflow: hidden;
   }
-  .hub-contents__why .hub-contents__earlier ul {
-    margin: 0.3rem 0 0 -2rem;
-    opacity: 0.7;
+  .hub-path__meter > span {
+    display: block;
+    height: 100%;
+    border-radius: 2px;
+    background: color-mix(in oklab, var(--color-fg) 58%, transparent);
+    transform-origin: left center;
+    transition: transform var(--duration-slow) var(--ease-out-expo);
+  }
+  .hub-path__step.is-current .hub-path__meter > span {
+    background: var(--color-fg);
   }
 
-  /* Correcting the learner model in place: quiet, always the same words
-     as the margin notes, so it reads as one gesture wherever it appears. */
-  .hub-contents__correct {
+  /* An opened topic: what it covers, why its estimate, what to clear up. */
+  .hub-topic {
     display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.4em;
-    margin: var(--space-2) 0 0;
-    font-size: 0.75rem;
-    color: var(--color-fg-muted);
+    flex-direction: column;
+    gap: var(--space-4);
+    padding: 0 0 var(--space-5);
+    font-size: 0.8125rem;
+    line-height: 1.5;
   }
-  .hub-contents__correct button,
-  .hub-contents__resolve,
-  .hub-revise__link {
-    padding: 0;
-    border: 0;
-    background: transparent;
-    font: inherit;
-    color: var(--color-fg-muted);
-    text-decoration: underline;
-    text-decoration-color: var(--rule-light);
-    text-underline-offset: 2px;
-    cursor: pointer;
-  }
-  .hub-contents__correct button:hover,
-  .hub-contents__resolve:hover,
-  .hub-revise__link:hover {
-    color: var(--color-fg);
-    text-decoration-color: currentColor;
-  }
-  .hub-contents__correct button:focus-visible,
-  .hub-contents__resolve:focus-visible,
-  .hub-revise__link:focus-visible {
-    outline: none;
-    border-radius: 2px;
-    box-shadow: 0 0 0 2px var(--focus-ring);
-  }
-  .hub-contents__correct button:disabled,
-  .hub-contents__resolve:disabled,
-  .hub-revise__link:disabled {
-    cursor: progress;
-    opacity: 0.6;
-  }
-  .hub-contents__resolve {
-    margin-left: 0.5em;
-    font-size: 0.75rem;
-  }
-
-  /* ===== Revise plan — the plan's own negotiation ===== */
-  .hub-revise__lead {
-    margin: 0 0 var(--space-4);
+  .hub-topic__desc {
+    margin: 0;
     font-family: var(--font-serif-assistant);
     font-style: italic;
     font-size: 0.95rem;
     line-height: 1.45;
     color: color-mix(in oklab, var(--color-fg) 78%, var(--color-canvas));
   }
-  .hub-revise__row {
-    grid-template-columns: 1.5rem minmax(0, 1fr);
-    cursor: default;
-    padding-bottom: 0.3rem;
+  .hub-topic__objectives {
+    margin: var(--space-1) 0 0;
+    padding-left: 1.1em;
+    list-style: disc;
+    color: var(--color-fg);
   }
-  .hub-revise__actions,
-  .hub-revise__confirm {
+  .hub-topic__objectives li::marker {
+    color: var(--color-rubric);
+  }
+  .hub-topic__note {
+    margin: 0;
+    color: var(--color-fg-muted);
+  }
+  .hub-topic__correct {
     display: flex;
     flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.5rem 1rem;
-    padding: 0 0 0.7rem calc(1.5rem + var(--space-2));
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--color-fg-muted);
+  }
+  .hub-topic__correct > span {
+    margin-right: var(--space-1);
+  }
+
+  /* "Why N%": a small account that adds up, oldest first. */
+  .hub-why__list {
+    margin: var(--space-1) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .hub-why__list li {
+    display: grid;
+    grid-template-columns: 2.75rem minmax(0, 1fr);
+    gap: var(--space-2);
+    padding: 5px 0;
+    border-top: 1px solid var(--chrome-rule);
+    color: var(--color-fg);
+  }
+  .hub-why__list li:first-child {
+    border-top: 0;
+  }
+  .hub-why__figure {
+    padding-right: var(--space-1);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-fg-muted);
+  }
+  .hub-why__figure.is-up {
+    color: var(--color-fg);
+  }
+  .hub-why__figure.is-down {
+    color: var(--color-danger);
+  }
+  .hub-why__list li.is-edge {
+    color: var(--color-fg-muted);
+  }
+  .hub-why__note {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--color-fg-muted);
+  }
+  .hub-why__list li.is-now {
+    border-top: 1px solid color-mix(in oklab, var(--color-fg) 35%, transparent);
+    font-weight: 600;
+  }
+  .hub-why__list li.is-now .hub-why__figure {
+    color: var(--color-fg);
+  }
+  /* History from before the estimate was set directly: folded, and muted
+     when open, since it no longer adds up to the number below. */
+  .hub-why__list.is-history {
+    opacity: 0.65;
+    margin-bottom: var(--space-2);
+    padding-bottom: var(--space-1);
+    border-bottom: 1px solid var(--chrome-rule);
+  }
+  .hub-why__earlier {
+    margin-top: var(--space-1);
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    font-size: 0.75rem;
+    color: var(--color-fg-muted);
+    text-decoration: underline;
+    text-decoration-color: var(--rule-light);
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
+  .hub-why__earlier:hover {
+    color: var(--color-fg);
+  }
+  .hub-why__earlier:focus-visible {
+    outline: none;
+    border-radius: 2px;
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+
+  /* Something to clear up: a misconception, said plainly, with the way to
+     close it. Crimson rule, the colour of anything wrong. */
+  .hub-clear {
+    padding: var(--space-2) 0 var(--space-2) var(--space-3);
+    border-left: 2px solid var(--color-danger);
+  }
+  .hub-clear .hub-label {
+    color: var(--color-danger);
+  }
+  .hub-clear__text {
+    margin: var(--space-1) 0 0;
+    color: var(--color-fg);
+  }
+  .hub-clear .btn-outline {
+    margin-top: var(--space-2);
+  }
+
+  /* ===== Edit plan: the same path, with what can change under each topic ===== */
+  .hub-revise__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 0 0 var(--space-4);
     font-size: 0.8125rem;
   }
   .hub-revise__actions:empty {
     display: none;
   }
-  .hub-revise__confirm {
-    gap: 0.5rem 0.75rem;
+  .hub-revise__ask {
+    flex-basis: 100%;
     color: var(--color-fg);
-  }
-  .hub-revise__action {
-    padding: 0.35rem 0.75rem;
-    border: 1px solid color-mix(in oklab, var(--color-fg) 16%, transparent);
-    border-radius: var(--radius-editorial);
-    background: transparent;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    color: var(--color-fg);
-    cursor: pointer;
-  }
-  .hub-revise__action:hover {
-    border-color: color-mix(in oklab, var(--color-fg) 28%, transparent);
-    background: color-mix(in oklab, var(--color-fg) 5%, transparent);
-  }
-  .hub-revise__action:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--focus-ring);
   }
   .hub-revise__discuss {
-    margin-top: var(--space-6);
+    margin-top: var(--space-5);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--chrome-rule);
     font-size: 0.8125rem;
     color: var(--color-fg-muted);
   }

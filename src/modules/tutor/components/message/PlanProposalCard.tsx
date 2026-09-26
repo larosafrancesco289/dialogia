@@ -109,22 +109,14 @@ export function PlanProposalCard({
   return (
     <>
       <div className="exercise">
+        {/* The sheet's head names the card; the card starts with the goal. */}
         <div>
-          <h4 className="exercise__title">
-            {proposal.revision
-              ? resolved
-                ? 'Revised plan'
-                : 'Your revised plan is ready'
-              : resolved
-                ? 'Learning plan'
-                : 'Your learning plan is ready'}
-          </h4>
-          <p className="exercise__meta">
+          <p className="exercise__question">{proposal.plan.goal}</p>
+          <p className="exercise__meta mt-1">
             {nodesCount} {nodesCount === 1 ? 'topic' : 'topics'}
             {estimatedHours ? ` · about ${estimatedHours} hours` : ''}
           </p>
         </div>
-        <p className="exercise__question">{proposal.plan.goal}</p>
         {!resolved && proposal.rationale && <p className="exercise__aside">{proposal.rationale}</p>}
         <div className="flex flex-wrap items-center gap-2">
           {!resolved && (

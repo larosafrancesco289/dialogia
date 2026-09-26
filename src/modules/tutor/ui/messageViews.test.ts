@@ -13,6 +13,7 @@ import {
   evidenceBehind,
   marginChanges,
   marginReason,
+  readableNote,
 } from '@/modules/tutor/ui/messageViews';
 
 const session = (h: ReturnType<typeof harness>) => ({
@@ -32,11 +33,24 @@ test('a margin note never drops a reason silently: the latest two, then "+N more
   assert.equal(folded.text, 'Applied the rule to the test example. Explained the base rate.');
   const open = marginReason(notes, true);
   assert.equal(open.more, 0);
-  // The quoted question keeps its own question mark and gains no full stop.
   assert.equal(
     open.text,
-    'Quiz, right: "What does P(A|B) describe?" Applied the rule to the test example. Explained the base rate.',
+    'Got the quiz question right. Applied the rule to the test example. Explained the base rate.',
   );
+});
+
+test('graded answers are counted in words, never quoted back from the log', () => {
+  const notes = [
+    'Quiz, right: "What does P(A|B) describe?"',
+    'Quiz, wrong: "Which is larger?"',
+    'Quiz, right: "What is a base rate?"',
+  ];
+  assert.equal(marginReason(notes, false).text, 'Got 2 of 3 quiz questions right.');
+  assert.equal(
+    readableNote('Diagnostic, wrong: "Which is larger?"'),
+    'Missed a starting question: “Which is larger?”',
+  );
+  assert.equal(readableNote('Saw why'), 'Saw why');
 });
 
 test('a quiz answer and the tutor’s own observation in one reply are both in its note', () => {
@@ -71,7 +85,7 @@ test('the evidence behind an estimate is counted whole, every source named', () 
   h.tutor({ type: 'record_evidence', kind: 'explained', note: 'Two', source: 'observation' });
   assert.equal(
     evidenceBehind(h.state.mastery.limits.evidence),
-    'one answer, two observations and a starting estimate',
+    'one answer, two things the tutor noticed and a starting estimate',
   );
   assert.equal(evidenceBehind([]), undefined);
 });

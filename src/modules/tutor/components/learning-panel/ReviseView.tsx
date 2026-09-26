@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { LearningPlan, LearningPlanNode } from '@/lib/types';
-import { unmetPrerequisites } from '@/modules/tutor/engine';
+import { listNames, PathStep, stepState, waitingOn, type StepState } from './PlanPath';
 
 export type PlanRevisions = {
   onSkip: (nodeId: string) => Promise<unknown> | void;
@@ -10,11 +10,11 @@ export type PlanRevisions = {
 };
 
 /**
- * Revise plan: the plan's own negotiation, and only the plan. Each topic
- * offers what the learner can change directly (skip what they know, choose
- * what comes next, reopen what they want back); anything structural goes to
- * the tutor, and the view says so, so there is one answer to "the chatbot
- * or the buttons?".
+ * Edit plan: the plan's own negotiation, and only the plan. The same path as
+ * the Hub, with what the learner can change directly under each topic (skip
+ * what they know, choose what comes next, take a finished one up again);
+ * anything structural goes to the tutor, and the view says so, so there is
+ * one answer to "the chatbot or the buttons?".
  */
 export function ReviseView({ plan, revisions }: { plan: LearningPlan; revisions: PlanRevisions }) {
   const [confirming, setConfirming] = useState<string | null>(null);
@@ -31,18 +31,15 @@ export function ReviseView({ plan, revisions }: { plan: LearningPlan; revisions:
   };
 
   return (
-    <div className="hub-contents hub-revise">
-      <p className="hub-revise__lead">
-        Skip what you already know, choose what comes next, or take a finished topic up again.
-      </p>
-
-      <ol className="hub-contents__list">
+    <div className="hub-contents">
+      <ol className="hub-path">
         {plan.nodes.map((node, index) => (
           <ReviseItem
             key={node.id}
             node={node}
             number={index + 1}
-            plan={plan}
+            state={stepState(plan, node)}
+            waiting={waitingOn(plan, node)}
             busy={busy === node.id}
             confirming={confirming === node.id}
             onConfirm={() => setConfirming(node.id)}
@@ -55,9 +52,9 @@ export function ReviseView({ plan, revisions }: { plan: LearningPlan; revisions:
       </ol>
 
       <div className="hub-revise__discuss">
-        <p>To add, remove or reorder topics, talk it through with the tutor.</p>
-        <button type="button" className="hub-revise__action" onClick={revisions.onDiscuss}>
-          Discuss the plan with the tutor
+        <p>To add, remove or reorder topics, ask the tutor.</p>
+        <button type="button" className="btn-outline btn-sm" onClick={revisions.onDiscuss}>
+          Ask the tutor for changes
         </button>
       </div>
     </div>
@@ -67,7 +64,8 @@ export function ReviseView({ plan, revisions }: { plan: LearningPlan; revisions:
 function ReviseItem({
   node,
   number,
-  plan,
+  state,
+  waiting,
   busy,
   confirming,
   onConfirm,
@@ -78,7 +76,8 @@ function ReviseItem({
 }: {
   node: LearningPlanNode;
   number: number;
-  plan: LearningPlan;
+  state: StepState;
+  waiting: string[];
   busy: boolean;
   confirming: boolean;
   onConfirm: () => void;
@@ -87,77 +86,63 @@ function ReviseItem({
   onStartNext: () => void;
   onReopen: () => void;
 }) {
-  const locked = node.status === 'not_started' && unmetPrerequisites(plan, node).length > 0;
-  const ready = node.status === 'not_started' && !locked;
-  const state =
-    node.status === 'in_progress'
-      ? 'is-current'
-      : node.status === 'completed'
-        ? 'is-done'
-        : locked
-          ? 'is-locked'
-          : 'is-ready';
-  const waitingOn = locked
-    ? plan.nodes
-        .filter((p) => node.prerequisites.includes(p.id) && p.status !== 'completed')
-        .map((p) => p.name)
-    : [];
+  const status =
+    state === 'done'
+      ? 'Done'
+      : state === 'current'
+        ? 'In progress'
+        : state === 'locked'
+          ? `Starts after ${listNames(waiting)}`
+          : 'Not started';
 
   return (
-    <li className={`hub-contents__item ${state}`}>
-      <div className="hub-contents__row hub-revise__row">
-        {node.status === 'completed' ? (
-          <span className="hub-contents__num is-done" aria-label={`${number}, done`}>
-            ✓
-          </span>
-        ) : (
-          <span className="hub-contents__num">{number}</span>
-        )}
-        <span className="hub-contents__label">
-          <span className="hub-contents__name">{node.name}</span>
-          {node.status === 'in_progress' && (
-            <span className="hub-contents__after">In progress</span>
-          )}
-          {locked && waitingOn.length > 0 && (
-            <span className="hub-contents__after">After: {waitingOn.join(', ')}</span>
-          )}
+    <PathStep state={state} number={number}>
+      <div className="hub-path__row is-static">
+        <span className="hub-path__name">{node.name}</span>
+        <span className="hub-path__sub">
+          <span className="hub-path__status">{status}</span>
         </span>
       </div>
 
       {confirming ? (
-        <div className="hub-revise__confirm">
-          <span>Mark it done and move on?</span>
-          <button type="button" className="hub-revise__action" disabled={busy} onClick={onSkip}>
+        <div className="hub-revise__actions">
+          <span className="hub-revise__ask">Mark it done and move on?</span>
+          <button type="button" className="btn-outline btn-sm" disabled={busy} onClick={onSkip}>
             Skip it
           </button>
-          <button type="button" className="hub-revise__link" onClick={onCancel}>
+          <button type="button" className="btn-ghost btn-sm" onClick={onCancel}>
             Cancel
           </button>
         </div>
       ) : (
         <div className="hub-revise__actions">
-          {ready && (
+          {state === 'ready' && (
             <button
               type="button"
-              className="hub-revise__link"
+              className="btn-outline btn-sm"
               disabled={busy}
               onClick={onStartNext}
             >
               Do this next
             </button>
           )}
-          {(ready || node.status === 'in_progress') && (
-            <button type="button" className="hub-revise__link" disabled={busy} onClick={onConfirm}>
+          {(state === 'ready' || state === 'current') && (
+            <button
+              type="button"
+              className="btn-outline btn-sm"
+              disabled={busy}
+              onClick={onConfirm}
+            >
               I know this
             </button>
           )}
-          {node.status === 'completed' && (
-            <button type="button" className="hub-revise__link" disabled={busy} onClick={onReopen}>
+          {state === 'done' && (
+            <button type="button" className="btn-outline btn-sm" disabled={busy} onClick={onReopen}>
               Take it up again
             </button>
           )}
         </div>
       )}
-    </li>
+    </PathStep>
   );
 }

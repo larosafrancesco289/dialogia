@@ -100,11 +100,6 @@
     padding-top: var(--space-3);
     border-top: 1px solid var(--chrome-rule);
   }
-  .exercise__count {
-    font-size: 0.8125rem;
-    color: var(--color-fg-muted);
-    white-space: nowrap;
-  }
   .exercise__nav .btn,
   .exercise__nav .btn-sm {
     white-space: nowrap;
@@ -249,32 +244,6 @@
   .exercise-feedback__text {
     margin: 0;
     color: color-mix(in oklab, var(--color-fg) 82%, var(--color-canvas));
-  }
-
-  /* Progress through an exercise: a hairline meter in ink, like the Hub's. */
-  .exercise-meter {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-  }
-  .exercise-meter__track {
-    flex: 1;
-    height: 2px;
-    background: color-mix(in oklab, var(--color-fg) 10%, transparent);
-    border-radius: 1px;
-    overflow: hidden;
-  }
-  .exercise-meter__fill {
-    height: 100%;
-    background: color-mix(in oklab, var(--color-fg) 55%, transparent);
-    transform-origin: left center;
-  }
-  .exercise-meter__pct {
-    min-width: 2.5rem;
-    text-align: right;
-    font-size: 0.8125rem;
-    font-variant-numeric: tabular-nums;
-    color: var(--color-fg-muted);
   }
 
   /* Stepper dots: ink for where you are, grading colours once answered. */

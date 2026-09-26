@@ -1,4 +1,3 @@
-import { motionTransition } from '@/lib/ui/motion';
 import { useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useChatStore } from '@/lib/store';
@@ -42,8 +41,6 @@ export function DiagnosticCard({
   const answered = Object.keys(attempts).length;
   const scored = diagnostic.items.filter((item) => typeof item.correct === 'number');
   const right = scored.filter((item) => attempts[item.id]?.correct).length;
-  const percentComplete = total > 0 ? Math.round((answered / total) * 100) : 0;
-  const scorePercent = scored.length ? Math.round((right / scored.length) * 100) : 0;
 
   const onAnswer = async (itemId: string, choice: number) => {
     if (submitted || submitting.current || itemId in answersRef.current) return;
@@ -73,28 +70,16 @@ export function DiagnosticCard({
     <div className="exercise">
       <div>
         <h4 className="exercise__title">A quick check on {diagnostic.topic}</h4>
-        <p className="exercise__meta">
-          A few questions · {answered} of {total} answered
-        </p>
-      </div>
-      <div className="exercise-meter">
-        <div className="exercise-meter__track">
-          <motion.div
-            className="exercise-meter__fill"
-            initial={{ scaleX: 0 }}
-            animate={{ scaleX: percentComplete / 100 }}
-            transition={motionTransition.reveal}
-            style={{ originX: 0 }}
-          />
-        </div>
-        <span className="exercise-meter__pct">{percentComplete}%</span>
+        <p className="exercise__meta">So the tutor knows where to start.</p>
       </div>
 
       <McqCard items={diagnostic.items} attempts={attempts} onAnswer={onAnswer} />
 
       {answered === total && total > 0 && (
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
-          <p className="exercise__kicker">Score {scorePercent}%</p>
+          <p className="exercise__kicker">
+            {right} of {scored.length} right
+          </p>
         </motion.div>
       )}
     </div>

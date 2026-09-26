@@ -8,7 +8,7 @@ export type TutorAffordances = {
   showMastery: boolean;
   /** "Too high / Too low" and "Resolved": correcting the learner model. */
   correctMastery: boolean;
-  /** Revise plan, "Not yet, more practice", "Change the path". */
+  /** Edit plan, "More practice first", and the chapter break's "Edit plan". */
   revisePlan: boolean;
 };
 
@@ -23,7 +23,7 @@ export function tutorAffordances(flags: TutorFlags): TutorAffordances {
 export type SeamChoices = {
   /** "Go on: …": follows the plan, so it needs only a next topic to go to. */
   goOn: boolean;
-  /** "More practice" (reopens the topic) and "Change the path" both change the plan. */
+  /** "More practice first" (reopens the topic) and "Edit plan" both change the plan. */
   negotiate: boolean;
 };
 

@@ -26,7 +26,7 @@ export type ProposalView = {
   status: 'pending' | 'approved' | 'declined' | 'replaced';
 };
 
-export type IntakeView = IntakeRecord & { answeredAt?: number };
+export type IntakeView = IntakeRecord;
 
 export type MessageCards = {
   intake?: IntakeView;
@@ -89,12 +89,7 @@ export function cardsForMessage(session: TutorSession, messageId: string): Messa
   const events = effectiveEvents(session.events);
   const cards: MessageCards = {};
   const intake = latestFor(state.intakes, messageId);
-  if (intake) {
-    const answeredAt = intake.responses
-      ? events.find((e) => e.type === 'intake_answered' && e.intakeId === intake.intakeId)?.at
-      : undefined;
-    cards.intake = { ...intake, ...(answeredAt ? { answeredAt } : {}) };
-  }
+  if (intake) cards.intake = intake;
   const diagnostic = latestFor(state.diagnostics, messageId);
   if (diagnostic) cards.diagnostic = diagnostic;
   const quiz = latestFor(state.quizzes, messageId);
@@ -130,15 +125,47 @@ export function marginChanges(effects: MessageEffects): MasteryChange[] {
 /** A margin note's reasons folded to this many (the latest); the rest wait behind "+N more". */
 const REASONS_SHOWN = 2;
 
+// The engine's own record of a graded answer: `Quiz, right: "question"`. The
+// tutor reads it as it is; the learner is shown it in words.
+const GRADED = /^(Quiz|Diagnostic), (right|wrong): "([\s\S]*)"$/;
+
+const cardWord = (kind: string) => (kind === 'Quiz' ? 'quiz' : 'starting');
+
+/** An evidence note as the learner reads it, one line of "Why N%". */
+export function readableNote(note: string): string {
+  const graded = GRADED.exec(note.trim());
+  if (!graded) return note;
+  const [, kind, verdict, question] = graded;
+  const what = `a ${cardWord(kind)} question`;
+  return verdict === 'right'
+    ? `Answered ${what} correctly: “${question}”`
+    : `Missed ${what}: “${question}”`;
+}
+
+/** Graded answers in one reply, counted: the card itself is just above. */
+function gradedSummary(graded: RegExpExecArray[]): string | undefined {
+  if (!graded.length) return undefined;
+  const word = cardWord(graded[0][1]);
+  const right = graded.filter((g) => g[2] === 'right').length;
+  if (graded.length === 1) {
+    return right ? `Got the ${word} question right` : `Missed the ${word} question`;
+  }
+  return `Got ${right} of ${graded.length} ${word} questions right`;
+}
+
 /**
  * The reason a margin note gives: every note that moved the estimate, as
- * sentences, or (folded) the latest two and how many more there are. Nothing
- * is ever dropped silently.
+ * sentences, or (folded) the latest two and how many more there are. Graded
+ * answers are counted into one sentence rather than quoted back. Nothing is
+ * ever dropped silently.
  */
 export function marginReason(notes: string[], unfolded: boolean): { text: string; more: number } {
   const clean = notes.map((note) => note.trim()).filter(Boolean);
-  const shown = unfolded ? clean : clean.slice(-REASONS_SHOWN);
-  return { text: joinSentences(...shown), more: clean.length - shown.length };
+  const graded = clean.map((note) => GRADED.exec(note)).filter((g) => g !== null);
+  const summary = gradedSummary(graded);
+  const reasons = [...(summary ? [summary] : []), ...clean.filter((note) => !GRADED.test(note))];
+  const shown = unfolded ? reasons : reasons.slice(-REASONS_SHOWN);
+  return { text: joinSentences(...shown), more: reasons.length - shown.length };
 }
 
 /** A topic the message's events completed, and what the learner made of it at that seam. */
@@ -157,7 +184,14 @@ export type Completion = {
   reopened?: boolean;
 };
 
-export type MessageEffects = { masteryChanges: MasteryChange[]; completed?: Completion };
+/** A misconception the tutor noted in a reply, shown where it was noticed as well as in the Hub. */
+export type NotedMisconception = { nodeId: string; description: string };
+
+export type MessageEffects = {
+  masteryChanges: MasteryChange[];
+  completed?: Completion;
+  misconceptions?: NotedMisconception[];
+};
 
 const effectsCache = new WeakMap<readonly TutorEvent[], Map<string, MessageEffects>>();
 
@@ -218,6 +252,13 @@ export function effectsByMessage(events: readonly TutorEvent[]): Map<string, Mes
       }
       if (moved) standing.set(event.nodeId, change);
       out.set(messageId, entry);
+    } else if (event.type === 'misconception_noted') {
+      const entry = out.get(messageId) ?? { masteryChanges: [] };
+      (entry.misconceptions ??= []).push({
+        nodeId: event.nodeId,
+        description: event.description,
+      });
+      out.set(messageId, entry);
     } else if (event.type === 'topic_completed') {
       const entry = out.get(messageId) ?? { masteryChanges: [] };
       if (awaitingNext) awaitingNext.mastery = before.mastery[awaitingNext.nodeId];
@@ -251,7 +292,8 @@ type EvidenceGroup =
 
 const GROUP_WORDS: Record<EvidenceGroup, (n: number) => string> = {
   answer: (n) => `${countWord(n)} answer${n === 1 ? '' : 's'}`,
-  observation: (n) => `${countWord(n)} observation${n === 1 ? '' : 's'}`,
+  observation: (n) =>
+    n === 1 ? 'something the tutor noticed' : `${countWord(n)} things the tutor noticed`,
   said: (n) =>
     n === 1 ? 'something you told the tutor' : `${countWord(n)} things you told the tutor`,
   correction: (n) => (n === 1 ? 'your correction' : `${countWord(n)} corrections of yours`),

@@ -5,7 +5,6 @@ import type { Message } from '@/lib/types';
 import { nextReadyNode, percent as toPercent } from '@/modules/tutor/engine';
 import { evidenceBehind, type Completion } from '@/modules/tutor/ui/messageViews';
 import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
-import { countWord } from '@/modules/tutor/lib/text';
 import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 import { seamChoices } from '@/modules/tutor/ui/tutorFlags';
 
@@ -13,7 +12,7 @@ import { seamChoices } from '@/modules/tutor/ui/tutorFlags';
  * The seam at the end of a topic. Negotiating the plan here, rather than in
  * the middle of instruction, is what keeps agency from displacing teaching:
  * the tutor states its estimate and the learner goes on, asks for more
- * practice, or goes to change the path. Only the newest seam is live; older
+ * practice, or goes to edit the plan. Only the newest seam is live; older
  * ones settle into a quiet record of the session. The estimate is the one the
  * learner is deciding on (a correction while the break is open shows at once)
  * and, once settled, the one they went on with; what came next is what they
@@ -82,7 +81,9 @@ export function ChapterBreak({
       className={`chapter-break${live ? ' is-live' : ''}`}
       aria-label={`End of topic: ${node.name}`}
     >
-      <p className="chapter-break__kicker">End of chapter {countWord(index + 1)}</p>
+      <p className="chapter-break__kicker">
+        Topic {index + 1} of {learningPlan!.nodes.length} finished
+      </p>
       <h3 className="chapter-break__title">{node.name}</h3>
 
       {live ? (
@@ -109,14 +110,14 @@ export function ChapterBreak({
                   disabled={busy}
                   onClick={() => run(() => onRequestMorePractice(completion.nodeId))}
                 >
-                  Not yet, more practice
+                  More practice first
                 </button>
                 <button
                   type="button"
                   className="chapter-break__action"
                   onClick={() => setUI({ plan: { rightPanelOpen: true, revising: true } })}
                 >
-                  Change the path
+                  Edit plan
                 </button>
               </>
             )}
@@ -127,9 +128,9 @@ export function ChapterBreak({
           {reopened
             ? 'Back for more practice'
             : percent != null
-              ? `${percent}% mastery`
-              : 'Completed'}
-          {!reopened && started ? ` · next: ${started.name}` : ''}
+              ? `Finished at ${percent}%`
+              : 'Finished'}
+          {!reopened && started ? ` · Next: ${started.name}` : ''}
         </p>
       )}
     </section>

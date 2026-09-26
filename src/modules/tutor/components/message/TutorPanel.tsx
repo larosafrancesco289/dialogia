@@ -24,7 +24,11 @@ export function TutorPanel(props: {
     !!intake?.questions.length || !!proposal || !!diagnostic?.items.length || !!quiz?.items.length;
   if (!hasAny) return null;
 
-  const title = quiz?.title ?? intake?.title ?? (proposal ? 'Learning plan' : undefined);
+  const title =
+    quiz?.title ??
+    intake?.title ??
+    (proposal ? (proposal.revision ? 'Revised plan' : 'Learning plan') : undefined) ??
+    (diagnostic ? 'Before we start' : undefined);
 
   return (
     <MotionConfig reducedMotion={shouldAnimate ? 'never' : 'always'}>

@@ -14,7 +14,7 @@ import {
 
 /**
  * The Learning Hub. At rest it is the contents: the plan to read and the
- * learner model to read and, where allowed, correct in place. Revise plan
+ * learner model to read and, where allowed, correct in place. Edit plan
  * switches to the plan's own negotiation. Each part appears only under the
  * study flags that allow it.
  */
