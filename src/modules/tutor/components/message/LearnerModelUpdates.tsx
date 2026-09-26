@@ -32,11 +32,12 @@ export function LearnerModelUpdates({ message }: { message: Message }) {
   if (!effects || !affordances.showMastery) return null;
 
   const shown = marginChanges(effects);
-  if (!shown.length) return null;
+  const misconceptions = effects.misconceptions ?? [];
+  if (!shown.length && !misconceptions.length) return null;
 
   return (
     <div className="px-4 pb-3">
-      <MarginNotes changes={shown} />
+      <MarginNotes changes={shown} misconceptions={misconceptions} />
     </div>
   );
 }

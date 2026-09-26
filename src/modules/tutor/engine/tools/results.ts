@@ -174,7 +174,7 @@ export function tutorToolResult(
         note:
           after.phase === 'complete'
             ? 'Every topic in the plan is done.'
-            : 'The learner now sees a chapter break and chooses what comes next: go on, more practice, or change the path. Close the topic with a short line and end your turn; do not start the next topic in this reply.',
+            : 'The learner now sees a chapter break under your reply that asks what comes next: go on, more practice, or edit the plan. Close the topic with a short line on what they can now do and end your turn; do not list those choices or ask which they want, and do not start the next topic in this reply.',
       };
     }
     case 'start_topic': {

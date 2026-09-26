@@ -96,26 +96,30 @@ export function McqCard({
   };
 
   if (!total || !activeItem) return null;
+  // One question needs no counting and nowhere to step to.
+  const single = total === 1;
 
   return (
     <div className="exercise">
-      <div className="exercise__bar">
-        <span className="exercise__kicker">
-          Question {activeIndex + 1} of {total}
-        </span>
-        <StepperDots
-          items={items}
-          activeIndex={activeIndex}
-          resolveStatus={(item) => {
-            const attempt = attempts[item.id];
-            if (!attempt) return 'pending';
-            return attempt.correct ? 'correct' : 'incorrect';
-          }}
-          onSelect={goToIndex}
-        />
-      </div>
+      {!single && (
+        <div className="exercise__bar">
+          <span className="exercise__kicker">
+            Question {activeIndex + 1} of {total}
+          </span>
+          <StepperDots
+            items={items}
+            activeIndex={activeIndex}
+            resolveStatus={(item) => {
+              const attempt = attempts[item.id];
+              if (!attempt) return 'pending';
+              return attempt.correct ? 'correct' : 'incorrect';
+            }}
+            onSelect={goToIndex}
+          />
+        </div>
+      )}
 
-      <div className="relative min-h-[200px]">
+      <div className={single ? 'relative' : 'relative min-h-[200px]'}>
         <AnimatePresence mode="wait">
           <motion.div
             key={activeItem.id}
@@ -198,24 +202,26 @@ export function McqCard({
         </AnimatePresence>
       </div>
 
-      <div className="exercise__nav">
-        <button
-          type="button"
-          className="btn-ghost btn-sm"
-          onClick={goPrevious}
-          disabled={activeIndex === 0}
-        >
-          <ChevronLeftIcon className="h-3.5 w-3.5" /> Previous
-        </button>
-        <button
-          type="button"
-          className="btn-ghost btn-sm"
-          onClick={goNext}
-          disabled={activeIndex >= total - 1}
-        >
-          Next <ChevronRightIcon className="h-3.5 w-3.5" />
-        </button>
-      </div>
+      {!single && (
+        <div className="exercise__nav">
+          <button
+            type="button"
+            className="btn-ghost btn-sm"
+            onClick={goPrevious}
+            disabled={activeIndex === 0}
+          >
+            <ChevronLeftIcon className="h-3.5 w-3.5" /> Previous
+          </button>
+          <button
+            type="button"
+            className="btn-ghost btn-sm"
+            onClick={goNext}
+            disabled={activeIndex >= total - 1}
+          >
+            Next <ChevronRightIcon className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

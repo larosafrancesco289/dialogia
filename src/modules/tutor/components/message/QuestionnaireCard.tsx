@@ -22,7 +22,7 @@ export function QuestionnaireCard({
   messageId: string;
   intake: IntakeView;
 }) {
-  const { questions, responses, answeredAt } = intake;
+  const { questions, responses } = intake;
   const initialSelections = useMemo(() => {
     const map: Record<string, string[]> = {};
     for (const q of questions) {
@@ -118,9 +118,6 @@ export function QuestionnaireCard({
     }
   };
 
-  const submittedTimestamp =
-    isSubmitted && answeredAt ? new Date(answeredAt).toLocaleTimeString() : null;
-
   return (
     <div className="exercise">
       <div>
@@ -212,16 +209,13 @@ export function QuestionnaireCard({
           className="exercise__done"
         >
           <CheckIcon />
-          Answers sent{submittedTimestamp ? ` · ${submittedTimestamp}` : ''}
+          Answers sent
         </motion.p>
       ) : isClosed ? (
         <p className="exercise__done">Skipped</p>
       ) : (
         <div className="exercise__nav">
-          <span className="exercise__count">
-            {answeredCount} of {questionCount} answered
-          </span>
-          <div className="flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-2">
             <button
               type="button"
               className="btn-ghost btn-sm"

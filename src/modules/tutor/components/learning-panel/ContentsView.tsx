@@ -1,38 +1,23 @@
 import { useEffect, useState } from 'react';
 import type { LearningPlan, LearningPlanNode, TopicMastery } from '@/lib/types';
-import { unmetPrerequisites, type TopicExplanation } from '@/modules/tutor/engine';
+import { nextReadyNode, type TopicExplanation } from '@/modules/tutor/engine';
 import type { TutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
-
-const EVIDENCE_SHOWN = 4;
+import { readableNote } from '@/modules/tutor/ui/messageViews';
+import { listNames, PathStep, stepState, waitingOn, type StepState } from './PlanPath';
 
 const pct = (value: number) => Math.round(value * 100);
-
-// Below this an estimate backed by evidence is a weak spot worth seeing.
-const WEAK = 0.4;
 
 // Every topic starts at a prior; only evidence makes it a measurement.
 const isMeasured = (m: TopicMastery | undefined): m is TopicMastery =>
   !!m && (m.interactions > 0 || m.evidence.length > 0);
 
-/** The one definition of overall mastery: the mean over measured topics. */
-export function measuredMastery(
-  plan: LearningPlan,
-  mastery?: Record<string, TopicMastery>,
-): number | undefined {
-  const values = plan.nodes
-    .map((n) => mastery?.[n.id])
-    .filter(isMeasured)
-    .map((m) => m.confidence);
-  return values.length ? values.reduce((sum, c) => sum + c, 0) / values.length : undefined;
-}
-
 // Corrections are recorded for the tutor ("Learner said…"); read them back
 // to the learner in the second person.
 const toLearner = (details: string) => details.replace(/^(Learner|Student) /, 'You ');
 
-function Meter({ value, weak }: { value: number; weak: boolean }) {
+function Meter({ value }: { value: number }) {
   return (
-    <span className={`hub-contents__meter${weak ? ' is-weak' : ''}`} aria-hidden="true">
+    <span className="hub-path__meter" aria-hidden="true">
       <span style={{ transform: `scaleX(${Math.min(1, Math.max(0, value))})` }} />
     </span>
   );
@@ -46,10 +31,11 @@ export type ContentsCorrections = {
 };
 
 /**
- * The Learning Hub at rest: the plan as a table of contents and the learner
- * model beside it. Reading comes first (the model as a reflective aid);
- * opening a topic shows why its estimate is what it is and, where the
- * learner may, a quiet way to correct it. Changing the plan lives in Revise.
+ * The Learning Hub at rest: the plan as a path, and the learner model on it.
+ * Every topic says where it stands in words, and every topic with evidence
+ * shows the tutor's estimate as a number. Opening a topic says what it
+ * covers, why the estimate is what it is and, where the learner may, how to
+ * correct it. Changing the plan lives in Edit plan.
  */
 export function ContentsView({
   plan,
@@ -71,28 +57,34 @@ export function ContentsView({
   useEffect(() => setOpenId(currentId), [currentId]);
 
   const done = plan.nodes.filter((n) => n.status === 'completed').length;
-  const average = measuredMastery(plan, mastery);
+  const upNextId = nextReadyNode(plan)?.id;
   const hours = plan.metadata?.estimatedHours;
-  const meta = [
-    `${done} of ${plan.nodes.length} done`,
-    affordances.showMastery && average != null ? `${pct(average)}% mastery` : null,
-    hours != null ? `about ${hours}h in all` : null,
-  ].filter(Boolean);
+  const anyMeasured = plan.nodes.some((n) => isMeasured(mastery?.[n.id]));
 
   return (
     <div className="hub-contents">
       <div className="hub-contents__intro">
-        {plan.goal && <p className="hub-contents__goal">{plan.goal}</p>}
-        <p className="hub-contents__meta">{meta.join(' · ')}</p>
+        {plan.goal && (
+          <>
+            <p className="hub-label">Your goal</p>
+            <p className="hub-contents__goal">{plan.goal}</p>
+          </>
+        )}
+        <p className="hub-contents__meta">
+          {done} of {plan.nodes.length} topics done
+          {hours != null ? ` · about ${hours} ${hours === 1 ? 'hour' : 'hours'} in all` : ''}
+        </p>
       </div>
 
-      <ol className="hub-contents__list">
+      <ol className="hub-path">
         {plan.nodes.map((node, index) => (
           <ContentsItem
             key={node.id}
             node={node}
             number={index + 1}
-            plan={plan}
+            state={stepState(plan, node)}
+            upNext={node.id === upNextId}
+            waiting={waitingOn(plan, node)}
             mastery={mastery?.[node.id]}
             explain={explain}
             affordances={affordances}
@@ -102,14 +94,30 @@ export function ContentsView({
           />
         ))}
       </ol>
+
+      {affordances.showMastery && anyMeasured && (
+        <p className="hub-contents__hint">
+          Each percentage is the tutor’s estimate of how well you know that topic. Open a topic to
+          see why{affordances.correctMastery ? ', or to correct it' : ''}.
+        </p>
+      )}
     </div>
   );
+}
+
+function statusWords(state: StepState, upNext: boolean, waiting: string[]): string {
+  if (state === 'done') return 'Done';
+  if (state === 'current') return 'In progress';
+  if (state === 'locked') return `Starts after ${listNames(waiting)}`;
+  return upNext ? 'Up next' : 'Not started';
 }
 
 function ContentsItem({
   node,
   number,
-  plan,
+  state,
+  upNext,
+  waiting,
   mastery,
   explain,
   affordances,
@@ -119,7 +127,9 @@ function ContentsItem({
 }: {
   node: LearningPlanNode;
   number: number;
-  plan: LearningPlan;
+  state: StepState;
+  upNext: boolean;
+  waiting: string[];
   mastery?: TopicMastery;
   explain: Explain;
   affordances: TutorAffordances;
@@ -128,25 +138,12 @@ function ContentsItem({
   onToggle: () => void;
 }) {
   const [busy, setBusy] = useState(false);
-  const locked = node.status === 'not_started' && unmetPrerequisites(plan, node).length > 0;
-  const state =
-    node.status === 'in_progress'
-      ? 'is-current'
-      : node.status === 'completed'
-        ? 'is-done'
-        : locked
-          ? 'is-locked'
-          : 'is-ready';
-  const waitingOn = locked
-    ? plan.nodes
-        .filter((p) => node.prerequisites.includes(p.id) && p.status !== 'completed')
-        .map((p) => p.name)
-    : [];
   const measured = isMeasured(mastery);
-  const showMastery = affordances.showMastery && measured && !locked;
-  // Being low on the topic in progress is expected; it stays the live one.
-  const weak = showMastery && node.status !== 'in_progress' && mastery!.confidence < WEAK;
-  const openMisconceptions = mastery?.misconceptions?.filter((m) => !m.resolved) ?? [];
+  const showMastery = affordances.showMastery && measured && state !== 'locked';
+  const openMisconceptions = affordances.showMastery
+    ? (mastery?.misconceptions?.filter((m) => !m.resolved) ?? [])
+    : [];
+  const toClear = openMisconceptions.length;
 
   const act = async (fn: () => Promise<unknown>) => {
     setBusy(true);
@@ -158,153 +155,145 @@ function ContentsItem({
   };
 
   return (
-    <li
-      className={`hub-contents__item ${state}${!measured && state === 'is-ready' ? ' is-untouched' : ''}${open ? ' is-open' : ''}`}
+    <PathStep
+      state={state}
+      number={number}
+      className={`${measured ? '' : 'is-untouched'}${open ? ' is-open' : ''}`}
     >
-      <button type="button" className="hub-contents__row" aria-expanded={open} onClick={onToggle}>
-        {node.status === 'completed' ? (
-          <span className="hub-contents__num is-done" aria-label={`${number}, done`}>
-            ✓
-          </span>
-        ) : (
-          <span className="hub-contents__num">{number}</span>
-        )}
-        <span className="hub-contents__label">
-          <span className="hub-contents__name">
-            {node.name}
-            {affordances.showMastery && openMisconceptions.length > 0 && (
-              <span
-                className="hub-contents__flag"
-                title={`${openMisconceptions.length} open misconception${openMisconceptions.length === 1 ? '' : 's'}`}
-              >
-                ?
-              </span>
+      <button type="button" className="hub-path__row" aria-expanded={open} onClick={onToggle}>
+        <span className="hub-path__name">{node.name}</span>
+        {showMastery && <span className="hub-path__pct">{pct(mastery!.confidence)}%</span>}
+        <span className="hub-path__sub">
+          {showMastery && <Meter value={mastery!.confidence} />}
+          <span className="hub-path__status">
+            {statusWords(state, upNext, waiting)}
+            {toClear > 0 && (
+              <>
+                {' · '}
+                <span className="hub-path__warn">
+                  {toClear === 1 ? '1 thing to clear up' : `${toClear} things to clear up`}
+                </span>
+              </>
             )}
           </span>
-          {showMastery && <Meter value={mastery!.confidence} weak={weak} />}
-          {locked && waitingOn.length > 0 && (
-            <span className="hub-contents__after">After: {waitingOn.join(', ')}</span>
-          )}
         </span>
-        {showMastery && (
-          <span className={`hub-contents__pct${weak ? ' is-weak' : ''}`}>
-            {pct(mastery!.confidence)}
-          </span>
-        )}
       </button>
 
       {open && (
-        <div className="hub-contents__detail">
-          {node.description && <p className="hub-contents__desc">{node.description}</p>}
+        <div className="hub-topic">
+          {node.description && <p className="hub-topic__desc">{node.description}</p>}
           {node.objectives.length > 0 && (
-            <ul className="hub-contents__objectives">
-              {node.objectives.map((objective, i) => (
-                <li key={i}>{objective}</li>
-              ))}
-            </ul>
+            <div>
+              <p className="hub-label">You’ll be able to</p>
+              <ul className="hub-topic__objectives">
+                {node.objectives.map((objective, i) => (
+                  <li key={i}>{objective}</li>
+                ))}
+              </ul>
+            </div>
           )}
 
           {showMastery && <Why mastery={mastery!} explanation={explain(node.id)} />}
 
           {showMastery && affordances.correctMastery && (
-            <p className="hub-contents__correct">
-              <span>Not how it feels?</span>
+            <div className="hub-topic__correct">
+              <span>Seems wrong?</span>
               <button
                 type="button"
+                className="btn-outline btn-sm"
                 disabled={busy}
                 onClick={() => void act(() => corrections.onContestMastery(node.id, 'down'))}
               >
                 Too high
               </button>
-              <span aria-hidden="true">·</span>
               <button
                 type="button"
+                className="btn-outline btn-sm"
                 disabled={busy}
                 onClick={() => void act(() => corrections.onContestMastery(node.id, 'up'))}
               >
                 Too low
               </button>
-            </p>
+            </div>
           )}
 
-          {affordances.showMastery && openMisconceptions.length > 0 && (
-            <div className="hub-contents__why">
-              <p className="hub-contents__why-head">Still tangled</p>
-              <ul>
-                {openMisconceptions.map((m) => (
-                  <li key={m.id} className="is-against">
-                    <span className="hub-contents__sign" aria-hidden="true">
-                      ?
-                    </span>
-                    <span>
-                      {m.description}
-                      {affordances.correctMastery && (
-                        <button
-                          type="button"
-                          className="hub-contents__resolve"
-                          disabled={busy}
-                          onClick={() =>
-                            void act(() => corrections.onResolveMisconception(node.id, m.id))
-                          }
-                        >
-                          Resolved
-                        </button>
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+          {openMisconceptions.map((m) => (
+            <div key={m.id} className="hub-clear">
+              <p className="hub-label">To clear up</p>
+              <p className="hub-clear__text">{m.description}</p>
+              {affordances.correctMastery && (
+                <button
+                  type="button"
+                  className="btn-outline btn-sm"
+                  disabled={busy}
+                  onClick={() => void act(() => corrections.onResolveMisconception(node.id, m.id))}
+                >
+                  I’ve got this now
+                </button>
+              )}
             </div>
+          ))}
+
+          {state === 'locked' && waiting.length > 0 && (
+            <p className="hub-topic__note">Starts once you’ve finished {listNames(waiting)}.</p>
           )}
         </div>
       )}
-    </li>
+    </PathStep>
   );
 }
 
 type WhyStep = TopicExplanation['steps'][number] & { evidence?: TopicMastery['evidence'][number] };
 
+// A step that placed the estimate rather than moving it.
+const isSetting = (evidence: WhyStep['evidence']) =>
+  !evidence || (typeof evidence.setTo === 'number' && evidence.kind !== 'misconception');
+
+/** What placed the estimate directly, in the learner's words. */
+function settingLabel(evidence: WhyStep['evidence']): string {
+  if (evidence?.kind === 'placement') return 'Starting estimate';
+  if (evidence?.kind === 'more_practice') return 'You asked for more practice';
+  if (evidence?.kind === 'marked_known') return 'You marked it as known';
+  if (evidence?.source === 'learner') return 'Your correction';
+  if (evidence?.source === 'learner_said') return 'From what you told the tutor';
+  return 'Set by the tutor';
+}
+
 /** One line of "Why N%": what a piece of evidence did, or where it set the estimate. */
 function WhyLine({ step: { evidence, before, after } }: { step: WhyStep }) {
-  if (!evidence || (typeof evidence.setTo === 'number' && evidence.kind !== 'misconception')) {
+  if (isSetting(evidence)) {
+    const details = evidence?.details ? toLearner(evidence.details) : '';
     return (
-      <li>
-        <span className="hub-contents__sign">=</span>
+      <li className="is-edge">
+        <span className="hub-why__figure">{pct(after)}%</span>
         <span>
-          Set to {pct(after)}% directly
-          {evidence && evidence.details ? `: ${toLearner(evidence.details)}` : ''}
+          {settingLabel(evidence)}
+          {details && <span className="hub-why__note">{details}</span>}
         </span>
       </li>
     );
   }
   const delta = pct(after) - pct(before);
   return (
-    <li className={delta < 0 ? 'is-against' : undefined}>
-      <span className="hub-contents__sign">
+    <li>
+      <span className={`hub-why__figure${delta > 0 ? ' is-up' : delta < 0 ? ' is-down' : ''}`}>
         {delta > 0 ? `+${delta}` : delta < 0 ? `−${-delta}` : '0'}
       </span>
       <span>
-        {evidence.type === 'self_report' ? toLearner(evidence.details) : evidence.details}
+        {evidence!.type === 'self_report'
+          ? toLearner(evidence!.details)
+          : readableNote(evidence!.details)}
       </span>
     </li>
   );
 }
 
-/** What the latest direct setting was, to head the history before it. */
-function beforeLabel(evidence: WhyStep['evidence']): string {
-  if (evidence?.kind === 'placement') return 'Before the starting estimate';
-  if (evidence?.kind === 'more_practice') return 'Before you asked for more practice';
-  if (evidence?.kind === 'marked_known') return 'Before you marked it known';
-  if (evidence?.source === 'learner') return 'Before your correction';
-  if (evidence?.source === 'learner_said') return 'Before what you told the tutor';
-  return 'Before it was set';
-}
-
 /**
- * Where the estimate started and what each piece of evidence did to it. Once
- * the estimate has been set directly (a correction, a starting estimate), the
- * lines from that setting on add up to today's value; everything earlier is
- * history, folded away and muted so no one tries to add it up.
+ * "Why N%": where the estimate started, each change in the order it came, and
+ * where it stands now, so the lines add up in front of the learner. Once the
+ * estimate has been set directly (a correction, more practice), the count
+ * starts again there; what came before is folded away, since it no longer
+ * adds up to today's number.
  */
 function Why({ mastery, explanation }: { mastery: TopicMastery; explanation?: TopicExplanation }) {
   const [showEarlier, setShowEarlier] = useState(false);
@@ -315,51 +304,45 @@ function Why({ mastery, explanation }: { mastery: TopicMastery; explanation?: To
   }));
   const settledAt = explanation?.settledAt ?? -1;
   const counting = settledAt >= 0 ? steps.slice(settledAt) : steps;
-  const earlier = settledAt >= 0 ? steps.slice(0, settledAt).reverse() : [];
-  const newest = [...counting].reverse();
-  const shown = newest.slice(0, EVIDENCE_SHOWN);
-  const hidden = newest.length - shown.length;
+  const earlier = settledAt >= 0 ? steps.slice(0, settledAt) : [];
   const startLine = (
-    <li className="hub-contents__start">
-      {mastery.baseline != null
-        ? `Carried over at ${pct(start)}% from before`
-        : `Started at ${pct(start)}%, before any evidence`}
+    <li className="is-edge">
+      <span className="hub-why__figure">{pct(start)}%</span>
+      <span>{mastery.baseline != null ? 'Carried over from before' : 'Starting estimate'}</span>
     </li>
   );
 
   return (
-    <div className="hub-contents__why">
-      <p className="hub-contents__why-head">Why {pct(mastery.confidence)}%</p>
-      <ul>
-        {shown.map((step, i) => (
+    <div className="hub-why">
+      <p className="hub-label">Why {pct(mastery.confidence)}%</p>
+      {settledAt >= 0 && (
+        <button
+          type="button"
+          className="hub-why__earlier"
+          aria-expanded={showEarlier}
+          onClick={() => setShowEarlier((open) => !open)}
+        >
+          {showEarlier ? 'Hide' : 'Show'} what came before
+        </button>
+      )}
+      {settledAt >= 0 && showEarlier && (
+        <ol className="hub-why__list is-history">
+          {startLine}
+          {earlier.map((step, i) => (
+            <WhyLine key={i} step={step} />
+          ))}
+        </ol>
+      )}
+      <ol className="hub-why__list">
+        {settledAt < 0 && startLine}
+        {counting.map((step, i) => (
           <WhyLine key={i} step={step} />
         ))}
-        {hidden > 0 && <li className="hub-contents__more">and {hidden} earlier</li>}
-        {settledAt < 0 ? (
-          startLine
-        ) : (
-          <li className="hub-contents__earlier">
-            <button
-              type="button"
-              aria-expanded={showEarlier}
-              onClick={() => setShowEarlier((open) => !open)}
-            >
-              {beforeLabel(steps[settledAt]?.evidence)}
-              {earlier.length
-                ? ` · ${earlier.length} earlier step${earlier.length === 1 ? '' : 's'}`
-                : ''}
-            </button>
-            {showEarlier && (
-              <ul>
-                {earlier.map((step, i) => (
-                  <WhyLine key={i} step={step} />
-                ))}
-                {startLine}
-              </ul>
-            )}
-          </li>
-        )}
-      </ul>
+        <li className="is-now">
+          <span className="hub-why__figure">{pct(mastery.confidence)}%</span>
+          <span>Now</span>
+        </li>
+      </ol>
     </div>
   );
 }

@@ -110,6 +110,20 @@
     font-size: 0.8125rem;
     line-height: 1.45;
   }
+  /* A misconception noticed in this exchange: the Hub's crimson word, inline. */
+  .margin-note__clear {
+    margin: var(--space-1) 0 0;
+    max-width: 52ch;
+    color: var(--color-fg);
+  }
+  .margin-note__clear-label {
+    margin-right: 0.25em;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-danger);
+  }
   .margin-note__head {
     display: flex;
     align-items: baseline;
