@@ -124,11 +124,11 @@
     background: color-mix(in oklab, var(--color-fg) 7%, transparent);
     color: var(--color-fg);
   }
-  /* Search or reasoning switched on is a setting: ink, not gold. */
+  /* Search or reasoning switched on is a setting: ink, not gold, and no
+     chip behind it; the word beside the icon already says it is on. */
   .composer-btn-reasoning.is-active,
   .composer-btn-search.is-active {
     color: var(--color-fg);
-    background: color-mix(in oklab, var(--color-fg) 7%, transparent);
   }
   .composer-btn-reasoning:focus-visible,
   .composer-btn-search:focus-visible,
@@ -260,48 +260,14 @@
     margin-left: auto;
   }
 
-  /* Primary send button */
-  .composer-btn-send {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 34px;
-    height: 34px;
-    padding: 0;
-    border: none;
-    border-radius: 999px;
-    background: transparent;
-    color: var(--color-fg-muted);
-    cursor: pointer;
-    transition:
-      background-color var(--duration-med) var(--ease-standard),
-      color var(--duration-med) var(--ease-standard),
-      opacity var(--duration-fast) var(--ease-standard);
-  }
-  .composer-btn-send:hover:not(:disabled) {
-    background: color-mix(in oklab, var(--color-fg) 6%, transparent);
-  }
-  .composer-btn-send:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-  .composer-btn-send.has-content {
-    background: var(--color-accent);
-    color: var(--color-on-accent);
-  }
-  /* Hover and press deepen the gold with ink, as .btn does; nothing scales. */
-  .composer-btn-send.has-content:hover {
-    background: color-mix(in oklab, var(--color-accent) 88%, var(--color-fg));
-  }
-  .composer-btn-send.has-content:active {
-    background: color-mix(in oklab, var(--color-accent) 80%, var(--color-fg));
-  }
-  .composer-btn-send:focus-visible {
-    box-shadow: 0 0 0 2px var(--focus-ring);
-  }
-
-  /* Stop button */
+  /* Send and Stop: one disc, drawn inside a button sized for the pointer or
+     the thumb, so the two trade places without moving. Send is always there:
+     a hairline ring while there is nothing to send, filled with gold once
+     there is (gold marks what can run now). */
+  .composer-btn-send,
   .composer-btn-stop {
+    --disc: 32px;
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -310,19 +276,70 @@
     padding: 0;
     border: 0;
     border-radius: 999px;
-    background: color-mix(in oklab, var(--color-fg) 8%, transparent);
-    color: var(--color-fg);
+    background: transparent;
     cursor: pointer;
+  }
+  .composer-btn-send::before,
+  .composer-btn-stop::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--disc);
+    height: var(--disc);
+    transform: translate(-50%, -50%);
+    border-radius: 999px;
+    border: 1px solid transparent;
     transition:
-      background-color var(--duration-fast) var(--ease-standard),
-      border-color var(--duration-fast) var(--ease-standard),
-      color var(--duration-fast) var(--ease-standard),
-      box-shadow var(--duration-fast) var(--ease-standard),
-      transform var(--duration-fast) var(--ease-standard);
+      background-color var(--duration-med) var(--ease-standard),
+      border-color var(--duration-med) var(--ease-standard);
+  }
+  .composer-btn-send > svg,
+  .composer-btn-stop > svg {
+    position: relative;
+  }
+  .composer-btn-send:focus-visible,
+  .composer-btn-stop:focus-visible {
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+
+  .composer-btn-send {
+    color: color-mix(in oklab, var(--color-fg-muted) 80%, transparent);
+    transition: color var(--duration-med) var(--ease-standard);
+  }
+  .composer-btn-send::before {
+    border-color: color-mix(in oklab, var(--color-fg) 16%, transparent);
+  }
+  .composer-btn-send:disabled {
+    cursor: default;
+  }
+  .composer-btn-send.has-content {
+    color: var(--color-on-accent);
+  }
+  .composer-btn-send.has-content::before {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+  /* Hover and press deepen the gold with ink, as .btn does; nothing scales. */
+  .composer-btn-send.has-content:hover::before {
+    background: color-mix(in oklab, var(--color-accent) 88%, var(--color-fg));
+  }
+  .composer-btn-send.has-content:active::before {
+    background: color-mix(in oklab, var(--color-accent) 80%, var(--color-fg));
+  }
+
+  .composer-btn-stop {
+    color: var(--color-fg);
+    transition: color var(--duration-fast) var(--ease-standard);
+  }
+  .composer-btn-stop::before {
+    background: color-mix(in oklab, var(--color-fg) 8%, transparent);
   }
   .composer-btn-stop:hover {
-    background: color-mix(in oklab, var(--color-danger) 14%, transparent);
     color: var(--color-danger);
+  }
+  .composer-btn-stop:hover::before {
+    background: color-mix(in oklab, var(--color-danger) 14%, transparent);
   }
 
   /* Two rows: the text across the full width, the tools beneath it (attach,
@@ -382,6 +399,10 @@
     .composer-btn-stop {
       width: 44px;
       height: 44px;
+    }
+    .composer-btn-send,
+    .composer-btn-stop {
+      --disc: 36px;
     }
   }
 }
