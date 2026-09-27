@@ -63,8 +63,10 @@ export async function fetchModels(
         const payload = await res.json().catch(() => null);
         discovered.push(...readModelIds(payload));
       }
-    } catch {
+    } catch (error) {
       // Unreachable or route-less server: the configured list still stands.
+      // With none, there is nothing to offer, and the reason is worth saying.
+      if (configured.length === 0) throw error;
     }
   }
 

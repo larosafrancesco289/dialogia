@@ -101,9 +101,9 @@ function ServerLine({ result, baseUrl }: { result: EndpointProbeResult; baseUrl:
         <Line verdict="no">
           Could not reach {baseUrl}.
           <Detail>
-            {models.detail} Check that the server is running and that it allows requests from{' '}
-            {origin}. Ollama needs OLLAMA_ORIGINS to include that origin, and LM Studio needs CORS
-            enabled in its server settings.
+            {models.detail ? `${models.detail} ` : ''}Check that the server is running and that it
+            allows requests from {origin}. Ollama needs OLLAMA_ORIGINS to include that origin, and
+            LM Studio needs CORS enabled in its server settings.
           </Detail>
         </Line>
       );
@@ -159,7 +159,8 @@ function ProbeReport({
   return (
     <div role="status" aria-live="polite" className="endpoint-probe__report">
       <ServerLine result={result} baseUrl={endpoint.baseUrl ?? ''} />
-      <ChatLine result={result} />
+      {/* A server that could not be reached was sent nothing; the line above says so. */}
+      {result.models.verdict !== 'unreachable' && <ChatLine result={result} />}
       {checked ? (
         <ul className="endpoint-probe__checks">
           {CAPABILITY_LABELS.map(({ key, label }) => {

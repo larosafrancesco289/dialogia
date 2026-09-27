@@ -137,6 +137,33 @@ test('removing an endpoint removes its key so a reused slug cannot inherit it', 
   assert.equal(getKey(second.apiKeyRef!), undefined);
 });
 
+test('a server that is down is named once a session, and again on an explicit refresh', async () => {
+  resetEndpointRegistryForTest();
+  const store = createTestStore();
+  store.getState().addEndpoint({
+    kind: 'openai-compatible',
+    label: 'Ollama',
+    baseUrl: 'http://localhost:11434/v1',
+  });
+  const restore = mockFetch((async () => {
+    throw new TypeError('Failed to fetch');
+  }) as never);
+  try {
+    await store.getState().loadModels();
+    assert.equal(store.getState().ui.notice, 'Could not reach Ollama.');
+
+    // Opening Settings loads again: the same news is not raised twice.
+    store.getState().setNotice(undefined);
+    await store.getState().loadModels();
+    assert.equal(store.getState().ui.notice, undefined);
+
+    await store.getState().loadModels({ showErrors: true });
+    assert.equal(store.getState().ui.notice, 'Could not reach Ollama.');
+  } finally {
+    restore();
+  }
+});
+
 test('with nothing configured, loading models opens the setup sheet, but not over Settings', async () => {
   resetEndpointRegistryForTest();
   const store = createTestStore();

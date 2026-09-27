@@ -61,7 +61,8 @@ test('an unreachable server stops the probe at the first step', async () => {
       ),
     },
   );
-  assert.equal(result.models.verdict, 'unreachable');
+  // Said once, in plain words: no "Failed to fetch" repeating it.
+  assert.deepEqual(result.models, { verdict: 'unreachable', detail: '' });
   assert.equal(result.chat.verdict, 'skipped');
   assert.equal(result.capabilities.tools.verdict, 'skipped');
   assert.deepEqual(steps, ['models']);
