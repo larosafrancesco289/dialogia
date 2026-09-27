@@ -69,6 +69,11 @@ export type UiSnapshot = {
   showSettings: boolean;
   /** First-run provider setup sheet; session-scoped, never persisted. */
   setupOpen?: boolean;
+  /**
+   * The sidebar is folded because the window is phone-width, not because the
+   * reader folded it; session-scoped, and the fold is not saved as their choice.
+   */
+  sidebarFoldedByLayout?: boolean;
   activeTurnByChatId: Record<string, number>;
   notice?: string;
   /** How the notice reads: a passing fact, a confirmation, or something wrong. */

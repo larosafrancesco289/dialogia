@@ -76,7 +76,12 @@ export function ChatSidebarView({
           <section className="sidebar-group" aria-label="Folders">
             {!collapsed && <h3 className="sidebar-group__label">Folders</h3>}
             {showCreateFolder && !collapsed && (
-              <div className="chat-item folder-row is-editing flex items-center gap-2 px-4 py-2">
+              // tabIndex -1, as an editing row has: Enter or Escape leaves focus
+              // here, not on whatever holds the list, until the row is gone.
+              <div
+                className="chat-item folder-row is-editing flex items-center gap-2 px-4 py-2"
+                tabIndex={-1}
+              >
                 <ChevronRightIcon className="folder-row__chevron" aria-hidden="true" />
                 <InlineTitleEdit
                   value=""

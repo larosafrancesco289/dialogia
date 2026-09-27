@@ -50,3 +50,18 @@ test('capabilities come from the endpoint, never from the model name', async () 
   assert.deepEqual(raw.supported_parameters, ['tools', 'vision']);
   assert.deepEqual(raw.input_modalities, ['text', 'image']);
 });
+
+test('an unreachable server fails the load only when no models are configured', async () => {
+  const unreachable = async () => {
+    throw new TypeError('Failed to fetch');
+  };
+  const kept = await fetchModels({ endpoint }, { fetchFn: unreachable });
+  assert.deepEqual(
+    kept.map((model) => model.id),
+    ['endpoint:ollama/qwen3:8b'],
+  );
+  await assert.rejects(
+    fetchModels({ endpoint: { ...endpoint, modelIds: [] } }, { fetchFn: unreachable }),
+    TypeError,
+  );
+});

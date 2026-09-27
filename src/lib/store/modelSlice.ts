@@ -27,6 +27,7 @@ export type ModelSliceState = {
 };
 
 export type ModelSliceActions = {
+  /** `showErrors` repeats a failure already reported this session (an explicit refresh). */
   loadModels: (opts?: { showErrors?: boolean }) => Promise<void>;
   toggleFavoriteModel: (id: string) => void;
   hideModel: (id: string) => void;
@@ -45,9 +46,16 @@ export const modelPersistFragment: PersistFragment = {
   }),
 };
 
+/** fetch rejects with a TypeError when nothing answers, and aborts when an answer never comes. */
+const isUnreachable = (error: unknown) =>
+  error instanceof TypeError || (error instanceof Error && error.name === 'AbortError');
+
 export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceActions>(
   (set, get) => {
     let isLoadingModels = false;
+    // Servers already reported as unreachable this session. Every load (each
+    // Settings open) would otherwise raise the same notice while one stays down.
+    const reportedUnreachable = new Set<string>();
 
     return {
       models: [],
@@ -58,7 +66,7 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
       zdrProviderIds: undefined,
       zdrFetchedAt: undefined,
 
-      async loadModels(_opts?: { showErrors?: boolean }) {
+      async loadModels(opts?: { showErrors?: boolean }) {
         if (isLoadingModels) return;
         // Memoized: only the first caller actually reads IndexedDB.
         await loadKeys();
@@ -71,7 +79,9 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
         });
         if (authEntries.length === 0) {
           // Nothing is configured yet: the setup flow is the answer, not a toast.
-          set((s) => ({ ui: { ...s.ui, setupOpen: true } }));
+          // Inside Settings, Connections is already that answer; the sheet would
+          // only stack on top of it.
+          if (!get().ui.showSettings) set((s) => ({ ui: { ...s.ui, setupOpen: true } }));
           return;
         }
 
@@ -83,6 +93,7 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
 
           let zdrUnavailable = false;
           let hadUnauthorizedFailure = false;
+          let quietedRepeat = false;
 
           await Promise.all(
             authEntries.map(async ([endpoint, auth]) => {
@@ -116,6 +127,7 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
                 }
 
                 modelsByEndpoint.set(endpoint.id, models);
+                reportedUnreachable.delete(endpoint.id);
               } catch (error: unknown) {
                 modelsByEndpoint.set(endpoint.id, []);
                 if (isApiError(error) && error.code === API_ERROR_CODES.UNAUTHORIZED) {
@@ -126,6 +138,16 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
 
                 if (isApiError(error) && error.code === API_ERROR_CODES.RATE_LIMITED) {
                   noticeSegments.push(`${endpoint.label} models unavailable: rate limited.`);
+                  return;
+                }
+
+                if (isUnreachable(error)) {
+                  if (reportedUnreachable.has(endpoint.id) && !opts?.showErrors) {
+                    quietedRepeat = true;
+                    return;
+                  }
+                  reportedUnreachable.add(endpoint.id);
+                  noticeSegments.push(`Could not reach ${endpoint.label}.`);
                   return;
                 }
 
@@ -160,6 +182,7 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
               notify(get, noticeSegments.join(' '), 'info');
               return;
             }
+            if (quietedRepeat) return;
             if (!get().ui.notice) {
               notify(get, NOTICE_MODELS_UNAVAILABLE);
             }

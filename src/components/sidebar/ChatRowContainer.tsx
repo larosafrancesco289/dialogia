@@ -13,6 +13,7 @@ import { MoveChatMenu } from '@/components/sidebar/MoveChatMenu';
 import { requestFolderRename } from '@/components/sidebar/pendingRename';
 import { useDragAndDrop } from '@/lib/dragDrop';
 import { ChatRowView } from '@/components/sidebar/ChatRowView';
+import { canFocus, focusWasDropped, neighbourOf } from '@/lib/ui/focus';
 
 export interface ChatRowContainerProps {
   chat: Chat;
@@ -172,7 +173,26 @@ export function ChatRowContainer({
         onCancel={() => setShowConfirm(false)}
         onConfirm={() => {
           setShowConfirm(false);
-          void deleteChat(chat.id);
+          // The row goes with the chat and focus with it: hand it to the row that
+          // takes its place, else to New chat. Picked now, while the row is here.
+          const row = document.querySelector<HTMLElement>(
+            `.chat-item[data-chat-id="${CSS.escape(chat.id)}"]`,
+          );
+          const rows = Array.from(
+            row?.closest('.sidebar-section')?.querySelectorAll<HTMLElement>('.chat-item') ?? [],
+          );
+          const neighbour = row ? neighbourOf(rows, row) : undefined;
+          void deleteChat(chat.id).then(() =>
+            requestAnimationFrame(() => {
+              if (!focusWasDropped()) return;
+              const target = canFocus(neighbour)
+                ? neighbour
+                : Array.from(
+                    document.querySelectorAll<HTMLElement>('button[aria-label="New chat"]'),
+                  ).find((button) => canFocus(button));
+              target?.focus({ preventScroll: true });
+            }),
+          );
         }}
       />
 

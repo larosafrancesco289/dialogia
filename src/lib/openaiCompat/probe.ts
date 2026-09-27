@@ -247,7 +247,10 @@ export async function probeEndpoint(
     }
   } catch (error) {
     if (isAbortError(error) && outer?.aborted) throw error;
-    models = { verdict: 'unreachable', detail: describeThrown(error, TIMEOUTS.models) };
+    // The browser's words for a failed fetch ("Failed to fetch", "Load failed")
+    // only repeat that the server could not be reached; a timeout says more.
+    const detail = error instanceof TypeError ? '' : describeThrown(error, TIMEOUTS.models);
+    models = { verdict: 'unreachable', detail };
   }
 
   if (models.verdict === 'unreachable') {

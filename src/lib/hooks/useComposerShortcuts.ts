@@ -146,9 +146,9 @@ type SubmitArgs = {
   onCommandHandled?: () => void;
 };
 
-export type ComposerSubmitResult = 'sent' | 'command' | 'noop';
+export type ComposerSubmitResult = 'sent' | 'command' | 'noop' | 'blocked';
 
-export function useComposerShortcuts(options: {
+type ComposerSubmitOptions = {
   chat: Chat | undefined;
   models: ModelDescriptor[];
   nextOverrides: NextOverrides;
@@ -160,44 +160,48 @@ export function useComposerShortcuts(options: {
     text: string,
     opts: { attachments?: DraftAttachment[]; metadata?: Message['metadata'] },
   ) => Promise<void>;
+  /**
+   * Whether the message could go out now. Asked before a chat is opened or the
+   * draft cleared: a send that stops at a missing key would otherwise leave an
+   * empty chat and take the text with it.
+   */
+  canSend?: () => boolean;
   defaultModelId?: string;
-}) {
-  const handleSubmit = useCallback(
-    async ({
-      text,
-      attachments,
-      metadata,
-      onBeforeSend,
-      onAfterSend,
-      onCommandHandled,
-    }: SubmitArgs): Promise<ComposerSubmitResult> => {
-      const trimmed = text.trim();
-      // An attachment on its own is a message; the model is asked about it.
-      if (!trimmed && attachments.length === 0) return 'noop';
-      const commandHandled = await runSlashCommand(trimmed, {
-        chat: options.chat,
-        models: options.models,
-        nextOverrides: options.nextOverrides,
-        updateChatSettings: options.updateChatSettings,
-        setUI: options.setUI,
-        setNotice: options.setNotice,
-        accept: () => onCommandHandled?.(),
-        defaultModelId: resolveDynamicModelId(
-          options.defaultModelId || DEFAULT_MODEL_ID,
-          options.models,
-        ),
-      });
-      if (commandHandled) return 'command';
-      if (!options.chat) {
-        await options.newChat();
-      }
-      onBeforeSend?.();
-      await options.sendMessage(trimmed, { attachments, metadata });
-      onAfterSend?.();
-      return 'sent';
-    },
-    [options],
-  );
+};
+
+export async function submitComposer(
+  options: ComposerSubmitOptions,
+  { text, attachments, metadata, onBeforeSend, onAfterSend, onCommandHandled }: SubmitArgs,
+): Promise<ComposerSubmitResult> {
+  const trimmed = text.trim();
+  // An attachment on its own is a message; the model is asked about it.
+  if (!trimmed && attachments.length === 0) return 'noop';
+  const commandHandled = await runSlashCommand(trimmed, {
+    chat: options.chat,
+    models: options.models,
+    nextOverrides: options.nextOverrides,
+    updateChatSettings: options.updateChatSettings,
+    setUI: options.setUI,
+    setNotice: options.setNotice,
+    accept: () => onCommandHandled?.(),
+    defaultModelId: resolveDynamicModelId(
+      options.defaultModelId || DEFAULT_MODEL_ID,
+      options.models,
+    ),
+  });
+  if (commandHandled) return 'command';
+  if (options.canSend && !options.canSend()) return 'blocked';
+  if (!options.chat) {
+    await options.newChat();
+  }
+  onBeforeSend?.();
+  await options.sendMessage(trimmed, { attachments, metadata });
+  onAfterSend?.();
+  return 'sent';
+}
+
+export function useComposerShortcuts(options: ComposerSubmitOptions) {
+  const handleSubmit = useCallback((args: SubmitArgs) => submitComposer(options, args), [options]);
 
   return { handleSubmit };
 }

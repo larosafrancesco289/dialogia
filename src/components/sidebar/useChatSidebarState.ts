@@ -1,9 +1,10 @@
-import { useCallback, useMemo, useState, type DragEvent } from 'react';
+import { useCallback, useMemo, useRef, useState, type DragEvent } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { useDragAndDrop } from '@/lib/dragDrop';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
+import { canFocus, focusWasDropped } from '@/lib/ui/focus';
 import {
   buildFolderTreeIndex,
   getFolderChildren,
@@ -105,19 +106,36 @@ export function useChatSidebarState({
     return rootChats.filter((chat) => matchText(chat.title));
   }, [query, rootChats]);
 
+  // The name field's row goes once the name is settled, and focus with it:
+  // hand it to the new folder, else back to what opened the field.
+  const createOpenerRef = useRef<Element | null>(null);
+  const settleCreateFocus = useCallback((folderId?: string) => {
+    requestAnimationFrame(() => {
+      if (!focusWasDropped()) return;
+      const folderRow = folderId
+        ? document.querySelector(`.folder-row[data-folder-id="${CSS.escape(folderId)}"]`)
+        : null;
+      const target = canFocus(folderRow) ? folderRow : createOpenerRef.current;
+      if (canFocus(target)) target.focus({ preventScroll: true });
+    });
+  }, []);
+
   const onCreateFolder = useCallback(
     async (name: string) => {
       setShowCreateFolder(false);
-      await createFolder(name);
+      const folder = await createFolder(name);
+      settleCreateFocus(folder.id);
     },
-    [createFolder],
+    [createFolder, settleCreateFocus],
   );
 
   const onCancelCreateFolder = useCallback(() => {
     setShowCreateFolder(false);
-  }, []);
+    settleCreateFocus();
+  }, [settleCreateFocus]);
 
   const onStartCreateFolder = useCallback(() => {
+    createOpenerRef.current = document.activeElement;
     setShowCreateFolder(true);
   }, []);
 
