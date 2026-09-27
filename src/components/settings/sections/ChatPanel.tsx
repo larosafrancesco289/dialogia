@@ -114,6 +114,9 @@ export function ChatPanel(props: ChatPanelProps) {
                   className="input flex-1 min-w-0"
                   value={presetName}
                   placeholder={presetMode === 'save' ? 'Name this prompt' : 'New name'}
+                  aria-label={
+                    presetMode === 'save' ? 'Name this prompt' : 'New name for this prompt'
+                  }
                   autoFocus
                   onChange={(e) => setPresetName(e.target.value)}
                   onKeyDown={(e) => {
