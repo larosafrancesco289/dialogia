@@ -3,7 +3,7 @@
 // thoughts and tool calls (folding in legacy reasoning, tool logs and search
 // sources), the one-line summary in its head, and each tool call's labels.
 
-import { holdEscapes, releaseEscapes } from '@/lib/markdown/plainText';
+import { markdownToPlainText, withoutSplitSurrogate } from '@/lib/markdown/plainText';
 import type { MessageActivityItem, ToolCallLogEntry } from '@/lib/types';
 
 export type SearchSourcesData = {
@@ -20,16 +20,34 @@ export function compactText(value: string, max = 140) {
   if (text.length <= max) return text;
   const slice = text.slice(0, max);
   const lastSpace = slice.lastIndexOf(' ');
-  return `${slice.slice(0, lastSpace > 90 ? lastSpace : max)}…`;
+  return `${lastSpace > 90 ? slice.slice(0, lastSpace) : withoutSplitSurrogate(slice)}…`;
 }
 
-/** Markdown emphasis, code marks and escapes, which the one-line summary shows bare. */
-function plainText(value: string) {
-  return releaseEscapes(
-    holdEscapes(value)
-      .replace(/\*\*|__|`/g, '')
-      .replace(/^#+\s*/gm, ''),
-  );
+// A stop after these ends a word, not a sentence: "e.g. arrows", "Dr. Jones",
+// "the U.S. economy". A lone capital counts too, at the cost of "plan A. Then".
+const ABBREVIATION_RE =
+  /(?:^|[\s(])(?:e\.g|i\.e|etc|vs|cf|approx|Mr|Mrs|Ms|Dr|Prof|St|No|Fig|[A-Z](?:\.[A-Z])*)$/;
+
+/**
+ * The finished sentences of the text: each ends in a stop with whitespace
+ * after it. A stop with no space after it ("6.66", "v2.1") is inside the
+ * sentence, and a line break drops a fragment that never finished.
+ */
+function finishedSentences(text: string): string[] {
+  const sentences: string[] = [];
+  let start = 0;
+  for (const match of text.matchAll(/[.!?]+(?=\s)|\n/g)) {
+    const end = match.index + match[0].length;
+    if (match[0] === '\n') {
+      start = end;
+      continue;
+    }
+    if (match[0] === '.' && ABBREVIATION_RE.test(text.slice(start, match.index))) continue;
+    const sentence = text.slice(start, end).trim().replace(/^•\s*/, '');
+    if (sentence) sentences.push(sentence);
+    start = end;
+  }
+  return sentences;
 }
 
 /**
@@ -41,10 +59,8 @@ function plainText(value: string) {
 export function currentThoughtLine(text: string): string {
   const headings = [...text.matchAll(/^[ \t]*\*\*([^*\n]+)\*\*[ \t]*$/gm)];
   const heading = headings[headings.length - 1]?.[1]?.trim();
-  if (heading) return compactText(plainText(heading), 110);
-  // A stop with no space after it ("6.66", "v2.1") is inside the sentence.
-  const sentences = plainText(text).match(/(?:[^.!?\n]|[.!?](?=[^\s.!?]))+[.!?]+(?=\s)/g);
-  const last = sentences?.[sentences.length - 1]?.trim();
+  if (heading) return compactText(markdownToPlainText(heading), 110);
+  const last = finishedSentences(markdownToPlainText(text)).at(-1);
   return last ? compactText(last, 110) : '';
 }
 
