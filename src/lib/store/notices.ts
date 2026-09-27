@@ -21,15 +21,21 @@ export const NOTICE_CATALOG = {
 export type NoticeId = keyof typeof NOTICE_CATALOG;
 
 const ATTACHMENT_KIND_LABELS: Record<string, string> = {
-  image: 'Images',
-  audio: 'Audio',
+  image: 'images',
+  audio: 'audio',
   pdf: 'PDFs',
 };
 
 /** Attachments the chosen model cannot read are removed; say so rather than silently sending less. */
 export function describeDroppedAttachments(kinds: string[]): string {
   const labels = kinds.map((kind) => ATTACHMENT_KIND_LABELS[kind] ?? kind);
-  return `${labels.join(' and ')} were left out: this model does not accept them.`;
+  const list =
+    labels.length > 1
+      ? `${labels.slice(0, -1).join(', ')} and ${labels.at(-1)}`
+      : (labels[0] ?? '');
+  // Audio alone is one thing; every other kind, and any list, is several.
+  const verb = labels.length === 1 && kinds[0] === 'audio' ? 'was' : 'were';
+  return `${list.charAt(0).toUpperCase()}${list.slice(1)} ${verb} left out: this model does not accept them.`;
 }
 
 export function resolveNotice(notice?: NoticeId | string): string | undefined {
