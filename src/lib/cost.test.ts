@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { computeCost, describeModelPricing } from './cost';
+import type { ModelDescriptor } from '@/lib/types';
 
 test('describeModelPricing formats prompt/completion rates from numbers or strings', () => {
   const model: any = {
@@ -92,4 +93,12 @@ test('computeCost accounts for direct Anthropic cache read and write tokens', ()
   });
 
   assert.equal(Number(cost.total?.toFixed(5)), 0.00189);
+});
+
+test('a router listed at -1 has an unknown cost, never a negative one', () => {
+  const model = {
+    id: 'openrouter/auto',
+    pricing: { prompt: -1, completion: -1 },
+  } as ModelDescriptor;
+  assert.equal(computeCost({ model, promptTokens: 100, completionTokens: 50 }).total, undefined);
 });

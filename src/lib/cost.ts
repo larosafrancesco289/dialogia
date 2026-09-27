@@ -57,6 +57,11 @@ export function computeCost(opts: {
   const completionRate = model?.pricing?.completion; // per token
   const cacheReadRate = model?.pricing?.inputCacheRead;
   const cacheWriteRate = model?.pricing?.inputCacheWrite;
+  // A router prices each request by the model it picks and lists -1 for its
+  // own rates: the cost is unknown, not negative.
+  if ([promptRate, completionRate, cacheReadRate, cacheWriteRate].some((r) => r != null && r < 0)) {
+    return { currency };
+  }
   const hasCacheRates = cacheReadRate != null || cacheWriteRate != null;
   const directAnthropic =
     model?.endpointId === ANTHROPIC_ENDPOINT_ID || model?.id?.startsWith('anthropic-direct/');
