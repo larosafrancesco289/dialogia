@@ -62,12 +62,17 @@ export function mapOutsideCode(text: string, transform: (prose: string) => strin
 // `\\[` is a LaTeX line break with spacing (`\\[4pt]`), not a delimiter.
 const DISPLAY_MATH_RE = /(?<!\\)\\\[([\s\S]+?)(?<!\\)\\\]/g;
 const INLINE_MATH_RE = /(?<!\\)\\\(([^\n]+?)(?<!\\)\\\)/g;
+// `$$…$$` alone on its line is display maths, but remark-math only reads
+// `$$` as a block when it stands on a line of its own; on one line it
+// renders inline, left in the text.
+const LONE_DISPLAY_RE = /^([ \t]*)\$\$(?!\$)([^\n]*?[^\\\n])\$\$[ \t]*$/gm;
 
 /**
  * remark-math reads only `$…$` and `$$…$$`, but many models write LaTeX's own
  * `\(…\)` and `\[…\]`, which markdown then eats as escaped brackets. Display
  * math standing on its own line becomes a `$$` block at the same indent, so it
- * stays inside a list item; mid-sentence display math stays inline.
+ * stays inside a list item; mid-sentence display math stays inline. So does
+ * a one-line `$$…$$` standing alone, which remark-math would set inline.
  */
 export function normalizeMathDelimiters(text: string): string {
   const display = text.replace(DISPLAY_MATH_RE, (match, inner: string, offset: number) => {
@@ -80,7 +85,14 @@ export function normalizeMathDelimiters(text: string): string {
     if (!before.trim() && !after.trim()) return `$$\n${before}${body}\n${before}$$`;
     return `$$${body}$$`;
   });
-  return display.replace(INLINE_MATH_RE, (_match, inner: string) => `$${inner.trim()}$`);
+  return display
+    .replace(INLINE_MATH_RE, (_match, inner: string) => `$${inner.trim()}$`)
+    .replace(LONE_DISPLAY_RE, (_match, indent: string, body: string) =>
+      // Two formulas on one line (`$$a$$ and $$b$$`) are not one block.
+      body.trim() && !body.includes('$$')
+        ? `${indent}$$\n${indent}${body.trim()}\n${indent}$$`
+        : _match,
+    );
 }
 
 export function preprocessMarkdown(content: string, sources?: MarkdownCitationSource[]): string {
