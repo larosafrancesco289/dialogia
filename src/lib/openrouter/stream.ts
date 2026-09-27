@@ -13,6 +13,7 @@ import {
   buildOpenRouterStreamError,
   wrapOpenRouterClientError,
 } from '@/lib/openrouter/errors';
+import { createThinkSplitter } from '@/lib/openrouter/thinkTags';
 
 const VALID_FINISH_REASONS = new Set(['stop', 'tool_calls', 'length', 'content_filter']);
 
@@ -91,6 +92,17 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
   // Which reasoning block the text is in, when `reasoning_details` says.
   let reasoningBlock: number | undefined;
   const toolCallAccumulator = new Map<number, Partial<ToolCall>>();
+  const thinkSplitter = createThinkSplitter();
+  const emitContent = ({ content, reasoning }: { content: string; reasoning: string }) => {
+    if (reasoning) {
+      reasoningTail = reasoning.slice(-1);
+      callbacks?.onReasoningToken?.(reasoning);
+    }
+    if (content) {
+      full += content;
+      callbacks?.onToken?.(content);
+    }
+  };
 
   const emitImages = (arr: unknown) => {
     if (!Array.isArray(arr)) return;
@@ -168,10 +180,7 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
         reasoningTail = piece.slice(-1);
         callbacks?.onReasoningToken?.(piece);
       }
-      if (deltaContent) {
-        full += deltaContent;
-        callbacks?.onToken?.(deltaContent);
-      }
+      if (deltaContent) emitContent(thinkSplitter.push(deltaContent));
 
       // Parse tool call deltas
       const toolCallDeltas = delta?.tool_calls;
@@ -251,6 +260,7 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
     throw apiError;
   }
 
+  emitContent(thinkSplitter.flush());
   const toolCalls = buildToolCalls(toolCallAccumulator);
   await callbacks?.onDone?.(full, {
     usage,
@@ -261,11 +271,6 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
   });
 }
 
-/**
- * OpenAI streams a reasoning summary as parts, each opening with a bold title,
- * and nothing between them: "…the formula.**Checking the base rate**". A part
- * that opens right after a finished sentence starts a new paragraph.
- */
 /**
  * The reasoning block a delta's text belongs to: the `index` of its
  * `reasoning_details` entry. `reasoning` concatenates every block with nothing
@@ -284,6 +289,11 @@ function reasoningDetailIndex(details: unknown): number | undefined {
   return undefined;
 }
 
+/**
+ * OpenAI streams a reasoning summary as parts, each opening with a bold title,
+ * and nothing between them: "…the formula.**Checking the base rate**". A part
+ * that opens right after a finished sentence starts a new paragraph.
+ */
 export function separateSummaryParts(previousChar: string, piece: string): string {
   return piece.startsWith('**') && /[.!?:)]/.test(previousChar) ? `\n\n${piece}` : piece;
 }
