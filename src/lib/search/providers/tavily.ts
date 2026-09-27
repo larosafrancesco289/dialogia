@@ -23,12 +23,29 @@ import { err, ok } from '@/lib/utils/result';
 
 export const TAVILY_PROVIDER_ID = 'tavily';
 
-function describeFailure(error: unknown): string {
+// Tavily's statuses, in the words the ledger shows. 432 and 433 are its plan
+// and pay-as-you-go limits.
+function describeStatus(status: number, attempt: string): string {
+  if (status === 401 || status === 403) {
+    return 'Tavily did not accept the search key. Check it in Settings.';
+  }
+  if (status === 429) return 'Tavily is limiting searches right now. Try again in a moment.';
+  if (status === 432 || status === 433) return 'The Tavily plan has reached its search limit.';
+  if (status >= 500) return 'Tavily is having trouble right now. Try again later.';
+  return `Tavily could not ${attempt}.`;
+}
+
+// An abort is left to the caller, which knows whether it was a Stop or a timeout.
+function describeFailure(error: unknown, attempt: string): string | undefined {
   if (isApiError(error)) {
     const detail = typeof error.detail === 'string' && error.detail.trim() ? error.detail : '';
     return detail || error.code;
   }
-  return error instanceof Error ? error.message : 'Network error';
+  if (error instanceof Error && 'status' in error && typeof error.status === 'number') {
+    return describeStatus(error.status, attempt);
+  }
+  if (error instanceof Error && error.name === 'AbortError') return undefined;
+  return 'Could not reach Tavily.';
 }
 
 async function search(args: NormalizedSearchArgs, ctx: SearchContext): Promise<SearchOutcome> {
@@ -41,7 +58,7 @@ async function search(args: NormalizedSearchArgs, ctx: SearchContext): Promise<S
     });
     return ok({ results });
   } catch (error: unknown) {
-    return err(describeFailure(error), { results: [] });
+    return err(describeFailure(error, 'run this search'), { results: [] });
   }
 }
 
@@ -55,7 +72,7 @@ async function fetchPage(args: NormalizedFetchArgs, ctx: SearchContext): Promise
     });
     return ok({ results });
   } catch (error: unknown) {
-    return err(describeFailure(error), { results: [] });
+    return err(describeFailure(error, 'fetch this page'), { results: [] });
   }
 }
 
