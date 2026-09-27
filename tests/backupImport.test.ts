@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { createStore } from 'zustand/vanilla';
 import type { StateCreator } from 'zustand';
 import { repository } from '@/lib/db';
-import { importChatExport } from '@/lib/settings/transfer';
+import { describeImport, importChatExport } from '@/lib/settings/transfer';
 import { buildStoreInitializer } from '@/lib/store/createStore';
 import { mergePersistedState } from '@/lib/store/persistence';
 import type { PersistedStoreState, StoreState } from '@/lib/store/types';
@@ -59,4 +59,38 @@ test('a backup written by a newer build is refused before anything is imported',
   assert.equal(result.ok, false);
   assert.match(result.ok ? '' : result.error, /newer version of Dialogia/);
   assert.deepEqual(await repository.loadChats(['chat-from-the-future']), []);
+});
+
+test('a file with nothing of ours in it is refused rather than reported as imported', async () => {
+  for (const payload of [{}, [], { hello: 'there' }, { chats: [] }]) {
+    const result = await importChatExport(JSON.stringify(payload));
+    assert.equal(result.ok, false, JSON.stringify(payload));
+    assert.match(result.ok ? '' : result.error, /no Dialogia chats or settings/);
+  }
+});
+
+test('an import says how many chats it brought in, and how many it could not read', async () => {
+  const chat = (id: string) => ({ id, title: id, createdAt: 1, updatedAt: 1, settings: {} });
+  const result = await importChatExport(
+    JSON.stringify({ chats: [chat('import-count-a'), chat('import-count-b'), { id: 7 }] }),
+  );
+  assert.equal(result.ok, true);
+  assert.equal(result.ok && result.notice, 'Imported 2 chats. 1 could not be read.');
+
+  const unreadable = await importChatExport(JSON.stringify({ chats: [{ id: 7 }, 'x'] }));
+  assert.equal(unreadable.ok, false);
+  assert.match(unreadable.ok ? '' : unreadable.error, /None of the chats/);
+});
+
+test('describeImport words each outcome', () => {
+  assert.equal(describeImport({ chats: 1, skippedChats: 0, settings: true }), 'Imported 1 chat.');
+  assert.equal(
+    describeImport({ chats: 0, skippedChats: 0, settings: true }),
+    'Imported your settings.',
+  );
+  assert.equal(
+    describeImport({ chats: 0, skippedChats: 1, settings: true }),
+    'Imported your settings. 1 chat could not be read.',
+  );
+  assert.equal(describeImport({ chats: 0, skippedChats: 2, settings: false }), undefined);
 });

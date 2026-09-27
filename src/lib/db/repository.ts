@@ -304,6 +304,8 @@ export function createRepository(db: DialogiaDbLike) {
       for (const chatId of chatsWithEvents) await deleteTutorEventsForChat(db, chatId);
       for (const e of tutorEvents) await db.tutorEvents.put(e);
     });
+    // What was read and what was not, so the person hears which it was.
+    return { chats: chats.length, skippedChats: rawChats.length - chats.length };
   };
 
   const listChatIdsWithMessages = async (): Promise<string[]> => {

@@ -53,8 +53,9 @@ export function announceWrites(
       announce({ kind: 'folderDeleted', id: folderId });
     },
     async importAll(data) {
-      await repository.importAll(data);
+      const counts = await repository.importAll(data);
       announce({ kind: 'replaced' });
+      return counts;
     },
     async appendTutorEvents(events) {
       await repository.appendTutorEvents(events);
