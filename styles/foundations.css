@@ -141,7 +141,12 @@ html {
 }
 .btn:focus-visible,
 .btn-outline:focus-visible,
-.btn-ghost:focus-visible {
+.btn-ghost:focus-visible,
+/* A label dressed as a button round a hidden file input (Import): the input
+   takes the focus, so the label shows it. */
+.btn:has(> input:focus-visible),
+.btn-outline:has(> input:focus-visible),
+.btn-ghost:has(> input:focus-visible) {
   box-shadow: 0 0 0 2px var(--focus-ring);
 }
 .btn[disabled],
