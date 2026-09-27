@@ -36,7 +36,7 @@ export function TutorHeaderLine() {
 
   const canOpen = hasPlan && !!planProgress && !!learningPlan;
   const detail = canOpen
-    ? `${planProgress.completed} of ${learningPlan.nodes.length} topics`
+    ? `${planProgress.completed} of ${learningPlan.nodes.length} ${learningPlan.nodes.length === 1 ? 'topic' : 'topics'}`
     : modelLabel;
 
   return (
