@@ -71,7 +71,9 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
         });
         if (authEntries.length === 0) {
           // Nothing is configured yet: the setup flow is the answer, not a toast.
-          set((s) => ({ ui: { ...s.ui, setupOpen: true } }));
+          // Inside Settings, Connections is already that answer; the sheet would
+          // only stack on top of it.
+          if (!get().ui.showSettings) set((s) => ({ ui: { ...s.ui, setupOpen: true } }));
           return;
         }
 

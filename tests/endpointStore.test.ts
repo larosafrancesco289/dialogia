@@ -136,3 +136,15 @@ test('removing an endpoint removes its key so a reused slug cannot inherit it', 
   assert.equal(second.id, first.id);
   assert.equal(getKey(second.apiKeyRef!), undefined);
 });
+
+test('with nothing configured, loading models opens the setup sheet, but not over Settings', async () => {
+  resetEndpointRegistryForTest();
+  const store = createTestStore();
+  await store.getState().loadModels();
+  assert.equal(store.getState().ui.setupOpen, true);
+
+  const inSettings = createTestStore();
+  inSettings.getState().setUI({ showSettings: true });
+  await inSettings.getState().loadModels();
+  assert.notEqual(inSettings.getState().ui.setupOpen, true);
+});
