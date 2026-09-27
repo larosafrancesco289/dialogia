@@ -1,8 +1,10 @@
 import { isRecord } from '@/lib/utils/guards';
 
 export const ANTHROPIC_API_VERSION = '2023-06-01';
-export const ANTHROPIC_DEFAULT_MAX_TOKENS = 2048;
 export const ANTHROPIC_MIN_THINKING_BUDGET = 1024;
+// What a reply keeps for its words once thinking has had its budget: the API
+// rejects a budget that is not below max_tokens.
+export const ANTHROPIC_MIN_ANSWER_TOKENS = 1024;
 export const ANTHROPIC_TRANSPORT_PREFIX = 'anthropic-direct/';
 const ANTHROPIC_ACCEPTED_PREFIXES = [ANTHROPIC_TRANSPORT_PREFIX, 'anthropic/'] as const;
 
@@ -217,6 +219,20 @@ export function documentedAnthropicEffortLevels(model: string): string[] {
   if (gen && gen.version >= 4.7) levels.push('xhigh');
   levels.push('max');
   return levels;
+}
+
+/**
+ * The max_tokens a request sends when the chat sets none. The API has no
+ * default and rejects a value above the model's output limit, so this is the
+ * most every model of the generation allows: 32000 from Claude 3.7 on (Opus
+ * 4 and 4.1 stop there), 8192 on 3.5, 4096 on Claude 3. A small default cut
+ * long answers short and left no room beside a thinking budget.
+ */
+export function defaultAnthropicMaxTokens(model: string): number {
+  const gen = claudeGeneration(normalizeSlug(model));
+  if (gen && gen.version < 3.5) return 4096;
+  if (gen && gen.version < 3.7) return 8192;
+  return 32000;
 }
 
 export function supportsAnthropicReasoning(model: string): boolean {

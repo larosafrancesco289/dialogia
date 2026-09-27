@@ -20,6 +20,7 @@ import { messageHasModuleContent } from '@/lib/modules';
 import type { Chat, Message, ModelDescriptor, PersistedAttachment } from '@/lib/types';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { toolCallInFlight } from '@/lib/ui/streaming';
+import { replyEndingNote } from '@/lib/ui/replyEnding';
 import styles from './MessageCard.module.css';
 
 export type AssistantMessageProps = {
@@ -64,13 +65,6 @@ export type AssistantMessageProps = {
   citationSources?: MarkdownCitationSource[];
 };
 
-// A reply that ended early says so, instead of reading as finished mid-sentence.
-const CUT_OFF_NOTES: Record<NonNullable<Message['cutOff']>, string> = {
-  stopped: 'Stopped before the end.',
-  failed: 'Cut off by an error before the end.',
-  interrupted: 'Cut off: the page closed while this was being written.',
-};
-
 export function AssistantMessage({
   message,
   isMobile: _isMobile,
@@ -110,6 +104,7 @@ export function AssistantMessage({
   const resolvedCitationSources = citationSources?.length ? citationSources : undefined;
   // The reasoning line is up (thinking, or a tool call): its mark does the waiting.
   const ledgerUp = !!message.reasoning?.trim() || !!message.toolCalls?.length;
+  const endingNote = replyEndingNote(message);
 
   let messageBody: ReactNode = null;
   if (isEditing) {
@@ -203,8 +198,8 @@ export function AssistantMessage({
         </div>
       )}
 
-      {!isStreaming && !isEditing && message.cutOff && displayContent.trim() && (
-        <p className="px-4 pb-2 text-xs italic text-fg-muted">{CUT_OFF_NOTES[message.cutOff]}</p>
+      {!isStreaming && !isEditing && endingNote && (
+        <p className="px-4 pb-2 text-xs italic text-fg-muted">{endingNote}</p>
       )}
 
       {!isStreaming && !isEditing && message.finishReason === 'content_filter' && (
