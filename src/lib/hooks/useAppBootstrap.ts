@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
@@ -6,12 +6,13 @@ import { prefetchOnIdle } from '@/lib/ui/lazy';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 
 export function useAppBootstrap() {
-  const { initializeApp, loadModels, setUI, collapsed } = useChatStore(
+  const { initializeApp, loadModels, setUI, collapsed, foldedByLayout } = useChatStore(
     (s) => ({
       initializeApp: s.initializeApp,
       loadModels: s.loadModels,
       setUI: s.setUI,
       collapsed: s.ui.sidebarCollapsed ?? false,
+      foldedByLayout: s.ui.sidebarFoldedByLayout === true,
     }),
     shallow,
   );
@@ -30,17 +31,15 @@ export function useAppBootstrap() {
   }, [loadModels]);
 
   // A narrow window folds the sidebar away; widening it again brings back
-  // the sidebar the reader had, instead of leaving it folded for good.
-  const reopenSidebarRef = useRef(false);
+  // the sidebar the reader had, instead of leaving it folded for good. The
+  // mark lives in the store so the fold is never saved as the reader's choice.
   useEffect(() => {
     if (isMobile && !collapsed) {
-      reopenSidebarRef.current = true;
-      setUI({ sidebarCollapsed: true });
-    } else if (!isMobile && reopenSidebarRef.current) {
-      reopenSidebarRef.current = false;
-      if (collapsed) setUI({ sidebarCollapsed: false });
+      setUI({ sidebarCollapsed: true, sidebarFoldedByLayout: true });
+    } else if (!isMobile && foldedByLayout) {
+      setUI({ sidebarCollapsed: false, sidebarFoldedByLayout: false });
     }
-  }, [isMobile, collapsed, setUI]);
+  }, [isMobile, collapsed, foldedByLayout, setUI]);
 
   useEffect(
     () => prefetchOnIdle(() => import('@/components/settings/SettingsDrawer'), { timeoutMs: 1500 }),
