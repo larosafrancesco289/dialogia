@@ -281,6 +281,10 @@
   .response-ledger__thought > p + p {
     margin-top: 0.55em;
   }
+  /* The thought is already italic, so its emphasis stands upright. */
+  .response-ledger__thought em {
+    font-style: normal;
+  }
   .response-ledger__thought strong {
     font-weight: 600;
   }

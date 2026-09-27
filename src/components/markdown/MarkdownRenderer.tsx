@@ -49,14 +49,17 @@ export function MarkdownRenderer({
   content,
   sources,
   streaming,
+  inline,
 }: {
   content: string;
   sources?: MarkdownCitationSource[];
   /** True while this block's content may still change on the next flush. */
   streaming?: boolean;
+  /** A single line set inside other text (a quiz option, a topic name). */
+  inline?: boolean;
 }) {
   const processedContent = useMemo(() => preprocessMarkdown(content, sources), [content, sources]);
-  const rootRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLElement>(null);
   // Every reply names its headings the same way, so each renderer prefixes
   // its ids: a link to a heading must reach the one in its own reply.
   const slugPrefix = `${useId().replace(/[^a-zA-Z0-9]/g, '')}-`;
@@ -91,9 +94,25 @@ export function MarkdownRenderer({
 
   useImageZoom(rootRef, processedContent, streaming);
 
+  if (inline) {
+    return (
+      <span ref={rootRef} className="markdown markdown--inline">
+        <ReactMarkdown
+          remarkPlugins={REMARK_PLUGINS}
+          rehypePlugins={rehypePlugins}
+          components={INLINE_COMPONENTS}
+          disallowedElements={INLINE_UNWRAPPED}
+          unwrapDisallowed
+        >
+          {processedContent}
+        </ReactMarkdown>
+      </span>
+    );
+  }
+
   return (
     <StreamingContext.Provider value={!!streaming}>
-      <div ref={rootRef} className="markdown">
+      <div ref={rootRef as React.RefObject<HTMLDivElement>} className="markdown">
         <ReactMarkdown
           remarkPlugins={REMARK_PLUGINS}
           rehypePlugins={rehypePlugins}
@@ -158,4 +177,34 @@ const COMPONENTS: Components = {
       </a>
     );
   },
+};
+
+// Inline text keeps its words, emphasis, code and maths, but no blocks: it
+// sits in a sentence or inside a button, where a paragraph, a list or a link
+// (a control inside a control) would break the line it belongs to.
+const INLINE_UNWRAPPED = [
+  'a',
+  'blockquote',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'hr',
+  'img',
+  'li',
+  'ol',
+  'pre',
+  'table',
+  'tbody',
+  'td',
+  'th',
+  'thead',
+  'tr',
+  'ul',
+];
+
+const INLINE_COMPONENTS: Components = {
+  p: ({ children }) => <>{children}</>,
 };

@@ -3,6 +3,7 @@ import {
   MagnifyingGlassIcon,
   WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline';
+import { Markdown } from '@/components/Markdown';
 import type { MessageActivityItem } from '@/lib/types';
 import {
   compactText,
@@ -12,7 +13,7 @@ import {
   type ToolActivityItem,
 } from '@/lib/ui/responseActivity';
 
-/** Reasoning set as prose: paragraphs, titled sections, bold kept as bold. */
+/** Reasoning set as prose: paragraphs, titled sections, and the model's inline marks. */
 function ThoughtText({ text }: { text: string }) {
   const blocks = text
     .trim()
@@ -26,15 +27,15 @@ function ThoughtText({ text }: { text: string }) {
         if (heading) {
           return (
             <p key={index} className="response-ledger__thought-head">
-              {heading[1]}
+              <Markdown content={heading[1]} inline />
             </p>
           );
         }
+        // Each paragraph is memoized by its text, so a live thought re-reads
+        // only the paragraph still growing.
         return (
           <p key={index}>
-            {block
-              .split(/\*\*([^*]+)\*\*/)
-              .map((part, i) => (i % 2 === 1 ? <strong key={i}>{part}</strong> : part))}
+            <Markdown content={block} inline />
           </p>
         );
       })}

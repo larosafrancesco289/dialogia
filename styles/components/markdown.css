@@ -12,6 +12,10 @@
     word-wrap: break-word;
     overflow-wrap: anywhere;
   }
+  /* A line set inside other text keeps that text's rhythm. */
+  .markdown--inline {
+    line-height: inherit;
+  }
   .markdown p {
     margin: 0.5rem 0 0.75rem;
   }
