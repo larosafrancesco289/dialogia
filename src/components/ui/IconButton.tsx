@@ -4,6 +4,8 @@ interface IconButtonProps {
   children: React.ReactNode;
   onClick?: (e?: React.MouseEvent) => void;
   title?: string;
+  /** The name a screen reader gives it, when the tooltip alone would not tell rows apart. */
+  ariaLabel?: string;
   size?: 'sm' | 'md';
   className?: string;
   disabled?: boolean;
@@ -14,6 +16,7 @@ export function IconButton({
   children,
   onClick,
   title,
+  ariaLabel,
   size = 'md',
   className = '',
   disabled = false,
@@ -24,7 +27,7 @@ export function IconButton({
       className={`icon-button${size === 'sm' ? ' icon-button--sm' : ''} ${className}`.trim()}
       onClick={(e) => onClick?.(e)}
       title={title}
-      aria-label={title}
+      aria-label={ariaLabel ?? title}
       disabled={disabled}
     >
       {children}
