@@ -89,6 +89,8 @@ test('the live line is the latest finished sentence, not the one being written',
     currentThoughtLine('First point. Second **point** here.\n\nThird'),
     'Second point here.',
   );
+  assert.equal(currentThoughtLine('The fine is \\$6.66. Then'), 'The fine is $6.66.');
+  assert.equal(currentThoughtLine('Wait... v2.1 is out! Then'), 'v2.1 is out!');
 });
 
 test('the live line prefers the latest titled section when reasoning has them', () => {

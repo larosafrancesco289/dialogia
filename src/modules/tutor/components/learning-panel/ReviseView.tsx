@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { LearningPlan, LearningPlanNode } from '@/lib/types';
 import { listNames, PathStep, stepState, waitingOn, type StepState } from './PlanPath';
+import { InlineEmphasis } from '@/modules/tutor/components/message/InlineEmphasis';
 
 export type PlanRevisions = {
   onSkip: (nodeId: string) => Promise<unknown> | void;
@@ -98,7 +99,9 @@ function ReviseItem({
   return (
     <PathStep state={state} number={number}>
       <div className="hub-path__row is-static">
-        <span className="hub-path__name">{node.name}</span>
+        <span className="hub-path__name">
+          <InlineEmphasis text={node.name} />
+        </span>
         <span className="hub-path__sub">
           <span className="hub-path__status">{status}</span>
         </span>

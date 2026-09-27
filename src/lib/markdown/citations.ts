@@ -39,11 +39,20 @@ export function escapeCurrency(text: string): string {
   // This catches: $5, $100, $1,000, $99.99, $5M, $1.5B, etc.
   // A function, not a '\\$$1' pattern: in a replacement string `$$` is a
   // literal dollar, which turned every price into "$1".
+  // A price the model already escaped (`\$6.66`) stays as written: escaping
+  // it again makes `\\$`, a literal backslash before a live dollar.
   return text.replace(
     /\$(\d[\d,]*(?:\.\d+)?[KMBkmb]?)(?![\w^_{}\\$=])/g,
     (match, amount: string, offset: number) =>
-      opensInlineMath(text, offset) ? match : `\\$${amount}`,
+      isEscaped(text, offset) || opensInlineMath(text, offset) ? match : `\\$${amount}`,
   );
+}
+
+/** Whether the character at `index` follows an odd run of backslashes. */
+function isEscaped(text: string, index: number): boolean {
+  let slashes = 0;
+  while (text[index - 1 - slashes] === '\\') slashes++;
+  return slashes % 2 === 1;
 }
 
 function markdownUrl(url: string) {

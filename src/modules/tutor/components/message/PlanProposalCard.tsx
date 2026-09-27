@@ -8,6 +8,7 @@ import { LEDGER } from '@/modules/tutor/lib/ledger';
 import { useLedger } from '@/modules/tutor/ui/ledger';
 import { useRequestPlanChanges } from '@/modules/tutor/ui/usePlanCallbacks';
 import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
+import { InlineEmphasis } from '@/modules/tutor/components/message/InlineEmphasis';
 
 export function PlanProposalCard({
   chatId,
@@ -111,13 +112,19 @@ export function PlanProposalCard({
       <div className="exercise">
         {/* The sheet's head names the card; the card starts with the goal. */}
         <div>
-          <p className="exercise__question">{proposal.plan.goal}</p>
+          <p className="exercise__question">
+            <InlineEmphasis text={proposal.plan.goal} />
+          </p>
           <p className="exercise__meta mt-1">
             {nodesCount} {nodesCount === 1 ? 'topic' : 'topics'}
             {estimatedHours ? ` · about ${estimatedHours} hours` : ''}
           </p>
         </div>
-        {!resolved && proposal.rationale && <p className="exercise__aside">{proposal.rationale}</p>}
+        {!resolved && proposal.rationale && (
+          <p className="exercise__aside">
+            <InlineEmphasis text={proposal.rationale} />
+          </p>
+        )}
         <div className="flex flex-wrap items-center gap-2">
           {!resolved && (
             <button className="btn btn-sm" onClick={handleApprove} disabled={disableActions}>
