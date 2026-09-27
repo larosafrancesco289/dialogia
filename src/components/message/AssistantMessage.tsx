@@ -104,7 +104,7 @@ export function AssistantMessage({
   const resolvedCitationSources = citationSources?.length ? citationSources : undefined;
   // The reasoning line is up (thinking, or a tool call): its mark does the waiting.
   const ledgerUp = !!message.reasoning?.trim() || !!message.toolCalls?.length;
-  const endingNote = replyEndingNote(message);
+  const endingNote = replyEndingNote(message, hasModuleContent);
 
   let messageBody: ReactNode = null;
   if (isEditing) {
