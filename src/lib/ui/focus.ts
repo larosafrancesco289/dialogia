@@ -47,12 +47,32 @@ export function neighbourOf<T>(items: readonly T[], item: T): T | undefined {
 }
 
 /**
- * Focus went with what held it: nothing has it, or what has it left the page.
- * Asked a frame after a removal, so focus the reader moved elsewhere stays put.
+ * Focus went with what held it: nothing has it, or what has it left the page
+ * or can no longer hold it (a button that disabled itself). Asked a frame
+ * after a removal, so focus the reader moved elsewhere stays put.
  */
 export function focusWasDropped(): boolean {
   const active = document.activeElement;
-  return !active || active === document.body || !active.isConnected;
+  return !active || active === document.body || !canFocus(active);
+}
+
+/**
+ * After something that held focus goes away: a frame later, when the page has
+ * settled, and only if focus went with it, the first candidate that can take
+ * focus gets it. Candidates are looked up then, so a row that renders in that
+ * frame counts.
+ */
+export function refocusIfDropped(...candidates: (() => Element | null | undefined)[]): void {
+  requestAnimationFrame(() => {
+    if (!focusWasDropped()) return;
+    for (const candidate of candidates) {
+      const el = candidate();
+      if (canFocus(el)) {
+        el.focus({ preventScroll: true });
+        return;
+      }
+    }
+  });
 }
 
 /** The elements Tab visits inside `container`, in order. */

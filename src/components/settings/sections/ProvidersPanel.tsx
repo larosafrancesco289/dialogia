@@ -18,6 +18,7 @@ import {
 } from '@/lib/transport/endpoints';
 import { listEndpoints } from '@/lib/transport/endpointRegistry';
 import type { RenderSection } from '@/components/settings/types';
+import { refocusIfDropped } from '@/lib/ui/focus';
 
 function EndpointStatus({ endpoint }: { endpoint: ProviderEndpoint }) {
   const { hasKey } = useProviderKeys();
@@ -203,12 +204,13 @@ function AddEndpointForm({ onAdded }: { onAdded: () => void }) {
     onAdded();
     // Add disables itself once the fields empty, which would drop focus on the
     // page: the new server's row takes it, else the name field for another.
-    requestAnimationFrame(() => {
-      const row = document.querySelector<HTMLElement>(
-        `[data-endpoint-id="${CSS.escape(endpoint.id)}"] .collapsible-section-trigger`,
-      );
-      (row ?? nameRef.current)?.focus();
-    });
+    refocusIfDropped(
+      () =>
+        document.querySelector(
+          `[data-endpoint-id="${CSS.escape(endpoint.id)}"] .collapsible-section-trigger`,
+        ),
+      () => nameRef.current,
+    );
   };
 
   return (
