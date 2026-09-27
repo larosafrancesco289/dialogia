@@ -74,6 +74,9 @@ export function getSlashSuggestions(input: string, models: ModelDescriptor[]): S
     return suggestions;
   }
 
-  if (cmd === 'help' && arg === '') push('/help', '/help', 'List supported slash commands');
+  if (cmd === 'help' && arg === '') {
+    const help = baseCommands.find((command) => command.key === 'help');
+    push('/help', '/help', help?.help);
+  }
   return suggestions;
 }
