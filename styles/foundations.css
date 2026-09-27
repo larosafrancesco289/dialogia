@@ -141,7 +141,12 @@ html {
 }
 .btn:focus-visible,
 .btn-outline:focus-visible,
-.btn-ghost:focus-visible {
+.btn-ghost:focus-visible,
+/* A label dressed as a button round a hidden file input (Import): the input
+   takes the focus, so the label shows it. */
+.btn:has(> input:focus-visible),
+.btn-outline:has(> input:focus-visible),
+.btn-ghost:has(> input:focus-visible) {
   box-shadow: 0 0 0 2px var(--focus-ring);
 }
 .btn[disabled],
@@ -173,6 +178,11 @@ html {
   height: var(--control-sm);
   padding: 0 var(--space-3);
   font-size: 0.875rem;
+}
+/* In Settings a small button in a row with a field (Save beside a key, Add
+   beside a server's address) stands as tall as the field, so the row lines up. */
+.settings-panel .input ~ .btn-sm {
+  height: var(--control-md);
 }
 
 /* Inputs: an inset field with a hairline; focus draws the gold ring. */
@@ -263,6 +273,9 @@ select.input:disabled {
   }
   .btn-sm {
     height: var(--control-md);
+  }
+  .settings-panel .input ~ .btn-sm {
+    height: var(--control-lg);
   }
   .input {
     height: var(--control-lg);

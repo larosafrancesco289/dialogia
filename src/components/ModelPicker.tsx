@@ -18,6 +18,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { useModelPickerController } from '@/components/model-picker/useModelPickerController';
 import { useReturnFocus } from '@/lib/hooks/useModalFocus';
 import { tabbableIn, trapTarget } from '@/lib/ui/focus';
+import { useChatStore } from '@/lib/store';
 
 export type ModelPickerVariant = 'auto' | 'sheet';
 
@@ -144,6 +145,13 @@ export function ModelPicker({
     setQuery('');
   }, []);
 
+  // With nothing to choose from, the way forward is the setup sheet.
+  const setUI = useChatStore((s) => s.setUI);
+  const connect = () => {
+    close();
+    setUI({ setupOpen: true });
+  };
+
   // Closing (Escape, a pick, a click away) hands focus back to the trigger
   // when it was in the popover. On phones the sheet does this itself.
   const returnFocus = useReturnFocus(open && !isMobile, {
@@ -266,11 +274,18 @@ export function ModelPicker({
           spellCheck={false}
         />
       </div>
+      {/* Outside the listbox, which may hold only options. */}
+      {flatRows.length === 0 && !queryWords.length && (
+        <div className="model-picker__empty">
+          <p className="m-0">No models yet. Connect a provider to choose from its models.</p>
+          <button type="button" className="btn btn-sm mt-3" onClick={connect}>
+            Connect a model
+          </button>
+        </div>
+      )}
       <div ref={listRef} id="model-picker-list" className="model-picker__list" role="listbox">
-        {!sections.some((section) => section.rows.length > 0) && (
-          <p className="model-picker__empty">
-            {queryWords.length ? 'No model matches that.' : 'No models loaded yet.'}
-          </p>
+        {flatRows.length === 0 && queryWords.length > 0 && (
+          <p className="model-picker__empty">No model matches that.</p>
         )}
         {sections
           .filter((section) => section.rows.length > 0)

@@ -5,6 +5,9 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 import { DialogPortal } from '@/components/ui/Dialog';
 import { useChatStore } from '@/lib/store';
 import { useModalFocus } from '@/lib/hooks/useModalFocus';
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
+import { COMPOSER_FIELD_SELECTOR } from '@/lib/ui/focus';
+import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import { IntroArt, type IntroPlate } from '@/components/intro/IntroArt';
 import styles from './IntroTour.module.css';
 
@@ -91,7 +94,13 @@ export function IntroTour() {
 
   // The tour owns the whole screen while it is up: no background scroll, and no
   // tabbing out of it.
-  useModalFocus(true, cardRef, { onEscape: dismiss });
+  // Nothing had focus before it (the composer waits for it), so focus goes on
+  // to the composer, except on a touch screen, where that raises the keyboard.
+  const isTouch = useMediaQuery(MEDIA_QUERIES.touch);
+  useModalFocus(true, cardRef, {
+    onEscape: dismiss,
+    fallback: () => (isTouch ? null : document.querySelector<HTMLElement>(COMPOSER_FIELD_SELECTOR)),
+  });
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;

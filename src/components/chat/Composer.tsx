@@ -23,6 +23,8 @@ import { ComposerActions } from '@/components/composer/ComposerActions';
 import { useComposerAttachments } from '@/lib/hooks/useComposerAttachments';
 import { DEFAULT_REASONING_EFFORT } from '@/lib/settings/generation';
 import { useComposerShortcuts } from '@/lib/hooks/useComposerShortcuts';
+import { resolveSingleModelAuth } from '@/lib/services/auth';
+import { isModalOpen } from '@/lib/hooks/useModalFocus';
 import { readDraft, writeDraft } from '@/lib/ui/composerDrafts';
 import { ComposerLayout } from '@/components/composer/ComposerLayout';
 import {
@@ -159,6 +161,16 @@ export function Composer({
     setNotice,
     newChat,
     sendMessage: (value, options) => send(value, options),
+    // No key opens the setup sheet and leaves the draft here; the send would
+    // stop at the same check after the composer had already let go of it.
+    canSend: () =>
+      !modelId ||
+      resolveSingleModelAuth({
+        modelId,
+        modelIndex: useChatStore.getState().modelIndex,
+        set: useChatStore.setState,
+        get: useChatStore.getState,
+      }) !== null,
     defaultModelId: defaultModelId,
   });
 
@@ -226,8 +238,9 @@ export function Composer({
     // A desktop keeps focus through a reply, so the next message can be typed
     // ahead (the first message swaps the welcome composer for this one while
     // the reply streams); a phone drops its keyboard so the reply has the screen.
-    if (canAutoFocus) target.focus({ preventScroll: true });
-    else target.blur();
+    // An open dialog (the first-run tour) keeps focus even when it mounted first.
+    if (!canAutoFocus) target.blur();
+    else if (!isModalOpen()) target.focus({ preventScroll: true });
   }, [canAutoFocus, isStreaming, selectedChatId]);
 
   const maxTextareaHeight = useMemo(() => {

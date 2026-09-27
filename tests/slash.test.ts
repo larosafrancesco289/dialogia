@@ -63,3 +63,10 @@ test('a complete command still offers itself, so Enter can run it', () => {
     ['/help'],
   );
 });
+
+test('/help reads the same whether listed or typed out', () => {
+  const listed = getSlashSuggestions('/', MODELS).find((s) => s.title === '/help');
+  const typed = getSlashSuggestions('/help', MODELS)[0];
+  assert.ok(listed?.subtitle);
+  assert.equal(typed?.subtitle, listed.subtitle);
+});

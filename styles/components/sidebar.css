@@ -84,6 +84,15 @@
     opacity: 1;
     pointer-events: auto;
   }
+  /* A touch screen has no hover: the open chat's row, and an open folder's,
+     keep their actions out, so a tap on a row is all it takes to reach them. */
+  @media (hover: none) and (pointer: coarse) {
+    .chat-item.selected .chat-item__actions,
+    .folder-row[aria-expanded='true'] .chat-item__actions {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
   .chat-item.is-drag-over {
     outline: 1px solid var(--color-rubric);
     outline-offset: 1px;

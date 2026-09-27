@@ -1,6 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createLayerStack, indexForKey, trapTarget, COMPOSER_FIELD_SELECTOR } from '@/lib/ui/focus';
+import {
+  createLayerStack,
+  indexForKey,
+  neighbourOf,
+  trapTarget,
+  COMPOSER_FIELD_SELECTOR,
+} from '@/lib/ui/focus';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -84,4 +90,11 @@ test('the composer field carries the class focus is sent to', () => {
   const input = read('src/components/composer/ComposerInput.tsx');
   const element = input.slice(input.indexOf(`<${tag}`));
   assert.match(element, new RegExp(`className="${className}\\b`));
+});
+
+test('a removed item hands focus to the one after it, else the one before', () => {
+  assert.equal(neighbourOf(['a', 'b', 'c'], 'b'), 'c');
+  assert.equal(neighbourOf(['a', 'b', 'c'], 'c'), 'b');
+  assert.equal(neighbourOf(['a'], 'a'), undefined);
+  assert.equal(neighbourOf(['a', 'b'], 'z'), undefined);
 });

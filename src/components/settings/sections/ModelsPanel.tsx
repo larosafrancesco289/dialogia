@@ -14,7 +14,7 @@ type ModelsPanelProps = {
   favoriteModelIds?: string[];
   toggleFavoriteModel: (id: string) => void;
   setUI: (ui: UIStatePartial) => void;
-  loadModels: () => Promise<void>;
+  loadModels: (opts?: { showErrors?: boolean }) => Promise<void>;
   hiddenModelIds?: string[];
   resetHiddenModels: () => void;
   renderSection: RenderSection;
@@ -74,7 +74,7 @@ export function ModelsPanel(props: ModelsPanelProps) {
                   Reset
                 </button>
               )}
-              <button className="btn-ghost btn-sm" onClick={() => loadModels()}>
+              <button className="btn-ghost btn-sm" onClick={() => loadModels({ showErrors: true })}>
                 Refresh list
               </button>
             </div>

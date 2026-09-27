@@ -1,5 +1,5 @@
 import { motionTransition } from '@/lib/ui/motion';
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { shallow } from 'zustand/shallow';
 import { DialogOverlay, DialogPortal } from '@/components/ui/Dialog';
@@ -9,6 +9,7 @@ import { useBackToClose } from '@/lib/hooks/useBackToClose';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { useModalFocus } from '@/lib/hooks/useModalFocus';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
+import { COMPOSER_FIELD_SELECTOR } from '@/lib/ui/focus';
 import {
   ANTHROPIC_ENDPOINT,
   OPENROUTER_ENDPOINT,
@@ -22,14 +23,38 @@ import {
 
 type Choice = 'openrouter' | 'anthropic' | 'local';
 
-const KEY_HINTS: Record<Exclude<Choice, 'local'>, { endpoint: ProviderEndpoint; hint: string }> = {
+function KeysLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer">
+      {children}
+    </a>
+  );
+}
+
+const KEY_HINTS: Record<
+  Exclude<Choice, 'local'>,
+  { endpoint: ProviderEndpoint; hint: ReactNode }
+> = {
   openrouter: {
     endpoint: OPENROUTER_ENDPOINT,
-    hint: 'One key, most models. Create one at openrouter.ai/keys.',
+    hint: (
+      <>
+        One key, most models. Create one at{' '}
+        <KeysLink href="https://openrouter.ai/keys">openrouter.ai/keys</KeysLink>.
+      </>
+    ),
   },
   anthropic: {
     endpoint: ANTHROPIC_ENDPOINT,
-    hint: 'Claude models directly. Create one at console.anthropic.com.',
+    hint: (
+      <>
+        Claude models directly. Create one at{' '}
+        <KeysLink href="https://console.anthropic.com/settings/keys">
+          console.anthropic.com
+        </KeysLink>
+        .
+      </>
+    ),
   },
 };
 
@@ -55,6 +80,9 @@ export function SetupSheet() {
   useModalFocus(true, surfaceRef, {
     initialFocus: isTouch ? undefined : valueRef,
     onEscape: close,
+    // On first run nothing had focus before it; the composer is where to go
+    // next, except on a touch screen, where focusing it raises the keyboard.
+    fallback: () => (isTouch ? null : document.querySelector<HTMLElement>(COMPOSER_FIELD_SELECTOR)),
   });
 
   const canSubmit = value.trim().length > 0;
@@ -137,8 +165,12 @@ export function SetupSheet() {
                     id="setup-label"
                     className="input w-full text-base sm:text-sm"
                     value={label}
-                    placeholder="Local model"
+                    // "e.g.", so an example never reads as a value already filled in.
+                    placeholder="e.g. Ollama"
                     onChange={(event) => setLabel(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') void submit();
+                    }}
                   />
                 </div>
                 <div className="field">
@@ -149,7 +181,7 @@ export function SetupSheet() {
                     ref={valueRef}
                     id="setup-value"
                     className="input w-full text-base sm:text-sm"
-                    placeholder="http://localhost:11434/v1"
+                    placeholder="e.g. http://localhost:11434/v1"
                     spellCheck={false}
                     value={value}
                     onChange={(event) => setValue(event.target.value)}
