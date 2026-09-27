@@ -190,3 +190,31 @@ test('a tool row speaks plainly: refusals quietly, failures on their own line, n
   assert.equal(toolAnnotation(tool({ duration: 34 })).text, '');
   assert.equal(toolAnnotation(tool({ duration: 2300 })).text, '2.3s');
 });
+
+test('a tool call the person stopped reads quietly, not as a failure', () => {
+  const stopped = toolAnnotation({
+    id: 't',
+    type: 'tool_call',
+    name: 'web_search',
+    timestamp: 1,
+    status: 'error',
+    error: 'Stopped',
+  });
+  assert.equal(stopped.text, 'Stopped');
+  assert.equal(stopped.error, undefined);
+  assert.equal(stopped.detail, undefined);
+});
+
+test('a failed search does not hold the head while the model carries on', () => {
+  const reasoning = 'The search failed. I will answer from what I know.';
+  const orderedActivity = buildOrderedResponseActivity({ reasoning });
+  const sources = { query: 'q', status: 'error' as const, error: 'The search took too long.' };
+  assert.equal(
+    summarizeActivity({ orderedActivity, toolCalls: [], reasoning, sources, isLive: true }),
+    'The search failed.',
+  );
+  assert.equal(
+    summarizeActivity({ orderedActivity, toolCalls: [], reasoning, sources, isLive: false }),
+    'The search took too long.',
+  );
+});

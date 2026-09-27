@@ -55,6 +55,7 @@ const executeWebSearchTool: PlanningToolHandler = async ({
     chatId,
     set,
     get,
+    earlierResults: aggregatedResults,
   });
   const output: Record<string, unknown> = {
     ok: searchResult.ok,

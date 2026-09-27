@@ -10,6 +10,10 @@ export const DEFAULT_TUTOR_MODEL_ID = CURATED_DEFAULT_TUTOR_MODEL_ID;
 
 export const MAX_FALLBACK_RESULTS = 5;
 
+// A tool call the person's Stop cut short: the ledger says so quietly, since
+// nothing went wrong.
+export const TOOL_CALL_STOPPED = 'Stopped';
+
 // Attachments limits
 export const MAX_IMAGES_PER_MESSAGE = 4;
 export const MAX_PDF_SIZE_MB = 15;

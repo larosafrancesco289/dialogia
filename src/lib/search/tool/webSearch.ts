@@ -7,6 +7,9 @@ import type { StoreGetter, StoreSetter, ToolExecutionResult } from '@/lib/agent/
 import type { WebSearchArgs } from '@/lib/search/args';
 import { setSearchUiStatus } from '@/lib/search/ui/state';
 import { notify } from '@/lib/store/notify';
+import { TOOL_CALL_STOPPED } from '@/lib/constants';
+
+const SEARCH_TIMEOUT_MS = 20000;
 
 export async function performWebSearchTool(opts: {
   args: WebSearchArgs;
@@ -17,6 +20,8 @@ export async function performWebSearchTool(opts: {
   chatId: string;
   set: StoreSetter;
   get: StoreGetter;
+  /** What this turn's earlier searches found: they stay listed, and cited, whatever this one does. */
+  earlierResults?: SearchResult[];
 }): Promise<ToolExecutionResult> {
   const {
     args,
@@ -27,6 +32,7 @@ export async function performWebSearchTool(opts: {
     chatId: _chatId,
     set,
     get,
+    earlierResults = [],
   } = opts;
   let rawQuery = typeof args?.query === 'string' ? args.query.trim() : '';
   const parsedCount = Number.parseInt(String(args?.count ?? ''), 10);
@@ -40,7 +46,11 @@ export async function performWebSearchTool(opts: {
     return { ok: false, results: [], error: 'unsupported_search_provider', query: rawQuery };
   }
 
-  setSearchUiStatus({ set, get }, assistantMessageId, { query: rawQuery, status: 'loading' });
+  setSearchUiStatus({ set, get }, assistantMessageId, {
+    query: rawQuery,
+    status: 'loading',
+    results: earlierResults,
+  });
 
   const hasNarrowingFilters =
     (searchArgs.freshness && searchArgs.freshness !== 'all') ||
@@ -49,7 +59,29 @@ export async function performWebSearchTool(opts: {
     !!searchArgs.exclude_domains?.length;
 
   return withAbort(controller.signal, async (fetchController) => {
-    const timeout = setTimeout(() => fetchController.abort(), 20000);
+    let timedOut = false;
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      fetchController.abort();
+    }, SEARCH_TIMEOUT_MS);
+    // An abort reads as the provider's raw message ("signal is aborted without
+    // reason"); what the person needs is why it ended.
+    const failed = (error?: string) => {
+      const reason = controller.signal.aborted
+        ? TOOL_CALL_STOPPED
+        : timedOut
+          ? 'The search took too long.'
+          : error || 'The search failed.';
+      // A failure only reads as the search's state when nothing was found.
+      setSearchUiStatus(
+        { set, get },
+        assistantMessageId,
+        earlierResults.length > 0
+          ? { query: rawQuery, status: 'done', results: earlierResults }
+          : { query: rawQuery, status: 'error', results: [], error: reason },
+      );
+      return { ok: false, results: [], error: reason, query: rawQuery };
+    };
     try {
       const context = buildSearchContext(provider, { signal: fetchController.signal });
       let result = await provider.search(searchArgs, context);
@@ -76,25 +108,12 @@ export async function performWebSearchTool(opts: {
         return { ok: true, results: result.results as SearchResult[], query: rawQuery };
       }
 
-      setSearchUiStatus({ set, get }, assistantMessageId, {
-        query: rawQuery,
-        status: 'error',
-        results: [],
-        error: result.error || 'No results',
-      });
       if (result.error === NOTICE_MISSING_SEARCH_KEY) {
         notify(get, NOTICE_MISSING_SEARCH_KEY, 'info');
       }
-      return { ok: false, results: [], error: result.error, query: rawQuery };
+      return failed(result.error);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : undefined;
-      setSearchUiStatus({ set, get }, assistantMessageId, {
-        query: rawQuery,
-        status: 'error',
-        results: [],
-        error: errorMessage || 'Network error',
-      });
-      return { ok: false, results: [], error: errorMessage, query: rawQuery };
+      return failed(err instanceof Error ? err.message : undefined);
     } finally {
       clearTimeout(timeout);
     }
