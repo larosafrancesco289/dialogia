@@ -35,6 +35,11 @@ function onEscape(event: KeyboardEvent) {
   close();
 }
 
+/** A modal dialog is open: whatever sits behind it must not take focus. */
+export function isModalOpen() {
+  return layers.size() > 0;
+}
+
 function pushLayer(layer: Layer) {
   if (layers.size() === 0) {
     document.addEventListener('keydown', onTab, true);
