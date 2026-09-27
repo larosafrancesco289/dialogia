@@ -4,7 +4,7 @@ import { useChatStore } from '@/lib/store';
 import { useDragAndDrop } from '@/lib/dragDrop';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
-import { canFocus, focusWasDropped } from '@/lib/ui/focus';
+import { refocusIfDropped } from '@/lib/ui/focus';
 import {
   buildFolderTreeIndex,
   getFolderChildren,
@@ -110,14 +110,13 @@ export function useChatSidebarState({
   // hand it to the new folder, else back to what opened the field.
   const createOpenerRef = useRef<Element | null>(null);
   const settleCreateFocus = useCallback((folderId?: string) => {
-    requestAnimationFrame(() => {
-      if (!focusWasDropped()) return;
-      const folderRow = folderId
-        ? document.querySelector(`.folder-row[data-folder-id="${CSS.escape(folderId)}"]`)
-        : null;
-      const target = canFocus(folderRow) ? folderRow : createOpenerRef.current;
-      if (canFocus(target)) target.focus({ preventScroll: true });
-    });
+    refocusIfDropped(
+      () =>
+        folderId
+          ? document.querySelector(`.folder-row[data-folder-id="${CSS.escape(folderId)}"]`)
+          : null,
+      () => createOpenerRef.current,
+    );
   }, []);
 
   const onCreateFolder = useCallback(
