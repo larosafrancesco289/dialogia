@@ -13,6 +13,7 @@
 
 import { cleanStreamedText, type MessageStreamCallbacks } from '@/lib/agent/streamHandlers';
 import { sumUsage } from '@/lib/api/normalizers';
+import { TOOL_CALL_STOPPED } from '@/lib/constants';
 import { applyCacheBreakpoints } from '@/lib/agent/cache';
 import { applyToolExecutions, type ToolCallOutcome } from '@/lib/agent/planning/apply';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
@@ -97,7 +98,7 @@ export async function runAgentLoop(session: TurnSession): Promise<StreamingTurnR
       set: turn.set,
       chatId,
       messageId: assistantMessage.id,
-      error: controller.signal.aborted ? 'Stopped' : 'The turn failed before this call ran',
+      error: controller.signal.aborted ? TOOL_CALL_STOPPED : 'The turn failed before this call ran',
     });
     if (!isStreamError(error)) {
       ui.onError?.(
