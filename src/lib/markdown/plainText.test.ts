@@ -63,3 +63,8 @@ test('escaped punctuation reads as itself, never as syntax', () => {
   );
   assert.equal(markdownToPlainText('see `a\\*b`\n\n```\nx = \\$1\n```'), 'see a\\*b\n\nx = \\$1');
 });
+
+test('a hard cut never leaves half an emoji', () => {
+  const excerpt = plainExcerpt('😀'.repeat(50), 9);
+  assert.ok(!/[\uD800-\uDBFF]…$/.test(excerpt), excerpt);
+});

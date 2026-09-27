@@ -20,14 +20,14 @@ const HELD_OFFSET = 0xe000;
 const HELD_RE = /[\ue021-\ue07e]/g;
 
 /** Hide backslash-escaped punctuation from the syntax patterns that follow. */
-export function holdEscapes(text: string): string {
+function holdEscapes(text: string): string {
   return text.replace(ESCAPE_RE, (_match, char: string) =>
     String.fromCharCode(HELD_OFFSET + char.charCodeAt(0)),
   );
 }
 
 /** Put the characters `holdEscapes` hid back, without their backslashes. */
-export function releaseEscapes(text: string): string {
+function releaseEscapes(text: string): string {
   return text.replace(HELD_RE, (char) => String.fromCharCode(char.charCodeAt(0) - HELD_OFFSET));
 }
 
@@ -90,11 +90,16 @@ export function markdownToPlainText(markdown: string): string {
   return releaseEscapes(out.join('\n').replace(/\n{3,}/g, '\n\n'));
 }
 
+/** A hard cut must not leave half an emoji, which renders as a broken glyph. */
+export function withoutSplitSurrogate(text: string): string {
+  return text.replace(/[\uD800-\uDBFF]$/, '');
+}
+
 /** A one-line opening of the text, for a heading that names a message. */
 export function plainExcerpt(markdown: string, maxChars = 80): string {
   const text = markdownToPlainText(markdown).replace(/\s+/g, ' ').trim();
   if (text.length <= maxChars) return text;
   const cut = text.slice(0, maxChars);
   const lastSpace = cut.lastIndexOf(' ');
-  return `${(lastSpace > maxChars / 2 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
+  return `${(lastSpace > maxChars / 2 ? cut.slice(0, lastSpace) : withoutSplitSurrogate(cut)).trimEnd()}…`;
 }

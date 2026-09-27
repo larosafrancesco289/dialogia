@@ -91,6 +91,14 @@ test('the live line is the latest finished sentence, not the one being written',
   );
   assert.equal(currentThoughtLine('The fine is \\$6.66. Then'), 'The fine is $6.66.');
   assert.equal(currentThoughtLine('Wait... v2.1 is out! Then'), 'v2.1 is out!');
+  assert.equal(
+    currentThoughtLine('Think of vectors, e.g. arrows. Ask Dr. Jones about the U.S. economy. Then'),
+    'Ask Dr. Jones about the U.S. economy.',
+  );
+  assert.equal(
+    currentThoughtLine('Use *italics* and [a link](https://x.test) here. Then'),
+    'Use italics and a link here.',
+  );
 });
 
 test('the live line prefers the latest titled section when reasoning has them', () => {
