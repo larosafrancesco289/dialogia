@@ -113,7 +113,7 @@ test('the Tavily provider returns results and reports failures', async () => {
   );
   restoreUpstream();
   assert.equal(upstream.ok, false);
-  assert.equal(upstream.error, 'tavily_error_500');
+  assert.equal(upstream.error, 'Tavily is having trouble right now. Try again later.');
 
   const restoreNetwork = mockFetch((async () => {
     throw new Error('network down');
@@ -124,7 +124,36 @@ test('the Tavily provider returns results and reports failures', async () => {
   );
   restoreNetwork();
   assert.equal(network.ok, false);
-  assert.equal(network.error, 'network down');
+  assert.equal(network.error, 'Could not reach Tavily.');
+});
+
+test('Tavily failures are said in words, not status codes', async () => {
+  const cases: Array<[number, RegExp]> = [
+    [401, /did not accept the search key/],
+    [403, /did not accept the search key/],
+    [429, /limiting searches/],
+    [432, /plan has reached its search limit/],
+    [400, /^Tavily could not run this search\.$/],
+  ];
+  for (const [status, expected] of cases) {
+    const restore = mockFetch((async () => ({ ok: false, status })) as any);
+    const result = await tavilySearchProvider.search(
+      { query: 'q', count: 2 },
+      { apiKey: 'tvly-test' },
+    );
+    restore();
+    const error = result.ok ? '' : (result.error ?? '');
+    assert.match(error, expected, String(status));
+    assert.doesNotMatch(error, /tavily_error/);
+  }
+  // An abort is the caller's to explain: a Stop or a timeout.
+  const restoreAbort = mockFetch((async () => {
+    throw new DOMException('signal is aborted without reason', 'AbortError');
+  }) as any);
+  const aborted = await tavilySearchProvider.search({ query: 'q', count: 2 }, { apiKey: 'k' });
+  restoreAbort();
+  assert.equal(aborted.ok, false);
+  assert.equal(aborted.ok ? 'ok' : aborted.error, undefined);
 });
 
 test('the Tavily provider sends the user key and the supported filters', async () => {

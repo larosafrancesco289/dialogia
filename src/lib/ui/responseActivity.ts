@@ -3,6 +3,7 @@
 // thoughts and tool calls (folding in legacy reasoning, tool logs and search
 // sources), the one-line summary in its head, and each tool call's labels.
 
+import { TOOL_CALL_STOPPED } from '@/lib/constants';
 import { markdownToPlainText, withoutSplitSurrogate } from '@/lib/markdown/plainText';
 import type { MessageActivityItem, ToolCallLogEntry } from '@/lib/types';
 
@@ -152,8 +153,9 @@ function toolResultCount(item: ToolActivityItem) {
  * own under it. A tutor tool the engine refused is the model's move declined
  * by the session's rules (the model reads why and carries on), not a failure:
  * it says so quietly, with the reason, which is addressed to the model, kept
- * to a tooltip. A real failure keeps the error colour and its message on its
- * own line, so it never squeezes the name.
+ * to a tooltip. A call the person's Stop cut short says so just as quietly.
+ * A real failure keeps the error colour and its message on its own line, so it
+ * never squeezes the name.
  */
 export function toolAnnotation(item: ToolActivityItem): {
   text: string;
@@ -167,6 +169,7 @@ export function toolAnnotation(item: ToolActivityItem): {
   }
   if (item.status === 'error') {
     if (item.category === 'tutor') return { text: 'Not applied', hint: item.error };
+    if (item.error === TOOL_CALL_STOPPED) return { text: TOOL_CALL_STOPPED };
     return { text: 'Failed', error: true, detail: item.error };
   }
   if (item.name === 'web_search') {
@@ -292,11 +295,12 @@ export function summarizeActivity({
     return `${toolDisplayName(latestActivity.name)}${object ? ` — ${object}` : ''}`;
   }
   if (isSearching) return sources?.query ? `Searching: ${sources.query}` : 'Searching sources';
-  if (hasSearchError) return sources?.error || 'Search failed';
+  // A failed search does not hold the head while the model carries on without it.
   if (isLive) {
     const thought = latestActivity?.type === 'reasoning' ? latestActivity.text : reasoning;
     return currentThoughtLine(thought) || 'Thinking…';
   }
+  if (hasSearchError) return sources?.error || 'Search failed';
   if (orderedActivity.length > 0) {
     const searchCount = toolItems.filter((item) => item.name === 'web_search').length;
     const toolNoun =

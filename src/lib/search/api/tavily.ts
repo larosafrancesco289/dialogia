@@ -139,6 +139,13 @@ export function buildTavilyExtractBody(args: WebFetchArgs): TavilyExtractBody {
   return body;
 }
 
+/** A response Tavily refused, with its status for the provider to put in words. */
+export class TavilyStatusError extends Error {
+  constructor(readonly status: number) {
+    super(`tavily_error_${status}`);
+  }
+}
+
 export async function runTavilySearchDirect(
   args: WebSearchArgs,
   opts: { apiKey: string; signal?: AbortSignal },
@@ -157,7 +164,7 @@ export async function runTavilySearchDirect(
     signal: opts.signal,
   });
 
-  if (!res.ok) throw new Error(`tavily_error_${res.status}`);
+  if (!res.ok) throw new TavilyStatusError(res.status);
   const data = (await res.json()) as {
     results?: Array<{ title?: string; url?: string; content?: string; score?: number }>;
   };
@@ -188,7 +195,7 @@ export async function runTavilyExtractDirect(
     signal: opts.signal,
   });
 
-  if (!res.ok) throw new Error(`tavily_error_${res.status}`);
+  if (!res.ok) throw new TavilyStatusError(res.status);
   const data = (await res.json()) as {
     results?: Array<{ url?: string; raw_content?: string; images?: string[]; favicon?: string }>;
   };
