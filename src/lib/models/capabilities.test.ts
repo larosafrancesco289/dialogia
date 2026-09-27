@@ -8,6 +8,7 @@ import {
   isToolCallingSupported,
   isVisionSupported,
   getSelectableReasoningEfforts,
+  repliesInText,
 } from '@/lib/models';
 import type { ModelDescriptor } from '@/lib/types';
 
@@ -60,6 +61,22 @@ test('capability inference uses modality hints for vision and audio', () => {
 test('capability inference reads output modalities for image generation', () => {
   const imageModel = buildModel('provider/image-gen', RAW_SAMPLES.imageOutput);
   assert.equal(isImageOutputSupported(imageModel), true);
+});
+
+test('an image generator is not offered to redo a text reply, even one that also writes text', () => {
+  const arch = (output_modalities: string[]) => ({ architecture: { output_modalities } });
+  assert.equal(repliesInText(buildModel('openai/gpt-5.4', arch(['text']))), true);
+  assert.equal(
+    repliesInText(buildModel('openai/gpt-5.4-image-2', arch(['image', 'text']), 'GPT-5.4 Image 2')),
+    false,
+  );
+  assert.equal(repliesInText(buildModel('provider/image-gen', RAW_SAMPLES.imageOutput)), false);
+  // Seeing images is not making them.
+  assert.equal(repliesInText(buildModel('provider/vision', RAW_SAMPLES.visionModalities)), true);
+  // Nothing declared: the name decides, and an unknown model stays.
+  assert.equal(repliesInText(buildModel('local/llama', {})), true);
+  assert.equal(repliesInText(buildModel('local/stable-diffusion', {})), false);
+  assert.equal(repliesInText(undefined), true);
 });
 
 test('xhigh is selectable for known model families known model families', () => {
