@@ -9,6 +9,7 @@ import { useBackToClose } from '@/lib/hooks/useBackToClose';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { useModalFocus } from '@/lib/hooks/useModalFocus';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
+import { COMPOSER_FIELD_SELECTOR } from '@/lib/ui/focus';
 import {
   ANTHROPIC_ENDPOINT,
   OPENROUTER_ENDPOINT,
@@ -55,6 +56,9 @@ export function SetupSheet() {
   useModalFocus(true, surfaceRef, {
     initialFocus: isTouch ? undefined : valueRef,
     onEscape: close,
+    // On first run nothing had focus before it; the composer is where to go
+    // next, except on a touch screen, where focusing it raises the keyboard.
+    fallback: () => (isTouch ? null : document.querySelector<HTMLElement>(COMPOSER_FIELD_SELECTOR)),
   });
 
   const canSubmit = value.trim().length > 0;
