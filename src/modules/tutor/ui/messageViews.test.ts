@@ -224,3 +224,19 @@ test('a margin note keeps the correction that answered it, from the log alone', 
   assert.equal(noteOf('reply-1').corrected, 0.59);
   assert.equal(noteOf('reply-2').corrected, 0.5);
 });
+
+test('an evidence note speaks to the learner, without the engine prefix', () => {
+  assert.equal(
+    readableNote('Starting estimate from the diagnostic: knows the terms'),
+    'knows the terms',
+  );
+  assert.equal(
+    readableNote('From what the learner said before the plan'),
+    'From what you said before the plan',
+  );
+  assert.equal(readableNote('Learner explained it well'), 'You explained it well');
+  assert.equal(
+    readableNote('Quiz, right: "What is the derivative of f at t..."'),
+    'Answered a quiz question correctly: “What is the derivative of f at t…”',
+  );
+});
