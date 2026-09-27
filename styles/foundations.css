@@ -179,6 +179,11 @@ html {
   padding: 0 var(--space-3);
   font-size: 0.875rem;
 }
+/* In Settings a small button in a row with a field (Save beside a key, Add
+   beside a server's address) stands as tall as the field, so the row lines up. */
+.settings-panel .input ~ .btn-sm {
+  height: var(--control-md);
+}
 
 /* Inputs: an inset field with a hairline; focus draws the gold ring. */
 .input {
@@ -268,6 +273,9 @@ select.input:disabled {
   }
   .btn-sm {
     height: var(--control-md);
+  }
+  .settings-panel .input ~ .btn-sm {
+    height: var(--control-lg);
   }
   .input {
     height: var(--control-lg);
