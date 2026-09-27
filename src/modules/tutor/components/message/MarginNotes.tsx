@@ -7,7 +7,7 @@ import {
 } from '@/modules/tutor/ui/messageViews';
 import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
 import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
-import { InlineEmphasis } from '@/modules/tutor/components/message/InlineEmphasis';
+import { Markdown } from '@/components/Markdown';
 
 /**
  * Mastery changes annotated beside the exchange that earned them. The number
@@ -69,7 +69,7 @@ export function MarginNotes({
             </p>
             {reason.text && (
               <p className="margin-note__reason">
-                <InlineEmphasis text={reason.text} />
+                <Markdown inline content={reason.text} />
                 {reason.more > 0 && (
                   <>
                     {' '}
@@ -138,7 +138,7 @@ function ToClearUp({ items }: { items: NotedMisconception[] }) {
       {items.map((item, i) => (
         <p key={i} className="margin-note__clear">
           <span className="margin-note__clear-label">To clear up</span>{' '}
-          <InlineEmphasis text={item.description} />
+          <Markdown inline content={item.description} />
         </p>
       ))}
     </>

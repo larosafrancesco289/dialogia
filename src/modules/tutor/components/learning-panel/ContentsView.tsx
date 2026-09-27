@@ -4,7 +4,7 @@ import { nextReadyNode, type TopicExplanation } from '@/modules/tutor/engine';
 import type { TutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 import { readableNote } from '@/modules/tutor/ui/messageViews';
 import { listNames, PathStep, stepState, waitingOn, type StepState } from './PlanPath';
-import { InlineEmphasis } from '@/modules/tutor/components/message/InlineEmphasis';
+import { Markdown } from '@/components/Markdown';
 
 const pct = (value: number) => Math.round(value * 100);
 
@@ -68,7 +68,7 @@ export function ContentsView({
           <>
             <p className="hub-label">Your goal</p>
             <p className="hub-contents__goal">
-              <InlineEmphasis text={plan.goal} />
+              <Markdown inline content={plan.goal} />
             </p>
           </>
         )}
@@ -168,13 +168,13 @@ function ContentsItem({
     >
       <button type="button" className="hub-path__row" aria-expanded={open} onClick={onToggle}>
         <span className="hub-path__name">
-          <InlineEmphasis text={node.name} />
+          <Markdown inline content={node.name} />
         </span>
         {showMastery && <span className="hub-path__pct">{pct(mastery!.confidence)}%</span>}
         <span className="hub-path__sub">
           {showMastery && <Meter value={mastery!.confidence} />}
           <span className="hub-path__status">
-            <InlineEmphasis text={statusWords(state, upNext, waiting)} />
+            <Markdown inline content={statusWords(state, upNext, waiting)} />
             {toClear > 0 && (
               <>
                 {' · '}
@@ -191,7 +191,7 @@ function ContentsItem({
         <div className="hub-topic">
           {node.description && (
             <p className="hub-topic__desc">
-              <InlineEmphasis text={node.description} />
+              <Markdown inline content={node.description} />
             </p>
           )}
           {node.objectives.length > 0 && (
@@ -200,7 +200,7 @@ function ContentsItem({
               <ul className="hub-topic__objectives">
                 {node.objectives.map((objective, i) => (
                   <li key={i}>
-                    <InlineEmphasis text={objective} />
+                    <Markdown inline content={objective} />
                   </li>
                 ))}
               </ul>
@@ -241,7 +241,7 @@ function ContentsItem({
             <div key={m.id} className="hub-clear">
               <p className="hub-label">To clear up</p>
               <p className="hub-clear__text">
-                <InlineEmphasis text={m.description} />
+                <Markdown inline content={m.description} />
               </p>
               {affordances.correctMastery && (
                 <button
@@ -258,7 +258,7 @@ function ContentsItem({
 
           {state === 'locked' && waiting.length > 0 && (
             <p className="hub-topic__note">
-              <InlineEmphasis text={`Starts once you’ve finished ${listNames(waiting)}.`} />
+              <Markdown inline content={`Starts once you’ve finished ${listNames(waiting)}.`} />
             </p>
           )}
         </div>
@@ -309,10 +309,10 @@ function WhyLine({ step: { evidence, before, after }, first }: { step: WhyStep; 
       <li className="is-edge">
         <span className="hub-why__figure">{pct(after)}%</span>
         <span>
-          {own ? <InlineEmphasis text={details} /> : settingLabel(evidence)}
+          {own ? <Markdown inline content={details} /> : settingLabel(evidence)}
           {note && (
             <span className="hub-why__note">
-              <InlineEmphasis text={note} />
+              <Markdown inline content={note} />
             </span>
           )}
         </span>
@@ -326,7 +326,7 @@ function WhyLine({ step: { evidence, before, after }, first }: { step: WhyStep; 
         {delta > 0 ? `+${delta}` : delta < 0 ? `−${-delta}` : '0'}
       </span>
       <span>
-        <InlineEmphasis text={readableNote(evidence!.details)} />
+        <Markdown inline content={readableNote(evidence!.details)} />
       </span>
     </li>
   );

@@ -8,7 +8,7 @@ import { LEDGER } from '@/modules/tutor/lib/ledger';
 import { useLedger } from '@/modules/tutor/ui/ledger';
 import { useRequestPlanChanges } from '@/modules/tutor/ui/usePlanCallbacks';
 import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
-import { InlineEmphasis } from '@/modules/tutor/components/message/InlineEmphasis';
+import { Markdown } from '@/components/Markdown';
 
 export function PlanProposalCard({
   chatId,
@@ -113,7 +113,7 @@ export function PlanProposalCard({
         {/* The sheet's head names the card; the card starts with the goal. */}
         <div>
           <p className="exercise__question">
-            <InlineEmphasis text={proposal.plan.goal} />
+            <Markdown inline content={proposal.plan.goal} />
           </p>
           <p className="exercise__meta mt-1">
             {nodesCount} {nodesCount === 1 ? 'topic' : 'topics'}
@@ -124,7 +124,7 @@ export function PlanProposalCard({
         </div>
         {!resolved && proposal.rationale && (
           <p className="exercise__aside">
-            <InlineEmphasis text={proposal.rationale} />
+            <Markdown inline content={proposal.rationale} />
           </p>
         )}
         <div className="flex flex-wrap items-center gap-2">

@@ -9,7 +9,7 @@ import { useLedger } from '@/modules/tutor/ui/ledger';
 import { contentVariants, safeKey } from '@/modules/tutor/components/message/shared';
 import { StepperDots } from '@/modules/tutor/components/message/StepperDots';
 import { useStepper } from '@/modules/tutor/components/message/hooks/useStepper';
-import { InlineEmphasis } from '@/modules/tutor/components/message/InlineEmphasis';
+import { Markdown } from '@/components/Markdown';
 
 type QuestionnaireItem = IntakeQuestion;
 
@@ -166,7 +166,7 @@ export function QuestionnaireCard({
                 </p>
               )}
               <p className="exercise__question">
-                <InlineEmphasis text={activeItem.question} />
+                <Markdown inline content={activeItem.question} />
               </p>
             </div>
 
@@ -185,11 +185,11 @@ export function QuestionnaireCard({
                   >
                     <span className="choice__body">
                       <span>
-                        <InlineEmphasis text={option.label} />
+                        <Markdown inline content={option.label} />
                       </span>
                       {option.description && (
                         <span className="choice__desc">
-                          <InlineEmphasis text={option.description} />
+                          <Markdown inline content={option.description} />
                         </span>
                       )}
                     </span>

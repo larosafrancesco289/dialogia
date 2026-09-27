@@ -7,7 +7,7 @@ import { evidenceBehind, type Completion } from '@/modules/tutor/ui/messageViews
 import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
 import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 import { seamChoices } from '@/modules/tutor/ui/tutorFlags';
-import { InlineEmphasis } from '@/modules/tutor/components/message/InlineEmphasis';
+import { Markdown } from '@/components/Markdown';
 
 /**
  * The seam at the end of a topic. Negotiating the plan here, rather than in
@@ -86,7 +86,7 @@ export function ChapterBreak({
         Topic {index + 1} of {learningPlan!.nodes.length} finished
       </p>
       <h3 className="chapter-break__title">
-        <InlineEmphasis text={node.name} />
+        <Markdown inline content={node.name} />
       </h3>
 
       {live ? (
@@ -102,7 +102,7 @@ export function ChapterBreak({
                 disabled={busy}
                 onClick={() => run(() => onGoOn(next.id))}
               >
-                Go on: <InlineEmphasis text={next.name} />
+                Go on: <Markdown inline content={next.name} />
               </button>
             )}
             {canNegotiate && (
@@ -136,7 +136,7 @@ export function ChapterBreak({
           {!reopened && started && (
             <>
               {' · Next: '}
-              <InlineEmphasis text={started.name} />
+              <Markdown inline content={started.name} />
             </>
           )}
         </p>

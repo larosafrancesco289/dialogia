@@ -5,7 +5,7 @@ import { useModalFocus } from '@/lib/hooks/useModalFocus';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import { InlineEmphasis } from '@/modules/tutor/components/message/InlineEmphasis';
+import { Markdown } from '@/components/Markdown';
 
 export type PlanFeedbackContext =
   | { type: 'plan_proposal' }
@@ -105,7 +105,7 @@ export function PlanFeedbackModal({
                 </h3>
                 {subtitle && (
                   <p className="dialog__lead">
-                    <InlineEmphasis text={subtitle} />
+                    <Markdown inline content={subtitle} />
                   </p>
                 )}
               </div>
