@@ -12,6 +12,22 @@ if (!container) throw new Error('Missing #root element');
 // browser's bars follow it from the first frame, and Auto follows the system.
 initThemeMode();
 
+// A tab left open across a release asks for chunks the new build no longer
+// has. One reload fetches the new build; the stamp stops a reload loop when
+// the chunk is missing for some other reason.
+window.addEventListener('vite:preloadError', (event) => {
+  const STAMP = 'dialogia-reloaded-for-chunk';
+  try {
+    const last = Number(sessionStorage.getItem(STAMP) ?? 0);
+    if (Date.now() - last < 60_000) return;
+    sessionStorage.setItem(STAMP, String(Date.now()));
+  } catch {
+    return;
+  }
+  event.preventDefault();
+  window.location.reload();
+});
+
 createRoot(container).render(
   <StrictMode>
     <RouterProvider router={router} />
