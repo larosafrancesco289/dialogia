@@ -29,6 +29,18 @@ test('mid-sentence display math stays inline', () => {
   assert.equal(normalizeMathDelimiters('so \\[x=1\\] holds'), 'so $$x=1$$ holds');
 });
 
+test('a one-line $$ formula alone on its line becomes a display block', () => {
+  assert.equal(
+    normalizeMathDelimiters('So:\n\n$$E=mc^2$$\n\nDone'),
+    'So:\n\n$$\nE=mc^2\n$$\n\nDone',
+  );
+  assert.equal(normalizeMathDelimiters('  $$ \\pi(60) $$'), '  $$\n  \\pi(60)\n  $$');
+  // Mid-sentence it stays inline, and an open block is left alone.
+  assert.equal(normalizeMathDelimiters('then $$x$$ here'), 'then $$x$$ here');
+  assert.equal(normalizeMathDelimiters('$$\nx\n$$'), '$$\nx\n$$');
+  assert.equal(normalizeMathDelimiters('$$a$$ and $$b$$'), '$$a$$ and $$b$$');
+});
+
 test('a LaTeX line break with spacing is not a delimiter', () => {
   const aligned = '$$\n\\begin{aligned} a &= b \\\\[4pt] c &= d \\end{aligned}\n$$';
   assert.equal(normalizeMathDelimiters(aligned), aligned);
