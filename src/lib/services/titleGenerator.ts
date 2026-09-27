@@ -6,6 +6,7 @@ import { getChatCompletion } from '@/lib/agent/pipelineClient';
 import { requireEndpointAuth } from '@/lib/auth/require';
 import type { TransportAuth } from '@/lib/auth/transport';
 import { logger } from '@/lib/logger';
+import { markdownToPlainText } from '@/lib/markdown/plainText';
 import {
   ANTHROPIC_ENDPOINT_ID,
   OPENROUTER_ENDPOINT_ID,
@@ -135,8 +136,13 @@ export async function generateChatTitle(
     clearTimeout(timeoutId);
 
     const content = response?.choices?.[0]?.message?.content;
+    // A model sometimes dresses the title as markdown (`**Budget**`, `\$500`).
+    const plain = markdownToPlainText(typeof content === 'string' ? content : '');
     const title = clampTitle(
-      (typeof content === 'string' ? content : '').trim().replace(/^["']|["']$/g, ''),
+      plain
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/^["']|["']$/g, ''),
     );
 
     return title || null;

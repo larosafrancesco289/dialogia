@@ -4,6 +4,7 @@ import { nextReadyNode, type TopicExplanation } from '@/modules/tutor/engine';
 import type { TutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 import { readableNote } from '@/modules/tutor/ui/messageViews';
 import { listNames, PathStep, stepState, waitingOn, type StepState } from './PlanPath';
+import { InlineEmphasis } from '@/modules/tutor/components/message/InlineEmphasis';
 
 const pct = (value: number) => Math.round(value * 100);
 
@@ -67,7 +68,9 @@ export function ContentsView({
         {plan.goal && (
           <>
             <p className="hub-label">Your goal</p>
-            <p className="hub-contents__goal">{plan.goal}</p>
+            <p className="hub-contents__goal">
+              <InlineEmphasis text={plan.goal} />
+            </p>
           </>
         )}
         <p className="hub-contents__meta">
@@ -165,7 +168,9 @@ function ContentsItem({
       className={`${measured ? '' : 'is-untouched'}${open ? ' is-open' : ''}`}
     >
       <button type="button" className="hub-path__row" aria-expanded={open} onClick={onToggle}>
-        <span className="hub-path__name">{node.name}</span>
+        <span className="hub-path__name">
+          <InlineEmphasis text={node.name} />
+        </span>
         {showMastery && <span className="hub-path__pct">{pct(mastery!.confidence)}%</span>}
         <span className="hub-path__sub">
           {showMastery && <Meter value={mastery!.confidence} />}
@@ -185,13 +190,19 @@ function ContentsItem({
 
       {open && (
         <div className="hub-topic">
-          {node.description && <p className="hub-topic__desc">{node.description}</p>}
+          {node.description && (
+            <p className="hub-topic__desc">
+              <InlineEmphasis text={node.description} />
+            </p>
+          )}
           {node.objectives.length > 0 && (
             <div>
               <p className="hub-label">You’ll be able to</p>
               <ul className="hub-topic__objectives">
                 {node.objectives.map((objective, i) => (
-                  <li key={i}>{objective}</li>
+                  <li key={i}>
+                    <InlineEmphasis text={objective} />
+                  </li>
                 ))}
               </ul>
             </div>
@@ -230,7 +241,9 @@ function ContentsItem({
           {openMisconceptions.map((m) => (
             <div key={m.id} className="hub-clear">
               <p className="hub-label">To clear up</p>
-              <p className="hub-clear__text">{m.description}</p>
+              <p className="hub-clear__text">
+                <InlineEmphasis text={m.description} />
+              </p>
               {affordances.correctMastery && (
                 <button
                   type="button"

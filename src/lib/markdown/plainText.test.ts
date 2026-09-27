@@ -55,3 +55,11 @@ test('arithmetic and snake_case are not emphasis', () => {
     '2 * 3 * 4 and my_var_name stay',
   );
 });
+
+test('escaped punctuation reads as itself, never as syntax', () => {
+  assert.equal(
+    markdownToPlainText('A fine of \\$6.66, \\*not em\\*, 2 \\* 3.\n\\# not a heading'),
+    'A fine of $6.66, *not em*, 2 * 3.\n# not a heading',
+  );
+  assert.equal(markdownToPlainText('see `a\\*b`\n\n```\nx = \\$1\n```'), 'see a\\*b\n\nx = \\$1');
+});

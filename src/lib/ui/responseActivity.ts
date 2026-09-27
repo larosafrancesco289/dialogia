@@ -3,6 +3,7 @@
 // thoughts and tool calls (folding in legacy reasoning, tool logs and search
 // sources), the one-line summary in its head, and each tool call's labels.
 
+import { holdEscapes, releaseEscapes } from '@/lib/markdown/plainText';
 import type { MessageActivityItem, ToolCallLogEntry } from '@/lib/types';
 
 export type SearchSourcesData = {
@@ -22,9 +23,13 @@ export function compactText(value: string, max = 140) {
   return `${slice.slice(0, lastSpace > 90 ? lastSpace : max)}…`;
 }
 
-/** Markdown emphasis and code marks, which the one-line summary shows bare. */
+/** Markdown emphasis, code marks and escapes, which the one-line summary shows bare. */
 function plainText(value: string) {
-  return value.replace(/\*\*|__|`/g, '').replace(/^#+\s*/gm, '');
+  return releaseEscapes(
+    holdEscapes(value)
+      .replace(/\*\*|__|`/g, '')
+      .replace(/^#+\s*/gm, ''),
+  );
 }
 
 /**
@@ -37,7 +42,8 @@ export function currentThoughtLine(text: string): string {
   const headings = [...text.matchAll(/^[ \t]*\*\*([^*\n]+)\*\*[ \t]*$/gm)];
   const heading = headings[headings.length - 1]?.[1]?.trim();
   if (heading) return compactText(plainText(heading), 110);
-  const sentences = plainText(text).match(/[^.!?\n]+[.!?]+(?=\s)/g);
+  // A stop with no space after it ("6.66", "v2.1") is inside the sentence.
+  const sentences = plainText(text).match(/(?:[^.!?\n]|[.!?](?=[^\s.!?]))+[.!?]+(?=\s)/g);
   const last = sentences?.[sentences.length - 1]?.trim();
   return last ? compactText(last, 110) : '';
 }

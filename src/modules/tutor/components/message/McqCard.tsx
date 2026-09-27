@@ -192,7 +192,9 @@ export function McqCard({
                       )}
                     </p>
                     {activeItem.explanation && (
-                      <p className="exercise-feedback__text">{activeItem.explanation}</p>
+                      <p className="exercise-feedback__text">
+                        <InlineEmphasis text={activeItem.explanation} />
+                      </p>
                     )}
                   </div>
                 </motion.div>

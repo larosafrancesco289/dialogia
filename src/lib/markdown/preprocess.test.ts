@@ -57,6 +57,14 @@ test('a number opening a spaced formula is math, and a second price never closes
   assert.equal(escapeCurrency('$5 each\n$x = 1$'), '\\$5 each\n$x = 1$');
 });
 
+test('a price the model already escaped is not escaped twice', () => {
+  assert.equal(escapeCurrency('a fine of \\$6.66'), 'a fine of \\$6.66');
+  assert.equal(escapeCurrency('from \\$5 to \\$10'), 'from \\$5 to \\$10');
+  assert.equal(escapeCurrency('$5 or \\$10'), '\\$5 or \\$10');
+  // An escaped backslash before a price leaves the dollar live.
+  assert.equal(escapeCurrency('C:\\\\$5'), 'C:\\\\\\$5');
+});
+
 test('fenced code and inline code pass through untouched', () => {
   const sources = [{ url: 'https://example.com/a' }];
   const content = [
