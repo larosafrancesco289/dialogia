@@ -39,6 +39,22 @@ export function focusComposer(root: ParentNode = document): boolean {
   return true;
 }
 
+/** What takes focus when `item` leaves a list: the one after it, else the one before. */
+export function neighbourOf<T>(items: readonly T[], item: T): T | undefined {
+  const index = items.indexOf(item);
+  if (index === -1) return undefined;
+  return items[index + 1] ?? items[index - 1];
+}
+
+/**
+ * Focus went with what held it: nothing has it, or what has it left the page.
+ * Asked a frame after a removal, so focus the reader moved elsewhere stays put.
+ */
+export function focusWasDropped(): boolean {
+  const active = document.activeElement;
+  return !active || active === document.body || !active.isConnected;
+}
+
 /** The elements Tab visits inside `container`, in order. */
 export function tabbableIn(container: HTMLElement): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>(TABBABLE)).filter((el) => {
