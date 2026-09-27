@@ -75,7 +75,10 @@ function summaryForCall(call: ToolCallLogEntry): string {
       const ok = typeof output?.ok === 'boolean' ? output.ok : undefined;
       const resultsPreview = output?.resultsPreview;
       const resultsCount = Array.isArray(resultsPreview) ? resultsPreview.length : undefined;
-      if (ok === true) return `Web search (${resultsCount ?? 0} results)`;
+      if (ok === true) {
+        const count = resultsCount ?? 0;
+        return `Web search (${count} ${count === 1 ? 'result' : 'results'})`;
+      }
       if (ok === false) return 'Web search error';
       return 'Web search';
     }

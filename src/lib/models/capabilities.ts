@@ -242,9 +242,8 @@ export function isAudioInputSupported(model?: ModelDescriptor | null): boolean {
   return false;
 }
 
-// Whether a model can output images (for image generation)
-export function isImageOutputSupported(model?: ModelDescriptor | null): boolean {
-  if (!model) return false;
+// What a model says it outputs, lowercased; empty when it does not say.
+function declaredOutputModalities(model: ModelDescriptor): string[] {
   const raw: Record<string, unknown> = isRecord(model.raw)
     ? (model.raw as Record<string, unknown>)
     : {};
@@ -254,8 +253,20 @@ export function isImageOutputSupported(model?: ModelDescriptor | null): boolean 
     : Array.isArray(architecture?.output_modalities)
       ? architecture?.output_modalities
       : [];
+  return outMods.map((x) => String(x || '').toLowerCase());
+}
+
+const IMAGE_MODEL_NAME_RE = /(image|flash-image|diffusion)/;
+
+// Whether a model can output images (for image generation)
+export function isImageOutputSupported(model?: ModelDescriptor | null): boolean {
+  if (!model) return false;
+  const raw: Record<string, unknown> = isRecord(model.raw)
+    ? (model.raw as Record<string, unknown>)
+    : {};
+  const architecture = isRecord(raw.architecture) ? raw.architecture : undefined;
   const norm = (arr: unknown[]) => arr.map((x) => String(x || '').toLowerCase());
-  const out = norm(outMods);
+  const out = declaredOutputModalities(model);
   if (out.some((m) => m.includes('image'))) return true;
   // Fallbacks for providers that only expose a single modalities field
   const modalities: unknown[] = Array.isArray(raw.modalities)
@@ -267,8 +278,23 @@ export function isImageOutputSupported(model?: ModelDescriptor | null): boolean 
   if (mod.some((m) => m.includes('image'))) return true;
   // Last resort: name/id hints for known image-gen previews
   const hay = `${String(model.id || '')} ${String(model.name || '')}`.toLowerCase();
-  if (/(image|flash-image|diffusion)/.test(hay)) return true;
+  if (IMAGE_MODEL_NAME_RE.test(hay)) return true;
   return false;
+}
+
+/**
+ * Whether a model answers in words, and so belongs where a text reply is
+ * being tried again: an image generator (even one that adds a caption) does
+ * not. A model the catalogue does not describe is given the benefit of the
+ * doubt.
+ */
+export function repliesInText(model?: ModelDescriptor | null): boolean {
+  if (!model) return true;
+  const out = declaredOutputModalities(model);
+  if (out.length)
+    return out.some((m) => m.includes('text')) && !out.some((m) => m.includes('image'));
+  const hay = `${String(model.id || '')} ${String(model.name || '')}`.toLowerCase();
+  return !IMAGE_MODEL_NAME_RE.test(hay);
 }
 
 export const EMPTY_MODEL_CAPABILITIES: ModelCapabilityFlags = {

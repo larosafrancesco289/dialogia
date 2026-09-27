@@ -261,7 +261,7 @@
     border-bottom: 1.5px solid var(--table-rule);
   }
   .markdown thead th {
-    text-align: left;
+    text-align: start;
     font-size: 0.78em;
     font-weight: 550;
     letter-spacing: 0.12em;

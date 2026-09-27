@@ -35,7 +35,7 @@ export function PlanStatusBadge({
           mastery and disagreed with the Learning Hub. */}
       <span
         className="plan-button__progress"
-        aria-label={`${planProgress.completed} of ${learningPlan.nodes.length} topics done`}
+        aria-label={`${planProgress.completed} of ${learningPlan.nodes.length} ${learningPlan.nodes.length === 1 ? 'topic' : 'topics'} done`}
       >
         {planProgress.completed}/{learningPlan.nodes.length}
       </span>

@@ -23,7 +23,7 @@ export function preloadMarkdown() {
 function MarkdownFallback({ content, inline }: { content: string; inline?: boolean }) {
   if (inline) return <span>{markdownToPlainText(content)}</span>;
   return (
-    <div className="markdown markdown-fallback whitespace-pre-wrap">
+    <div className="markdown markdown-fallback whitespace-pre-wrap" dir="auto">
       {markdownToPlainText(content)}
     </div>
   );

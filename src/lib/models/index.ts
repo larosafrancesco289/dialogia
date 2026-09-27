@@ -90,6 +90,7 @@ export {
   isReasoningSupported,
   isToolCallingSupported,
   isVisionSupported,
+  repliesInText,
   type ModelCapabilityFlags,
 } from '@/lib/models/capabilities';
 /** @internal The capability tests read the aggregate through this barrel. */

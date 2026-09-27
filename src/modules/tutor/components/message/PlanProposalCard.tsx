@@ -117,7 +117,9 @@ export function PlanProposalCard({
           </p>
           <p className="exercise__meta mt-1">
             {nodesCount} {nodesCount === 1 ? 'topic' : 'topics'}
-            {estimatedHours ? ` · about ${estimatedHours} hours` : ''}
+            {estimatedHours
+              ? ` · about ${estimatedHours} ${estimatedHours === 1 ? 'hour' : 'hours'}`
+              : ''}
           </p>
         </div>
         {!resolved && proposal.rationale && (

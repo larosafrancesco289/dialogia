@@ -10,7 +10,6 @@ export const NOTICE_CATALOG = {
   unknownEndpoint:
     'This chat uses a provider endpoint that no longer exists. Re-add it in Settings › Connections, or pick another model.',
   exportedChats: 'Exported chats to JSON',
-  importedData: 'Imported data',
   planApplyFailed: 'The plan could not be applied. Try again.',
   copyFailed: 'Could not copy: the browser blocked clipboard access.',
   replyInOtherTab:
@@ -22,15 +21,21 @@ export const NOTICE_CATALOG = {
 export type NoticeId = keyof typeof NOTICE_CATALOG;
 
 const ATTACHMENT_KIND_LABELS: Record<string, string> = {
-  image: 'Images',
-  audio: 'Audio',
+  image: 'images',
+  audio: 'audio',
   pdf: 'PDFs',
 };
 
 /** Attachments the chosen model cannot read are removed; say so rather than silently sending less. */
 export function describeDroppedAttachments(kinds: string[]): string {
   const labels = kinds.map((kind) => ATTACHMENT_KIND_LABELS[kind] ?? kind);
-  return `${labels.join(' and ')} were left out: this model does not accept them.`;
+  const list =
+    labels.length > 1
+      ? `${labels.slice(0, -1).join(', ')} and ${labels.at(-1)}`
+      : (labels[0] ?? '');
+  // Audio alone is one thing; every other kind, and any list, is several.
+  const verb = labels.length === 1 && kinds[0] === 'audio' ? 'was' : 'were';
+  return `${list.charAt(0).toUpperCase()}${list.slice(1)} ${verb} left out: this model does not accept them.`;
 }
 
 export function resolveNotice(notice?: NoticeId | string): string | undefined {
@@ -92,7 +97,6 @@ export const NOTICE_MISSING_SEARCH_KEY = NOTICE_CATALOG.missingSearchKey;
 export const NOTICE_MODELS_UNAVAILABLE = NOTICE_CATALOG.modelsUnavailable;
 export const NOTICE_UNKNOWN_ENDPOINT = NOTICE_CATALOG.unknownEndpoint;
 export const NOTICE_EXPORTED_CHATS = NOTICE_CATALOG.exportedChats;
-export const NOTICE_IMPORTED_DATA = NOTICE_CATALOG.importedData;
 export const NOTICE_PLAN_APPLY_FAILED = NOTICE_CATALOG.planApplyFailed;
 export const NOTICE_REPLY_IN_OTHER_TAB = NOTICE_CATALOG.replyInOtherTab;
 export const NOTICE_SAVE_FAILED = NOTICE_CATALOG.saveFailed;

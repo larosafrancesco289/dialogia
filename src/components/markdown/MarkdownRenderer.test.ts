@@ -110,3 +110,23 @@ test('inline text keeps emphasis, code, maths and escapes, but no blocks or link
   );
   assert.ok(!/<(p|ul|li|h1|a)[\s>]/.test(inline('# Title\n\n- one\n- two')));
 });
+
+test('each block takes its direction from its own text, so Arabic and Hebrew set right to left', () => {
+  const reply = [
+    '# عنوان',
+    '',
+    'مرحبا',
+    '',
+    '- שלום',
+    '',
+    '> quote',
+    '',
+    '| a |',
+    '|---|',
+    '| b |',
+  ];
+  const html = render(reply.join('\n'));
+  for (const tag of ['h1', 'p', 'li', 'blockquote', 'th', 'td']) {
+    assert.match(html, new RegExp(`<${tag}\\b[^>]*\\bdir="auto"`), tag);
+  }
+});

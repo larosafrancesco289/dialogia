@@ -77,10 +77,12 @@ export function computeCost(opts: {
   return { currency, total: total || undefined };
 }
 
-// Format a number like 1.234 to "$1.23"; returns undefined if not finite
-function formatUsd(amount?: number): string | undefined {
-  if (typeof amount !== 'number' || !Number.isFinite(amount)) return undefined;
-  return `$${amount.toFixed(2)}`;
+// A per-million rate as dollars: cents above a cent, and two significant
+// digits below it, where cents would round a real price down to $0.00.
+function formatRate(amount: number): string {
+  if (amount >= 0.01) return `$${amount.toFixed(2)}`;
+  const digits = Math.min(10, 1 - Math.floor(Math.log10(amount)));
+  return `$${amount.toFixed(digits).replace(/0+$/, '')}`;
 }
 
 // Normalize potentially string pricing fields from OpenRouter to numbers (per token)
@@ -94,19 +96,21 @@ function perMillion(perToken?: number): number | undefined {
   return perToken * 1_000_000;
 }
 
-// Build a compact pricing descriptor for a model, e.g. "in $5/M, out $15/M"
+// Build a compact pricing descriptor for a model, e.g. "in $5/M, out $15/M".
+// A negative rate is OpenRouter's "it depends" (a router picks the model), so
+// that side says nothing rather than a nonsense price.
 export function describeModelPricing(model?: ModelDescriptor | null): string | undefined {
   if (!model || !model.pricing) return undefined;
-  const pIn = perMillion(toNumber(model.pricing?.prompt));
-  const pOut = perMillion(toNumber(model.pricing?.completion));
-
-  const parts: string[] = [];
-  const inStr = typeof pIn === 'number' ? formatUsd(pIn) : undefined;
-  const outStr = typeof pOut === 'number' ? formatUsd(pOut) : undefined;
-  if (inStr) parts.push(`in ${inStr}/M`);
-  if (outStr) parts.push(`out ${outStr}/M`);
-
-  // Only show when at least one of in/out exists
-  if (parts.length === 0) return undefined;
-  return parts.join(' · ');
+  const rates: Array<[side: string, rate: number | undefined]> = [
+    ['in', perMillion(toNumber(model.pricing?.prompt))],
+    ['out', perMillion(toNumber(model.pricing?.completion))],
+  ];
+  const known = rates.filter(
+    (entry): entry is [string, number] => typeof entry[1] === 'number' && entry[1] >= 0,
+  );
+  if (known.length === 0) return undefined;
+  if (known.every(([, rate]) => rate === 0)) return 'Free';
+  return known
+    .map(([side, rate]) => (rate === 0 ? `${side} free` : `${side} ${formatRate(rate)}/M`))
+    .join(' · ');
 }
