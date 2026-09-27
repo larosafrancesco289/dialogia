@@ -99,3 +99,23 @@ test('a reply with a definition is one another block could need, so it is parsed
   // Which is why: split, the reference would not resolve.
   assert.notEqual(normalize(blocks), normalize(render(reply)));
 });
+
+test('each block takes its direction from its own text, so Arabic and Hebrew set right to left', () => {
+  const reply = [
+    '# عنوان',
+    '',
+    'مرحبا',
+    '',
+    '- שלום',
+    '',
+    '> quote',
+    '',
+    '| a |',
+    '|---|',
+    '| b |',
+  ];
+  const html = render(reply.join('\n'));
+  for (const tag of ['h1', 'p', 'li', 'blockquote', 'th', 'td']) {
+    assert.match(html, new RegExp(`<${tag}\\b[^>]*\\bdir="auto"`), tag);
+  }
+});
