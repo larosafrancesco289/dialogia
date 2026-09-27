@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
-import { formatModelLabel } from '@/lib/models';
+import { formatModelLabel, repliesInText } from '@/lib/models';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useCuratedModels, useDefaultModelId } from '@/lib/hooks/useModelCatalog';
 import type { ModelDescriptor } from '@/lib/types';
@@ -54,8 +54,12 @@ export function RegenerateMenu({
   const curated = [{ id: currentId, name: currentId }, ...curatedModels];
   const customOptions = (favoriteModelIds || []).map((id) => ({ id, name: id }));
   type ModelOption = { id: string; name: string };
+  // Image generators are left out: this is a text reply being tried again.
+  // The chat's own model always stays.
   const options = [...curated, ...customOptions].reduce<ModelOption[]>((acc, m) => {
-    if (!acc.find((x) => x.id === m.id)) acc.push(m);
+    if (acc.find((x) => x.id === m.id)) return acc;
+    if (m.id !== currentId && !repliesInText(modelMap.get(m.id))) return acc;
+    acc.push(m);
     return acc;
   }, []);
   // Escape is the menu keyboard's, which also hands focus back. A phone's
