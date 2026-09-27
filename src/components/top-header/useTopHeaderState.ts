@@ -54,7 +54,8 @@ export function useTopHeaderState(): TopHeaderState {
   );
 
   const onToggleSidebar = useCallback(() => {
-    setUI({ sidebarCollapsed: !collapsed });
+    // The reader's own choice replaces any fold the window made.
+    setUI({ sidebarCollapsed: !collapsed, sidebarFoldedByLayout: false });
   }, [collapsed, setUI]);
 
   const onToggleSettings = useCallback(() => {

@@ -129,6 +129,21 @@ test('an open Settings drawer is not restored on load', () => {
   assert.equal(merged.ui.showSettings, false);
 });
 
+test('a sidebar folded by a phone-width window is saved open; one the reader folded stays folded', () => {
+  const byLayout = buildPersistedState({
+    ...freshState(),
+    ui: { ...freshState().ui, sidebarCollapsed: true, sidebarFoldedByLayout: true },
+  });
+  assert.equal(byLayout.ui.sidebarCollapsed, false);
+  assert.equal('sidebarFoldedByLayout' in byLayout.ui, false);
+
+  const byReader = buildPersistedState({
+    ...freshState(),
+    ui: { ...freshState().ui, sidebarCollapsed: true },
+  });
+  assert.equal(byReader.ui.sidebarCollapsed, true);
+});
+
 test("another tab's preferences are adopted, this window's view is kept", () => {
   const current = freshState();
   current.selectedChatId = 'mine';

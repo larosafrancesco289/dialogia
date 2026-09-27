@@ -8,7 +8,9 @@ import { mergeChatDefaults, upgradeChatDefaults } from '@/lib/settings/chatDefau
 export function buildPersistedUiState(ui: UIState): PersistedUiState {
   return {
     showSettings: ui.showSettings,
-    sidebarCollapsed: ui.sidebarCollapsed,
+    // A fold the narrow window made is not the reader's: saved as the open
+    // sidebar they had, so a wide reload brings it back.
+    sidebarCollapsed: ui.sidebarFoldedByLayout ? false : ui.sidebarCollapsed,
     introSeen: ui.introSeen,
     zdrOnly: ui.zdrOnly,
     messageTimestamps: ui.messageTimestamps,
