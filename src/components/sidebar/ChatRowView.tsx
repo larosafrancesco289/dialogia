@@ -139,6 +139,7 @@ export function ChatRowView({
               onStartEdit();
             }}
             title="Rename"
+            ariaLabel={`Rename “${title}”`}
           >
             <PencilSquareIcon />
           </IconButton>
@@ -150,6 +151,7 @@ export function ChatRowView({
               if (target) onMove(target.getBoundingClientRect());
             }}
             title="Move to folder"
+            ariaLabel={`Move “${title}” to a folder`}
           >
             <FolderArrowDownIcon />
           </IconButton>
@@ -160,6 +162,7 @@ export function ChatRowView({
               onDelete();
             }}
             title="Delete"
+            ariaLabel={`Delete “${title}”`}
           >
             <TrashIcon />
           </IconButton>
