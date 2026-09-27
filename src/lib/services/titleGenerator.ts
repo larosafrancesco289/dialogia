@@ -6,7 +6,7 @@ import { getChatCompletion } from '@/lib/agent/pipelineClient';
 import { requireEndpointAuth } from '@/lib/auth/require';
 import type { TransportAuth } from '@/lib/auth/transport';
 import { logger } from '@/lib/logger';
-import { markdownToPlainText } from '@/lib/markdown/plainText';
+import { markdownToPlainText, withoutSplitSurrogate } from '@/lib/markdown/plainText';
 import {
   ANTHROPIC_ENDPOINT_ID,
   OPENROUTER_ENDPOINT_ID,
@@ -15,6 +15,7 @@ import {
 import { getDefaultEndpoint } from '@/lib/transport/endpointRegistry';
 import { resolveDynamicModelId } from '@/lib/models/dynamicDefaults';
 import type { ModelDescriptor } from '@/lib/types';
+import { stripThinkBlock } from '@/lib/openrouter/thinkTags';
 
 /**
  * The cheap, fast family each built-in endpoint titles with, and the model
@@ -48,7 +49,7 @@ function clampTitle(text: string): string {
   const cut = text.slice(0, TITLE_MAX_CHARS + 1);
   const boundary = cut.lastIndexOf(' ');
   // A hard cut must not split a surrogate pair, which would render as a broken glyph.
-  const hard = cut.slice(0, TITLE_MAX_CHARS).replace(/[\uD800-\uDBFF]$/, '');
+  const hard = withoutSplitSurrogate(cut.slice(0, TITLE_MAX_CHARS));
   return `${(boundary > 20 ? cut.slice(0, boundary) : hard).replace(/[\s,.;:!?-]+$/, '')}…`;
 }
 
@@ -57,13 +58,30 @@ function clampTitle(text: string): string {
  * an empty reply): the start of the first message, as the person wrote it.
  */
 export function fallbackChatTitle(userMessage: string): string | null {
-  const firstLine = userMessage
+  const firstLine = markdownToPlainText(userMessage)
     .split('\n')
-    .map((line) => line.replace(/^[#>*\-\s]+/, '').trim())
+    .map((line) => line.replace(/^\s*•\s*/, '').trim())
     .find(Boolean);
   if (!firstLine) return null;
-  const plain = firstLine.replace(/[*_`~]+/g, '').replace(/\s+/g, ' ');
-  return clampTitle(plain.charAt(0).toUpperCase() + plain.slice(1)) || null;
+  const plain = firstLine.replace(/\s+/g, ' ');
+  // Capitalised only when the first word is a plain lowercase word: "useEffect"
+  // and "iPhone" keep their own case.
+  const title =
+    /^\p{Ll}+\b/u.test(plain) && !/^\S*\p{Lu}/u.test(plain)
+      ? plain.charAt(0).toUpperCase() + plain.slice(1)
+      : plain;
+  return clampTitle(title) || null;
+}
+
+/** A model's title without its dressing: thinking, quotes, a "Title:" label, markdown. */
+export function cleanGeneratedTitle(content: string): string {
+  return markdownToPlainText(stripThinkBlock(content))
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^title\s*:\s*/i, '')
+    .replace(/^["'“‘«]+|["'”’»]+$/g, '')
+    .replace(/[.。]$/, '')
+    .trim();
 }
 
 const TITLE_SYSTEM_PROMPT = `You write titles for chats. Given the user's first message, reply with a short title of 3-6 words. Use sentence case: capitalize only the first word and proper nouns, as in "Planning a week in Lisbon" or "How vaccines train the immune system". Reply with the title only: no quotes, no final punctuation.`;
@@ -136,14 +154,7 @@ export async function generateChatTitle(
     clearTimeout(timeoutId);
 
     const content = response?.choices?.[0]?.message?.content;
-    // A model sometimes dresses the title as markdown (`**Budget**`, `\$500`).
-    const plain = markdownToPlainText(typeof content === 'string' ? content : '');
-    const title = clampTitle(
-      plain
-        .replace(/\s+/g, ' ')
-        .trim()
-        .replace(/^["']|["']$/g, ''),
-    );
+    const title = clampTitle(cleanGeneratedTitle(typeof content === 'string' ? content : ''));
 
     return title || null;
   } catch (error) {

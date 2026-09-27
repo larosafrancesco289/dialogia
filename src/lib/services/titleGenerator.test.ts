@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fallbackChatTitle, triggerAsyncTitleGeneration } from './titleGenerator';
+import {
+  cleanGeneratedTitle,
+  fallbackChatTitle,
+  triggerAsyncTitleGeneration,
+} from './titleGenerator';
 import type { ProviderEndpoint } from '@/lib/transport/endpoints';
 
 test('fallback title is the first line, plain and capitalized', () => {
@@ -38,4 +42,19 @@ test('a chat with titling turned off is named after its first message', async ()
     );
   });
   assert.deepEqual(renamed, ['What should I cook tonight?']);
+});
+
+test('a fallback title keeps the words as written, without markdown', () => {
+  assert.equal(fallbackChatTitle('What is 2\\*3\\*4?'), 'What is 2*3*4?');
+  assert.equal(fallbackChatTitle('fix my_var_name please'), 'Fix my_var_name please');
+  assert.equal(fallbackChatTitle('-5 degrees tonight'), '-5 degrees tonight');
+  assert.equal(fallbackChatTitle('`useEffect` runs twice'), 'useEffect runs twice');
+  assert.equal(fallbackChatTitle('## Budget for \\$500\n\nmore'), 'Budget for $500');
+  assert.equal(fallbackChatTitle('- **first** point'), 'First point');
+});
+
+test('a generated title loses its quotes, label and markdown', () => {
+  assert.equal(cleanGeneratedTitle('“Planning a week in Lisbon”'), 'Planning a week in Lisbon');
+  assert.equal(cleanGeneratedTitle('Title: **Budget** for \\$500.'), 'Budget for $500');
+  assert.equal(cleanGeneratedTitle('"Why is the sky blue?"'), 'Why is the sky blue?');
 });
