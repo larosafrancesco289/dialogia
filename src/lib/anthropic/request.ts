@@ -8,8 +8,9 @@ import { logger } from '@/lib/logger';
 import { isRecord } from '@/lib/utils/guards';
 import { withoutToolHistory } from '@/lib/transport/toolHistory';
 import {
-  ANTHROPIC_DEFAULT_MAX_TOKENS,
+  ANTHROPIC_MIN_ANSWER_TOKENS,
   ANTHROPIC_MIN_THINKING_BUDGET,
+  defaultAnthropicMaxTokens,
   defaultAnthropicThinkingBudget,
   normalizeAnthropicModelSlug,
   resolveAnthropicDirectModelId,
@@ -170,7 +171,7 @@ export function buildAnthropicBody(
   const body: AnthropicMessagesRequest = {
     model: resolvedModel,
     messages,
-    max_tokens: params.maxTokens ?? ANTHROPIC_DEFAULT_MAX_TOKENS,
+    max_tokens: params.maxTokens ?? defaultAnthropicMaxTokens(resolvedModel),
     stream: params.stream,
   };
 
@@ -203,6 +204,14 @@ export function buildAnthropicBody(
   });
   if ('thinking' in thinkingConfig && thinkingConfig.thinking) {
     body.thinking = thinkingConfig.thinking;
+    // Budget thinking counts against max_tokens, and the API refuses a budget
+    // that does not leave the answer room.
+    if (body.thinking.type === 'enabled') {
+      body.max_tokens = Math.max(
+        body.max_tokens,
+        body.thinking.budget_tokens + ANTHROPIC_MIN_ANSWER_TOKENS,
+      );
+    }
   }
   if ('output_config' in thinkingConfig && thinkingConfig.output_config) {
     body.output_config = thinkingConfig.output_config;

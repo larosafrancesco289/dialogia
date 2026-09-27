@@ -218,3 +218,51 @@ test('Claude models released after the capability rules still get the right requ
   });
   assert.equal((haiku.thinking as { type?: string } | undefined)?.type, 'enabled');
 });
+
+test('a budget-thinking reply always leaves room for its answer', () => {
+  for (const reasoningEffort of ['low', 'medium', 'high', 'xhigh', 'max'] as const) {
+    const body = buildAnthropicBody({
+      model: 'anthropic-direct/claude-sonnet-4-5',
+      messages: [{ role: 'user', content: 'Think.' }],
+      stream: true,
+      reasoningEffort,
+    });
+    const thinking = body.thinking as { type: string; budget_tokens: number };
+    assert.equal(thinking.type, 'enabled', reasoningEffort);
+    assert.ok(body.max_tokens >= thinking.budget_tokens + 1024, reasoningEffort);
+  }
+  // A short limit the chat asked for (a title, say) grows to fit the budget.
+  const short = buildAnthropicBody({
+    model: 'anthropic-direct/claude-sonnet-4-5',
+    messages: [{ role: 'user', content: 'Name this chat.' }],
+    stream: false,
+    maxTokens: 150,
+    reasoningEffort: 'high',
+  });
+  const budget = (short.thinking as { budget_tokens: number }).budget_tokens;
+  assert.ok(short.max_tokens > budget);
+});
+
+test('a long answer is not cut short by a small default max_tokens', () => {
+  const adaptive = buildAnthropicBody({
+    model: 'anthropic-direct/claude-opus-4-7',
+    messages: [{ role: 'user', content: 'Write it all out.' }],
+    stream: true,
+    reasoningEffort: 'high',
+  });
+  assert.equal(adaptive.max_tokens, 32000);
+  const plain = buildAnthropicBody({
+    model: 'anthropic-direct/claude-haiku-4-5',
+    messages: [{ role: 'user', content: 'Hi' }],
+    stream: true,
+    maxTokens: 500,
+  });
+  assert.equal(plain.max_tokens, 500, 'a limit the chat sets is kept when nothing needs more');
+  // Older models stop lower, and the API refuses a value above that.
+  const older = buildAnthropicBody({
+    model: 'anthropic-direct/claude-3-5-haiku-20241022',
+    messages: [{ role: 'user', content: 'Hi' }],
+    stream: true,
+  });
+  assert.equal(older.max_tokens, 8192);
+});
