@@ -100,9 +100,14 @@ export function text(value: string | undefined): string {
   return (value ?? '').trim();
 }
 
+/** Cut at a word, never inside one or inside an emoji, with an ellipsis. */
 export function shorten(value: string, max = 80): string {
   const clean = value.replace(/\s+/g, ' ').trim();
-  return clean.length > max ? `${clean.slice(0, max - 3)}...` : clean;
+  if (clean.length <= max) return clean;
+  const cut = clean.slice(0, max - 1);
+  const space = cut.lastIndexOf(' ');
+  const kept = space > max / 2 ? cut.slice(0, space) : cut.replace(/[\uD800-\uDBFF]$/, '');
+  return `${kept.replace(/[\s,.;:]+$/, '')}…`;
 }
 
 export function startTopic(

@@ -1,5 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { shorten } from '@/modules/tutor/engine/commands/shared';
 import {
   HELPED_FACTOR,
   MASTERY_PRIOR,
@@ -1473,4 +1474,15 @@ test('decide is pure: same state, command and context give the same events', () 
   assert.equal(a.events[0].seq, h.state.lastSeq + 1);
   assert.equal(a.events[1].seq, h.state.lastSeq + 2);
   assert.ok(a.events.every((e) => e.at === 42 && e.chatId === 'c'));
+});
+
+test('a long question in a note is cut at a word, with one ellipsis', () => {
+  const question =
+    'What is the derivative of f(x) = 3x^2 + 2x at the point where x equals two exactly';
+  const cut = shorten(question);
+  assert.ok(cut.length <= 80, cut);
+  assert.ok(cut.endsWith('…') && !cut.endsWith(' …'), cut);
+  assert.ok(question.startsWith(cut.slice(0, -1)), cut);
+  assert.ok(/\s/.test(question[cut.length - 1]), 'cut ends at a word');
+  assert.equal(shorten('short one'), 'short one');
 });

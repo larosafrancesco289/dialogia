@@ -131,11 +131,21 @@ const GRADED = /^(Quiz|Diagnostic), (right|wrong): "([\s\S]*)"$/;
 
 const cardWord = (kind: string) => (kind === 'Quiz' ? 'quiz' : 'starting');
 
+// Notes the engine words for the tutor, and how the learner reads them: the
+// Hub already labels a starting estimate, and speaks to the learner as "you".
+const FOR_LEARNER: [RegExp, string][] = [
+  [/^Starting estimate from the diagnostic: /, ''],
+  [/^From what the learner said before the plan$/, 'From what you said before the plan'],
+  [/^(Learner|Student) /, 'You '],
+];
+
 /** An evidence note as the learner reads it, one line of "Why N%". */
 export function readableNote(note: string): string {
   const graded = GRADED.exec(note.trim());
-  if (!graded) return note;
-  const [, kind, verdict, question] = graded;
+  if (!graded) return FOR_LEARNER.reduce((text, [from, to]) => text.replace(from, to), note);
+  const [, kind, verdict, rawQuestion] = graded;
+  // Notes written before cuts ended at a word still end in three dots.
+  const question = rawQuestion.replace(/\.\.\.$/, '…');
   const what = `a ${cardWord(kind)} question`;
   return verdict === 'right'
     ? `Answered ${what} correctly: “${question}”`
