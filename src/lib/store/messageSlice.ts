@@ -56,6 +56,10 @@ export function createMessageSlice(
     notify(get, NOTICE_REPLY_IN_OTHER_TAB, 'info');
     return true;
   };
+  // A send spends a moment loading the chat and the turn code before the chat
+  // reads as streaming, and a fast second Enter in that gap started a second
+  // turn. Each chat holds one starting send until its turn is under way.
+  const startingSends = new Map<string, symbol>();
   return {
     messagesById: {},
     messageIdsByChatId: {},
@@ -73,18 +77,31 @@ export function createMessageSlice(
 
     async sendUserMessage(content, opts) {
       const chatId = get().selectedChatId;
+      if (chatId && startingSends.has(chatId)) return;
       if (busyInOtherTab(chatId)) return;
-      if (chatId) await get().ensureChatMessagesLoaded(chatId);
-      const { sendUserTurn } = await loadTurnService();
-      await sendUserTurn({
-        content,
-        attachments: opts?.attachments,
-        metadata: opts?.metadata,
-        ledger: opts?.ledger,
-        set,
-        get,
-        repository,
-      });
+      const token = Symbol('send');
+      if (chatId) startingSends.set(chatId, token);
+      // Released once the turn is streaming, so a ledger line queued behind
+      // this reply is not turned away while the turn finishes up.
+      const release = () => {
+        if (chatId && startingSends.get(chatId) === token) startingSends.delete(chatId);
+      };
+      try {
+        if (chatId) await get().ensureChatMessagesLoaded(chatId);
+        const { sendUserTurn } = await loadTurnService();
+        await sendUserTurn({
+          content,
+          attachments: opts?.attachments,
+          metadata: opts?.metadata,
+          ledger: opts?.ledger,
+          onStarted: release,
+          set,
+          get,
+          repository,
+        });
+      } finally {
+        release();
+      }
     },
 
     // Aborting is the whole of it: each turn counts itself out as it ends.

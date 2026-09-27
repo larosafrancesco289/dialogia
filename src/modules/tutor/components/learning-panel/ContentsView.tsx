@@ -73,7 +73,7 @@ export function ContentsView({
           </>
         )}
         <p className="hub-contents__meta">
-          {done} of {plan.nodes.length} topics done
+          {done} of {plan.nodes.length} {plan.nodes.length === 1 ? 'topic' : 'topics'} done
           {hours != null ? ` · about ${hours} ${hours === 1 ? 'hour' : 'hours'} in all` : ''}
         </p>
       </div>

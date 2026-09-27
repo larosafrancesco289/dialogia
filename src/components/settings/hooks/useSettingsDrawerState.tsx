@@ -25,7 +25,7 @@ import { SettingsModuleSlot } from '@/components/ModuleSlot';
 import { AppearancePanel } from '@/components/settings/sections/AppearancePanel';
 import { DataPanel } from '@/components/settings/sections/DataPanel';
 import { TAB_LIST } from '@/components/settings/sections/config';
-import { NOTICE_EXPORTED_CHATS, NOTICE_IMPORTED_DATA } from '@/lib/store/notices';
+import { NOTICE_EXPORTED_CHATS } from '@/lib/store/notices';
 import { buildChatExport, importChatExport } from '@/lib/settings/transfer';
 
 export type SettingsDrawerState = {
@@ -185,7 +185,7 @@ export function useSettingsDrawerState(): SettingsDrawerState {
         return;
       }
       await initializeApp();
-      setNotice(NOTICE_IMPORTED_DATA, 'success');
+      setNotice(importResult.notice, 'success');
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Import failed';
       setNotice(message);

@@ -23,6 +23,17 @@ test('describeModelPricing falls back to undefined when rates missing or invalid
   );
 });
 
+test('describeModelPricing says nothing for a router price, Free for free, and a real price below a cent', () => {
+  const priced = (prompt: unknown, completion: unknown) =>
+    describeModelPricing({ id: 'm', pricing: { prompt, completion } } as any);
+  assert.equal(priced('-1', '-1'), undefined);
+  assert.equal(priced('-1', '0.000002'), 'out $2.00/M');
+  assert.equal(priced('0', '0'), 'Free');
+  assert.equal(priced('0', '0.000001'), 'in free · out $1.00/M');
+  assert.equal(priced('0.0000000000035', '0.000000000005'), 'in $0.0000035/M · out $0.000005/M');
+  assert.equal(priced('0.000000002', '0.00000001'), 'in $0.002/M · out $0.01/M');
+});
+
 test('computeCost sums prompt and completion usage in model currency', () => {
   const model: any = {
     pricing: {

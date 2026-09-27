@@ -71,7 +71,8 @@
   border-radius: var(--radius-editorial);
   width: fit-content;
   max-width: min(72%, 38rem);
-  text-align: left;
+  /* Start, not left: a right-to-left paragraph sets from the right. */
+  text-align: start;
   box-shadow: none;
 
   /* The reader's voice, in the sans. */
@@ -146,6 +147,13 @@
   /* A person's Shift+Return is a line break they meant; markdown would fold it
      into the paragraph. */
   white-space: pre-wrap;
+}
+
+/* A person's own words are never broken with hyphens they did not type. */
+.user :global(.markdown p),
+.user :global(.markdown li),
+.user :global(.markdown blockquote) {
+  hyphens: manual;
 }
 
 .user :global(.markdown p + p) {

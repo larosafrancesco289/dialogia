@@ -30,6 +30,8 @@ export type SendTurnOptions = {
   metadata?: Message['metadata'];
   /** The message records an interface action; see `Message.ledger`. */
   ledger?: boolean;
+  /** Called once the turn's messages exist and the chat reads as streaming. */
+  onStarted?: () => void;
   set: StoreSetter;
   get: StoreGetter;
   repository: Repository;
@@ -83,6 +85,7 @@ export async function sendUserTurn({
   attachments,
   metadata,
   ledger,
+  onStarted,
   set,
   get,
   repository,
@@ -116,6 +119,7 @@ export async function sendUserTurn({
     get,
     repository,
   });
+  onStarted?.();
   if (!spawned) return;
 
   const { assistantByModel, masterController, markComplete, completeAll } = spawned;

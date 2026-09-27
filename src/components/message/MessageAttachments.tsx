@@ -97,7 +97,7 @@ export function MessageAttachments({
         <span
           key={attachment.id}
           className="badge"
-          title={`${attachment.name || 'PDF'}${attachment.pageCount ? ` · ${attachment.pageCount} pages` : ''}`}
+          title={`${attachment.name || 'PDF'}${attachment.pageCount ? ` · ${attachment.pageCount} ${attachment.pageCount === 1 ? 'page' : 'pages'}` : ''}`}
         >
           {attachment.name || 'PDF'}
           {attachment.pageCount ? ` (${attachment.pageCount}p)` : ''}

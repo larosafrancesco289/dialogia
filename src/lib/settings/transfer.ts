@@ -59,15 +59,41 @@ export async function buildChatExport(): Promise<
   }
 }
 
+const NOTHING_TO_IMPORT = 'This file has no Dialogia chats or settings.';
+
+const chatCount = (n: number) => `${n} ${n === 1 ? 'chat' : 'chats'}`;
+
+/** @internal What an import brought in, in words; `undefined` when it brought in nothing. */
+export function describeImport({
+  chats,
+  skippedChats,
+  settings,
+}: {
+  chats: number;
+  skippedChats: number;
+  settings: boolean;
+}): string | undefined {
+  if (chats === 0 && !settings) return undefined;
+  const imported = chats > 0 ? `Imported ${chatCount(chats)}.` : 'Imported your settings.';
+  if (skippedChats === 0) return imported;
+  const skipped = chats > 0 ? `${skippedChats}` : chatCount(skippedChats);
+  return `${imported} ${skipped} could not be read.`;
+}
+
 export async function importChatExport(
   payload: string,
-): Promise<Result<{ imported: true }, string>> {
+): Promise<Result<{ notice: string }, string>> {
   let data: unknown;
   try {
     data = JSON.parse(payload);
   } catch {
     return err('That file is not a Dialogia export: it is not valid JSON.');
   }
+  const hasSettings = isRecord(data) && isRecord(data.persistedStore);
+  const hasChats = isRecord(data) && Array.isArray(data.chats) && data.chats.length > 0;
+  // Any JSON parses; one with nothing of ours in it is said to be so, not
+  // reported as a success that changed nothing.
+  if (!hasSettings && !hasChats) return err(NOTHING_TO_IMPORT);
   const version =
     isRecord(data) && typeof data.persistedStoreVersion === 'number'
       ? data.persistedStoreVersion
@@ -80,7 +106,7 @@ export async function importChatExport(
     );
   }
   try {
-    await importAll(data as Parameters<typeof importAll>[0]);
+    const counts = await importAll(data as Parameters<typeof importAll>[0]);
 
     if (isRecord(data) && isRecord(data.persistedStore)) {
       const migrated = migrate(data.persistedStore, version);
@@ -88,7 +114,9 @@ export async function importChatExport(
       await persistImportedStoreSnapshot();
     }
 
-    return ok({ imported: true });
+    const notice = describeImport({ ...counts, settings: hasSettings });
+    if (!notice) return err('None of the chats in this file could be read.');
+    return ok({ notice });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Import failed';
     return err(message);

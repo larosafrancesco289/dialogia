@@ -20,6 +20,7 @@ import {
   selectRepliesInOtherTab,
 } from '@/lib/store/selectors';
 import { replyInProgress } from '@/lib/ui/streaming';
+import { focusComposer } from '@/lib/ui/focus';
 
 const EMPTY_MESSAGES: Message[] = [];
 const JUST_WRITTEN_MS = 1500;
@@ -311,6 +312,10 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
             onClick={() => {
               jumpToLatest();
               // Intentionally not setting setShowJump(false) here; let the scroll handler do it
+              // The button goes away once the list is at the bottom, and focus
+              // would fall to the page; the composer is where the reader goes
+              // next. Not on a phone, where focus would raise the keyboard.
+              if (!isMobile) focusComposer();
             }}
           >
             <ChevronDownIcon className="h-4 w-4" />
