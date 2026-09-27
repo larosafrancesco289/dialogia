@@ -15,6 +15,7 @@ import type { Chat, Message, PersistedAttachment } from '@/lib/types';
 import type { StoreGetter, StoreSetter } from '@/lib/agent/types';
 import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { resolveTurnSettings } from '@/lib/settings/resolve';
+import { isAbortLike } from '@/lib/store/notices';
 
 export type ExecuteModelTurnArgs = {
   modelId: string;
@@ -57,6 +58,29 @@ export const executeModelTurn = async ({
   const abortListener = () => controller.abort();
   masterController.signal.addEventListener('abort', abortListener);
 
+  const persistMessage = createMessagePersister(repository);
+  const updateMessage = (messageId: string, patch: Partial<Message>) => {
+    set((state) => {
+      const next = updateMessageById(state, runtime.chatId, messageId, (message) => ({
+        ...message,
+        ...patch,
+      }));
+      return next ?? state;
+    });
+  };
+
+  // A turn that failed before its stream could say so (a request refused
+  // before the first byte, say) still ends marked, on screen and on disk, or
+  // the reply is an empty block with nothing to explain it once the toast is
+  // gone. A reply the stream finished or already marked is left alone.
+  const markUnfinished = async (error: unknown) => {
+    const current = get().messagesById[assistantMessage.id];
+    if (!current || current.cutOff || current.metrics) return;
+    updateMessage(assistantMessage.id, { cutOff: isAbortLike(error) ? 'stopped' : 'failed' });
+    const marked = get().messagesById[assistantMessage.id];
+    if (marked) await persistMessage(marked).catch(() => undefined);
+  };
+
   try {
     const chatForTurn = (): Chat => {
       const chat = getCurrentChat();
@@ -70,17 +94,6 @@ export const executeModelTurn = async ({
       ...runtime.baseTurnContext,
       models: get().models,
       modelIndex: get().modelIndex,
-    };
-
-    const persistMessage = createMessagePersister(repository);
-    const updateMessage = (messageId: string, patch: Partial<Message>) => {
-      set((state) => {
-        const next = updateMessageById(state, runtime.chatId, messageId, (message) => ({
-          ...message,
-          ...patch,
-        }));
-        return next ?? state;
-      });
     };
 
     const lifecycle = createTurnLifecycle({
@@ -146,6 +159,7 @@ export const executeModelTurn = async ({
   } catch (error: unknown) {
     handleTurnApiError(error, get);
     controller.abort();
+    await markUnfinished(error);
   } finally {
     masterController.signal.removeEventListener('abort', abortListener);
     markComplete();

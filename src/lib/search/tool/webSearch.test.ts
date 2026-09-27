@@ -90,6 +90,6 @@ test('a search that times out says it took too long', async (t) => {
   t.mock.timers.tick(20000);
   const result = await pending;
   assert.equal(result.ok, false);
-  assert.equal(result.error,'The search took too long.');
+  assert.equal(result.error, 'The search took too long.');
   assert.equal(s.entry()?.error, 'The search took too long.');
 });

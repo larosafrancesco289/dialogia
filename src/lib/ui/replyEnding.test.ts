@@ -13,6 +13,20 @@ test('a reply that finished cleanly has no note', () => {
   assert.equal(replyEndingNote({ content: 'Done.', finishReason: 'stop' }), undefined);
 });
 
+test('a reply that failed before its first word still says why it is empty', () => {
+  assert.equal(
+    replyEndingNote({ content: '', cutOff: 'failed' }),
+    'This reply failed before it started.',
+  );
+  assert.equal(
+    replyEndingNote({ content: '  ', cutOff: 'stopped' }),
+    'Stopped before the reply began.',
+  );
+  // A card is the reply: it began, so no note claims otherwise.
+  assert.equal(replyEndingNote({ content: '', cutOff: 'failed' }, true), undefined);
+  assert.equal(replyEndingNote({ content: '' }), undefined);
+});
+
 test('a cut-off reply says how it ended', () => {
   assert.equal(
     replyEndingNote({ content: 'Partial', cutOff: 'stopped' }),
