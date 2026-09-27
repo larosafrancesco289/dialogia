@@ -38,10 +38,18 @@ let katexPluginPromise: Promise<{ plugin: RehypePlugin }> | null = null;
 
 function loadKatexPlugin(): Promise<{ plugin: RehypePlugin }> {
   if (!katexPluginPromise) {
-    katexPluginPromise = import('@/components/markdown/katex').then((mod) => {
-      katexPlugin = { plugin: mod.rehypeKatex as RehypePlugin };
-      return katexPlugin;
-    });
+    katexPluginPromise = import('@/components/markdown/katex').then(
+      (mod) => {
+        katexPlugin = { plugin: mod.rehypeKatex as RehypePlugin };
+        return katexPlugin;
+      },
+      (error: unknown) => {
+        // A failed fetch (a dropped connection) is not remembered: the next
+        // reply with maths asks again instead of showing source for good.
+        katexPluginPromise = null;
+        throw error;
+      },
+    );
   }
   return katexPluginPromise;
 }
