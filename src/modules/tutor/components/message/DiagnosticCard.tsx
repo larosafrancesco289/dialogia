@@ -5,7 +5,7 @@ import type { DiagnosticRecord } from '@/modules/tutor/engine';
 import { McqCard, type McqAttempts } from '@/modules/tutor/components/message/McqCard';
 import { LEDGER } from '@/modules/tutor/lib/ledger';
 import { useLedger } from '@/modules/tutor/ui/ledger';
-import { InlineEmphasis } from '@/modules/tutor/components/message/InlineEmphasis';
+import { Markdown } from '@/components/Markdown';
 
 /**
  * A diagnostic: answers are held here until every item has one, then go to
@@ -71,7 +71,7 @@ export function DiagnosticCard({
     <div className="exercise">
       <div>
         <h4 className="exercise__title">
-          <InlineEmphasis text={`A quick check on ${diagnostic.topic}`} />
+          <Markdown inline content={`A quick check on ${diagnostic.topic}`} />
         </h4>
         <p className="exercise__meta">So the tutor knows where to start.</p>
       </div>

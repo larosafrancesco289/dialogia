@@ -11,7 +11,7 @@ import { quizFinished, type QuizItem, type QuizRecord } from '@/modules/tutor/en
 import { contentVariants } from '@/modules/tutor/components/message/shared';
 import { StepperDots } from '@/modules/tutor/components/message/StepperDots';
 import { useStepper } from '@/modules/tutor/components/message/hooks/useStepper';
-import { InlineEmphasis } from '@/modules/tutor/components/message/InlineEmphasis';
+import { Markdown } from '@/components/Markdown';
 import { LEDGER } from '@/modules/tutor/lib/ledger';
 import { useLedger } from '@/modules/tutor/ui/ledger';
 
@@ -130,7 +130,7 @@ export function McqCard({
             className="flex flex-col gap-4"
           >
             <p className="exercise__question">
-              <InlineEmphasis text={activeItem.question} />
+              <Markdown inline content={activeItem.question} />
             </p>
             <div className="exercise__choices">
               {activeItem.choices.map((choice, idx) => {
@@ -155,7 +155,7 @@ export function McqCard({
                   >
                     <span className="choice__mark">{String.fromCharCode(65 + idx)}</span>
                     <span className="choice__body">
-                      <InlineEmphasis text={choice} />
+                      <Markdown inline content={choice} />
                     </span>
                     {answered && (isCorrect || isPicked) && (
                       <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }}>
@@ -193,7 +193,7 @@ export function McqCard({
                     </p>
                     {activeItem.explanation && (
                       <p className="exercise-feedback__text">
-                        <InlineEmphasis text={activeItem.explanation} />
+                        <Markdown inline content={activeItem.explanation} />
                       </p>
                     )}
                   </div>
