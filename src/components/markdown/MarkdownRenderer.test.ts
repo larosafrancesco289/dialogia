@@ -99,3 +99,14 @@ test('a reply with a definition is one another block could need, so it is parsed
   // Which is why: split, the reference would not resolve.
   assert.notEqual(normalize(blocks), normalize(render(reply)));
 });
+
+test('inline text keeps emphasis, code, maths and escapes, but no blocks or links', () => {
+  const inline = (content: string) =>
+    renderToStaticMarkup(createElement(MarkdownRenderer, { content, inline: true }));
+  assert.equal(
+    inline('Evaluate \\(\\frac{1}{2}\\) for `a*b` at \\$6.66, *really* [here](https://x.test)'),
+    '<span class="markdown markdown--inline">Evaluate <code class="language-math math-inline">' +
+      '\\frac{1}{2}</code> for <code>a*b</code> at $6.66, <em>really</em> here</span>',
+  );
+  assert.ok(!/<(p|ul|li|h1|a)[\s>]/.test(inline('# Title\n\n- one\n- two')));
+});

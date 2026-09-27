@@ -20,7 +20,8 @@ export function preloadMarkdown() {
 }
 
 // Its own component, so the text is only stripped when the fallback shows.
-function MarkdownFallback({ content }: { content: string }) {
+function MarkdownFallback({ content, inline }: { content: string; inline?: boolean }) {
+  if (inline) return <span>{markdownToPlainText(content)}</span>;
   return (
     <div className="markdown markdown-fallback whitespace-pre-wrap">
       {markdownToPlainText(content)}
@@ -32,17 +33,20 @@ export const Markdown = memo(function Markdown({
   content,
   sources,
   streaming,
+  inline,
 }: {
   content: string;
   sources?: MarkdownCitationSource[];
   /** True while this block's content may still change on the next flush. */
   streaming?: boolean;
+  /** A single line set inside other text, without paragraphs or links. */
+  inline?: boolean;
 }) {
   return (
     // The text waits a moment before it shows, so a quick load goes straight
     // to the rendered page; a slow one shows prose without markdown syntax.
-    <Suspense fallback={<MarkdownFallback content={content} />}>
-      <MarkdownRenderer content={content} sources={sources} streaming={streaming} />
+    <Suspense fallback={<MarkdownFallback content={content} inline={inline} />}>
+      <MarkdownRenderer content={content} sources={sources} streaming={streaming} inline={inline} />
     </Suspense>
   );
 });

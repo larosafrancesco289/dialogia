@@ -103,7 +103,9 @@ function ReviseItem({
           <InlineEmphasis text={node.name} />
         </span>
         <span className="hub-path__sub">
-          <span className="hub-path__status">{status}</span>
+          <span className="hub-path__status">
+            <InlineEmphasis text={status} />
+          </span>
         </span>
       </div>
 

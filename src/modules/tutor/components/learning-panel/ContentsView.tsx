@@ -14,7 +14,6 @@ const isMeasured = (m: TopicMastery | undefined): m is TopicMastery =>
 
 // Corrections are recorded for the tutor ("Learner said…"); read them back
 // to the learner in the second person.
-const toLearner = (details: string) => details.replace(/^(Learner|Student) /, 'You ');
 
 function Meter({ value }: { value: number }) {
   return (
@@ -175,7 +174,7 @@ function ContentsItem({
         <span className="hub-path__sub">
           {showMastery && <Meter value={mastery!.confidence} />}
           <span className="hub-path__status">
-            {statusWords(state, upNext, waiting)}
+            <InlineEmphasis text={statusWords(state, upNext, waiting)} />
             {toClear > 0 && (
               <>
                 {' · '}
@@ -258,7 +257,9 @@ function ContentsItem({
           ))}
 
           {state === 'locked' && waiting.length > 0 && (
-            <p className="hub-topic__note">Starts once you’ve finished {listNames(waiting)}.</p>
+            <p className="hub-topic__note">
+              <InlineEmphasis text={`Starts once you’ve finished ${listNames(waiting)}.`} />
+            </p>
           )}
         </div>
       )}
@@ -297,7 +298,7 @@ function settingLabel(evidence: WhyStep['evidence']): string {
 /** One line of "Why N%": what a piece of evidence did, or where it set the estimate. */
 function WhyLine({ step: { evidence, before, after }, first }: { step: WhyStep; first: boolean }) {
   if (isSetting(evidence)) {
-    const details = evidence?.details ? toLearner(evidence.details) : '';
+    const details = evidence?.details ? readableNote(evidence.details) : '';
     // Where it was set from, so the story reads through: 61%, then your 46%.
     const was = !first && pct(before) !== pct(after) ? `It was ${pct(before)}%.` : '';
     // The learner's own correction is its own label ("You said the estimate
@@ -308,8 +309,12 @@ function WhyLine({ step: { evidence, before, after }, first }: { step: WhyStep; 
       <li className="is-edge">
         <span className="hub-why__figure">{pct(after)}%</span>
         <span>
-          {own ? details : settingLabel(evidence)}
-          {note && <span className="hub-why__note">{note}</span>}
+          {own ? <InlineEmphasis text={details} /> : settingLabel(evidence)}
+          {note && (
+            <span className="hub-why__note">
+              <InlineEmphasis text={note} />
+            </span>
+          )}
         </span>
       </li>
     );
@@ -321,9 +326,7 @@ function WhyLine({ step: { evidence, before, after }, first }: { step: WhyStep; 
         {delta > 0 ? `+${delta}` : delta < 0 ? `−${-delta}` : '0'}
       </span>
       <span>
-        {evidence!.type === 'self_report'
-          ? toLearner(evidence!.details)
-          : readableNote(evidence!.details)}
+        <InlineEmphasis text={readableNote(evidence!.details)} />
       </span>
     </li>
   );
