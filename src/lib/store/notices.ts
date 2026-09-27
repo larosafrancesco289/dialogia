@@ -1,6 +1,9 @@
 // Module: store/notices
 // Responsibility: Centralize user-facing notice messages used across slices and services.
 
+import { isApiError } from '@/lib/api/errors';
+import { isRecord } from '@/lib/utils/guards';
+
 export const NOTICE_CATALOG = {
   invalidKey: 'That API key was rejected. Check it in Settings › Connections.',
   rateLimited: 'The provider is limiting requests. Wait a moment, then try again.',
@@ -59,6 +62,8 @@ export function isAbortLike(error: unknown): boolean {
  */
 export function describeErrorNotice(error: unknown): string | undefined {
   if (isAbortLike(error)) return undefined;
+  const fromBody = httpErrorNotice(error);
+  if (fromBody) return clip(fromBody);
   const message = error instanceof Error ? error.message : '';
   if (/failed to fetch|load failed|networkerror|network request failed/i.test(message)) {
     return 'Could not reach the provider. Check your connection, or that your local server is running.';
@@ -67,8 +72,70 @@ export function describeErrorNotice(error: unknown): string | undefined {
     return 'The request timed out. Try again.';
   }
   if (!message.trim()) return 'Something went wrong, and the provider did not say what.';
-  const text = readable(message);
+  return clip(readable(message));
+}
+
+function clip(text: string): string {
   return text.length > MAX_NOTICE_LENGTH ? `${text.slice(0, MAX_NOTICE_LENGTH - 1)}…` : text;
+}
+
+/**
+ * A failed HTTP response in words: what happened and the status, then the
+ * provider's own explanation from the body rather than the body itself. The
+ * error keeps its full message and body for the logs.
+ */
+function httpErrorNotice(error: unknown): string | undefined {
+  if (!isApiError(error) || typeof error.status !== 'number') return undefined;
+  if (error.detail instanceof Error) return undefined;
+  const statusMark = ` (${error.status})`;
+  const at = error.message.indexOf(statusMark);
+  if (at < 0) return undefined;
+  const head = readable(error.message.slice(0, at + statusMark.length));
+  const said = providerErrorText(error.detail);
+  if (said) return `${head}: ${said}`;
+  return error.status >= 500 ? `${head}. Try again in a moment.` : `${head}.`;
+}
+
+const MAX_BODY_DEPTH = 4;
+
+/**
+ * The explanation inside a provider's error body: the innermost `message`
+ * (OpenRouter wraps the upstream provider's own error as JSON text in
+ * `metadata.raw`), a bare `error` string, or a `detail` ({"detail":"Not
+ * Found"}). Undefined for an HTML page, a proxy's 502 say, whose markup tells
+ * a person nothing.
+ */
+function providerErrorText(body: unknown, depth = 0): string | undefined {
+  if (depth > MAX_BODY_DEPTH || body == null) return undefined;
+  if (typeof body === 'string') {
+    const text = body.trim();
+    if (!text || /^<|<\/?(html|body|head)\b/i.test(text)) return undefined;
+    if (/^[[{]/.test(text)) {
+      try {
+        return providerErrorText(JSON.parse(text), depth + 1);
+      } catch {
+        return text;
+      }
+    }
+    return text;
+  }
+  if (Array.isArray(body)) {
+    // FastAPI's validation errors: [{ "msg": "..." }]
+    const first: unknown = body[0];
+    return isRecord(first) && typeof first.msg === 'string' ? first.msg : undefined;
+  }
+  if (!isRecord(body)) return undefined;
+  const error = isRecord(body.error) ? body.error : body;
+  if (isRecord(error.metadata)) {
+    const inner = providerErrorText(error.metadata.raw, depth + 1);
+    if (inner) return inner;
+  }
+  for (const value of [error.message, body.error, error.detail]) {
+    const text = typeof value === 'string' || Array.isArray(value) ? value : undefined;
+    const said = providerErrorText(text, depth + 1);
+    if (said) return said;
+  }
+  return undefined;
 }
 
 // Transport errors read "openrouter_chat_failed (400): detail"; a person
