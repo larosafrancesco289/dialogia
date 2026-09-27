@@ -71,7 +71,8 @@
   border-radius: var(--radius-editorial);
   width: fit-content;
   max-width: min(72%, 38rem);
-  text-align: left;
+  /* Start, not left: a right-to-left paragraph sets from the right. */
+  text-align: start;
   box-shadow: none;
 
   /* The reader's voice, in the sans. */

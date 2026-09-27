@@ -1,5 +1,6 @@
 import React, {
   createContext,
+  createElement,
   useContext,
   useEffect,
   useId,
@@ -127,7 +128,32 @@ function Pre({ children, node: _node, ...preProps }: ComponentProps<'pre'> & Ext
   );
 }
 
+// Arabic or Hebrew reads right to left: each block takes its direction from
+// its own first letter, so a reply that mixes scripts sets each part right.
+const AUTO_DIR_TAGS = [
+  'p',
+  'li',
+  'blockquote',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'th',
+  'td',
+] as const;
+
+const AUTO_DIR_COMPONENTS: Components = Object.fromEntries(
+  AUTO_DIR_TAGS.map((tag) => [
+    tag,
+    ({ node: _node, ...props }: ComponentProps<typeof tag> & ExtraProps) =>
+      createElement(tag, { dir: 'auto', ...props }),
+  ]),
+);
+
 const COMPONENTS: Components = {
+  ...AUTO_DIR_COMPONENTS,
   // A wide table scrolls sideways in its own frame instead of squeezing
   // its columns until words break mid-letter.
   table: ({ node: _node, ...tableProps }) => (

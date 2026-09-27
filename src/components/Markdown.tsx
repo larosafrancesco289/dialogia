@@ -22,7 +22,7 @@ export function preloadMarkdown() {
 // Its own component, so the text is only stripped when the fallback shows.
 function MarkdownFallback({ content }: { content: string }) {
   return (
-    <div className="markdown markdown-fallback whitespace-pre-wrap">
+    <div className="markdown markdown-fallback whitespace-pre-wrap" dir="auto">
       {markdownToPlainText(content)}
     </div>
   );
