@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { shallow } from 'zustand/shallow';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { ApiKeyField } from '@/components/settings/ApiKeyField';
@@ -187,12 +187,35 @@ function AddEndpointForm({ onAdded }: { onAdded: () => void }) {
   const [label, setLabel] = useState('');
   const [baseUrl, setBaseUrl] = useState('');
 
+  const nameRef = useRef<HTMLInputElement>(null);
+
   const canAdd = label.trim().length > 0 && baseUrl.trim().length > 0;
+
+  const add = () => {
+    if (!canAdd) return;
+    const endpoint = addEndpoint({
+      kind: 'openai-compatible',
+      label: label.trim(),
+      baseUrl: baseUrl.trim(),
+    });
+    setLabel('');
+    setBaseUrl('');
+    onAdded();
+    // Add disables itself once the fields empty, which would drop focus on the
+    // page: the new server's row takes it, else the name field for another.
+    requestAnimationFrame(() => {
+      const row = document.querySelector<HTMLElement>(
+        `[data-endpoint-id="${CSS.escape(endpoint.id)}"] .collapsible-section-trigger`,
+      );
+      (row ?? nameRef.current)?.focus();
+    });
+  };
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
         <input
+          ref={nameRef}
           className="input flex-1 basis-full sm:basis-0 min-w-0 text-base sm:text-sm"
           placeholder="Name, e.g. Ollama"
           value={label}
@@ -201,26 +224,16 @@ function AddEndpointForm({ onAdded }: { onAdded: () => void }) {
         />
         <input
           className="input flex-1 basis-full sm:basis-0 min-w-0 text-base sm:text-sm"
-          placeholder="http://localhost:11434/v1"
+          placeholder="e.g. http://localhost:11434/v1"
           value={baseUrl}
           spellCheck={false}
           onChange={(event) => setBaseUrl(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') add();
+          }}
           aria-label="Base URL"
         />
-        <button
-          className="btn btn-sm"
-          disabled={!canAdd}
-          onClick={() => {
-            addEndpoint({
-              kind: 'openai-compatible',
-              label: label.trim(),
-              baseUrl: baseUrl.trim(),
-            });
-            setLabel('');
-            setBaseUrl('');
-            onAdded();
-          }}
-        >
+        <button className="btn btn-sm" disabled={!canAdd} onClick={add}>
           Add
         </button>
       </div>
@@ -279,12 +292,13 @@ export function ProvidersPanel({ renderSection, loadModels }: ProvidersPanelProp
         <SettingsSection title="Your servers">
           <div className="space-y-3">
             {customEndpoints.map((endpoint) => (
-              <CollapsibleSection
-                key={endpoint.id}
-                title={`${endpoint.label} · ${endpoint.baseUrl ?? 'no base URL'}`}
-              >
-                <CustomEndpointEditor endpoint={endpoint} onChanged={refresh} />
-              </CollapsibleSection>
+              <div key={endpoint.id} data-endpoint-id={endpoint.id}>
+                <CollapsibleSection
+                  title={`${endpoint.label} · ${endpoint.baseUrl ?? 'no base URL'}`}
+                >
+                  <CustomEndpointEditor endpoint={endpoint} onChanged={refresh} />
+                </CollapsibleSection>
+              </div>
             ))}
             <AddEndpointForm onAdded={refresh} />
           </div>
