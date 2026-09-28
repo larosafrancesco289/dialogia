@@ -106,4 +106,10 @@
   bottom: -1px;
   height: 1px;
   background: color-mix(in oklab, var(--color-accent) 70%, transparent);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+
+.activityBar[data-live='true'] {
+  opacity: 1;
 }
