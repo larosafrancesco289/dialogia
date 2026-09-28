@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { buildPersistedState, mergePersistedState } from '@/lib/store/persistence';
 import { parseCustomEndpoints } from '@/lib/store/endpointSlice';
 import { listEndpoints, resetEndpointRegistryForTest } from '@/lib/transport/endpointRegistry';
-import { requireEndpointAuth } from '@/lib/auth/require';
+import { OPENROUTER_ENDPOINT } from '@/lib/transport/endpoints';
+import { isEndpointConnected, requireEndpointAuth } from '@/lib/auth/require';
 import { deleteKey, getKey, setKey } from '@/lib/keys/store';
 import { mockFetch } from './helpers/mockFetch';
 import { createTestStore } from './helpers/createTestStoreState';
@@ -97,6 +98,7 @@ test('a keyless OpenAI-compatible endpoint is callable and contributes models', 
   // No key stored for it, and the built-ins have none either.
   assert.equal(getKey(endpoint.apiKeyRef!), undefined);
   assert.doesNotThrow(() => requireEndpointAuth(endpoint));
+  assert.equal(isEndpointConnected(endpoint), true);
 
   const restore = mockFetch((async () => new Response('not found', { status: 404 })) as never);
   try {
@@ -174,4 +176,15 @@ test('with nothing configured, loading models opens the setup sheet, but not ove
   inSettings.getState().setUI({ showSettings: true });
   await inSettings.getState().loadModels();
   assert.notEqual(inSettings.getState().ui.setupOpen, true);
+});
+
+test('a built-in provider is connected once it holds a key, and not before', async () => {
+  assert.equal(isEndpointConnected(OPENROUTER_ENDPOINT), false);
+  await setKey(OPENROUTER_ENDPOINT.apiKeyRef!, 'sk-test');
+  try {
+    assert.equal(isEndpointConnected(OPENROUTER_ENDPOINT), true);
+  } finally {
+    await deleteKey(OPENROUTER_ENDPOINT.apiKeyRef!);
+  }
+  assert.equal(isEndpointConnected(OPENROUTER_ENDPOINT), false);
 });

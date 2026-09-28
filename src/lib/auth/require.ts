@@ -20,12 +20,14 @@ function missingProviderKey(endpoint: ProviderEndpoint): MissingProviderKeyError
   return error;
 }
 
+/** The endpoint can be called: it holds a key, or it is a server that takes none. */
+export function isEndpointConnected(endpoint: ProviderEndpoint): boolean {
+  return !!getKey(endpoint.apiKeyRef) || allowsKeylessCalls(endpoint);
+}
+
 export function requireEndpointAuth(endpoint: ProviderEndpoint): TransportAuth {
-  const apiKey = getKey(endpoint.apiKeyRef);
-  if (!apiKey && !allowsKeylessCalls(endpoint)) {
-    throw missingProviderKey(endpoint);
-  }
-  return buildTransportAuth({ endpoint, apiKey });
+  if (!isEndpointConnected(endpoint)) throw missingProviderKey(endpoint);
+  return buildTransportAuth({ endpoint, apiKey: getKey(endpoint.apiKeyRef) });
 }
 
 export function requireModelAuth(modelId: string, modelIndex: ModelIndex): TransportAuth {

@@ -19,6 +19,7 @@ import { useModelPickerController } from '@/components/model-picker/useModelPick
 import { useReturnFocus } from '@/lib/hooks/useModalFocus';
 import { tabbableIn, trapTarget } from '@/lib/ui/focus';
 import { useChatStore } from '@/lib/store';
+import { useAnyProviderConnected } from '@/lib/hooks/useProviderKeys';
 
 export type ModelPickerVariant = 'auto' | 'sheet';
 
@@ -235,19 +236,23 @@ export function ModelPicker({
     }
   };
 
-  const label = current
-    ? formatModelLabel({
-        model: modelMap.get(current.id),
-        fallbackId: current.id,
-        fallbackName: current.name,
-      })
-    : 'Pick model';
+  // With no provider connected there is no model to name yet, only one to connect.
+  const connected = useAnyProviderConnected();
+  const label = !connected
+    ? 'Connect a model'
+    : current
+      ? formatModelLabel({
+          model: modelMap.get(current.id),
+          fallbackId: current.id,
+          fallbackName: current.name,
+        })
+      : 'Pick model';
 
   const triggerProps: ModelPickerTriggerProps = {
     label,
     tooltip: label,
     isOpen: open,
-    onClick: () => (open ? close() : setOpen(true)),
+    onClick: () => (!connected ? connect() : open ? close() : setOpen(true)),
   };
 
   let index = -1;
