@@ -53,7 +53,7 @@
     animation: fade-in var(--duration-med) var(--ease-standard) 400ms both;
   }
 
-  @media (max-width: 767px) {
+  @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
     .message-list {
       padding: var(--space-2);
       padding-bottom: calc(
@@ -84,7 +84,7 @@
   }
   /* On a phone the composer floats 12px up from the edge, which the list's
      scroll padding does not know about: lift the button clear of it. */
-  @media (max-width: 767px) {
+  @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
     .jump-to-latest {
       bottom: calc(var(--space-5) + var(--space-6));
     }
@@ -108,7 +108,7 @@
       var(--color-canvas) 75%
     );
   }
-  @media (max-width: 767px) {
+  @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
     .chat-pane__fade {
       height: calc(
         var(--composer-height, 0px) + max(0px, env(safe-area-inset-bottom)) + var(--space-4)

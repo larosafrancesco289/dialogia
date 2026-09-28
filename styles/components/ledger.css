@@ -13,7 +13,7 @@
     --ledger-row: calc(0.9rem * 1.5 + 2 * var(--space-1));
     --ledger-mark-top: calc((var(--ledger-row) - var(--ledger-mark-height)) / 2);
   }
-  @media (max-width: 767px) {
+  @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
     :root {
       --ledger-row: var(--touch-target-min);
     }
@@ -339,7 +339,7 @@
   }
   /* A long note (a tool's refusal) wraps on a phone rather than running
      off the edge. */
-  @media (max-width: 767px) {
+  @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
     .response-ledger__annotation {
       white-space: normal;
     }
@@ -449,7 +449,7 @@
     color: var(--color-fg-muted);
   }
 
-  @media (max-width: 767px) {
+  @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
     .response-ledger {
       margin-inline: var(--space-4);
     }

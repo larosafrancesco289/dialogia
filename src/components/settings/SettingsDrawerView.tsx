@@ -1,5 +1,5 @@
 import { motionTransition } from '@/lib/ui/motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { ChevronRightIcon } from '@heroicons/react/24/outline';
 import {
@@ -77,11 +77,24 @@ function SettingsPhoneView({
 
   // Each page opens at its top, holding focus: the row or Back that opened it
   // is gone, and focus dropped on the page would leave Escape nowhere to go.
+  // Back to the list, by the button or the system's back, lands on the row
+  // of the page just left.
+  const lastPage = useRef(page);
   useEffect(() => {
     const drawer = drawerRef.current;
+    const cameBack = lastPage.current === 'tab' && page === 'list';
+    lastPage.current = page;
     if (!drawer) return;
     drawer.scrollTo({ top: 0 });
-    if (!drawer.contains(document.activeElement)) drawer.focus({ preventScroll: true });
+    const active = document.activeElement;
+    if (active !== drawer && drawer.contains(active)) return;
+    const row = cameBack
+      ? drawer.querySelector<HTMLElement>(
+          `.settings-phone-row[data-page="${CSS.escape(activeTab)}"]`,
+        )
+      : null;
+    if (row) row.focus();
+    else if (active !== drawer) drawer.focus({ preventScroll: true });
   }, [page, activeTab, drawerRef]);
 
   const pageMotion = reducedMotion
@@ -134,6 +147,7 @@ function SettingsPhoneView({
                       key={tab.id}
                       type="button"
                       className="settings-phone-row"
+                      data-page={tab.id}
                       onClick={() => {
                         setActiveTab(tab.id);
                         setPage('tab');

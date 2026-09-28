@@ -15,6 +15,11 @@ type BottomSheetProps = {
   children: ReactNode;
   /** A panel that needs the height (the Learning Hub) rather than a menu. */
   tall?: boolean;
+  /**
+   * Where focus goes on close when nothing held it before the sheet opened:
+   * a long press opens one, and a long press focuses nothing.
+   */
+  returnFocus?: () => HTMLElement | null | undefined;
 };
 
 /**
@@ -29,6 +34,7 @@ export function BottomSheet({
   onClose,
   children,
   tall = false,
+  returnFocus,
 }: BottomSheetProps) {
   const reducedMotion = useReducedMotion();
   const sheetRef = useRef<HTMLDivElement | null>(null);
@@ -36,7 +42,7 @@ export function BottomSheet({
   const dragControls = useDragControls();
   useBackToClose(open, onClose);
   // Focus comes in, stays in, and goes back to where the reader was.
-  useModalFocus(open, sheetRef, { onEscape: onClose });
+  useModalFocus(open, sheetRef, { onEscape: onClose, fallback: returnFocus });
 
   const slide = reducedMotion ? { duration: 0 } : motionTransition.layout;
 

@@ -165,7 +165,7 @@
   }
   /* On a phone, editing a message is the one thing being written: the main
      composer steps aside so it doesn't ride the keyboard over the editor. */
-  @media (max-width: 767px) {
+  @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
     .chat-pane:has(.message-edit-bar) .composer-chrome,
     .chat-pane:has(.message-edit-bar) .chat-pane__fade {
       display: none;
@@ -197,7 +197,7 @@
   }
 
   /* Mobile: larger touch targets */
-  @media (max-width: 767px) {
+  @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
     .message-action-btn {
       width: 36px;
       height: 36px;

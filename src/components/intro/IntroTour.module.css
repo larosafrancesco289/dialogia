@@ -204,7 +204,7 @@
   gap: var(--space-2);
 }
 
-@media (min-width: 768px) {
+@media (min-width: 768px) and (not ((pointer: coarse) and (max-height: 499px) and (max-width: 1023px))) {
   /* Keeps the footer from walking up and down between pages. */
   .page {
     min-height: 336px;
@@ -212,7 +212,7 @@
 }
 
 /* Mobile: a bottom sheet, matching the other mobile surfaces. */
-@media (max-width: 767px) {
+@media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
   .overlay {
     align-items: flex-end;
     padding: 0;

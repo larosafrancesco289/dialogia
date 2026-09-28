@@ -61,10 +61,17 @@ function focusIsLost(container: HTMLElement | null) {
   return !!container && container.contains(active);
 }
 
+/** Focuses `el` if it can be, and says whether focus is there now. */
+function focusLands(el: Element | null | undefined) {
+  if (!canFocus(el)) return false;
+  el.focus({ preventScroll: true });
+  return document.activeElement === el;
+}
+
 type ReturnFocusOptions = {
   /** What is closing; focus left inside it counts as dropped. */
   containerRef?: RefObject<HTMLElement | null>;
-  /** Where focus goes when what had it before is gone or cannot take it. */
+  /** Where focus goes when nothing had it before, or what had it is gone or cannot take it. */
   fallback?: () => HTMLElement | null | undefined;
   /** Another dialog opens as this one closes: leave focus for it to take. */
   passesOn?: () => boolean;
@@ -82,8 +89,8 @@ export function useReturnFocus(active: boolean, options: ReturnFocusOptions = {}
 
   const returnFocus = useCallback(() => {
     const previous = previousRef.current;
-    const target = canFocus(previous) ? previous : optionsRef.current.fallback?.();
-    if (canFocus(target)) target.focus({ preventScroll: true });
+    if (focusLands(previous)) return;
+    focusLands(optionsRef.current.fallback?.());
   }, []);
 
   useEffect(() => {
