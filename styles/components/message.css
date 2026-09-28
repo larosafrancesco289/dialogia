@@ -119,6 +119,28 @@
     margin-left: -6px;
   }
 
+  /* "‹ 2/3 ›": which of a reply's versions shows, quiet among the actions. */
+  .reply-versions {
+    display: inline-flex;
+    align-items: center;
+    margin-right: var(--space-1);
+    font-family: var(--font-sans);
+  }
+  .reply-versions__count {
+    min-width: 2.25em;
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    color: var(--color-fg-muted);
+  }
+  /* Arrows a thumb can find: the full 44px, not the actions' 36px. */
+  @media (max-width: 767px) {
+    .reply-versions .message-action-btn {
+      width: 44px;
+      height: 44px;
+    }
+  }
+
   /* Save and cancel under a message being edited. */
   .message-edit-bar {
     display: flex;

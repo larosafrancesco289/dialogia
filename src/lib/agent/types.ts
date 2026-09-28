@@ -124,6 +124,8 @@ export type RegenerateOptions = {
   turn: TurnContext;
   controller: AbortController;
   overrideModelId?: string;
+  /** The attempt joins the reply's versions instead of replacing them. */
+  keepVersions?: boolean;
   pipeline?: PipelineClient;
 };
 

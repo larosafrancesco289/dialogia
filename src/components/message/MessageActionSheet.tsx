@@ -2,11 +2,16 @@ import { useEffect, useState } from 'react';
 import {
   ArrowPathIcon,
   ArrowUturnRightIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   ClipboardIcon,
   CursorArrowRaysIcon,
   PencilSquareIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 import type { Message } from '@/lib/types';
+import { useChatStore } from '@/lib/store';
+import { shownVersionIndex, versionCount } from '@/lib/messages/versions';
 import { BottomSheet, SheetItem } from '@/components/ui/BottomSheet';
 import { Markdown } from '@/components/Markdown';
 import { plainExcerpt } from '@/lib/markdown/plainText';
@@ -24,6 +29,9 @@ export type MessageActionSheetProps = {
   onRegenerate: (messageId: string) => void;
   /** Whether the message can be regenerated, or (a user message) edited and rerun. */
   canRedo: boolean;
+  /** Whether the reply's versions can be switched and deleted. */
+  canSwitchVersion: boolean;
+  onDeleteVersion: (messageId: string) => void;
 };
 
 /**
@@ -43,8 +51,11 @@ export function MessageActionSheet({
   onBranch,
   onRegenerate,
   canRedo,
+  canSwitchVersion,
+  onDeleteVersion,
 }: MessageActionSheetProps) {
   const [selecting, setSelecting] = useState<Message | null>(null);
+  const showReplyVersion = useChatStore((s) => s.showReplyVersion);
 
   // A new long press starts on the actions, never on an old selection page.
   useEffect(() => {
@@ -66,6 +77,9 @@ export function MessageActionSheet({
       {excerpt || (isAssistant ? 'Reply' : 'Your message')}
     </span>
   );
+  // The sheet stays up while the versions turn, its title following the words.
+  const versions = message && isAssistant && canSwitchVersion ? versionCount(message) : 1;
+  const shown = message ? shownVersionIndex(message) : 0;
 
   return (
     <>
@@ -126,6 +140,35 @@ export function MessageActionSheet({
             >
               Branch in a new chat
             </SheetItem>
+            {versions > 1 && (
+              <>
+                <SheetItem
+                  icon={<ChevronLeftIcon />}
+                  disabled={isStreaming || shown === 0}
+                  onClick={() => void showReplyVersion(mobileSheet.id, shown - 1)}
+                >
+                  Previous version
+                </SheetItem>
+                <SheetItem
+                  icon={<ChevronRightIcon />}
+                  disabled={isStreaming || shown === versions - 1}
+                  onClick={() => void showReplyVersion(mobileSheet.id, shown + 1)}
+                >
+                  Next version
+                </SheetItem>
+                <SheetItem
+                  icon={<TrashIcon />}
+                  danger
+                  disabled={isStreaming}
+                  onClick={() => {
+                    onDeleteVersion(mobileSheet.id);
+                    onClose();
+                  }}
+                >
+                  Delete version {shown + 1} of {versions}
+                </SheetItem>
+              </>
+            )}
           </>
         )}
       </BottomSheet>

@@ -4,6 +4,9 @@ import { repository } from '@/lib/db';
 import { abortAllTurns, abortTurn } from '@/lib/turns/runtime/abortControllers';
 import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { appendMessagesToChat, getMessagesForChat } from '@/lib/messages/indexing';
+import { inLatestExchange } from '@/lib/messages/latestExchange';
+import { removeShownVersion, showVersion, versionCount } from '@/lib/messages/versions';
+import { withoutSearchEntry } from '@/lib/ui/messageSources';
 import { createAssistantMessage } from '@/lib/messages/createMessage';
 import { isChatStreaming } from '@/lib/ui/streaming';
 import { canRedoReply } from '@/lib/modules';
@@ -39,7 +42,18 @@ export type MessageSliceActions = {
     opts?: { rerun?: boolean },
   ) => Promise<void>;
   editAssistantMessage: (messageId: string, newContent: string) => Promise<void>;
-  regenerateAssistantMessage: (messageId: string, opts?: { modelId?: string }) => Promise<void>;
+  /**
+   * Tries the reply again. The old one stays as an earlier version unless
+   * `replace` (an edit's rerun: the old reply answered other words).
+   */
+  regenerateAssistantMessage: (
+    messageId: string,
+    opts?: { modelId?: string; replace?: boolean },
+  ) => Promise<void>;
+  /** Shows another version of a reply in the latest exchange. */
+  showReplyVersion: (messageId: string, index: number) => Promise<void>;
+  /** Deletes the shown version of a reply in the latest exchange; its neighbour shows. */
+  deleteReplyVersion: (messageId: string) => Promise<void>;
 };
 
 export function createMessageSlice(
@@ -60,6 +74,24 @@ export function createMessageSlice(
   // reads as streaming, and a fast second Enter in that gap started a second
   // turn. Each chat holds one starting send until its turn is under way.
   const startingSends = new Map<string, symbol>();
+  // Versions change only in the latest exchange: a later turn was written
+  // under the version shown then, and must not read as answering another.
+  const replyWithVersions = (messageId: string): Message | undefined => {
+    const message = get().messagesById[messageId];
+    if (!message || message.role !== 'assistant' || versionCount(message) < 2) return undefined;
+    const { chatId } = message;
+    if (isChatStreaming(get().ui, chatId) || busyInOtherTab(chatId)) return undefined;
+    if (!inLatestExchange(getMessagesForChat(get(), chatId), messageId)) return undefined;
+    return message;
+  };
+  const showReply = async (before: Message, next: Message) => {
+    if (next === before) return;
+    set((s) => ({
+      messagesById: { ...s.messagesById, [next.id]: next },
+      ui: withoutSearchEntry(s.ui, next.id),
+    }));
+    await persistMessage(next);
+  };
   return {
     messagesById: {},
     messageIdsByChatId: {},
@@ -153,7 +185,7 @@ export function createMessageSlice(
           rerunTargetId = placeholder.id;
         }
         get()
-          .regenerateAssistantMessage(rerunTargetId)
+          .regenerateAssistantMessage(rerunTargetId, { replace: true })
           .catch(() => void 0);
       }
     },
@@ -183,10 +215,21 @@ export function createMessageSlice(
         messageId,
         overrideModelId: opts?.modelId,
         mayStart: () => !busyInOtherTab(chatId),
+        replace: opts?.replace,
         set,
         get,
         repository,
       });
+    },
+
+    async showReplyVersion(messageId, index) {
+      const message = replyWithVersions(messageId);
+      if (message) await showReply(message, showVersion(message, index));
+    },
+
+    async deleteReplyVersion(messageId) {
+      const message = replyWithVersions(messageId);
+      if (message) await showReply(message, removeShownVersion(message));
     },
   } satisfies Partial<StoreState>;
 }

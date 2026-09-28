@@ -9,6 +9,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { Markdown, type MarkdownCitationSource } from '@/components/Markdown';
 import { RegenerateMenu } from '@/components/RegenerateMenu';
+import { ReplyVersionSwitch } from '@/components/message/ReplyVersionSwitch';
 import { MessageAttachments } from '@/components/message/MessageAttachments';
 import { MessageModuleSlot } from '@/components/ModuleSlot';
 import { ActionButton, MessageEditBar } from '@/components/message/MessageActions';
@@ -17,6 +18,7 @@ import { StreamingMarkdown } from '@/components/message/StreamingMarkdown';
 import { useChatStore } from '@/lib/store';
 import { rendersAsBlocks } from '@/lib/markdown/blocks';
 import { messageHasModuleContent } from '@/lib/modules';
+import { versionCount } from '@/lib/messages/versions';
 import type { Chat, Message, ModelDescriptor, PersistedAttachment } from '@/lib/types';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { toolCallInFlight } from '@/lib/ui/streaming';
@@ -49,6 +51,9 @@ export type AssistantMessageProps = {
   onChooseRegenerateModel: (modelId?: string) => void;
   /** Whether this reply can be regenerated (or the message before it rerun). */
   canRedo: boolean;
+  /** Whether this reply's versions can be switched and deleted: the latest exchange only. */
+  canSwitchVersion: boolean;
+  onDeleteVersion: (messageId: string) => void;
   setLightbox: (
     value: {
       images: { src: string; name?: string }[];
@@ -89,6 +94,8 @@ export function AssistantMessage({
   branchFromMessage,
   onChooseRegenerateModel,
   canRedo,
+  canSwitchVersion,
+  onDeleteVersion,
   setLightbox,
   attachments,
   tutorEnabled: _tutorEnabled,
@@ -105,6 +112,8 @@ export function AssistantMessage({
   // The reasoning line is up (thinking, or a tool call): its mark does the waiting.
   const ledgerUp = !!message.reasoning?.trim() || !!message.toolCalls?.length;
   const endingNote = replyEndingNote(message, hasModuleContent);
+  // An empty version still has a footer: the way back to the others is in it.
+  const hasVersions = versionCount(message) > 1;
 
   let messageBody: ReactNode = null;
   if (isEditing) {
@@ -261,48 +270,63 @@ export function AssistantMessage({
       {/* The reply's footer: its actions where the eye finishes reading, then
           the colophon. Always there under the latest reply; older replies
           show it on hover. */}
-      {!isStreaming && !isEditing && displayContent.trim() && (showInlineActions || showStats) && (
-        <div className={`message-foot px-4 ${isLatestAssistant ? '' : styles.footOnHover}`.trim()}>
-          {showInlineActions && (
-            <div className="message-actions__group">
-              <ActionButton
-                icon={
-                  copiedId === message.id ? (
-                    <CheckIcon className="h-4 w-4" />
-                  ) : (
-                    <ClipboardIcon className="h-4 w-4" />
-                  )
-                }
-                title={copiedId === message.id ? 'Copied' : 'Copy'}
-                ariaLabel="Copy message"
-                onClick={copyMessage}
-                showFeedback={copiedId === message.id}
-              />
-              {canRedo && !canned && (
-                <RegenerateMenu onChoose={onChooseRegenerateModel} disabled={isChatStreaming} />
-              )}
-              {!canned && (
-                <ActionButton
-                  icon={<ArrowUturnRightIcon className="h-4 w-4" />}
-                  title="Branch in a new chat"
-                  ariaLabel="Branch in a new chat"
-                  onClick={branchFromMessage}
+      {!isStreaming &&
+        !isEditing &&
+        (displayContent.trim() || hasVersions) &&
+        (showInlineActions || showStats) && (
+          <div
+            className={`message-foot px-4 ${isLatestAssistant ? '' : styles.footOnHover}`.trim()}
+          >
+            {showInlineActions && (
+              <div className="message-actions__group">
+                <ReplyVersionSwitch
+                  message={message}
+                  canSwitch={canSwitchVersion}
                   disabled={isChatStreaming}
+                  onDelete={onDeleteVersion}
                 />
-              )}
-              {!isChatStreaming && !canned && (
                 <ActionButton
-                  icon={<PencilSquareIcon className="h-4 w-4" />}
-                  title="Edit"
-                  ariaLabel="Edit message"
-                  onClick={startEditingMessage}
+                  icon={
+                    copiedId === message.id ? (
+                      <CheckIcon className="h-4 w-4" />
+                    ) : (
+                      <ClipboardIcon className="h-4 w-4" />
+                    )
+                  }
+                  title={copiedId === message.id ? 'Copied' : 'Copy'}
+                  ariaLabel="Copy message"
+                  onClick={copyMessage}
+                  showFeedback={copiedId === message.id}
                 />
-              )}
-            </div>
-          )}
-          {showStats && chat && <MessageColophon message={message} chat={chat} models={models} />}
-        </div>
-      )}
+                {canRedo && !canned && (
+                  <RegenerateMenu
+                    onChoose={onChooseRegenerateModel}
+                    disabled={isChatStreaming}
+                    replyModelId={message.model}
+                  />
+                )}
+                {!canned && (
+                  <ActionButton
+                    icon={<ArrowUturnRightIcon className="h-4 w-4" />}
+                    title="Branch in a new chat"
+                    ariaLabel="Branch in a new chat"
+                    onClick={branchFromMessage}
+                    disabled={isChatStreaming}
+                  />
+                )}
+                {!isChatStreaming && !canned && (
+                  <ActionButton
+                    icon={<PencilSquareIcon className="h-4 w-4" />}
+                    title="Edit"
+                    ariaLabel="Edit message"
+                    onClick={startEditingMessage}
+                  />
+                )}
+              </div>
+            )}
+            {showStats && chat && <MessageColophon message={message} chat={chat} models={models} />}
+          </div>
+        )}
 
       {!isEditing && !isStreaming && <MessageModuleSlot slot="messageAfter" message={message} />}
     </div>

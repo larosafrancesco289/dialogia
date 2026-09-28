@@ -8,7 +8,13 @@ import {
   ToolCallStatusEnum,
 } from '@/lib/types/enums';
 import { LearningPlanSchema } from '@/lib/schemas/learningPlan';
-import type { LearnerModel, MessageMetrics, MessageToolRound, MessageTutor } from '@/lib/types';
+import type {
+  LearnerModel,
+  MessageMetrics,
+  MessageToolRound,
+  MessageTutor,
+  ReplyVersion,
+} from '@/lib/types';
 import type { Usage } from '@/lib/api/normalizers';
 
 export const GenerationSettingsSchema = z
@@ -190,5 +196,9 @@ export const MessageSchema = z
     toolRounds: z.custom<MessageToolRound[]>().optional(),
     // Checked by `sanitizeMessageRecord`, which drops a malformed value.
     tutorSeq: z.custom<number>().optional(),
+    // A reply's other versions and the shown one's place among them. Checked
+    // by `sanitizeMessageRecord`, which drops a malformed version or place.
+    versions: z.custom<ReplyVersion[]>().optional(),
+    versionIndex: z.custom<number>().optional(),
   })
   .passthrough();
