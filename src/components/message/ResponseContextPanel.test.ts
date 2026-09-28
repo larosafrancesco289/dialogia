@@ -4,6 +4,7 @@ import {
   buildOrderedResponseActivity,
   currentThoughtLine,
   formatThinkingTime,
+  silentWaitLine,
   summarizeActivity,
   toolAnnotation,
   type ToolActivityItem,
@@ -225,4 +226,11 @@ test('a failed search does not hold the head while the model carries on', () => 
     summarizeActivity({ orderedActivity, toolCalls: [], reasoning, sources, isLive: false }),
     'The search took too long.',
   );
+});
+
+test('a wait for the first word is said only once it has gone on a while, counting up', () => {
+  assert.equal(silentWaitLine(0), '');
+  assert.equal(silentWaitLine(4_999), '');
+  assert.equal(silentWaitLine(5_000), 'Waiting for the model… 5s');
+  assert.equal(silentWaitLine(12_700), 'Waiting for the model… 12s');
 });

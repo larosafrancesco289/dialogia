@@ -85,6 +85,9 @@ export function createMessageStreamCallbacks(
 
   let firstTokenAt: number | undefined;
   let reasoningActivityId: string | undefined;
+  // Thinking is timed from the round's request, not its first streamed
+  // thought, so a model that thinks silently first still shows how long.
+  let roundSentAt = Date.now();
 
   // Periodically checkpoint the partial response to storage so a crash or
   // reload mid-stream cannot lose everything that already arrived.
@@ -216,7 +219,7 @@ export function createMessageStreamCallbacks(
               id: reasoningActivityId,
               type: 'reasoning',
               text: delta,
-              timestamp: Date.now(),
+              timestamp: roundSentAt,
               status: 'streaming',
             },
           ];
@@ -376,6 +379,7 @@ export function createMessageStreamCallbacks(
       contentAccumulator.flush();
       settleReasoning();
       reasoningActivityId = undefined;
+      roundSentAt = Date.now();
       // Each round may echo the timestamp prefix again; hold it back as on the first.
       timestampGateOpen = false;
       roundSeparatorPending = true;

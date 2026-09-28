@@ -57,6 +57,8 @@ let table: KeyTable = hasIndexedDb
 /** Synchronous mirror of the store; the request path cannot await. */
 let cache = new Map<string, string>();
 let loaded: Promise<void> | null = null;
+/** The cache has been read from the database at least once. */
+let read = false;
 /**
  * Refs written or deleted since `loadKeys()` started reading. The read builds a
  * fresh map from the database, so without this a key pasted during the warm-up
@@ -97,6 +99,7 @@ function readKeys(): Promise<boolean> {
       }
       inFlightWrites = new Set();
       cache = next;
+      read = true;
       emit();
       return true;
     })
@@ -125,6 +128,11 @@ export function reloadKeys(): Promise<void> {
 export function getKey(ref?: string): string | undefined {
   if (!ref) return undefined;
   return cache.get(ref);
+}
+
+/** Whether the keys have been read yet: before then an empty cache means nothing. */
+export function keysRead(): boolean {
+  return read;
 }
 
 export function hasKey(ref?: string): boolean {
@@ -170,4 +178,5 @@ export function resetKeyStoreForTest(next?: KeyTable, announce?: () => void) {
   cache = new Map();
   inFlightWrites = new Set();
   loaded = null;
+  read = false;
 }

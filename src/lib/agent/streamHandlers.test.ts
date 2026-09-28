@@ -102,3 +102,22 @@ test('a key refused mid-stream shows the same notice as one refused up front', a
   limited.callbacks.onError?.(await refused(429, API_ERROR_CODES.RATE_LIMITED));
   assert.deepEqual(limited.notices, [NOTICE_RATE_LIMITED]);
 });
+
+test('thinking is timed from the request, so a model that thinks silently first shows it', async () => {
+  const realNow = Date.now;
+  let now = 1_000;
+  Date.now = () => now;
+  try {
+    const { callbacks, stored } = harness();
+    // Three silent seconds before the first thought is streamed, one more after it.
+    now = 4_000;
+    callbacks.onReasoningToken?.('Weighing it up.');
+    now = 5_000;
+    callbacks.onToken?.('The answer.');
+    await callbacks.onDone?.('The answer.', { finishReason: 'stop' });
+    const thought = stored()?.activity?.find((item) => item.type === 'reasoning');
+    assert.equal(thought?.type === 'reasoning' ? thought.duration : undefined, 4_000);
+  } finally {
+    Date.now = realNow;
+  }
+});
