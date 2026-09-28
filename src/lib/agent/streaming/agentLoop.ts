@@ -9,7 +9,7 @@
 // round is sent with tool_choice 'none'. Between rounds the tools are read
 // again when a module can refresh them, so a call that changed what is
 // possible (starting a topic) opens the tools that follow from it. There is no
-// draft clearing, no silent round, no short-circuit and no follow-up nudge here.
+// draft clearing and no follow-up nudge here.
 
 import { cleanStreamedText, type MessageStreamCallbacks } from '@/lib/agent/streamHandlers';
 import { sumUsage } from '@/lib/api/normalizers';

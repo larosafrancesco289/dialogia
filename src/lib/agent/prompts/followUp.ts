@@ -3,8 +3,9 @@ import { isNativeSearchMode } from '@/lib/search/providers/types';
 
 const FOLLOW_UP_WITH_SEARCH = 'Write the final answer. Cite sources inline as [n].';
 
-const FOLLOW_UP_DEFAULT =
-  'Continue your reply using the tool results above. Do not repeat what has already been shown.';
+// What the model wrote before calling tools is cleared from the reply, so the
+// round after them writes the whole answer.
+const FOLLOW_UP_DEFAULT = 'Write your reply using the tool results above.';
 
 export function followUpPrompt(args: {
   searchEnabled: boolean;

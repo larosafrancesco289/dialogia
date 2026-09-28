@@ -1,8 +1,8 @@
 // Module: agent/streaming/session
 // Responsibility: The state a streaming turn carries between rounds, and the
-// helpers both turn loops (the default draft-and-answer loop and the visible
-// agent loop) share: opening the session, scheduling tools, pre-logging calls,
-// the UI callbacks, and the turn's result.
+// helpers both turn loops (the default loop, which clears a round's text when
+// it calls tools, and the visible agent loop) share: opening the session,
+// scheduling tools, pre-logging calls, the UI callbacks, and the turn's result.
 
 import {
   createMessageStreamCallbacks,
@@ -25,7 +25,6 @@ import { resolveModelTransportKind } from '@/lib/providers';
 import type {
   ModelMessage,
   PlanTurnResult,
-  PlanTurnSideEffect,
   StreamFinalOptions,
   ToolCall,
   ToolDefinition,
@@ -45,13 +44,9 @@ export type StreamingTurnOptions = StreamFinalOptions & {
   /** The turn's tools read again between agent-loop rounds (`TurnComposition.refreshTools`). */
   refreshTools?: () => ToolDefinition[];
   onPlanResult?: (plan: PlanTurnResult) => void;
-  onPlanSideEffects?: (effects: PlanTurnSideEffect[]) => void;
 };
 
-export type StreamingTurnResult = PlanTurnResult & {
-  sideEffects: PlanTurnSideEffect[];
-  shortCircuited?: boolean;
-};
+export type StreamingTurnResult = PlanTurnResult;
 
 /** Everything a turn accumulates between rounds. */
 export type TurnSession = {
@@ -62,9 +57,6 @@ export type TurnSession = {
   gate: ToolGate;
   convo: ModelMessage[];
   state: PlanningExecutionState;
-  sideEffects: PlanTurnSideEffect[];
-  /** Text the model wrote before tool rounds, kept as a candidate final answer. */
-  draft: string;
   searchEnabled: boolean;
   searchProvider: string;
   /** Anthropic reads tool results without a nudge; other transports need one. */
@@ -101,8 +93,6 @@ export async function openSession(opts: StreamingTurnOptions): Promise<TurnSessi
       ? [planningSystem, ...opts.messages.filter((m) => m.role !== 'system')]
       : opts.messages.slice(),
     state: createPlanningExecutionState(),
-    sideEffects: [],
-    draft: '',
     searchEnabled: settings.searchEnabled,
     searchProvider: settings.searchProvider || 'openrouter',
     appendToolFollowUp: resolveModelTransportKind(settings.modelId, modelMeta) !== 'anthropic',
@@ -181,7 +171,7 @@ export function preLogToolCalls(session: TurnSession, deltas: ToolCallDelta[]): 
   }
 }
 
-/** The system prompt for the closing stream: the turn's system plus any search sources. */
+/** The system prompt for rounds after tools: the turn's system plus any search sources. */
 export function finalSystemFor(session: TurnSession): string {
   const { combinedSystem, settings } = session.opts;
   const baseSystem = combinedSystem?.trim()
@@ -228,14 +218,6 @@ export function emitPlanResult(session: TurnSession, finalSystem: string): PlanT
   return plan;
 }
 
-export function buildResult(
-  session: TurnSession,
-  finalSystem: string,
-  shortCircuited = false,
-): StreamingTurnResult {
-  return {
-    ...buildPlanResult(session, finalSystem),
-    sideEffects: session.sideEffects,
-    shortCircuited,
-  };
+export function buildResult(session: TurnSession, finalSystem: string): StreamingTurnResult {
+  return buildPlanResult(session, finalSystem);
 }

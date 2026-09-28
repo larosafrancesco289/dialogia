@@ -47,13 +47,6 @@ export type PlanTurnResult = {
   hasSearchResults: boolean;
 };
 
-export type PlanTurnSideEffect = {
-  type: 'append_planning_content';
-  chatId: string;
-  messageId: string;
-  content: string;
-};
-
 export type ComposeTurnArgs = {
   chat: Chat;
   ui: UiSnapshot;

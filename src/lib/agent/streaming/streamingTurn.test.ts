@@ -8,14 +8,13 @@ import { createModelIndex } from '@/lib/models';
 import { createAssistantMessage } from '@/lib/messages/createMessage';
 import { buildMessageIndex } from '@/lib/messages/indexing';
 import type { Message, ModelDescriptor } from '@/lib/types';
-import type { ModelMessage, ToolDefinition } from '@/lib/agent/types';
-import type { StoreGetter, StoreSetter } from '@/lib/store/types';
+import type { ToolDefinition } from '@/lib/agent/types';
 import type { StreamCallbacks } from '@/lib/transport/types';
 import { createTestStoreState } from '../../../../tests/helpers/createTestStoreState';
 import { makeChat } from '../../../../tests/helpers/makeChat';
 
-// Tools no module registers: their calls fail as unsupported, which is what
-// these draft-keeping paths are about.
+// Tools no module registers: their calls fail as unsupported, which is enough
+// to drive the loop through its tool rounds.
 const TOOLS: ToolDefinition[] = ['advance_topic', 'quiz'].map((name) => ({
   type: 'function',
   function: { name, description: name, parameters: { type: 'object', properties: {} } },
@@ -29,29 +28,28 @@ const OPENROUTER_MODEL: ModelDescriptor = {
   raw: { supported_parameters: ['tools'] },
 };
 
-type Round = (ctx: {
-  callbacks: StreamCallbacks | undefined;
-  messages: ModelMessage[];
-  get: StoreGetter;
-  set: StoreSetter;
-  assistantId: string;
-}) => void;
+type Round = (ctx: { callbacks: StreamCallbacks | undefined }) => void;
 
-/** Streams a draft, then asks for one tool. */
+const USAGE = { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 };
+
+/** Streams some text, then asks for one tool. */
 const draftThenTool =
   (draft: string, name: string, args = '{}'): Round =>
   ({ callbacks }) => {
     callbacks?.onToken?.(draft);
     callbacks?.onDone?.(draft, {
       finishReason: 'tool_calls',
-      toolCalls: [{ id: 'call_1', type: 'function', function: { name, arguments: args } }],
+      usage: USAGE,
+      toolCalls: [{ id: `call_${args}`, type: 'function', function: { name, arguments: args } }],
     });
   };
 
 const finish =
   (text: string): Round =>
-  ({ callbacks }) =>
-    callbacks?.onDone?.(text, { finishReason: 'stop' });
+  ({ callbacks }) => {
+    callbacks?.onToken?.(text);
+    callbacks?.onDone?.(text, { finishReason: 'stop', usage: USAGE });
+  };
 
 /** One tutor turn through `executeStreamingTurn`, answering each model call with the next round. */
 async function runTurn({
@@ -88,11 +86,16 @@ async function runTurn({
 
   const persisted: Message[] = [];
   const roles: string[][] = [];
+  const toolChoices: unknown[] = [];
+  // What the reply showed when each call went out.
+  const visibleAtStart: string[] = [];
   const pipeline = createPipelineClient({
-    streamChatCompletion: async ({ callbacks, messages }) => {
+    streamChatCompletion: async ({ callbacks, messages, toolChoice }) => {
       roles.push(messages.map((message) => message.role));
+      toolChoices.push(toolChoice);
+      visibleAtStart.push(get().messagesById[assistantMessage.id]?.content ?? '');
       const round = rounds[Math.min(roles.length, rounds.length) - 1];
-      round({ callbacks, messages, get, set, assistantId: assistantMessage.id });
+      round({ callbacks });
     },
   });
 
@@ -137,89 +140,53 @@ async function runTurn({
     result,
     calls: roles.length,
     roles,
-    content: get().messagesById[assistantMessage.id]?.content,
-    lastPersisted: persisted[persisted.length - 1]?.content,
+    toolChoices,
+    visibleAtStart,
+    message: get().messagesById[assistantMessage.id],
+    lastPersisted: persisted[persisted.length - 1],
   };
 }
 
-const GOOD_DRAFT =
-  'Great start. Isolate x first, then divide both sides by the coefficient to solve it.';
+const ANSWER = 'Subtract 3 from both sides, then divide by 2: x = 4.';
 
-test('executeStreamingTurn keeps the pre-tool draft and skips final overwrite for meta-only rounds', async () => {
+test('executeStreamingTurn writes the answer once: the round after the tools is the reply', async () => {
   const run = await runTurn({
-    rounds: [
-      draftThenTool(GOOD_DRAFT, 'advance_topic'),
-      finish('internal_follow_up'),
-      finish('short replacement'),
-    ],
+    rounds: [draftThenTool('Let me look that up.', 'quiz'), finish(ANSWER), finish('a rewrite')],
   });
 
-  assert.equal(run.calls, 2, 'should not run a final overwrite streaming call');
-  assert.equal(run.result.shortCircuited, true);
-  assert.equal(run.content, GOOD_DRAFT);
-  assert.equal(run.lastPersisted, GOOD_DRAFT);
+  assert.equal(run.calls, 2, 'no second call rewrites the answer');
+  assert.deepEqual(run.toolChoices, ['auto', 'auto']);
+  // The narration before the tool call is gone before the answer streams.
+  assert.equal(run.visibleAtStart[1], '');
+  assert.equal(run.message?.content, ANSWER);
+  assert.equal(run.lastPersisted?.content, ANSWER);
+  assert.equal(run.lastPersisted?.usage?.prompt_tokens, 200, 'usage covers both rounds');
 });
 
-test('executeStreamingTurn prefers complete fallback draft over incomplete current content', async () => {
+test('executeStreamingTurn closes with tools withheld once the tool rounds run out', async () => {
   const run = await runTurn({
     rounds: [
-      draftThenTool(GOOD_DRAFT, 'advance_topic'),
-      ({ callbacks, get, set, assistantId }) => {
-        const current = get().messagesById[assistantId];
-        assert.ok(current, 'assistant message should exist before finalize');
-        set((store) => ({
-          messagesById: {
-            ...store.messagesById,
-            [assistantId]: { ...current, content: 'Great start,' },
-          },
-        }));
-        callbacks?.onDone?.('internal_follow_up', { finishReason: 'stop' });
-      },
-      finish('short replacement'),
+      draftThenTool('Checking.', 'quiz', '{"n":1}'),
+      draftThenTool('Checking again.', 'quiz', '{"n":2}'),
+      draftThenTool('One more.', 'quiz', '{"n":3}'),
+      finish(ANSWER),
     ],
   });
 
-  assert.equal(run.calls, 2, 'should not run a final overwrite streaming call');
-  assert.equal(run.result.shortCircuited, true);
-  assert.equal(run.content, GOOD_DRAFT);
-  assert.equal(run.lastPersisted, GOOD_DRAFT);
+  assert.equal(run.calls, 4);
+  assert.deepEqual(run.toolChoices, ['auto', 'auto', 'auto', 'none']);
+  assert.equal(run.message?.content, ANSWER);
 });
 
-test('executeStreamingTurn keeps draft when all tool calls fail to execute', async () => {
-  const draft = 'Let me quickly quiz you before we proceed.';
-  const run = await runTurn({
-    rounds: [
-      draftThenTool(draft, 'quiz', '{"type":"object"}'),
-      finish('tool call failed'),
-      finish('replacement text'),
-    ],
-  });
+test('executeStreamingTurn clears a cut-off first reply before retrying it', async () => {
+  const run = await runTurn({ rounds: [finish('To solve this we:'), finish(ANSWER)] });
 
-  assert.equal(run.calls, 2, 'should skip final overwrite call after failed tools');
-  assert.equal(run.result.shortCircuited, true);
-  assert.equal(run.content, draft);
-  assert.equal(run.lastPersisted, draft);
-});
-
-test('executeStreamingTurn does not preserve incomplete draft when tools fail', async () => {
-  const finalReply = 'Thanks for waiting. Let us continue with one-step equations now.';
-  const run = await runTurn({
-    rounds: [
-      draftThenTool('Let me quickly quiz you before we proceed:', 'quiz', '{"type":"object"}'),
-      finish('tool call failed'),
-      finish(finalReply),
-    ],
-  });
-
-  assert.equal(run.calls, 3, 'should run final completion call for incomplete draft');
-  assert.notEqual(run.result.shortCircuited, true);
-  assert.equal(run.content, finalReply);
-  assert.equal(run.lastPersisted, finalReply);
+  assert.equal(run.calls, 2);
+  assert.equal(run.visibleAtStart[1], '');
+  assert.equal(run.message?.content, ANSWER);
 });
 
 test('executeStreamingTurn omits follow-up user prompt after Anthropic tool results', async () => {
-  const draft =
-    'You nailed the first step. Keep isolating x, and then check your answer by substitution.';
   const run = await runTurn({
     endpoint: ANTHROPIC_ENDPOINT,
     model: {
@@ -232,12 +199,10 @@ test('executeStreamingTurn omits follow-up user prompt after Anthropic tool resu
       transportModelId: 'claude-haiku-4-5-20251001',
       providerDisplay: 'Anthropic',
     },
-    rounds: [draftThenTool(draft, 'advance_topic'), finish('internal follow up')],
+    rounds: [draftThenTool('Let me check.', 'advance_topic'), finish(ANSWER)],
   });
 
-  assert.equal(run.calls, 2, 'Anthropic flow should short-circuit after tool round draft');
-  assert.equal(run.result.shortCircuited, true);
+  assert.equal(run.calls, 2);
   assert.deepEqual(run.roles[1], ['system', 'user', 'assistant', 'tool']);
-  assert.equal(run.content, draft);
-  assert.equal(run.lastPersisted, draft);
+  assert.equal(run.message?.content, ANSWER);
 });

@@ -258,10 +258,9 @@ test('agent loop streams every round visibly into one reply', async () => {
     if (round === 1) return reply(callbacks, 'First, a note.', [call(TOOL_NOTE, { what: 'x' })]);
     return reply(callbacks, 'Then the answer.');
   });
-  const result = await turn.run;
+  await turn.run;
 
   assert.equal(turn.requests.length, 2);
-  assert.notEqual(result.shortCircuited, true);
   // Round one's text stays on screen while round two streams.
   assert.equal(turn.visibleAtRoundStart[1], 'First, a note.');
   assert.equal(turn.message()?.content, 'First, a note.\n\nThen the answer.');
@@ -527,9 +526,8 @@ test('a composition asking for the agent loop routes the turn into it', async ()
     },
     { viaRunTurn: true },
   );
-  const result = await turn.run;
+  await turn.run;
 
-  assert.equal(result.shortCircuited, false);
   assert.equal(turn.requests.length, 2);
   assert.equal(turn.message()?.content, 'One.\n\nTwo.');
 });
