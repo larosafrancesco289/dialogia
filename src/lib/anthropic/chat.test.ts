@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { chatCompletion } from '@/lib/anthropic/chat';
 import { mapStopReason } from '@/lib/anthropic/continuation';
 import { buildTransportAuth } from '@/lib/auth/transport';
+import { sourcesFromAnnotations } from '@/lib/ui/messageSources';
 import { mockFetch } from '../../../tests/helpers/mockFetch';
 
 test('chatCompletion continues Anthropic pause_turn responses', async () => {
@@ -67,7 +68,11 @@ test('chatCompletion continues Anthropic pause_turn responses', async () => {
       plugins: [{ id: 'web' }],
     });
 
-    assert.equal(response.choices[0]?.message.content, 'Here is the latest summary.');
+    // The reply is every response's content, as a stream shows it.
+    assert.equal(
+      response.choices[0]?.message.content,
+      "I'll search for that.Here is the latest summary.",
+    );
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -94,6 +99,64 @@ test('mapStopReason gives chat and stream one reading of stop_reason', () => {
   ];
   for (const [raw, expected] of cases) {
     assert.equal(mapStopReason(raw), expected, String(raw));
+  }
+});
+
+test("chatCompletion carries a native web search's sources as annotations", async () => {
+  const responses = [
+    {
+      stop_reason: 'pause_turn',
+      content: [
+        { type: 'server_tool_use', id: 'srv_1', name: 'web_search', input: { query: 'solar' } },
+        {
+          type: 'web_search_tool_result',
+          tool_use_id: 'srv_1',
+          content: [
+            { type: 'web_search_result', title: 'Solar', url: 'https://solar.test' },
+            { type: 'web_search_result', title: 'Wind', url: 'https://wind.test' },
+          ],
+        },
+      ],
+    },
+    {
+      stop_reason: 'end_turn',
+      content: [
+        {
+          type: 'text',
+          text: 'Solar grew fastest.',
+          citations: [
+            {
+              type: 'web_search_result_location',
+              url: 'https://solar.test',
+              title: 'Solar',
+              cited_text: 'Solar capacity grew 30%.',
+              encrypted_index: 'x',
+            },
+          ],
+        },
+      ],
+    },
+  ];
+  const restoreFetch = mockFetch(
+    async () =>
+      new Response(JSON.stringify(responses.shift()), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+  );
+  try {
+    const response = await chatCompletion({
+      auth: buildTransportAuth({ endpoint: ANTHROPIC_ENDPOINT, apiKey: 'test-key' }),
+      model: 'anthropic/claude-sonnet-4-6',
+      messages: [{ role: 'user', content: 'Which grew fastest?' }],
+      plugins: [{ id: 'web' }],
+    });
+    assert.deepEqual(sourcesFromAnnotations(response.choices[0]?.message.annotations), [
+      { url: 'https://solar.test', title: 'Solar', description: 'Solar capacity grew 30%.' },
+      { url: 'https://wind.test', title: 'Wind' },
+    ]);
+  } finally {
+    restoreFetch();
   }
 });
 

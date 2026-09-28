@@ -10,6 +10,7 @@ import {
 } from '@/lib/anthropic/streamEvents';
 import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
 import { buildTransportAuth } from '@/lib/auth/transport';
+import { sourcesFromAnnotations } from '@/lib/ui/messageSources';
 import { mockFetch } from '../../../tests/helpers/mockFetch';
 
 function createSseResponse(events: unknown[]): Response {
@@ -409,4 +410,79 @@ test('applyStreamEvent throws an error event as an ApiError', () => {
       err.code === API_ERROR_CODES.PROVIDER_CHAT_FAILED &&
       err.message === 'Anthropic stream error',
   );
+});
+
+test("streamChatCompletion reports a native web search's sources as annotations", async () => {
+  const restoreFetch = mockFetch(async () =>
+    createSseResponse([
+      { type: 'message_start', message: { usage: { input_tokens: 9, output_tokens: 1 } } },
+      {
+        type: 'content_block_start',
+        index: 0,
+        content_block: { type: 'server_tool_use', id: 'srv_1', name: 'web_search', input: {} },
+      },
+      { type: 'content_block_stop', index: 0 },
+      {
+        type: 'content_block_start',
+        index: 1,
+        content_block: {
+          type: 'web_search_tool_result',
+          tool_use_id: 'srv_1',
+          content: [
+            { type: 'web_search_result', title: 'Solar', url: 'https://solar.test' },
+            { type: 'web_search_result', title: 'Wind', url: 'https://wind.test' },
+          ],
+        },
+      },
+      { type: 'content_block_stop', index: 1 },
+      {
+        type: 'content_block_start',
+        index: 2,
+        content_block: { type: 'text', text: '', citations: [] },
+      },
+      {
+        type: 'content_block_delta',
+        index: 2,
+        delta: {
+          type: 'citations_delta',
+          citation: {
+            type: 'web_search_result_location',
+            url: 'https://solar.test',
+            title: 'Solar',
+            cited_text: 'Solar capacity grew 30%.',
+            encrypted_index: 'x',
+          },
+        },
+      },
+      { type: 'content_block_delta', index: 2, delta: { type: 'text_delta', text: 'Solar.' } },
+      { type: 'content_block_stop', index: 2 },
+      { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 5 } },
+      { type: 'message_stop' },
+    ]),
+  );
+  const reported: unknown[] = [];
+  let annotations: unknown;
+  try {
+    await streamChatCompletion({
+      auth: buildTransportAuth({ endpoint: ANTHROPIC_ENDPOINT, apiKey: 'test-key' }),
+      model: 'anthropic/claude-sonnet-4-6',
+      messages: [{ role: 'user', content: 'Which grew fastest?' }],
+      plugins: [{ id: 'web' }],
+      callbacks: {
+        onAnnotations: (value) => reported.push(value),
+        onDone: (_text, extras) => {
+          annotations = extras?.annotations;
+        },
+      },
+    });
+  } finally {
+    restoreFetch();
+  }
+  const sources = [
+    { url: 'https://solar.test', title: 'Solar', description: 'Solar capacity grew 30%.' },
+    { url: 'https://wind.test', title: 'Wind' },
+  ];
+  assert.deepEqual(sourcesFromAnnotations(annotations), sources);
+  // Sources show while the reply streams: the last report is the whole set.
+  assert.deepEqual(sourcesFromAnnotations(reported.at(-1)), sources);
 });
