@@ -96,12 +96,22 @@
     color: var(--color-fg);
     cursor: pointer;
   }
+  /* Two marks that never read as one: the model in use takes only the tick,
+     the row the arrow keys (or the pointer) are on takes only a fill. On
+     the same row it wears both. */
   .model-row.is-active {
-    background: color-mix(in oklab, var(--color-fg) 5%, transparent);
+    background: color-mix(in oklab, var(--color-fg) 8%, transparent);
   }
   .model-row.is-selected {
-    background: color-mix(in oklab, var(--color-fg) 7%, transparent);
     box-shadow: inset 2px 0 0 var(--color-rubric);
+  }
+  /* The sheet has no arrow keys: a lit first row there would read as a
+     choice, so only a press shows. */
+  .model-picker--sheet .model-row.is-active {
+    background: transparent;
+  }
+  .model-picker--sheet .model-row:active {
+    background: color-mix(in oklab, var(--color-fg) 8%, transparent);
   }
   .model-row__main {
     flex: 1;
