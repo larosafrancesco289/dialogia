@@ -61,9 +61,9 @@ export const CURATED_MODELS: CuratedModel[] = [
     description: 'The most capable Claude, for the hardest problems; the priciest',
   },
   {
-    id: '~google/gemini-pro-latest',
-    name: 'Gemini Pro',
-    description: 'Research across images and very long documents',
+    id: '~google/gemini-flash-latest',
+    name: 'Gemini Flash',
+    description: 'Google’s newest; fast across images and very long documents',
   },
   {
     id: '~moonshotai/kimi-latest',
