@@ -4,12 +4,14 @@
 // blocks as a pause_turn continuation sends them back. No I/O, so a recorded
 // stream replays through it directly.
 
+import { mergeAnnotations } from '@/lib/api/annotations';
 import { ApiError, API_ERROR_CODES } from '@/lib/api/errors';
 import { mergeUsage, normalizeUsage, type Usage } from '@/lib/api/normalizers';
 import type { ToolCall } from '@/lib/transport/contracts';
 import type { StreamCallbacks } from '@/lib/transport/types';
 import { isRecord } from '@/lib/utils/guards';
 import { parseToolInput } from '@/lib/anthropic/messages';
+import { blockAnnotations, citationAnnotation } from '@/lib/anthropic/citations';
 import type { AnthropicThinkingBlock } from '@/lib/anthropic/wire';
 
 type PendingToolCall = { id?: string; name: string; arguments: string };
@@ -25,6 +27,8 @@ type StreamRound = {
 export type StreamTurn = {
   text: string;
   thinkingBlocks: AnthropicThinkingBlock[];
+  /** A native web search's results and the reply's citations of them, every round's. */
+  annotations: unknown[];
   /** Keyed past every earlier round's blocks, so two rounds' calls never share a key. */
   toolCalls: Map<number, PendingToolCall>;
   stopReason?: unknown;
@@ -38,7 +42,10 @@ export type StreamTurn = {
   thinkingBreak: boolean;
 };
 
-type StreamEmit = Pick<StreamCallbacks, 'onToken' | 'onReasoningToken' | 'onToolCallDelta'>;
+type StreamEmit = Pick<
+  StreamCallbacks,
+  'onToken' | 'onReasoningToken' | 'onToolCallDelta' | 'onAnnotations'
+>;
 
 function newRound(): StreamRound {
   return { blocks: [], toolInputs: new Map() };
@@ -48,6 +55,7 @@ export function createStreamTurn(): StreamTurn {
   return {
     text: '',
     thinkingBlocks: [],
+    annotations: [],
     toolCalls: new Map(),
     round: newRound(),
     blockBase: 0,
@@ -132,6 +140,14 @@ function addUsage(round: StreamRound, usage: unknown): void {
   round.usage = mergeUsage(round.usage, normalizeUsage(usage as Record<string, number>));
 }
 
+/** Adds to the turn's annotations, and reports the whole set when it grew. */
+function addAnnotations(turn: StreamTurn, annotations: unknown[], emit: StreamEmit): void {
+  const merged = mergeAnnotations(turn.annotations, annotations);
+  if (merged.length === turn.annotations.length) return;
+  turn.annotations = merged;
+  emit.onAnnotations?.(merged);
+}
+
 function appended(current: unknown, piece: string): string {
   return `${typeof current === 'string' ? current : ''}${piece}`;
 }
@@ -139,6 +155,7 @@ function appended(current: unknown, piece: string): string {
 function startBlock(turn: StreamTurn, index: number, value: unknown, emit: StreamEmit): void {
   if (!isRecord(value)) return;
   turn.round.blocks[index] = { ...value };
+  addAnnotations(turn, blockAnnotations(value), emit);
   // Thinking before and after a tool call (a server-side search, say) arrives
   // as separate blocks with nothing between them.
   if (value.type === 'thinking' && turn.thinkingShown) turn.thinkingBreak = true;
@@ -183,6 +200,11 @@ function applyDelta(turn: StreamTurn, index: number, value: unknown, emit: Strea
   }
   if (value.type === 'signature_delta' && typeof value.signature === 'string') {
     if (block?.type === 'thinking') block.signature = value.signature;
+    return;
+  }
+  if (value.type === 'citations_delta') {
+    const annotation = citationAnnotation(value.citation);
+    if (annotation) addAnnotations(turn, [annotation], emit);
     return;
   }
   if (value.type === 'input_json_delta' && typeof value.partial_json === 'string') {

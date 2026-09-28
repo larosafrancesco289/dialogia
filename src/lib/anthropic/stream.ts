@@ -73,6 +73,7 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
 
   await callbacks?.onDone?.(turn.text, {
     usage,
+    annotations: turn.annotations.length > 0 ? turn.annotations : undefined,
     finishReason: mapStopReason(turn.stopReason),
     stopDetails: turn.stopDetails,
     toolCalls: finishedToolCalls(turn),
