@@ -1,5 +1,6 @@
 import { buildChatBody } from '@/lib/openrouter/request';
 import { endpointBodyOptions, endpointWireModelId } from '@/lib/openrouter/endpointBody';
+import { mergeAnnotations } from '@/lib/api/annotations';
 import { ApiError, API_ERROR_CODES, throwForStatus } from '@/lib/api/errors';
 import { normalizeUsage, shouldIncludeUsage, type Usage } from '@/lib/api/normalizers';
 import { consumeSse, type SseEvent } from '@/lib/api/stream';
@@ -85,9 +86,9 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
 
   let full = '';
   let usage: Usage | undefined;
-  let annotations: unknown;
+  let annotations: unknown[] = [];
   let finishReason: FinishReason | undefined;
-  let reasoningDetails: unknown;
+  const reasoningDetails: Array<Record<string, unknown>> = [];
   let reasoningTail = '';
   // Which reasoning block the text is in, when `reasoning_details` says.
   let reasoningBlock: number | undefined;
@@ -158,12 +159,15 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
         ) ?? '';
 
       const deltaReasoningDetails = delta?.reasoning_details ?? message?.reasoning_details;
-      if (deltaReasoningDetails !== undefined) reasoningDetails = deltaReasoningDetails;
+      mergeReasoningDetails(reasoningDetails, deltaReasoningDetails);
 
       const ann = delta?.annotations ?? message?.annotations;
-      if (ann !== undefined && annotations === undefined) {
-        annotations = ann;
-        callbacks?.onAnnotations?.(ann);
+      if (ann !== undefined) {
+        const merged = mergeAnnotations(annotations, ann);
+        if (merged.length > annotations.length) {
+          annotations = merged;
+          callbacks?.onAnnotations?.(merged);
+        }
       }
 
       emitImages(delta?.images);
@@ -264,11 +268,47 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
   const toolCalls = buildToolCalls(toolCallAccumulator);
   await callbacks?.onDone?.(full, {
     usage,
-    annotations,
+    annotations: annotations.length > 0 ? annotations : undefined,
     finishReason,
     toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
-    reasoningDetails,
+    reasoningDetails: reasoningDetails.length > 0 ? reasoningDetails : undefined,
   });
+}
+
+// The fields a block's content streams in, a fragment per chunk.
+const REASONING_FRAGMENT_KEYS = new Set(['text', 'summary', 'data']);
+
+/**
+ * Folds one chunk's `reasoning_details` into the reply's. Each block streams in
+ * fragments that share its `index` (the text, then the signature), and the
+ * blocks are sent back whole with the tool calls they led to, where a block
+ * missing its text or signature is rejected. A fragment without an index, or
+ * of another type, is a block of its own.
+ */
+function mergeReasoningDetails(into: Array<Record<string, unknown>>, details: unknown): void {
+  if (!Array.isArray(details)) return;
+  for (const detail of details) {
+    if (!isRecord(detail)) continue;
+    const block =
+      typeof detail.index === 'number'
+        ? into.find(
+            (entry) =>
+              entry.index === detail.index &&
+              (detail.type === undefined || entry.type === detail.type),
+          )
+        : undefined;
+    if (!block) {
+      into.push({ ...detail });
+      continue;
+    }
+    for (const [key, value] of Object.entries(detail)) {
+      if (value == null) continue;
+      block[key] =
+        REASONING_FRAGMENT_KEYS.has(key) && typeof value === 'string'
+          ? `${typeof block[key] === 'string' ? block[key] : ''}${value}`
+          : value;
+    }
+  }
 }
 
 /**

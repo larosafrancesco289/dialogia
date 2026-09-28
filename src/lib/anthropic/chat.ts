@@ -12,6 +12,8 @@ import {
   MAX_PAUSE_TURN_CONTINUATIONS,
 } from '@/lib/anthropic/continuation';
 import { buildAnthropicError, wrapAnthropicClientError } from '@/lib/anthropic/errors';
+import { blockAnnotations } from '@/lib/anthropic/citations';
+import { mergeAnnotations } from '@/lib/api/annotations';
 import { isRecord } from '@/lib/utils/guards';
 
 function buildToolCalls(content: unknown) {
@@ -55,6 +57,8 @@ async function requestAnthropicMessageSequence(args: {
   let body = args.body;
   let continuations = 0;
   let combinedUsage: ReturnType<typeof normalizeUsage> | undefined;
+  // A continuation's response holds only what came after the pause.
+  const content: unknown[] = [];
 
   while (true) {
     let res: Response;
@@ -73,12 +77,13 @@ async function requestAnthropicMessageSequence(args: {
 
     const data = (await res.json()) as Record<string, unknown>;
     combinedUsage = sumUsage(combinedUsage, normalizeUsage(data.usage as Record<string, number>));
+    if (Array.isArray(data.content)) content.push(...data.content);
     const nextBody =
       data.stop_reason === 'pause_turn' && continuations < MAX_PAUSE_TURN_CONTINUATIONS
         ? appendContinuationMessage(body, data.content)
         : body;
     if (nextBody === body) {
-      return combinedUsage ? { ...data, usage: combinedUsage } : data;
+      return { ...data, content, ...(combinedUsage ? { usage: combinedUsage } : {}) };
     }
     body = nextBody;
     continuations += 1;
@@ -92,6 +97,7 @@ function mapAnthropicResponseToChatCompletion(
   const content = Array.isArray(data.content) ? data.content : [];
   const toolCalls = buildToolCalls(content);
   const reasoningDetails = toReasoningDetails(pickThinkingBlocks(content));
+  const annotations = mergeAnnotations(undefined, content.flatMap(blockAnnotations));
 
   return {
     id: typeof data.id === 'string' ? data.id : '',
@@ -107,6 +113,7 @@ function mapAnthropicResponseToChatCompletion(
           content: buildTextContent(content),
           ...(toolCalls ? { tool_calls: toolCalls } : {}),
           ...(reasoningDetails ? { reasoning_details: reasoningDetails } : {}),
+          ...(annotations.length > 0 ? { annotations } : {}),
         },
       },
     ],

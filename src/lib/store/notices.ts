@@ -1,7 +1,7 @@
 // Module: store/notices
 // Responsibility: Centralize user-facing notice messages used across slices and services.
 
-import { isApiError } from '@/lib/api/errors';
+import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
 import { isRecord } from '@/lib/utils/guards';
 
 export const NOTICE_CATALOG = {
@@ -67,6 +67,14 @@ export function isAbortLike(error: unknown): boolean {
  */
 export function describeErrorNotice(error: unknown): string | undefined {
   if (isAbortLike(error)) return undefined;
+  // A refused key or a rate limit reads the same wherever it surfaced: before
+  // the stream, in its first response, or in one of its chunks.
+  if (isApiError(error) && error.code === API_ERROR_CODES.UNAUTHORIZED) {
+    return NOTICE_INVALID_KEY;
+  }
+  if (isApiError(error) && error.code === API_ERROR_CODES.RATE_LIMITED) {
+    return NOTICE_RATE_LIMITED;
+  }
   const fromBody = httpErrorNotice(error);
   if (fromBody) return clip(fromBody);
   const message = error instanceof Error ? error.message : '';

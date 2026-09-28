@@ -139,6 +139,23 @@ test('buildChatBody strips cache_control when the endpoint does not do prompt ca
   assert.equal(JSON.stringify(body).includes('cache_control'), false);
 });
 
+test('buildChatBody sends a reply its citations back only on the built-in transports', () => {
+  const messages = [
+    { role: 'user' as const, content: 'Which grew fastest?' },
+    {
+      role: 'assistant' as const,
+      content: 'Solar.',
+      annotations: [{ type: 'url_citation', url_citation: { url: 'https://solar.test' } }],
+    },
+    { role: 'user' as const, content: 'Why?' },
+  ];
+  const local = buildChatBody({ ...base, messages, capabilities: { vision: true } });
+  assert.equal(JSON.stringify(local).includes('annotations'), false);
+  assert.equal(local.messages[1].content, 'Solar.');
+  const openRouter = buildChatBody({ ...base, messages });
+  assert.deepEqual(openRouter.messages[1], messages[1]);
+});
+
 test('buildChatBody leaves built-in transports untouched by the caching gate', () => {
   const body = buildChatBody({ ...base, messages: CACHED_MESSAGES });
   const system = body.messages[0].content as Array<Record<string, unknown>>;

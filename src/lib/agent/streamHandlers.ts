@@ -11,6 +11,7 @@ import { updateMessageById } from '@/lib/messages/updateMessageById';
 import { notify } from '@/lib/store/notify';
 import { NOTICE_SAVE_FAILED, describeErrorNotice, isAbortLike } from '@/lib/store/notices';
 import { isRecord } from '@/lib/utils/guards';
+import { mergeAnnotations } from '@/lib/api/annotations';
 
 type MessageUpdater = (message: Message) => Message;
 
@@ -253,10 +254,12 @@ export function createMessageStreamCallbacks(
   const reasoningAccumulator = createStreamAccumulator(updateReasoning);
 
   const callbacks = {
+    // A stream reports its whole set so far; a reply's later streams (agent
+    // rounds, the closing answer) add theirs to what the earlier ones cited.
     onAnnotations: (annotations: unknown) => {
       applyMessageUpdate(set, chatId, assistantMessage.id, (msg) => ({
         ...msg,
-        annotations,
+        annotations: mergeAnnotations(msg.annotations, annotations),
       }));
     },
     onImage: (dataUrl: string) => {
