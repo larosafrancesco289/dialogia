@@ -60,12 +60,7 @@ export const selectIsTutorEnabled = (state: StoreState) =>
 export const selectIsTutorEnabledForChat = (chatId?: string) => (state: StoreState) =>
   resolveTutorEnabled(state, chatId ? state.chats.find((chat) => chat.id === chatId) : undefined);
 
-/**
- * The setup sheet is showing: it was opened, and not merely by itself on a
- * load after the visitor put it away (`ui.setupDismissed`).
- */
-export const selectSetupSheetOpen = (state: StoreState) =>
-  state.ui.setupOpen === true && state.ui.setupDismissed !== true;
+export const selectSetupSheetOpen = (state: StoreState) => state.ui.setupOpen === true;
 
 /**
  * The first-run tour is showing: not seen yet, and setup has had its turn
