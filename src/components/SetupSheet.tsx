@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { shallow } from 'zustand/shallow';
 import { DialogOverlay, DialogPortal } from '@/components/ui/Dialog';
 import { useChatStore } from '@/lib/store';
+import { selectIntroTourOpen } from '@/lib/store/selectors';
 import { setKey } from '@/lib/keys/store';
 import { useBackToClose } from '@/lib/hooks/useBackToClose';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
@@ -84,6 +85,8 @@ export function SetupSheet() {
     // On first run nothing had focus before it; the composer is where to go
     // next, except on a touch screen, where focusing it raises the keyboard.
     fallback: () => (isTouch ? null : document.querySelector<HTMLElement>(COMPOSER_FIELD_SELECTOR)),
+    // On first run the tour follows, and focus goes from here straight to it.
+    passesOn: () => selectIntroTourOpen(useChatStore.getState()),
   });
 
   const canSubmit = value.trim().length > 0;
