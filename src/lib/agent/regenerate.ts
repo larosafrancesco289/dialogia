@@ -2,8 +2,9 @@
 // Responsibility: Support regeneration of assistant messages with preserved settings.
 // The new attempt is a whole turn composed the way a fresh send of those settings is
 // (preambles, tools, loop), so a retried answer can search, and a card comes back as a card.
+// Unless told to replace it, the old reply stays as an earlier version of the new one.
 
-import type { Chat, Message } from '@/lib/types';
+import type { Chat } from '@/lib/types';
 import type { RegenerateOptions } from '@/lib/agent/types';
 import { resolveRegenerationSettings } from '@/lib/agent/regenerateSettings';
 import { streamFinal } from '@/lib/agent/streaming';
@@ -15,10 +16,21 @@ import { composeTurn } from '@/lib/agent/compose';
 import { createTurnLifecycle } from '@/lib/agent/orchestrator/lifecycle';
 import { runTurn } from '@/lib/agent/orchestrator/turn';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
+import { addVersion, hasOutput } from '@/lib/messages/versions';
+import { withoutSearchEntry } from '@/lib/ui/messageSources';
 
 export async function regenerate(opts: RegenerateOptions): Promise<void> {
-  const { chat, chatId, targetMessageId, messages, turn, controller, overrideModelId, pipeline } =
-    opts;
+  const {
+    chat,
+    chatId,
+    targetMessageId,
+    messages,
+    turn,
+    controller,
+    overrideModelId,
+    keepVersions,
+    pipeline,
+  } = opts;
   const { modelIndex, set } = turn;
 
   const index = messages.findIndex((msg) => msg.id === targetMessageId);
@@ -37,7 +49,7 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
     supportsReasoning: caps.canReason,
   });
 
-  const replacement = createAssistantMessage({
+  const attempt = createAssistantMessage({
     id: original.id,
     chatId,
     content: '',
@@ -48,6 +60,7 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
     // turn's search results. This turn records its own.
     genSettings,
   });
+  const replacement = keepVersions ? addVersion(original, attempt) : attempt;
 
   // Until the new reply shows something, the old one stays on disk: a failed
   // or stopped attempt must not save its empty cut-off copy over the original.
@@ -74,7 +87,8 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
       ...state.messagesById,
       [original.id]: replacement,
     },
-    ui: adjustActiveTurnCount(state.ui, chatId, 1),
+    // The old version's search results are not this attempt's sources.
+    ui: adjustActiveTurnCount(withoutSearchEntry(state.ui, original.id), chatId, 1),
   }));
   setTurnController(chatId, controller);
 
@@ -140,9 +154,3 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
     }));
   }
 }
-
-const hasOutput = (message: Message): boolean =>
-  !!message.content?.trim() ||
-  !!message.reasoning?.trim() ||
-  !!message.toolCalls?.length ||
-  !!message.attachments?.length;

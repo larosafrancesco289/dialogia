@@ -82,6 +82,21 @@ Messages live in `messagesById` plus `messageIdsByChatId`. Always go through the
 message, usage statistics for instance, must call `ensureAllChatMessagesLoaded` first. Export and
 import read the database directly and are unaffected.
 
+### A reply's versions
+
+Try again keeps the old reply. `src/lib/messages/versions.ts` owns the shape: the shown version is
+the message's own fields, and the others wait in `Message.versions` with `versionIndex` saying where
+the shown one sits (absent means last). Everything that reads a message (the transcript, the next
+request, export, other tabs) therefore sees the shown version with no change of its own, and a
+branch copies it alone. Each version carries its own model, reasoning, annotations, usage, metrics
+and tool rounds; the row keeps its id and `createdAt`, so its place in the transcript never moves.
+
+Versions switch and are deleted only in the latest exchange, because a later turn was written
+under the version shown then. Deleting removes the shown version and shows the one before it; the
+last one left is the reply. An edit's rerun replaces the reply and its versions (they answered
+other words), and so does Try again where a module's record follows the transcript
+(`latestExchangeOnly`), because that record has already let go of the old reply.
+
 ### What gets persisted, and where
 
 There are three separate stores, deliberately.

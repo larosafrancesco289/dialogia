@@ -22,7 +22,7 @@ import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { resetEphemeralUi } from '@/lib/ui/defaults';
 import { triggerAsyncTitleGeneration } from '@/lib/services/titleGenerator';
 import { appendMessagesToChat, getMessagesForChat } from '@/lib/messages/indexing';
-import { canRedoReply, notifyReplyRetracted } from '@/lib/modules';
+import { canRedoReply, latestExchangeOnly, notifyReplyRetracted } from '@/lib/modules';
 
 export type SendTurnOptions = {
   content: string;
@@ -177,6 +177,8 @@ export async function sendUserTurn({
 export type RegenerateTurnArgs = {
   messageId: string;
   overrideModelId?: string;
+  /** Replace the reply and its versions rather than add a version. */
+  replace?: boolean;
   set: StoreSetter;
   get: StoreGetter;
   repository: Repository;
@@ -185,6 +187,7 @@ export type RegenerateTurnArgs = {
 export async function regenerateTurn({
   messageId,
   overrideModelId,
+  replace,
   set,
   get,
   repository,
@@ -241,6 +244,9 @@ export async function regenerateTurn({
   if (!getMessagesForChat(get(), chatId).some((m) => m.id === messageId)) return;
   // The old reply's cards and what its turn recorded go before the new one is composed.
   await notifyReplyRetracted({ get: getState }, { chatId, messageId });
+  // A module whose record follows the transcript has just let go of the old
+  // reply's, so an older version could not be shown again as it was.
+  const keepVersions = !replace && !latestExchangeOnly(getState(), chatId);
   const messages = getMessagesForChat(get(), chatId);
 
   const controller = new AbortController();
@@ -262,6 +268,7 @@ export async function regenerateTurn({
       turn: turnContext,
       controller,
       overrideModelId,
+      keepVersions,
     });
   } catch (error: unknown) {
     handleTurnApiError(error, get);
