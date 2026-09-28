@@ -149,6 +149,11 @@ export function FolderRowContainer({
         label={`Folder actions for ${folder.name}`}
         title={folder.name}
         onClose={() => setShowActions(false)}
+        returnFocus={() =>
+          document.querySelector<HTMLElement>(
+            `.folder-row[data-folder-id="${CSS.escape(folder.id)}"] .folder-row__toggle`,
+          )
+        }
       >
         <SheetItem
           icon={<PencilSquareIcon />}
