@@ -7,11 +7,13 @@
 @import './mobile.css';
 @import './logo.css';
 
-/* `sm:` starts where the phone app ends, at the shell's own breakpoint
-   (BREAKPOINTS.mobile), so no phone layout gets a desktop size. */
+/* `sm:` starts where the phone app ends (MEDIA_QUERIES.mobile), a phone on
+   its side included, so no phone layout gets a desktop size. The breakpoint
+   is the shell's own, for anything else that reads it. */
 @theme {
   --breakpoint-sm: 48rem;
 }
+@custom-variant sm (@media (min-width: 768px) and (not ((pointer: coarse) and (max-height: 499px) and (max-width: 1023px))));
 
 @source '../index.html';
 @source '../src';

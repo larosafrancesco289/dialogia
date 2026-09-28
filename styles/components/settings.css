@@ -34,7 +34,7 @@
   /* ===== Settings on a phone =====
      A list of pages, each opening on its own. The page scrolls to the
      bottom edge, clear of the home indicator. */
-  @media (max-width: 767px) {
+  @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
     .settings-panel {
       padding-bottom: env(safe-area-inset-bottom);
       border-left: 0;
