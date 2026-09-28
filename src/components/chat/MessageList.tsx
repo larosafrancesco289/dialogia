@@ -24,6 +24,10 @@ import { focusComposer } from '@/lib/ui/focus';
 
 const EMPTY_MESSAGES: Message[] = [];
 const JUST_WRITTEN_MS = 1500;
+
+/** A scroll container's vertical scrollbar width; 0 where bars overlay the content. */
+const scrollbarWidth = (el: HTMLElement | null) => (el ? el.offsetWidth - el.clientWidth : 0);
+
 export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilter?: string }) {
   const {
     allMessages,
@@ -304,7 +308,13 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
       </div>
 
       {showJump && (
-        <div className="jump-to-latest">
+        <div
+          className="jump-to-latest"
+          // The list's scrollbar narrows its content box on one side only,
+          // which would set the button off the composer's centre by half
+          // the bar; padding by the bar's width puts it back.
+          style={{ paddingLeft: scrollbarWidth(containerRef.current) }}
+        >
           <button
             className="btn-float motion-rise pointer-events-auto"
             aria-label="Scroll to bottom"
