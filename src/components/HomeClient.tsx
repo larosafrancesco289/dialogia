@@ -9,7 +9,7 @@ import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
 import { useAppBootstrap } from '@/lib/hooks/useAppBootstrap';
 import { useAmbientMotionPause } from '@/lib/hooks/useAmbientMotionPause';
-import { selectIsTutorEnabled } from '@/lib/store/selectors';
+import { selectIsTutorEnabled, selectSetupSheetOpen } from '@/lib/store/selectors';
 import { selectRightPanelContent } from '@/lib/modules';
 import { MotionConfig } from 'framer-motion';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
@@ -49,7 +49,7 @@ export function HomeClient() {
     (s) => ({
       collapsed: s.ui.sidebarCollapsed ?? false,
       isSettingsOpen: s.ui.showSettings,
-      isSetupOpen: s.ui.setupOpen === true,
+      isSetupOpen: selectSetupSheetOpen(s),
       isIntroOpen: s.ui.introSeen !== true,
       tutorActive: selectIsTutorEnabled(s),
       rightPanelOpen: s.ui.plan?.rightPanelOpen ?? false,
