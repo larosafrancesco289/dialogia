@@ -323,7 +323,6 @@ export function createMessageStreamCallbacks(
         reasoning: current?.reasoning,
         activity: current?.activity ?? assistantMessage.activity,
         attachments: current?.attachments,
-        systemSnapshot: current?.systemSnapshot,
         genSettings: current?.genSettings,
         hiddenContent: current?.hiddenContent,
         toolCalls: current?.toolCalls ?? assistantMessage.toolCalls,

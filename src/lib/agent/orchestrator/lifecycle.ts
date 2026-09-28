@@ -53,10 +53,7 @@ export const createTurnLifecycle = (options: TurnLifecycleOptions): TurnLifecycl
       if (latestComposition) {
         try {
           const gen = snapshotGenSettings(latestComposition.settings);
-          updateMessage({
-            systemSnapshot: plan.finalSystem,
-            genSettings: gen,
-          });
+          updateMessage({ genSettings: gen });
         } catch {
           /* best effort */
         }
