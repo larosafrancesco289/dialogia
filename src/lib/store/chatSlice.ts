@@ -23,6 +23,8 @@ import { hydrateMessageList } from '@/lib/services/hydrate';
 import { notifyChatBranched, notifyChatDeleted } from '@/lib/modules';
 import { clearActiveTurnCount, isChatStreaming } from '@/lib/ui/streaming';
 import { abortTurn } from '@/lib/turns/runtime/abortControllers';
+import { readDraft } from '@/lib/ui/composerDrafts';
+import { chatPresence } from '@/lib/sync/chatPresence';
 
 // Keeps the turn pipeline out of the boot bundle; welcome priming is user-triggered
 // and fire-and-forget, so the deferred load is invisible to callers.
@@ -126,6 +128,29 @@ export function removeChatState(s: StoreState, id: string): Partial<StoreState> 
   };
 }
 
+/**
+ * How old an empty chat must be before startup tidies it away. A browser that
+ * cannot say which chats its other tabs have open may have one sitting in a
+ * chat it just made.
+ */
+export const EMPTY_CHAT_GRACE_MS = 5 * 60_000;
+
+/**
+ * A "New chat" nobody used, as far as this tab can tell: untitled, not open
+ * here, with no message in memory or known on disk and no unsent draft. The
+ * database and the other tabs get their say in `removeUnusedChats`.
+ */
+function isUnusedChat(state: StoreState, chat: Chat): boolean {
+  return (
+    chat.id !== state.selectedChatId &&
+    isUntitledChat(chat.title) &&
+    !!state.loadedMessageChatIds[chat.id] &&
+    !state.nonEmptyChatIds[chat.id] &&
+    getMessagesForChat(state, chat.id).length === 0 &&
+    !readDraft(chat.id)
+  );
+}
+
 export function createChatSlice(
   set: StoreSetter,
   get: () => StoreState,
@@ -153,6 +178,39 @@ export function createChatSlice(
       ? {}
       : { loadedMessageChatIds: { ...(state.loadedMessageChatIds ?? {}), [chatId]: true } };
 
+  const unused = (chatId: string, olderThan: number) => {
+    const chat = get().chats.find((c) => c.id === chatId);
+    // A reused draft is touched when it opens again, so its age counts from then.
+    const since = Math.max(chat?.createdAt ?? 0, chat?.updatedAt ?? 0);
+    return !!chat && isUnusedChat(get(), chat) && Date.now() - since >= olderThan;
+  };
+
+  /**
+   * Deletes the chats among `chatIds` that nobody used. Another tab may have
+   * one open, or have written to it since this tab last heard, so each is
+   * checked against the tabs and the database, and against this tab again
+   * after every wait: the person may have gone back to it.
+   */
+  const removeUnusedChats = async (chatIds: string[], olderThan = 0) => {
+    const candidates = chatIds.filter((id) => unused(id, olderThan));
+    if (!candidates.length) return;
+    const openElsewhere = await chatPresence.openElsewhere();
+    for (const id of candidates) {
+      if (openElsewhere.has(id)) continue;
+      const [messages, events] = await Promise.all([
+        repository.loadMessagesForChat(id),
+        repository.loadTutorEvents(id),
+      ]);
+      if (messages.length || events.length || !unused(id, olderThan)) continue;
+      await get().deleteChat(id);
+    }
+  };
+
+  const leaveChat = (chatId: string | undefined) => {
+    if (!chatId || chatId === get().selectedChatId) return;
+    void removeUnusedChats([chatId]).catch(() => undefined);
+  };
+
   return {
     chats: [],
     folders: [],
@@ -164,10 +222,16 @@ export function createChatSlice(
 
     async initializeApp() {
       await bootstrapApp(set, get);
+      // What a tab closed on (or crashed in) before anyone moved on from it.
+      await removeUnusedChats(
+        get().chats.map((chat) => chat.id),
+        EMPTY_CHAT_GRACE_MS,
+      ).catch(() => undefined);
     },
 
     async newChat() {
       const snapshot = get();
+      const leaving = snapshot.selectedChatId;
       const reusableDraft = findLatestEmptyDraft(snapshot);
 
       if (reusableDraft) {
@@ -195,6 +259,7 @@ export function createChatSlice(
           }),
         }));
 
+        leaveChat(leaving);
         if (nextDraft.settings.features.tutor?.enabled) {
           primeTutorWelcome(nextDraft.id, { set, get });
         }
@@ -216,10 +281,12 @@ export function createChatSlice(
         ui: resetEphemeralUi(s.ui),
       }));
 
+      leaveChat(leaving);
       if (chat.settings.features.tutor?.enabled) primeTutorWelcome(chat.id, { set, get });
     },
 
     selectChat(id: string) {
+      const leaving = get().selectedChatId;
       void get()
         .ensureChatMessagesLoaded(id)
         .catch(() => undefined);
@@ -234,6 +301,7 @@ export function createChatSlice(
           },
         },
       }));
+      leaveChat(leaving);
     },
 
     async ensureChatMessagesLoaded(chatId: string) {
