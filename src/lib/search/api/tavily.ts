@@ -1,4 +1,5 @@
 import type { WebFetchArgs, WebSearchArgs } from '@/lib/search/args';
+import { normalizeWebUrl, SearchStatusError } from '@/lib/search/api/shared';
 
 export type TavilySearchResult = {
   title?: string;
@@ -107,20 +108,8 @@ export function buildTavilySearchBody(args: WebSearchArgs): TavilySearchBody {
   return body;
 }
 
-const normalizeTavilyUrl = (value: unknown): string => {
-  const url = typeof value === 'string' ? value.trim() : '';
-  if (!url) return '';
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '';
-    return parsed.toString();
-  } catch {
-    return '';
-  }
-};
-
 export function buildTavilyExtractBody(args: WebFetchArgs): TavilyExtractBody {
-  const url = normalizeTavilyUrl(args.url);
+  const url = normalizeWebUrl(args.url);
   if (!url) throw new Error('tavily_missing_url');
 
   const query = typeof args.query === 'string' ? args.query.trim() : '';
@@ -137,13 +126,6 @@ export function buildTavilyExtractBody(args: WebFetchArgs): TavilyExtractBody {
     body.chunks_per_source = Math.min(Math.max(args.chunks_per_source ?? 3, 1), 5);
   }
   return body;
-}
-
-/** A response Tavily refused, with its status for the provider to put in words. */
-export class TavilyStatusError extends Error {
-  constructor(readonly status: number) {
-    super(`tavily_error_${status}`);
-  }
 }
 
 export async function runTavilySearchDirect(
@@ -164,7 +146,7 @@ export async function runTavilySearchDirect(
     signal: opts.signal,
   });
 
-  if (!res.ok) throw new TavilyStatusError(res.status);
+  if (!res.ok) throw new SearchStatusError(res.status);
   const data = (await res.json()) as {
     results?: Array<{ title?: string; url?: string; content?: string; score?: number }>;
   };
@@ -195,7 +177,7 @@ export async function runTavilyExtractDirect(
     signal: opts.signal,
   });
 
-  if (!res.ok) throw new TavilyStatusError(res.status);
+  if (!res.ok) throw new SearchStatusError(res.status);
   const data = (await res.json()) as {
     results?: Array<{ url?: string; raw_content?: string; images?: string[]; favicon?: string }>;
   };

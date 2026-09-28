@@ -9,7 +9,6 @@
 // or turn reads it) but the request code is behind a dynamic import, so Tavily's
 // payload builders stay out of the boot bundle.
 
-import { isApiError } from '@/lib/api/errors';
 import type {
   FetchOutcome,
   NormalizedFetchArgs,
@@ -18,6 +17,7 @@ import type {
   SearchOutcome,
   SearchProvider,
 } from '@/lib/search/providers/types';
+import { describeSearchFailure } from '@/lib/search/providers/failure';
 import { NOTICE_MISSING_SEARCH_KEY } from '@/lib/store/notices';
 import { err, ok } from '@/lib/utils/result';
 
@@ -35,17 +35,11 @@ function describeStatus(status: number, attempt: string): string {
   return `Tavily could not ${attempt}.`;
 }
 
-// An abort is left to the caller, which knows whether it was a Stop or a timeout.
 function describeFailure(error: unknown, attempt: string): string | undefined {
-  if (isApiError(error)) {
-    const detail = typeof error.detail === 'string' && error.detail.trim() ? error.detail : '';
-    return detail || error.code;
-  }
-  if (error instanceof Error && 'status' in error && typeof error.status === 'number') {
-    return describeStatus(error.status, attempt);
-  }
-  if (error instanceof Error && error.name === 'AbortError') return undefined;
-  return 'Could not reach Tavily.';
+  return describeSearchFailure(error, {
+    describeStatus: (status) => describeStatus(status, attempt),
+    unreachable: 'Could not reach Tavily.',
+  });
 }
 
 async function search(args: NormalizedSearchArgs, ctx: SearchContext): Promise<SearchOutcome> {

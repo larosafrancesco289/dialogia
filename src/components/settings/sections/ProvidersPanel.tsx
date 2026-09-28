@@ -313,18 +313,22 @@ export function ProvidersPanel({ renderSection, loadModels }: ProvidersPanelProp
         <SettingsSection title="Web search">
           <div className="space-y-3">
             <p className="field__hint">
-              Search built into the model provider needs no extra key and is the default. Add a key
-              below to use a dedicated search provider as a tool instead.
+              Search built into the model provider needs no extra key and is the default. With an
+              OpenRouter key you can also pick OpenRouter search in the composer: the model searches
+              when it needs to, on your OpenRouter credit, and pages are read through Jina Reader.
+              Your searches go to OpenRouter&apos;s search partner, and page addresses to Jina.
             </p>
-            {listSearchProviders().map((provider) => (
-              <ApiKeyField
-                key={provider.id}
-                keyRef={searchProviderKeyRef(provider)}
-                label={`${provider.label} API key`}
-                placeholder="tvly-…"
-                onChanged={refresh}
-              />
-            ))}
+            {listSearchProviders()
+              .filter((provider) => !provider.usesModelKey)
+              .map((provider) => (
+                <ApiKeyField
+                  key={provider.id}
+                  keyRef={searchProviderKeyRef(provider)}
+                  label={`${provider.label} API key`}
+                  placeholder="tvly-…"
+                  onChanged={refresh}
+                />
+              ))}
           </div>
         </SettingsSection>,
       )}

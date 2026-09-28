@@ -59,6 +59,9 @@ export type PdfPluginConfig = {
 
 export type WebPluginConfig = {
   id: 'web';
+  /** Unset lets OpenRouter choose, which is native search for OpenAI and Anthropic models. */
+  engine?: 'native' | 'exa' | 'parallel';
+  max_results?: number;
 };
 
 export type PluginConfig = PdfPluginConfig | WebPluginConfig;
