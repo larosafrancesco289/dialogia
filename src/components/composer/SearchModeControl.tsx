@@ -7,6 +7,7 @@ import { listSearchModeOptions } from '@/lib/search/ui/modes';
 import type { SearchMode } from '@/lib/search/providers/types';
 import { useProviderKeys } from '@/lib/hooks/useProviderKeys';
 import { useDismissOnOutside } from '@/lib/hooks/useDismissOnOutside';
+import { ComposerToolLabel } from '@/components/composer/ComposerToolLabel';
 
 /**
  * The composer's web search button: a plain on/off toggle, or a menu of
@@ -63,7 +64,7 @@ export function SearchModeControl({
         onClick={() => (hasSearchChoice ? setSearchMenuOpen((open) => !open) : toggleSearch())}
       >
         <GlobeAltIcon className="h-4 w-4" aria-hidden="true" />
-        {searchEnabled && <span className="composer-tool-label">Search</span>}
+        <ComposerToolLabel text={searchEnabled ? 'Search' : null} />
       </button>
       <AnimatePresence>
         {hasSearchChoice && searchMenuOpen && (
