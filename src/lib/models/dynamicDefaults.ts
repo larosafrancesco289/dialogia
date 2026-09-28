@@ -41,7 +41,11 @@ export const MODEL_FAMILIES: ModelFamily[] = [
     label: 'Claude Haiku',
     pin: 'anthropic/claude-haiku-4.5',
   },
-  { id: '~google/gemini-pro-latest', label: 'Gemini Pro', pin: 'google/gemini-3.1-pro-preview' },
+  {
+    id: '~google/gemini-flash-latest',
+    label: 'Gemini Flash',
+    pin: 'google/gemini-3.8-flash',
+  },
   { id: '~x-ai/grok-latest', label: 'Grok', pin: 'x-ai/grok-4.7' },
   { id: '~moonshotai/kimi-latest', label: 'Kimi', pin: 'moonshotai/kimi-k3' },
 ];
