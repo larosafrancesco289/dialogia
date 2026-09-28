@@ -8,7 +8,7 @@ import { MobileDrawer } from '@/components/mobile/MobileDrawer';
 import { ModuleSlot } from '@/components/ModuleSlot';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { selectRightPanelContent } from '@/lib/modules';
-import { selectSetupSheetOpen } from '@/lib/store/selectors';
+import { selectIntroTourOpen, selectSetupSheetOpen } from '@/lib/store/selectors';
 import { useMobileDrawer } from '@/components/mobile/useMobileDrawer';
 import { useHaptics } from '@/lib/hooks/useHaptics';
 import { useBackToClose } from '@/lib/hooks/useBackToClose';
@@ -51,7 +51,7 @@ export function MobileShell() {
     (s) => ({
       settingsOpen: s.ui.showSettings,
       setupOpen: selectSetupSheetOpen(s),
-      introOpen: s.ui.introSeen !== true,
+      introOpen: selectIntroTourOpen(s),
       selectedChatId: s.selectedChatId,
       rightPanelOpen: s.ui.plan?.rightPanelOpen ?? false,
       hasPanelContent: selectRightPanelContent(s) || !!s.ui.plan?.sheetPlanOverride,
@@ -173,8 +173,8 @@ export function MobileShell() {
 
       {settingsOpen && <SettingsDrawer />}
 
-      {/* The tour defers the setup sheet rather than stacking on it. */}
-      {setupOpen && !introOpen && <SetupSheet />}
+      {/* Never both: setup comes first, the tour once it is settled. */}
+      {setupOpen && <SetupSheet />}
       {introOpen && <IntroTour />}
 
       <GlobalNotice portal />
