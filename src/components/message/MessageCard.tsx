@@ -34,6 +34,9 @@ export type MessageCardProps = {
   onRegenerate: (messageId: string, modelId?: string) => void;
   /** Whether this reply can be regenerated, or this message edited and rerun. */
   canRedo: boolean;
+  /** Whether this reply's versions can be switched and deleted. */
+  canSwitchVersion: boolean;
+  onDeleteVersion: (messageId: string) => void;
 };
 
 function MessageCardComponent({
@@ -60,6 +63,8 @@ function MessageCardComponent({
   onBranch,
   onRegenerate,
   canRedo,
+  canSwitchVersion,
+  onDeleteVersion,
 }: MessageCardProps) {
   const viewModel = useMessageCardController({ chatId, messageId });
   const { message } = viewModel;
@@ -157,6 +162,8 @@ function MessageCardComponent({
     onBranch: handleBranch,
     onChooseRegenerateModel: handleRegenerate,
     canRedo,
+    canSwitchVersion,
+    onDeleteVersion,
     onPointerDown: longPress.onPointerDown,
     onPointerMove: longPress.onPointerMove,
     onPointerUp: longPress.onPointerUp,

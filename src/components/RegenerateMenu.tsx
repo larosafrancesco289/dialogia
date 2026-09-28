@@ -16,9 +16,12 @@ import { BottomSheet, SheetItem } from '@/components/ui/BottomSheet';
 export function RegenerateMenu({
   onChoose,
   disabled = false,
+  replyModelId,
 }: {
   onChoose: (modelId?: string) => void;
   disabled?: boolean;
+  /** The model that wrote the shown reply: the one "same model" means. */
+  replyModelId?: string;
 }) {
   const { chat, favoriteModelIds, models } = useChatStore(
     (s) => ({
@@ -50,15 +53,22 @@ export function RegenerateMenu({
     }
     return map;
   }, [models]);
-  const currentId = chat?.settings.modelId || curatedModels[0]?.id || defaultModelId;
-  const curated = [{ id: currentId, name: currentId }, ...curatedModels];
+  const chatModelId = chat?.settings.modelId || curatedModels[0]?.id || defaultModelId;
+  const currentId = replyModelId || chatModelId;
+  const curated = [
+    { id: currentId, name: currentId },
+    { id: chatModelId, name: chatModelId },
+    ...curatedModels,
+  ];
   const customOptions = (favoriteModelIds || []).map((id) => ({ id, name: id }));
   type ModelOption = { id: string; name: string };
   // Image generators are left out: this is a text reply being tried again.
-  // The chat's own model always stays.
+  // The reply's own model and the chat's always stay.
   const options = [...curated, ...customOptions].reduce<ModelOption[]>((acc, m) => {
     if (acc.find((x) => x.id === m.id)) return acc;
-    if (m.id !== currentId && !repliesInText(modelMap.get(m.id))) return acc;
+    if (m.id !== currentId && m.id !== chatModelId && !repliesInText(modelMap.get(m.id))) {
+      return acc;
+    }
     acc.push(m);
     return acc;
   }, []);
