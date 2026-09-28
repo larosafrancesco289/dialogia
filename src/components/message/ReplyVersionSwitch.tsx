@@ -49,7 +49,7 @@ export function ReplyVersionSwitch({
       <button
         ref={previousRef}
         type="button"
-        className="message-action-btn"
+        className="icon-button icon-button--sm"
         aria-label="Previous version"
         title="Previous version"
         disabled={locked || at === 0}
@@ -66,7 +66,7 @@ export function ReplyVersionSwitch({
       <button
         ref={nextRef}
         type="button"
-        className="message-action-btn"
+        className="icon-button icon-button--sm"
         aria-label="Next version"
         title="Next version"
         disabled={locked || at === count - 1}
@@ -77,7 +77,7 @@ export function ReplyVersionSwitch({
       {!locked && (
         <button
           type="button"
-          className="message-action-btn"
+          className="icon-button icon-button--sm"
           aria-label="Delete this version"
           title="Delete this version"
           onClick={() => onDelete(message.id)}

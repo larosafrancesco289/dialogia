@@ -70,40 +70,6 @@
     gap: 2px;
   }
 
-  .message-action-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    padding: 0;
-    border: none;
-    border-radius: var(--radius-inner);
-    background: transparent;
-    color: var(--color-fg-muted);
-    cursor: pointer;
-    transition:
-      background-color var(--duration-fast) var(--ease-standard),
-      color var(--duration-fast) var(--ease-standard),
-      opacity var(--duration-fast) var(--ease-standard),
-      transform var(--duration-fast) var(--ease-standard);
-  }
-  .message-action-btn:hover:not(:disabled) {
-    background: color-mix(in oklab, var(--color-fg) 5%, transparent);
-    color: var(--color-fg);
-  }
-  .message-action-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-  /* Copied: the check in ink. Green is kept for grading a right answer. */
-  .message-action-btn.is-success {
-    color: var(--color-fg);
-  }
-  .message-action-btn.is-success svg {
-    animation: fade-in var(--duration-fast) var(--ease-standard) both;
-  }
-
   /* A reply's footer: its actions, then the colophon, on one line. */
   .message-foot {
     display: flex;
@@ -135,7 +101,7 @@
   }
   /* Arrows a thumb can find: the full 44px, not the actions' 36px. */
   @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
-    .reply-versions .message-action-btn {
+    .reply-versions .icon-button {
       width: 44px;
       height: 44px;
     }
@@ -191,21 +157,6 @@
     border: 1px solid color-mix(in oklab, var(--color-danger) 35%, transparent);
     border-radius: var(--radius-editorial);
     font-family: var(--font-sans);
-  }
-  .message-action-btn:focus-visible {
-    box-shadow: 0 0 0 2px var(--focus-ring);
-  }
-
-  /* Mobile: larger touch targets */
-  @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
-    .message-action-btn {
-      width: 36px;
-      height: 36px;
-    }
-    .message-action-btn svg {
-      width: 18px;
-      height: 18px;
-    }
   }
 
   /* Smoother auto-resize for message textarea */

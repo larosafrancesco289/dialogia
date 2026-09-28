@@ -164,7 +164,7 @@ export function RegenerateMenu({
       <button
         ref={triggerRef}
         type="button"
-        className="message-action-btn"
+        className="icon-button icon-button--sm"
         aria-label="Try again"
         title="Try again"
         aria-haspopup="menu"

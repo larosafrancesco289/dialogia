@@ -75,7 +75,7 @@ export function ComposerActions({
       <div className="composer-tools__left">
         <button
           type="button"
-          className="composer-btn-attach"
+          className="icon-button composer-btn-attach"
           aria-label="Attach files"
           title={attachmentsHint || 'Attach files'}
           onClick={openFilePicker}

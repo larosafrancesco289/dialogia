@@ -22,7 +22,7 @@ export function TopHeaderView({
       <div className="top-header__main">
         {/* Sidebar toggle */}
         <button
-          className="icon-button"
+          className="icon-button icon-button--lg"
           aria-label="Toggle sidebar"
           aria-expanded={!collapsed}
           onClick={onToggleSidebar}
@@ -48,7 +48,7 @@ export function TopHeaderView({
               the bar only while the sidebar is hidden. */}
           {collapsed && (
             <button
-              className="icon-button hide-on-mobile"
+              className="icon-button icon-button--lg hide-on-mobile"
               aria-label="New chat"
               title="New chat"
               onClick={onNewChat}
@@ -57,7 +57,7 @@ export function TopHeaderView({
             </button>
           )}
           <button
-            className="icon-button hide-on-mobile"
+            className="icon-button icon-button--lg hide-on-mobile"
             aria-label="Open settings"
             aria-pressed={isSettingsOpen}
             onClick={onToggleSettings}

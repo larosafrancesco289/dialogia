@@ -5,6 +5,7 @@ import type { ReasoningEffort } from '@/lib/types';
 import { useBackToClose } from '@/lib/hooks/useBackToClose';
 import { useDismissOnOutside } from '@/lib/hooks/useDismissOnOutside';
 import { EffortMeterIcon } from '@/components/ui/icons';
+import { ComposerToolLabel } from '@/components/composer/ComposerToolLabel';
 
 const effortLabel = (e: ReasoningEffort) =>
   e === 'none' ? 'Off' : e === 'xhigh' ? 'Extra high' : e.charAt(0).toUpperCase() + e.slice(1);
@@ -193,7 +194,7 @@ export function ReasoningEffortControl({
     <div>
       <button
         ref={reasoningButtonRef}
-        className={`composer-btn-reasoning ${reasoningActive ? 'is-active' : ''} ${reasoningOpen ? 'is-open' : ''}`}
+        className={`icon-button composer-btn-reasoning ${reasoningActive ? 'is-active' : ''} ${reasoningOpen ? 'is-open' : ''}`}
         data-effort={effort}
         aria-haspopup="true"
         aria-expanded={reasoningOpen}
@@ -207,7 +208,7 @@ export function ReasoningEffortControl({
           levels={levels.length}
           filled={effortRank(levels, effort)}
         />
-        {reasoningActive && <span className="composer-tool-label">{effortLabel(effort)}</span>}
+        <ComposerToolLabel text={reasoningActive ? effortLabel(effort) : null} />
       </button>
       <AnimatePresence>
         {reasoningOpen && (

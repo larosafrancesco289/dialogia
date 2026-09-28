@@ -311,27 +311,10 @@
     margin-left: auto;
   }
 
-  /* Bare icon buttons: no frame until hovered, and never gold, since a
-     pressed theme or settings button is a setting, not something live. */
-  .top-header .icon-button,
-  .top-header .icon-button[aria-pressed='true'] {
-    width: 36px;
-    height: 36px;
-    flex-shrink: 0;
-    border-color: transparent;
+  /* The bar's icon buttons are the large size. Pressed settings keeps no
+     fill here: the turned gear already says the drawer is open. */
+  .top-header .icon-button[aria-pressed='true']:not(:hover) {
     background: transparent;
     color: var(--color-fg-muted);
-    box-shadow: none;
-  }
-  .top-header .icon-button:hover {
-    background: color-mix(in oklab, var(--color-fg) 5%, transparent);
-    color: var(--color-fg);
-  }
-  .top-header .icon-button:focus-visible {
-    box-shadow: 0 0 0 2px var(--focus-ring);
-  }
-  .top-header .icon-button svg {
-    width: 20px;
-    height: 20px;
   }
 }
