@@ -63,6 +63,14 @@ function stripCacheControl(messages: ModelMessage[]): ModelMessage[] {
   });
 }
 
+function withoutAnnotations(messages: ModelMessage[]): ModelMessage[] {
+  return messages.map((message) => {
+    if (message.role !== 'assistant' || !('annotations' in message)) return message;
+    const { annotations: _annotations, ...rest } = message;
+    return rest;
+  });
+}
+
 export function buildChatBody(params: BuildChatBodyParams): OpenRouterChatRequest {
   const caps = params.capabilities;
   const allow = (name: keyof EndpointCapabilities): boolean => !caps || caps[name] === true;
@@ -72,7 +80,10 @@ export function buildChatBody(params: BuildChatBodyParams): OpenRouterChatReques
   // tool support, or a provider handed tool calls it has no definitions for,
   // may refuse the whole request.
   const offersTools = allow('tools') && Array.isArray(params.tools) && params.tools.length > 0;
-  const messages = offersTools ? params.messages : withoutToolHistory(params.messages);
+  const history = offersTools ? params.messages : withoutToolHistory(params.messages);
+  // A reply's citations ride on its message for OpenRouter; another server
+  // never sent them and may refuse the key.
+  const messages = allowExtensions ? history : withoutAnnotations(history);
   const body: OpenRouterChatRequest = {
     model: params.model,
     messages: allow('promptCaching') ? messages : stripCacheControl(messages),
