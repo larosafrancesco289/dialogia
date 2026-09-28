@@ -56,6 +56,24 @@ async function streamChunks(chunks: unknown[], callbacks: StreamCallbacks = {}) 
 
 const delta = (value: Record<string, unknown>) => ({ choices: [{ delta: value }] });
 
+test("every chunk's annotations are kept, each citation once", async () => {
+  const cite = (url: string) => ({ type: 'url_citation', url_citation: { url, title: url } });
+  const seen: unknown[] = [];
+  const extras = await streamChunks(
+    [
+      delta({ content: 'One', annotations: [cite('https://a.test')] }),
+      delta({ content: ' two', annotations: [cite('https://a.test'), cite('https://b.test')] }),
+      delta({ content: '.', annotations: [cite('https://b.test')] }),
+      { choices: [{ delta: {}, finish_reason: 'stop' }] },
+    ],
+    { onAnnotations: (annotations) => seen.push(annotations) },
+  );
+  const both = [cite('https://a.test'), cite('https://b.test')];
+  assert.deepEqual(extras?.annotations, both);
+  // Told again only when the set grew, and always the whole set.
+  assert.deepEqual(seen, [[cite('https://a.test')], both]);
+});
+
 test('reasoning_details streamed in fragments add up to the whole signed blocks', async () => {
   const text = (value: string, index: number) => ({
     type: 'reasoning.text',

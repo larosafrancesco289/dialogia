@@ -1,5 +1,6 @@
 import { buildChatBody } from '@/lib/openrouter/request';
 import { endpointBodyOptions, endpointWireModelId } from '@/lib/openrouter/endpointBody';
+import { mergeAnnotations } from '@/lib/api/annotations';
 import { ApiError, API_ERROR_CODES, throwForStatus } from '@/lib/api/errors';
 import { normalizeUsage, shouldIncludeUsage, type Usage } from '@/lib/api/normalizers';
 import { consumeSse, type SseEvent } from '@/lib/api/stream';
@@ -85,7 +86,7 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
 
   let full = '';
   let usage: Usage | undefined;
-  let annotations: unknown;
+  let annotations: unknown[] = [];
   let finishReason: FinishReason | undefined;
   const reasoningDetails: Array<Record<string, unknown>> = [];
   let reasoningTail = '';
@@ -161,9 +162,12 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
       mergeReasoningDetails(reasoningDetails, deltaReasoningDetails);
 
       const ann = delta?.annotations ?? message?.annotations;
-      if (ann !== undefined && annotations === undefined) {
-        annotations = ann;
-        callbacks?.onAnnotations?.(ann);
+      if (ann !== undefined) {
+        const merged = mergeAnnotations(annotations, ann);
+        if (merged.length > annotations.length) {
+          annotations = merged;
+          callbacks?.onAnnotations?.(merged);
+        }
       }
 
       emitImages(delta?.images);
@@ -264,7 +268,7 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
   const toolCalls = buildToolCalls(toolCallAccumulator);
   await callbacks?.onDone?.(full, {
     usage,
-    annotations,
+    annotations: annotations.length > 0 ? annotations : undefined,
     finishReason,
     toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
     reasoningDetails: reasoningDetails.length > 0 ? reasoningDetails : undefined,
