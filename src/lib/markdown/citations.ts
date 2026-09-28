@@ -59,13 +59,24 @@ function markdownUrl(url: string) {
   return `<${url.replace(/>/g, '%3E')}>`;
 }
 
+// One [n] marker, or several side by side ("[2][4]", "[2] [4]"), not a link's text.
+// A grouped "[1, 2]" is left alone: in maths it is as likely an interval.
+const CITATION_RUN = /\[\d+\](?:[ \t]*\[\d+\])*(?!\()/g;
+
+/**
+ * Turns [n] markers into links to the nth source. Markers side by side are
+ * joined by a comma: as links they show only their numbers, and "[2][4]"
+ * would read as 24.
+ */
 export function linkCitationMarkers(content: string, sources?: MarkdownCitationSource[]) {
   if (!sources?.length) return content;
-  return content.replace(/\[(\d+)\](?!\()/g, (match, rawIndex: string) => {
-    const index = Number(rawIndex);
-    if (!Number.isInteger(index) || index < 1) return match;
-    const source = sources[index - 1];
-    if (!source?.url) return match;
-    return `[${rawIndex}](${markdownUrl(source.url)})`;
+  return content.replace(CITATION_RUN, (run) => {
+    const markers = run.match(/\d+/g) ?? [];
+    const linked = markers.map((rawIndex) => {
+      const source = sources[Number(rawIndex) - 1];
+      return source?.url ? `[${rawIndex}](${markdownUrl(source.url)})` : undefined;
+    });
+    if (linked.every((link) => link === undefined)) return run;
+    return linked.map((link, i) => link ?? `[${markers[i]}]`).join(', ');
   });
 }

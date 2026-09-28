@@ -98,7 +98,27 @@ test("a tool-based search's own entry wins over annotations", () => {
   );
 });
 
+test("a tool-based search's kept list wins over annotations, in order and with its gaps", () => {
+  const searchSources = [
+    { url: 'https://one.test', title: 'One' },
+    { title: 'No link' },
+    'junk',
+    { url: 'https://four.test' },
+  ];
+  const sources = resolveMessageSources({ searchSources, annotations: nativeAnnotations });
+  assert.equal(sources?.status, 'done');
+  assert.deepEqual(sources?.results, [
+    { url: 'https://one.test', title: 'One' },
+    { title: 'No link' },
+    {},
+    { url: 'https://four.test' },
+  ]);
+  // After a reload, [4] still points at the fourth thing the search found.
+  assert.equal(linkCitationMarkers('Yes [4].', sources?.results), 'Yes [4](<https://four.test>).');
+});
+
 test('no search, no sources', () => {
   assert.equal(resolveMessageSources({ annotations: [] }), undefined);
   assert.equal(resolveMessageSources({}), undefined);
+  assert.equal(resolveMessageSources({ searchSources: [] }), undefined);
 });

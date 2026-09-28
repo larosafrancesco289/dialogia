@@ -12,6 +12,7 @@ const VERSION_KEYS = Object.keys({
   systemSnapshot: true,
   genSettings: true,
   annotations: true,
+  searchSources: true,
   finishReason: true,
   stopPolicy: true,
   cutOff: true,
