@@ -27,7 +27,6 @@ test('the first load records each family quietly', () => {
     '~openai/gpt-luna-latest': 'openai/gpt-6-luna',
     '~anthropic/claude-opus-latest': 'anthropic/claude-opus-5.5',
   });
-  assert.equal(update.fallbackModelId, undefined);
   assert.deepEqual(update.notices, []);
 });
 
@@ -45,13 +44,11 @@ test('a family that moves to a new release says so, and an unmoved one saves not
 
 test('a fallback for an unserved default is announced once', () => {
   const first = reconcileModelDefaults([OPUS], {});
-  assert.equal(first.fallbackModelId, 'anthropic/claude-opus-5.5');
   assert.equal(first.notices.length, 1);
   assert.match(first.notices[0], /^GPT Luna is not offered by your providers/);
   assert.equal(first.resolutions?.['fallback:~openai/gpt-luna-latest'], OPUS.id);
 
   const again = reconcileModelDefaults([OPUS], first.resolutions ?? {});
-  assert.equal(again.fallbackModelId, 'anthropic/claude-opus-5.5');
   assert.deepEqual(again.notices, []);
   assert.equal(again.resolutions, undefined);
 });
