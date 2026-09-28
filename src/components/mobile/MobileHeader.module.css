@@ -19,22 +19,10 @@
   -webkit-touch-callout: none;
 }
 
+/* The shared icon button (styles/components/buttons.css) in full ink: on
+   the phone these two are the way around the app, not quiet tools. */
 .iconButton {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-editorial);
-  background: transparent;
   color: var(--color-fg);
-  cursor: pointer;
-}
-
-.iconButton:active {
-  background: color-mix(in oklab, var(--color-fg) 6%, transparent);
 }
 
 .center {
@@ -106,4 +94,10 @@
   bottom: -1px;
   height: 1px;
   background: color-mix(in oklab, var(--color-accent) 70%, transparent);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+
+.activityBar[data-live='true'] {
+  opacity: 1;
 }

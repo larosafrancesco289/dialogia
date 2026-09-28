@@ -19,7 +19,7 @@ const ICONS = {
   error: ExclamationCircleIcon,
 } as const;
 
-/** A toast: a slip of paper with a hairline. Only a problem carries the crimson mark. */
+/** A toast: a slip of paper with a hairline, its tone ruled down the left edge. */
 export function InlineNotice({ message, onDismiss, tone = 'info', className }: InlineNoticeProps) {
   if (!message) return null;
   const isAlert = tone === 'error';
@@ -29,7 +29,7 @@ export function InlineNotice({ message, onDismiss, tone = 'info', className }: I
       role={isAlert ? 'alert' : 'status'}
       aria-live={isAlert ? 'assertive' : 'polite'}
       aria-atomic="true"
-      className={`toast${isAlert ? ' toast--error' : ''}${className ? ` ${className}` : ''}`}
+      className={`toast toast--${tone}${className ? ` ${className}` : ''}`}
     >
       <Icon className="toast__icon" aria-hidden="true" />
       <div className="toast__message">{message}</div>

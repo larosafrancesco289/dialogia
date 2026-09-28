@@ -169,7 +169,7 @@ export function ResponseContextPanel({
               <div className="response-ledger__foot">
                 <button
                   type="button"
-                  className={`response-ledger__copy${copied ? ' is-success' : ''}`}
+                  className={`icon-button response-ledger__copy${copied ? ' is-success' : ''}`}
                   aria-label={copied ? 'Copied' : 'Copy reasoning'}
                   title={copied ? 'Copied' : 'Copy reasoning'}
                   onClick={copyReasoning}

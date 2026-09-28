@@ -220,15 +220,10 @@
     background: color-mix(in oklab, var(--color-fg) 6%, transparent);
     color: var(--color-fg);
   }
+  /* The shared icon button, fitted to the bar. */
   .code-block__bar .icon-button {
     width: 26px;
     height: 26px;
-    border-color: transparent;
-    opacity: 1;
-  }
-  .code-block__bar .icon-button:hover {
-    background: color-mix(in oklab, var(--color-fg) 6%, transparent);
-    box-shadow: none;
   }
   .markdown pre {
     position: relative;

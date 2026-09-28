@@ -78,7 +78,7 @@ export function ActionButton({
   return (
     <button
       type="button"
-      className={`message-action-btn ${showFeedback ? 'is-success' : ''} ${className ?? ''}`.trim()}
+      className={`icon-button icon-button--sm ${showFeedback ? 'is-success' : ''} ${className ?? ''}`.trim()}
       aria-label={ariaLabel ?? title}
       title={title}
       onClick={onClick}

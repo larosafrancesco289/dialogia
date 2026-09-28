@@ -1,13 +1,19 @@
 @layer components {
   /* Icon button: bare until hovered. Pressed is a setting, so it darkens in
-     ink instead of turning gold. */
+     ink instead of turning gold. One base in three sizes: 28px (--sm, 16px
+     glyph) for rows and footers, 32px by default, 36px (--lg, 20px glyph)
+     for the app's chrome. A place that needs a tighter fit (a code block's
+     bar, the reasoning ledger) sets only the box. On a phone the touch
+     floor in mobile.css takes every one to 44px. */
   .icon-button {
     height: 32px;
     width: 32px;
+    padding: 0;
     border-radius: var(--radius-editorial);
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
     border: 1px solid transparent;
     background: transparent;
     color: var(--color-fg-muted);
@@ -25,9 +31,21 @@
     width: 16px;
     height: 16px;
   }
-  .icon-button:hover {
-    background: color-mix(in oklab, var(--color-fg) 5%, transparent);
-    color: var(--color-fg);
+  .icon-button--lg {
+    height: 36px;
+    width: 36px;
+  }
+  .icon-button--lg svg {
+    width: 20px;
+    height: 20px;
+  }
+  /* Only where there is a pointer to hover with: a tap would leave the tint
+     stuck on. A finger gets the pressed tint instead (mobile.css). */
+  @media (hover: hover) {
+    .icon-button:hover:where(:not(:disabled)) {
+      background: color-mix(in oklab, var(--color-fg) 5%, transparent);
+      color: var(--color-fg);
+    }
   }
   .icon-button:focus-visible {
     box-shadow: 0 0 0 2px var(--focus-ring);
@@ -39,6 +57,13 @@
   .icon-button[aria-pressed='true'] {
     background: color-mix(in oklab, var(--color-fg) 7%, transparent);
     color: var(--color-fg);
+  }
+  /* Copied: the check in ink. Green is kept for grading a right answer. */
+  .icon-button.is-success {
+    color: var(--color-fg);
+  }
+  .icon-button.is-success svg {
+    animation: fade-in var(--duration-fast) var(--ease-standard) both;
   }
 
   /* Rotate settings gear when drawer is open */

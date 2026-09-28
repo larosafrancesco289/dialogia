@@ -34,13 +34,14 @@ export function MobileHeader({
 
   return (
     <header className={styles.header}>
-      {/* The live gold thread under the head while a reply is coming in. */}
-      {isStreaming && <div className={`${styles.activityBar} motion-fade`} />}
+      {/* The live gold thread under the head while a reply is coming in.
+          Always there, so it can fade out as it faded in. */}
+      <div className={styles.activityBar} data-live={isStreaming} aria-hidden="true" />
 
       <button
         ref={menuButtonRef}
         type="button"
-        className={styles.iconButton}
+        className={`icon-button icon-button--lg ${styles.iconButton}`}
         onClick={onOpenDrawer}
         aria-label="Open chats"
         aria-expanded={drawerOpen}
@@ -59,7 +60,12 @@ export function MobileHeader({
         )}
       </div>
 
-      <button type="button" className={styles.iconButton} onClick={onNewChat} aria-label="New chat">
+      <button
+        type="button"
+        className={`icon-button icon-button--lg ${styles.iconButton}`}
+        onClick={onNewChat}
+        aria-label="New chat"
+      >
         <PlusIcon className="h-5 w-5" aria-hidden="true" />
       </button>
     </header>
