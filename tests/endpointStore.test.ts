@@ -5,8 +5,11 @@ import { parseCustomEndpoints } from '@/lib/store/endpointSlice';
 import { listEndpoints, resetEndpointRegistryForTest } from '@/lib/transport/endpointRegistry';
 import { requireEndpointAuth } from '@/lib/auth/require';
 import { deleteKey, getKey, setKey } from '@/lib/keys/store';
+import { resolveDefaultModelId } from '@/lib/models';
+import { selectResolvedModelId, selectResolvedTurnSettings } from '@/lib/store/selectors';
 import { mockFetch } from './helpers/mockFetch';
 import { createTestStore } from './helpers/createTestStoreState';
+import { makeChat } from './helpers/makeChat';
 
 test('an added endpoint reaches the registry the request path reads', () => {
   resetEndpointRegistryForTest();
@@ -111,6 +114,34 @@ test('a keyless OpenAI-compatible endpoint is callable and contributes models', 
   );
   // A usable endpoint means there is nothing for the setup sheet to ask for.
   assert.notEqual(store.getState().ui.setupOpen, true);
+});
+
+test('on a local server alone, the composer and header name the open chat model after a load', async () => {
+  resetEndpointRegistryForTest();
+  const store = createTestStore();
+  store.getState().addEndpoint({
+    kind: 'openai-compatible',
+    label: 'Ollama',
+    baseUrl: 'http://localhost:11434/v1',
+    modelIds: ['qwen3:8b', 'llama3.1:8b'],
+  });
+  // Not the first model, which is what new chats fall back to without GPT Luna.
+  const chat = makeChat({ settings: { modelId: 'endpoint:ollama/llama3.1:8b' } });
+  store.setState({ chats: [chat], selectedChatId: chat.id });
+
+  const restore = mockFetch((async () => new Response('not found', { status: 404 })) as never);
+  try {
+    await store.getState().loadModels();
+  } finally {
+    restore();
+  }
+
+  const state = store.getState();
+  assert.match(state.ui.notice ?? '', /new chats start with/);
+  // The header reads the chat's settings; the composer and the turn read these.
+  const fallback = resolveDefaultModelId(state.models);
+  assert.equal(selectResolvedModelId(fallback)(state), chat.settings.modelId);
+  assert.equal(selectResolvedTurnSettings(state)?.modelId, chat.settings.modelId);
 });
 
 test('removing an endpoint removes its key so a reused slug cannot inherit it', async () => {

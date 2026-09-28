@@ -1,6 +1,6 @@
 // Module: models/defaultResolutions
 // Responsibility: After a model load, record where each curated family resolves
-// and which model new chats fall back to, with a notice for each that moved.
+// and announce the model new chats fall back to, with a notice for each that moved.
 
 import { CURATED_MODELS } from '@/data/curatedModels';
 import { DEFAULT_MODEL_ID, DEFAULT_MODEL_NAME } from '@/lib/constants';
@@ -15,8 +15,6 @@ type Resolutions = Record<string, string>;
 type ModelDefaultsUpdate = {
   /** The record to save, when it differs from `previous`. */
   resolutions?: Resolutions;
-  /** The model new chats start with, when the default is not served. */
-  fallbackModelId?: string;
   notices: string[];
 };
 
@@ -51,10 +49,8 @@ export function reconcileModelDefaults(
     }
   }
 
-  let fallbackModelId: string | undefined;
   if (!availableIds.has(resolveDynamicModelId(DEFAULT_MODEL_ID, models))) {
     const fallback = findModelById(models, resolveDefaultModelId(models)) ?? models[0];
-    fallbackModelId = fallback.id;
     const announcedKey = `fallback:${DEFAULT_MODEL_ID}`;
     if (next[announcedKey] !== fallback.id) {
       const fallbackLabel = formatModelLabel({ model: fallback, fallbackId: fallback.id });
@@ -66,5 +62,5 @@ export function reconcileModelDefaults(
   }
 
   const changed = Object.keys(next).some((key) => next[key] !== previous[key]);
-  return { ...(changed ? { resolutions: next } : {}), fallbackModelId, notices };
+  return { ...(changed ? { resolutions: next } : {}), notices };
 }

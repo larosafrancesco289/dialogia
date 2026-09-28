@@ -95,6 +95,7 @@ export function createMessageSlice(
           metadata: opts?.metadata,
           ledger: opts?.ledger,
           onStarted: release,
+          mayStart: () => !busyInOtherTab(chatId),
           set,
           get,
           repository,
@@ -175,9 +176,17 @@ export function createMessageSlice(
     },
 
     async regenerateAssistantMessage(messageId, opts) {
-      if (busyInOtherTab(get().messagesById[messageId]?.chatId)) return;
+      const chatId = get().messagesById[messageId]?.chatId;
+      if (busyInOtherTab(chatId)) return;
       const { regenerateTurn } = await loadTurnService();
-      await regenerateTurn({ messageId, overrideModelId: opts?.modelId, set, get, repository });
+      await regenerateTurn({
+        messageId,
+        overrideModelId: opts?.modelId,
+        mayStart: () => !busyInOtherTab(chatId),
+        set,
+        get,
+        repository,
+      });
     },
   } satisfies Partial<StoreState>;
 }
