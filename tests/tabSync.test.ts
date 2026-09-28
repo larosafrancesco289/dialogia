@@ -7,9 +7,11 @@ import { createAssistantMessage, createUserMessage } from '@/lib/messages/create
 import { appendMessagesToChat, getMessagesForChat } from '@/lib/messages/indexing';
 import { adjustActiveTurnCount, clearActiveTurnCount, replyInProgress } from '@/lib/ui/streaming';
 import { NOTICE_REPLY_IN_OTHER_TAB } from '@/lib/store/notices';
+import { resetEndpointRegistryForTest } from '@/lib/transport/endpointRegistry';
 import type { Chat, Message } from '@/lib/types';
 import { createFakeBus } from './helpers/fakeTabBus';
 import { makeChat } from './helpers/makeChat';
+import { mockFetch } from './helpers/mockFetch';
 import { createTestStore } from './helpers/createTestStoreState';
 
 let counter = 0;
@@ -300,6 +302,49 @@ test('a reply another tab is writing shows as in progress, never as cut off, and
     assert.equal(after.messagesById[reply.id].cutOff, undefined);
   } finally {
     tabs.close();
+  }
+});
+
+test('a send still loading when another tab starts a reply in the chat is not sent', async () => {
+  resetEndpointRegistryForTest();
+  const chat = makeChat({
+    id: uniqueId('chat'),
+    settings: { modelId: 'endpoint:ollama/qwen3:8b' },
+  });
+  await repository.saveChat(chat);
+  const tabs = twoTabs([chat]);
+  // A keyless local server: the send in B could go all the way if nothing stopped it.
+  tabs.b.store.getState().addEndpoint({
+    kind: 'openai-compatible',
+    label: 'Ollama',
+    baseUrl: 'http://localhost:11434/v1',
+    modelIds: ['qwen3:8b'],
+  });
+  let finishLoading: () => void = () => undefined;
+  const loading = new Promise<void>((resolve) => {
+    finishLoading = resolve;
+  });
+  tabs.b.store.setState({ selectedChatId: chat.id, ensureChatMessagesLoaded: () => loading });
+  const restore = mockFetch((async () => new Response('down', { status: 500 })) as never);
+  try {
+    // B passes the first check, then spends a moment loading.
+    const sending = tabs.b.store.getState().sendUserMessage('me first?');
+
+    const question = createUserMessage({ chatId: chat.id, content: 'why?', createdAt: 1 });
+    const reply = createAssistantMessage({ chatId: chat.id, content: '', createdAt: 2 });
+    startTurn(tabs.a.store, chat.id, [question, reply]);
+    await repository.saveMessages([question, reply]);
+    tabs.a.channel.post({ kind: 'messages', chatId: chat.id, ids: [question.id, reply.id] });
+    await tabs.settle();
+
+    finishLoading();
+    await sending;
+    assert.deepEqual(messageIds(tabs.b.store, chat.id), [question.id, reply.id], 'not sent');
+    assert.equal(tabs.b.store.getState().ui.notice, NOTICE_REPLY_IN_OTHER_TAB);
+  } finally {
+    restore();
+    tabs.close();
+    resetEndpointRegistryForTest();
   }
 });
 
