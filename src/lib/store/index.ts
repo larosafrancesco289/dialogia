@@ -12,6 +12,7 @@ import {
 } from '@/lib/store/persistence';
 import { connectTabSync } from '@/lib/store/tabSync';
 import { tabChannel } from '@/lib/sync/tabChannel';
+import { chatPresence } from '@/lib/sync/chatPresence';
 
 export const PERSISTED_STORE_KEY = 'dialogia-ui';
 
@@ -55,4 +56,8 @@ if (typeof window !== 'undefined') {
   // announces what it wrote to IndexedDB, and this one reads it back.
   const tabSync = connectTabSync(useChatStore, tabChannel);
   window.addEventListener('pagehide', tabSync.pageHidden);
+
+  // The chat open here is one the other tabs must not tidy away.
+  chatPresence.hold(useChatStore.getState().selectedChatId);
+  useChatStore.subscribe((state) => chatPresence.hold(state.selectedChatId));
 }
