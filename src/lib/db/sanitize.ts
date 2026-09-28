@@ -2,8 +2,10 @@ import type {
   Message,
   MessageToolRound,
   MessageToolRoundCall,
+  ReplyVersion,
   TutorEventRecord,
 } from '@/lib/types';
+import { shownVersionIndex, versionOf } from '@/lib/messages/versions';
 
 const REMOVED_MESSAGE_KEYS = ['deepResearch'] as const;
 
@@ -93,6 +95,17 @@ export function sanitizeMessageRecord(message: Message): { next: Message; change
     }
   }
 
+  if ('versions' in next || 'versionIndex' in next) {
+    const versions = sanitizeVersions(next);
+    if (versions.changed) changed = true;
+    delete next.versions;
+    delete next.versionIndex;
+    if (versions.value.length) {
+      next.versions = versions.value;
+      if (versions.index !== undefined) next.versionIndex = versions.index;
+    }
+  }
+
   if ('ledger' in next && (next.ledger !== true || next.role !== 'user')) {
     delete next.ledger;
     changed = true;
@@ -130,6 +143,41 @@ export function sanitizeMessageRecord(message: Message): { next: Message; change
 }
 
 const isString = (value: unknown): value is string => typeof value === 'string';
+
+/**
+ * A reply's other versions, each cleaned as a message is, and the shown one's
+ * place among them. A version without text is dropped, and a place that no
+ * longer fits reads as last.
+ */
+function sanitizeVersions(message: Message): {
+  value: ReplyVersion[];
+  index?: number;
+  changed: boolean;
+} {
+  const raw: unknown[] = Array.isArray(message.versions) ? message.versions : [];
+  let changed = !Array.isArray(message.versions) && 'versions' in message;
+  const value: ReplyVersion[] = [];
+  for (const entry of raw) {
+    if (message.role !== 'assistant' || !entry || typeof entry !== 'object') {
+      changed = true;
+      continue;
+    }
+    const version = entry as ReplyVersion;
+    if (!isString(version.content)) {
+      changed = true;
+      continue;
+    }
+    const { id, chatId, role, createdAt } = message;
+    const cleaned = sanitizeMessageRecord({ ...version, id, chatId, role, createdAt });
+    if (cleaned.changed) changed = true;
+    value.push(versionOf(cleaned.next));
+  }
+  if (!value.length && 'versions' in message) changed = true;
+  const at = shownVersionIndex({ ...message, versions: value });
+  const index = at < value.length ? at : undefined;
+  if (index !== message.versionIndex) changed = true;
+  return { value, index, changed };
+}
 
 function normalizeToolRoundCall(value: unknown): MessageToolRoundCall | undefined {
   if (!value || typeof value !== 'object') return undefined;

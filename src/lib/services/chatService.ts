@@ -9,6 +9,7 @@ import type { UIState } from '@/lib/store/types';
 import { DEFAULT_BASE_SYSTEM } from '@/lib/settings/baseSystem';
 import { resolveNewChatSettings } from '@/lib/settings/resolve';
 import { decorateMessage } from '@/lib/messages/decorate';
+import { onlyShownVersion } from '@/lib/messages/versions';
 
 export const DEFAULT_CHAT_TITLE = 'New chat';
 
@@ -119,9 +120,10 @@ export class ChatService {
       folderId: sourceChat.folderId,
     };
 
+    // A reply goes as the version shown: the branch continues from that one.
     const cloned = slice.map((m) =>
       decorateMessage({
-        ...m,
+        ...onlyShownVersion(m),
         id: uuidv4(),
         chatId: newChatId,
       }),
