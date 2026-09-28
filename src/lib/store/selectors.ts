@@ -60,6 +60,23 @@ export const selectIsTutorEnabled = (state: StoreState) =>
 export const selectIsTutorEnabledForChat = (chatId?: string) => (state: StoreState) =>
   resolveTutorEnabled(state, chatId ? state.chats.find((chat) => chat.id === chatId) : undefined);
 
+/**
+ * The setup sheet is showing: it was opened, and not merely by itself on a
+ * load after the visitor put it away (`ui.setupDismissed`).
+ */
+export const selectSetupSheetOpen = (state: StoreState) =>
+  state.ui.setupOpen === true && state.ui.setupDismissed !== true;
+
+/**
+ * The first-run tour is showing: not seen yet, and setup has had its turn
+ * (the sheet put away, or a provider already connected), so a first visit
+ * meets the key field first and the two dialogs never stack.
+ */
+export const selectIntroTourOpen = (state: StoreState) =>
+  state.ui.introSeen !== true &&
+  !selectSetupSheetOpen(state) &&
+  (state.ui.setupDismissed === true || state.models.length > 0);
+
 export const selectNotice = (state: StoreState) => state.ui.notice;
 export const selectNoticeTone = (state: StoreState) => state.ui.noticeTone ?? 'error';
 

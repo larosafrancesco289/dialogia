@@ -149,7 +149,7 @@ export function ModelPicker({
   const setUI = useChatStore((s) => s.setUI);
   const connect = () => {
     close();
-    setUI({ setupOpen: true });
+    setUI({ setupOpen: true, setupDismissed: false });
   };
 
   // Closing (Escape, a pick, a click away) hands focus back to the trigger

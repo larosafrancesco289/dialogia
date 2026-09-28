@@ -19,6 +19,7 @@ export function buildDefaultUIState(overrides?: Partial<UIState>): UIState {
     notice: undefined,
     sidebarCollapsed: false,
     introSeen: false,
+    setupDismissed: false,
     ...EPHEMERAL_DEFAULTS,
     zdrOnly: getDefaultZdrOnly(),
     chatDefaults: undefined,

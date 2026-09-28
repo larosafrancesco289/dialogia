@@ -9,7 +9,11 @@ import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
 import { useAppBootstrap } from '@/lib/hooks/useAppBootstrap';
 import { useAmbientMotionPause } from '@/lib/hooks/useAmbientMotionPause';
-import { selectIsTutorEnabled } from '@/lib/store/selectors';
+import {
+  selectIntroTourOpen,
+  selectIsTutorEnabled,
+  selectSetupSheetOpen,
+} from '@/lib/store/selectors';
 import { selectRightPanelContent } from '@/lib/modules';
 import { MotionConfig } from 'framer-motion';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
@@ -49,8 +53,8 @@ export function HomeClient() {
     (s) => ({
       collapsed: s.ui.sidebarCollapsed ?? false,
       isSettingsOpen: s.ui.showSettings,
-      isSetupOpen: s.ui.setupOpen === true,
-      isIntroOpen: s.ui.introSeen !== true,
+      isSetupOpen: selectSetupSheetOpen(s),
+      isIntroOpen: selectIntroTourOpen(s),
       tutorActive: selectIsTutorEnabled(s),
       rightPanelOpen: s.ui.plan?.rightPanelOpen ?? false,
       hasPlan: selectRightPanelContent(s),
@@ -128,9 +132,8 @@ export function HomeClient() {
             <ChatPane />
           </div>
           {isSettingsOpen && <SettingsDrawer />}
-          {/* The tour defers the setup sheet rather than stacking on it: a
-              first-time visitor should meet one dialog, then the next. */}
-          {isSetupOpen && !isIntroOpen && <SetupSheet />}
+          {/* Never both: setup comes first, the tour once it is settled. */}
+          {isSetupOpen && <SetupSheet />}
           {isIntroOpen && <IntroTour />}
           <GlobalNotice />
         </main>

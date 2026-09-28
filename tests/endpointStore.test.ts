@@ -6,10 +6,16 @@ import { listEndpoints, resetEndpointRegistryForTest } from '@/lib/transport/end
 import { requireEndpointAuth } from '@/lib/auth/require';
 import { deleteKey, getKey, setKey } from '@/lib/keys/store';
 import { resolveDefaultModelId } from '@/lib/models';
-import { selectResolvedModelId, selectResolvedTurnSettings } from '@/lib/store/selectors';
+import {
+  selectIntroTourOpen,
+  selectResolvedModelId,
+  selectResolvedTurnSettings,
+  selectSetupSheetOpen,
+} from '@/lib/store/selectors';
 import { mockFetch } from './helpers/mockFetch';
 import { createTestStore } from './helpers/createTestStoreState';
 import { makeChat } from './helpers/makeChat';
+import { resolveSingleModelAuth } from '@/lib/services/auth';
 
 test('an added endpoint reaches the registry the request path reads', () => {
   resetEndpointRegistryForTest();
@@ -205,4 +211,54 @@ test('with nothing configured, loading models opens the setup sheet, but not ove
   inSettings.getState().setUI({ showSettings: true });
   await inSettings.getState().loadModels();
   assert.notEqual(inSettings.getState().ui.setupOpen, true);
+});
+
+test('a dismissed setup sheet stays shut on the next load, until a send asks for it', async () => {
+  resetEndpointRegistryForTest();
+  const first = createTestStore();
+  await first.getState().loadModels();
+  assert.equal(selectSetupSheetOpen(first.getState()), true);
+  // Not now.
+  first.getState().setUI({ setupOpen: false, setupDismissed: true });
+
+  // A reload: the dismissal is persisted, and the load that opens the sheet by itself is quiet.
+  const reloaded = createTestStore();
+  reloaded.setState(
+    mergePersistedState(reloaded.getState(), buildPersistedState(first.getState()) as never),
+  );
+  await reloaded.getState().loadModels();
+  assert.equal(selectSetupSheetOpen(reloaded.getState()), false);
+
+  // Sending with no key is asking for it.
+  const auth = resolveSingleModelAuth({
+    modelId: 'openai/gpt-4o',
+    modelIndex: reloaded.getState().modelIndex,
+    set: reloaded.setState,
+    get: reloaded.getState,
+  });
+  assert.equal(auth, null);
+  assert.equal(selectSetupSheetOpen(reloaded.getState()), true);
+});
+
+test('a first visit meets the setup sheet, then the tour, never both at once', async () => {
+  resetEndpointRegistryForTest();
+  const store = createTestStore();
+  const showing = () => ({
+    setup: selectSetupSheetOpen(store.getState()),
+    tour: selectIntroTourOpen(store.getState()),
+  });
+  // Before the models load, nothing is known yet: the tour waits for setup.
+  assert.deepEqual(showing(), { setup: false, tour: false });
+  await store.getState().loadModels();
+  assert.deepEqual(showing(), { setup: true, tour: false });
+  store.getState().setUI({ setupOpen: false, setupDismissed: true });
+  assert.deepEqual(showing(), { setup: false, tour: true });
+  store.getState().setUI({ introSeen: true });
+  assert.deepEqual(showing(), { setup: false, tour: false });
+});
+
+test('with a provider already connected, the tour needs no setup first', () => {
+  const store = createTestStore();
+  store.setState({ models: [{ id: 'openai/gpt-4o' } as never] });
+  assert.equal(selectIntroTourOpen(store.getState()), true);
 });

@@ -67,7 +67,10 @@ export type NoticeTone = 'info' | 'success' | 'error';
 
 export type UiSnapshot = {
   showSettings: boolean;
-  /** First-run provider setup sheet; session-scoped, never persisted. */
+  /**
+   * The provider setup sheet was opened; session-scoped, never persisted. It
+   * shows unless the visitor dismissed it (see `selectSetupSheetOpen`).
+   */
   setupOpen?: boolean;
   /**
    * The sidebar is folded because the window is phone-width, not because the
