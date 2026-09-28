@@ -57,6 +57,15 @@ export function focusWasDropped(): boolean {
 }
 
 /**
+ * Where focus goes to reach `el`: `el` itself if it takes focus, else the
+ * first stop inside it (a folder row, whose control is a button within).
+ */
+function focusTargetIn(el: Element | null | undefined): HTMLElement | undefined {
+  if (!canFocus(el)) return undefined;
+  return el.matches(TABBABLE) ? el : tabbableIn(el)[0];
+}
+
+/**
  * After something that held focus goes away: a frame later, when the page has
  * settled, and only if focus went with it, the first candidate that can take
  * focus gets it. Candidates are looked up then, so a row that renders in that
@@ -66,9 +75,9 @@ export function refocusIfDropped(...candidates: (() => Element | null | undefine
   requestAnimationFrame(() => {
     if (!focusWasDropped()) return;
     for (const candidate of candidates) {
-      const el = candidate();
-      if (canFocus(el)) {
-        el.focus({ preventScroll: true });
+      const target = focusTargetIn(candidate());
+      if (target) {
+        target.focus({ preventScroll: true });
         return;
       }
     }

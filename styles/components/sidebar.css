@@ -88,7 +88,7 @@
      keep their actions out, so a tap on a row is all it takes to reach them. */
   @media (hover: none) and (pointer: coarse) {
     .chat-item.selected .chat-item__actions,
-    .folder-row[aria-expanded='true'] .chat-item__actions {
+    .folder-row.is-expanded .chat-item__actions {
       opacity: 1;
       pointer-events: auto;
     }
@@ -214,6 +214,18 @@
 .sidebar-section .input {
   background: color-mix(in oklab, var(--color-fg) 4%, transparent);
   border-color: transparent;
+}
+
+/* A folder folds by a button inside its row, beside the row's actions. The
+   row wears the ring, as a chat row does. Unlayered, like the global
+   :focus-visible it replaces. */
+.folder-row__toggle:focus-visible {
+  outline: none;
+}
+.folder-row:has(> .folder-row__toggle:focus-visible) {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  box-shadow: inset 0 0 0 2px var(--focus-ring);
 }
 
 /* Rename in place: the row's own type on a faint tint, the focus ring as its

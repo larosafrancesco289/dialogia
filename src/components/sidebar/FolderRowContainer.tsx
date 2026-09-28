@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { useDragAndDrop } from '@/lib/dragDrop';
@@ -80,6 +80,7 @@ export function FolderRowContainer({
     ? children.folders.filter((sub) => folderHasMatch(folderTreeIndex, sub, query))
     : children.folders;
   const isOpen = folder.isExpanded || !!query;
+  const listId = useId();
   const revealClass = useRevealOnOpen(isOpen);
   const childQuery = nameMatches ? '' : query;
 
@@ -105,6 +106,7 @@ export function FolderRowContainer({
     <div data-row-press>
       <FolderRowView
         folderId={folder.id}
+        listId={listId}
         name={folder.name}
         count={children.chats.length}
         depth={depth}
@@ -189,7 +191,7 @@ export function FolderRowContainer({
 
       {isOpen && (
         // Eases open like the reasoning line, instead of snapping.
-        <div className={revealClass}>
+        <div id={listId} className={revealClass}>
           <div>
             {subFolders.map((subFolder) => (
               <FolderRowContainer
