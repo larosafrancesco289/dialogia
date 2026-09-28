@@ -39,6 +39,8 @@ export type MessageCardViewData = MessageCardViewModel & {
   onBranch: () => void;
   onChooseRegenerateModel: (modelId?: string) => void;
   canRedo: boolean;
+  canSwitchVersion: boolean;
+  onDeleteVersion: (messageId: string) => void;
   onPointerDown?: PointerEventHandler<HTMLDivElement>;
   onPointerMove?: PointerEventHandler<HTMLDivElement>;
   onPointerUp?: PointerEventHandler<HTMLDivElement>;
@@ -80,6 +82,8 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
     onBranch,
     onChooseRegenerateModel,
     canRedo,
+    canSwitchVersion,
+    onDeleteVersion,
     onPointerDown,
     onPointerMove,
     onPointerUp,
@@ -192,6 +196,8 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
           branchFromMessage={onBranch}
           onChooseRegenerateModel={onChooseRegenerateModel}
           canRedo={canRedo}
+          canSwitchVersion={canSwitchVersion}
+          onDeleteVersion={onDeleteVersion}
           setLightbox={setLightbox}
           attachments={attachments}
           tutorEnabled={tutorEnabled}
