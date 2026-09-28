@@ -11,7 +11,6 @@ import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
 import { getTransportClient } from '@/lib/transport/registry';
 import { listEndpoints } from '@/lib/transport/endpointRegistry';
 import { NOTICE_INVALID_KEY, NOTICE_MODELS_UNAVAILABLE } from '@/lib/store/notices';
-import { applyNextOverrides, readNextOverrides } from '@/lib/ui/next';
 import { notify } from '@/lib/store/notify';
 import type { ModelDescriptor } from '@/lib/types';
 
@@ -163,7 +162,7 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
             mergedModels,
             get().ui.dynamicDefaultResolutions ?? {},
           );
-          const { resolutions, fallbackModelId } = defaults;
+          const { resolutions } = defaults;
           noticeSegments.push(...defaults.notices);
           if (resolutions) {
             set((s) => ({ ui: { ...s.ui, dynamicDefaultResolutions: resolutions } }));
@@ -193,21 +192,11 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
             notify(get, ZDR_UNAVAILABLE_NOTICE);
           }
 
-          if (noticeSegments.length > 0 || fallbackModelId) {
-            set((s) => ({
-              ui: (() => {
-                const nextOverrides = readNextOverrides(s.ui);
-                const modelOverride = nextOverrides.modelId ?? fallbackModelId;
-                const updatedUi = modelOverride
-                  ? applyNextOverrides(s.ui, { modelId: modelOverride })
-                  : s.ui;
-                return updatedUi;
-              })(),
-            }));
-            if (noticeSegments.length > 0 && !get().ui.notice) {
-              const message = noticeSegments.join(' ');
-              notify(get, message, 'info');
-            }
+          // An unserved default needs no staging: new chats already start with
+          // resolveDefaultModelId, and a staged model would sit over the open
+          // chat's own in the composer while the header named the chat's.
+          if (noticeSegments.length > 0 && !get().ui.notice) {
+            notify(get, noticeSegments.join(' '), 'info');
           }
           set({ models: mergedModels, modelIndex: createModelIndex(mergedModels) });
         } finally {

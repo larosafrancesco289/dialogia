@@ -134,9 +134,10 @@ follows through a `BroadcastChannel` (`src/lib/sync/tabChannel.ts`, a no-op wher
   with the reply ids. It repeats this every 15 s while the reply lasts, answers a newly opened
   tab, and says it has stopped on `pagehide`. The other tabs list those replies in
   `repliesInOtherTabs`. They render them as streaming, not with the "page closed" cut-off note
-  their checkpoints carry on disk, and they refuse to start a turn in that chat. A turn started
-  there would miss the reply, and the transcript would interleave two turns. A writing tab not
-  heard from for 60 s is let go.
+  their checkpoints carry on disk, and they refuse to start a turn in that chat, asking once when
+  the turn is asked for and again just before it claims the chat. A turn started there would miss
+  the reply, and the transcript would interleave two turns. A writing tab not heard from for 60 s
+  is let go.
 
 ## A turn, end to end
 
