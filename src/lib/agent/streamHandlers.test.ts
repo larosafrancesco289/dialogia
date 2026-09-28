@@ -71,3 +71,15 @@ test('a finished reply is stored without the tool JSON a model echoed ahead of i
   assert.equal(stored()?.content, 'The answer.');
   assert.equal(persisted.at(-1)?.content, 'The answer.');
 });
+
+test("a later stream's citations join the reply's, not replace them", () => {
+  const { callbacks, stored } = harness();
+  const cite = (url: string) => ({ type: 'url_citation', url_citation: { url } });
+  callbacks.onAnnotations?.([cite('https://a.test')]);
+  callbacks.beginRound();
+  callbacks.onAnnotations?.([cite('https://b.test')]);
+  assert.deepEqual(stored()?.annotations, [cite('https://a.test'), cite('https://b.test')]);
+  // Each stream reports its own whole set, which may repeat what came before.
+  callbacks.onAnnotations?.([cite('https://b.test'), cite('https://a.test')]);
+  assert.deepEqual(stored()?.annotations, [cite('https://a.test'), cite('https://b.test')]);
+});
