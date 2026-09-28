@@ -22,7 +22,7 @@ export type ModelAuthResolver = {
  * sheet rather than dropping a toast that names an environment variable.
  */
 const promptForSetup = (set: StoreSetter) => {
-  set((state) => ({ ui: { ...state.ui, setupOpen: true } }));
+  set((state) => ({ ui: { ...state.ui, setupOpen: true, setupDismissed: false } }));
 };
 
 /**

@@ -66,6 +66,8 @@ type ReturnFocusOptions = {
   containerRef?: RefObject<HTMLElement | null>;
   /** Where focus goes when what had it before is gone or cannot take it. */
   fallback?: () => HTMLElement | null | undefined;
+  /** Another dialog opens as this one closes: leave focus for it to take. */
+  passesOn?: () => boolean;
 };
 
 /**
@@ -86,10 +88,12 @@ export function useReturnFocus(active: boolean, options: ReturnFocusOptions = {}
 
   useEffect(() => {
     if (!active) return;
-    previousRef.current = document.activeElement;
+    // Nothing had focus (the page itself): the fallback decides instead.
+    const focused = document.activeElement;
+    previousRef.current = focused === document.body ? null : focused;
     const container = optionsRef.current.containerRef?.current ?? null;
     return () => {
-      if (focusIsLost(container)) returnFocus();
+      if (focusIsLost(container) && !optionsRef.current.passesOn?.()) returnFocus();
     };
   }, [active, returnFocus]);
 
