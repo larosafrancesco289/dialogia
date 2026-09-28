@@ -1,4 +1,3 @@
-import { NOTICE_MISSING_SEARCH_KEY } from '@/lib/store/notices';
 import { withAbort } from '@/lib/utils/abort';
 import { buildSearchContext, getSearchProvider } from '@/lib/search/providers';
 import type { SearchMode } from '@/lib/search/providers/types';
@@ -6,7 +5,6 @@ import type { SearchResult } from '@/lib/search/types';
 import type { StoreGetter, StoreSetter, ToolExecutionResult } from '@/lib/agent/types';
 import type { WebSearchArgs } from '@/lib/search/args';
 import { setSearchUiStatus } from '@/lib/search/ui/state';
-import { notify } from '@/lib/store/notify';
 import { TOOL_CALL_STOPPED } from '@/lib/constants';
 
 const SEARCH_TIMEOUT_MS = 20000;
@@ -108,9 +106,7 @@ export async function performWebSearchTool(opts: {
         return { ok: true, results: result.results as SearchResult[], query: rawQuery };
       }
 
-      if (result.error === NOTICE_MISSING_SEARCH_KEY) {
-        notify(get, NOTICE_MISSING_SEARCH_KEY, 'info');
-      }
+      // A missing key is the caller's to announce, with web_fetch's.
       return failed(result.error);
     } catch (err: unknown) {
       return failed(err instanceof Error ? err.message : undefined);
