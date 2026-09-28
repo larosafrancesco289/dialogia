@@ -6,6 +6,7 @@
 
 import type { MarkdownCitationSource } from '@/lib/markdown/citations';
 import type { SearchSourcesData } from '@/lib/ui/responseActivity';
+import type { UIState } from '@/lib/store/types';
 import { isRecord } from '@/lib/utils/guards';
 
 // Where a source can sit inside an annotation: OpenAI's (and OpenRouter's)
@@ -75,4 +76,16 @@ export function resolveMessageSources({
   const results = sourcesFromAnnotations(annotations);
   if (results.length === 0) return undefined;
   return { query: '', status: 'done', results };
+}
+
+/**
+ * The UI without a reply's tool-based search entry, which lives only in this
+ * tab and by message id. A reply that now shows another version shows that
+ * version's own sources, from its annotations.
+ */
+export function withoutSearchEntry(ui: UIState, messageId: string): UIState {
+  const entries = ui.search.tavilyByMessageId;
+  if (!entries?.[messageId]) return ui;
+  const { [messageId]: _dropped, ...rest } = entries;
+  return { ...ui, search: { ...ui.search, tavilyByMessageId: rest } };
 }

@@ -183,4 +183,36 @@ export type Message = {
   activity?: MessageActivityItem[];
   // Rounds of replayable tool calls, replayed to the model as real tool messages.
   toolRounds?: MessageToolRound[];
+  /**
+   * A reply's other versions, from Try again, in the order they were written.
+   * The shown version is the message's own fields, and the only one later
+   * turns and the model see. See `@/lib/messages/versions`.
+   */
+  versions?: ReplyVersion[];
+  /** Where the shown version sits among all of them; absent means last. */
+  versionIndex?: number;
 };
+
+/** The fields each version of a reply has of its own. */
+export type ReplyVersionKey =
+  | 'content'
+  | 'hiddenContent'
+  | 'systemSnapshot'
+  | 'genSettings'
+  | 'annotations'
+  | 'finishReason'
+  | 'stopPolicy'
+  | 'cutOff'
+  | 'tokensIn'
+  | 'tokensOut'
+  | 'model'
+  | 'reasoning'
+  | 'metrics'
+  | 'usage'
+  | 'attachments'
+  | 'toolCalls'
+  | 'activity'
+  | 'toolRounds'
+  | 'tutorSeq';
+
+export type ReplyVersion = Pick<Message, ReplyVersionKey>;

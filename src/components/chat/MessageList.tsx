@@ -20,7 +20,8 @@ import {
   selectRepliesInOtherTab,
 } from '@/lib/store/selectors';
 import { replyInProgress } from '@/lib/ui/streaming';
-import { focusComposer } from '@/lib/ui/focus';
+import { focusComposer, refocusIfDropped } from '@/lib/ui/focus';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 const EMPTY_MESSAGES: Message[] = [];
 const JUST_WRITTEN_MS = 1500;
@@ -47,25 +48,30 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     }),
     shallow,
   );
-  const { regenerate, branchFrom, latestOnly } = useChatStore(
+  const { regenerate, branchFrom, latestOnly, deleteReplyVersion } = useChatStore(
     (state) => ({
       regenerate: state.regenerateAssistantMessage,
       branchFrom: state.branchChatFromMessage,
       latestOnly: latestExchangeOnly(state, chatId),
+      deleteReplyVersion: state.deleteReplyVersion,
     }),
     shallow,
   );
-  // Where a module's record follows the transcript, only the latest exchange
-  // (the last user message and its replies) can be regenerated or rerun.
-  const redoable = useMemo(() => {
-    if (!latestOnly) return undefined;
+  // The last user message and its replies. A reply's versions switch only
+  // here, and where a module's record follows the transcript, only these can
+  // be regenerated or rerun.
+  const latestExchange = useMemo(() => {
     let lastUser = -1;
     allMessages.forEach((message, index) => {
       if (message.role === 'user') lastUser = index;
     });
     return new Set(allMessages.slice(Math.max(0, lastUser)).map((message) => message.id));
-  }, [latestOnly, allMessages]);
-  const canRedo = useCallback((id: string) => !redoable || redoable.has(id), [redoable]);
+  }, [allMessages]);
+  const canRedo = useCallback(
+    (id: string) => !latestOnly || latestExchange.has(id),
+    [latestOnly, latestExchange],
+  );
+  const [versionToDelete, setVersionToDelete] = useState<string | null>(null);
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const isMobile = useMediaQuery(MEDIA_QUERIES.mobile);
   const messages = useMemo(() => {
@@ -295,6 +301,8 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
               onBranch={branchFromMessage}
               onRegenerate={regenerateMessage}
               canRedo={canRedo(message.id)}
+              canSwitchVersion={latestExchange.has(message.id)}
+              onDeleteVersion={setVersionToDelete}
             />
           );
         })}
@@ -335,6 +343,26 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
         onBranch={branchFromMessage}
         onRegenerate={regenerateMessage}
         canRedo={mobileSheet ? canRedo(mobileSheet.id) : true}
+        canSwitchVersion={!!mobileSheet && latestExchange.has(mobileSheet.id)}
+        onDeleteVersion={setVersionToDelete}
+      />
+      <ConfirmDialog
+        open={!!versionToDelete}
+        title="Delete this version?"
+        description="This version will be gone for good. The reply stays, showing another version."
+        onCancel={() => setVersionToDelete(null)}
+        onConfirm={() => {
+          const id = versionToDelete;
+          setVersionToDelete(null);
+          if (!id) return;
+          void deleteReplyVersion(id);
+          // The switch goes with the second-last version: focus stays on the reply.
+          const reply = () => document.querySelector(`[data-mid="${CSS.escape(id)}"]`);
+          refocusIfDropped(
+            () => reply()?.querySelector('button[aria-label="Delete this version"]'),
+            () => reply()?.querySelector('button[aria-label="Copy message"]'),
+          );
+        }}
       />
       {lightbox && (
         <ImageLightbox
