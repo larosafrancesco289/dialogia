@@ -12,6 +12,7 @@ export function buildPersistedUiState(ui: UIState): PersistedUiState {
     // sidebar they had, so a wide reload brings it back.
     sidebarCollapsed: ui.sidebarFoldedByLayout ? false : ui.sidebarCollapsed,
     introSeen: ui.introSeen,
+    setupDismissed: ui.setupDismissed,
     zdrOnly: ui.zdrOnly,
     messageTimestamps: ui.messageTimestamps,
     dynamicDefaultResolutions: ui.dynamicDefaultResolutions,

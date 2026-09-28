@@ -39,6 +39,13 @@ export type PersistedUiState = {
   sidebarCollapsed?: boolean;
   /** First-run tour: true once the visitor has closed, skipped or finished it. */
   introSeen?: boolean;
+  /**
+   * The visitor put the setup sheet away (by connecting or with Not now) and
+   * has not asked for it since. While set, the sheet opening by itself because
+   * nothing is configured stays shut; asking for it (Connect a model, a send
+   * with no key) clears this.
+   */
+  setupDismissed?: boolean;
   zdrOnly?: UiSnapshot['zdrOnly'];
   messageTimestamps?: UiSnapshot['messageTimestamps'];
   dynamicDefaultResolutions?: UiSnapshot['dynamicDefaultResolutions'];

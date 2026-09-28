@@ -74,7 +74,8 @@ export function SetupSheet() {
   // raise the keyboard over a dialog not yet read.
   const isTouch = useMediaQuery(MEDIA_QUERIES.touch);
 
-  const close = () => setUI({ setupOpen: false });
+  // Put away for good: from here on it opens only when asked for.
+  const close = () => setUI({ setupOpen: false, setupDismissed: true });
 
   useBackToClose(true, close);
   useModalFocus(true, surfaceRef, {
