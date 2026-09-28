@@ -180,14 +180,16 @@ export function Composer({
     setText('');
   };
 
-  const onSend = async () => {
+  // `command` is a slash command taken from the list, sent in place of the typed text.
+  const onSend = async (command?: string) => {
+    const value = command ?? text;
     const snapshot = {
-      text,
+      text: value,
       attachments: attachments.slice(),
       scope: activeDraftScopeRef.current,
     };
     const result = await handleSubmit({
-      text,
+      text: value,
       attachments: snapshot.attachments,
       onBeforeSend: () => {
         pendingSendSnapshotRef.current = snapshot;
@@ -210,9 +212,9 @@ export function Composer({
     if (result === 'noop') return;
   };
 
-  const onSendWithRecovery = async () => {
+  const sendWithRecovery = async (command?: string) => {
     try {
-      await onSend();
+      await onSend(command);
     } catch {
       const snapshot = pendingSendSnapshotRef.current;
       pendingSendSnapshotRef.current = null;
@@ -229,6 +231,7 @@ export function Composer({
       setNotice('The message could not be sent. Your draft is back in its chat.');
     }
   };
+  const onSendWithRecovery = () => sendWithRecovery();
 
   const canAutoFocus = !isMobile;
 
@@ -323,7 +326,7 @@ export function Composer({
         <ComposerInput
           value={text}
           onChange={setText}
-          onSend={onSendWithRecovery}
+          onSend={sendWithRecovery}
           isStreaming={isStreaming || writingInOtherTab}
           textareaRef={taRef}
           maxHeight={maxTextareaHeight}
