@@ -159,36 +159,10 @@
     display: flex;
     justify-content: flex-end;
   }
+  /* The shared icon button, fitted to the ledger's foot. */
   .response-ledger__copy {
-    flex: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
     width: 24px;
     height: 24px;
-    padding: 0;
-    border: none;
-    border-radius: var(--radius-editorial);
-    background: transparent;
-    color: var(--color-fg-muted);
-    cursor: pointer;
-    transition:
-      background-color var(--duration-fast) var(--ease-standard),
-      color var(--duration-fast) var(--ease-standard);
-  }
-  .response-ledger__copy:hover {
-    background: var(--color-muted);
-    color: var(--color-fg);
-  }
-  .response-ledger__copy:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--focus-ring);
-  }
-  .response-ledger__copy.is-success {
-    color: var(--color-fg);
-  }
-  .response-ledger__copy.is-success svg {
-    animation: fade-in var(--duration-fast) var(--ease-standard) both;
   }
 
   /* The rail: rubric at the head, fading out past the last entry. */
