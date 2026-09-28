@@ -23,15 +23,24 @@ export function getSlashSuggestions(input: string, models: ModelDescriptor[]): S
 
   const startsWith = (candidate: string, prefix: string) => candidate.startsWith(prefix);
 
-  const baseCommands: Array<{ key: string; label: string; help?: string }> = [
-    { key: 'model', label: 'model', help: 'Answer with another model' },
-    { key: 'search', label: 'search', help: 'Turn web search on or off' },
-    { key: 'reasoning', label: 'reasoning', help: 'How long the model thinks' },
-    { key: 'help', label: 'help', help: 'What these commands do' },
-  ];
+  // A command that takes an argument is offered with a space after it, ready for one.
+  const baseCommands: Array<{ key: string; label: string; help?: string; takesArgument: boolean }> =
+    [
+      { key: 'model', label: 'model', help: 'Answer with another model', takesArgument: true },
+      { key: 'search', label: 'search', help: 'Turn web search on or off', takesArgument: true },
+      {
+        key: 'reasoning',
+        label: 'reasoning',
+        help: 'How long the model thinks',
+        takesArgument: true,
+      },
+      { key: 'help', label: 'help', help: 'What these commands do', takesArgument: false },
+    ];
+  const pushCommand = (command: (typeof baseCommands)[number]) =>
+    push(`/${command.label}`, `/${command.key}${command.takesArgument ? ' ' : ''}`, command.help);
 
   if (!cmd) {
-    for (const command of baseCommands) push(`/${command.label}`, `/${command.key} `, command.help);
+    for (const command of baseCommands) pushCommand(command);
     return suggestions;
   }
 
@@ -39,7 +48,7 @@ export function getSlashSuggestions(input: string, models: ModelDescriptor[]): S
   // Text that only starts with a slash ("/etc/hosts: …") is a message.
   if (matching.length === 0) return suggestions;
   if (arg === '' && !(matching.length === 1 && matching[0]?.key === cmd)) {
-    for (const command of matching) push(`/${command.label}`, `/${command.key} `, command.help);
+    for (const command of matching) pushCommand(command);
     return suggestions;
   }
 
@@ -79,4 +88,32 @@ export function getSlashSuggestions(input: string, models: ModelDescriptor[]): S
     push('/help', '/help', help?.help);
   }
   return suggestions;
+}
+
+/**
+ * What Return does while the list is up. A command with nothing left to type
+ * runs at once: one typed out in full, the only suggestion left, or a
+ * highlighted command that takes no argument (`/help`). Anything else is
+ * completed, so the argument can be typed or picked next.
+ */
+export function slashEnterAction(
+  value: string,
+  suggestions: SlashSuggestion[],
+  activeIndex: number,
+): { run: string } | { complete: string } | null {
+  const pick = suggestions[activeIndex] ?? suggestions[0];
+  if (!pick) return null;
+  const typed = value.trim();
+  if (suggestions.some((s) => s.insert.trim() === typed)) return { run: typed };
+  const awaitsArgument = pick.insert.endsWith(' ');
+  const takesNoArgument = !pick.insert.includes(' ');
+  if (!awaitsArgument && (suggestions.length === 1 || takesNoArgument)) {
+    return { run: pick.insert };
+  }
+  return { complete: slashCompletion(pick) };
+}
+
+/** The composer's text once a suggestion is taken: a space after it, ready for more. */
+export function slashCompletion(suggestion: SlashSuggestion): string {
+  return suggestion.insert.endsWith(' ') ? suggestion.insert : `${suggestion.insert} `;
 }

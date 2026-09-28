@@ -149,6 +149,21 @@
     border-radius: var(--radius-inner);
     padding: 0.1em 0.35em;
   }
+  /* Maths while KaTeX is still on its way: the formula's source, dollars
+     gone, as quiet text at the size of the words around it. Display maths
+     keeps the frame .katex-display will have, so the swap barely moves. */
+  .markdown .math-pending {
+    color: var(--color-fg-muted);
+  }
+  .markdown .math-pending--display {
+    display: block;
+    margin: 1em 0;
+    padding: 0.35em 0 0.6em;
+    overflow-x: auto;
+    overflow-wrap: normal;
+    white-space: pre;
+    text-align: center;
+  }
   .markdown kbd {
     font-family: var(--font-mono);
     background: var(--color-surface);

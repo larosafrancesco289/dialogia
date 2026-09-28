@@ -1,13 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ModelDescriptor } from '@/lib/types';
-import { getSlashSuggestions, type SlashSuggestion } from '@/lib/slash';
+import {
+  getSlashSuggestions,
+  slashCompletion,
+  slashEnterAction,
+  type SlashSuggestion,
+} from '@/lib/slash';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 
 export type ComposerInputProps = {
   value: string;
   onChange: (next: string) => void;
-  onSend: () => void;
+  /** Sends the composer's text, or `text` in its place (a command taken from the list). */
+  onSend: (text?: string) => void;
   isStreaming: boolean;
   textareaRef: React.RefObject<HTMLTextAreaElement>;
   maxHeight: number;
@@ -81,14 +87,19 @@ export function ComposerInput({
               setActiveIndex((index) => (index - 1 + suggestions.length) % suggestions.length);
               return;
             }
-            const pick = suggestions[activeIndex] || suggestions[0];
-            // Enter on a command already typed out in full runs it.
-            const complete = suggestions.some((s) => s.insert.trim() === value.trim());
-            if (event.key === 'Tab' || (event.key === 'Enter' && !complete)) {
+            if (event.key === 'Tab') {
               event.preventDefault();
-              if (pick) {
-                onChange(pick.insert + (pick.insert.endsWith(' ') ? '' : ' '));
-              }
+              const pick = suggestions[activeIndex] || suggestions[0];
+              if (pick) onChange(slashCompletion(pick));
+              return;
+            }
+            // While the list is up, Return acts on it, on a phone's keyboard too.
+            const action =
+              event.key === 'Enter' && slashEnterAction(value, suggestions, activeIndex);
+            if (action) {
+              event.preventDefault();
+              if ('run' in action) onSend(action.run);
+              else onChange(action.complete);
               return;
             }
             if (event.key === 'Escape') {
@@ -127,7 +138,7 @@ export function ComposerInput({
                 className={`menu-item text-sm ${index === activeIndex ? 'font-semibold' : ''}`}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => {
-                  onChange(suggestion.insert + (suggestion.insert.endsWith(' ') ? '' : ' '));
+                  onChange(slashCompletion(suggestion));
                   setActiveIndex(0);
                   textareaRef.current?.focus();
                 }}
