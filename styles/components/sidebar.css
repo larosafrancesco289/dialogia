@@ -166,7 +166,7 @@
   /* On a phone the list is touched, not hovered: rows are a thumb tall and a
      size larger, and their actions live in the long-press sheet instead of
      an overlay a tap would half-reveal. */
-  @media (max-width: 767px) {
+  @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
     .chat-item {
       min-height: 44px;
       margin: 0;
@@ -249,7 +249,7 @@
   color: var(--color-fg-muted);
 }
 /* iOS zooms into a field under 16px when it takes focus. */
-@media (max-width: 767px) {
+@media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
   .row-edit {
     font-size: 1rem;
   }

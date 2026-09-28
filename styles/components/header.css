@@ -56,7 +56,7 @@
     flex-shrink: 0;
   }
 
-  @media (max-width: 767px) {
+  @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
     .header-divider {
       height: 20px;
     }
@@ -276,7 +276,7 @@
     width: 14px;
     height: 14px;
   }
-  @media (max-width: 767px) {
+  @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
     /* The header's line is a line, not a 44px button; the header row is
        the target's height. */
     .tutor-header-line {
