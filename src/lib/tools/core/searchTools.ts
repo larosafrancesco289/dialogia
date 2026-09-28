@@ -6,6 +6,7 @@ import { mergeSearchResults, performWebFetchTool, performWebSearchTool } from '@
 import { getSearchProvider } from '@/lib/search/providers';
 import { normalizeWebFetchArgs, normalizeWebSearchArgs } from '@/lib/search/args';
 import { setSearchUiStatus } from '@/lib/search/ui/state';
+import { updateMessageById } from '@/lib/messages/updateMessageById';
 import { NOTICE_MISSING_SEARCH_KEY } from '@/lib/store/notices';
 import { notify } from '@/lib/store/notify';
 import { WEB_FETCH_TOOL, WEB_SEARCH_TOOL } from '@/lib/tools/definitions/webSearch';
@@ -73,6 +74,15 @@ const executeWebSearchTool: PlanningToolHandler = async ({
       query: searchResult.query,
       status: 'done',
       results: merged,
+    });
+    // The panel above lives only in this tab; the message keeps the list so
+    // the reply's [n] citations stay linked after a reload and in other tabs.
+    set((state) => {
+      const result = updateMessageById(state, chatId, assistantMessage.id, (msg) => ({
+        ...msg,
+        searchSources: merged.map(({ url, title, description }) => ({ url, title, description })),
+      }));
+      return result ?? {};
     });
     const payload = searchResult.results.slice(0, MAX_FALLBACK_RESULTS).map((result) => ({
       title: result?.title,

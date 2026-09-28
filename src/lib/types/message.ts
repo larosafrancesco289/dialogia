@@ -16,6 +16,9 @@ export type {
   ToolCallStatus,
 } from '@/lib/types/enums';
 
+/** A page a reply's tool-based search found, numbered by its place in the list. */
+export type MessageSearchSource = { url?: string; title?: string; description?: string };
+
 export type GenSettingsSnapshot = GenerationSettings & {
   searchEnabled?: boolean;
   searchProvider?: SearchMode;
@@ -120,6 +123,9 @@ export type Message = {
   // OpenRouter: file parsing annotations returned by assistant (e.g., PDF parsing)
   // When present, we include them in subsequent requests to skip re-parsing costs.
   annotations?: unknown;
+  // What the reply's tool-based searches found, in the order its [n] markers
+  // count them. Never sent to a model; it keeps citations linked after reload.
+  searchSources?: MessageSearchSource[];
   createdAt: number;
   // Why the provider stopped generating; 'content_filter' marks a safety
   // classifier refusal (Anthropic stop_reason "refusal") the UI must surface.
@@ -201,6 +207,7 @@ export type ReplyVersionKey =
   | 'systemSnapshot'
   | 'genSettings'
   | 'annotations'
+  | 'searchSources'
   | 'finishReason'
   | 'stopPolicy'
   | 'cutOff'

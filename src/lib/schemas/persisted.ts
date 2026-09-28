@@ -11,6 +11,7 @@ import { LearningPlanSchema } from '@/lib/schemas/learningPlan';
 import type {
   LearnerModel,
   MessageMetrics,
+  MessageSearchSource,
   MessageToolRound,
   MessageTutor,
   ReplyVersion,
@@ -143,6 +144,8 @@ export const MessageSchema = z
     systemSnapshot: z.string().optional(),
     genSettings: GenSettingsSnapshotSchema.optional(),
     annotations: z.unknown().optional(),
+    // Read through `resolveMessageSources`, which skips anything malformed.
+    searchSources: z.custom<MessageSearchSource[]>().optional(),
     createdAt: z.number(),
     finishReason: z.enum(['stop', 'tool_calls', 'length', 'content_filter']).optional(),
     stopPolicy: z.string().optional(),

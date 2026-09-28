@@ -1,7 +1,8 @@
 // Module: ui/messageSources
 // Responsibility: The sources a reply consulted, whichever search found them:
-// a tool-based search's results, or the citations a provider-native search
-// left on the message as annotations. The ledger's sources and the reply's
+// a tool-based search's results (live in this tab, or kept on the message as
+// `searchSources`), or the citations a provider-native search left on the
+// message as annotations. The ledger's sources and the reply's
 // [n] citation links both read this one list.
 
 import type { MarkdownCitationSource } from '@/lib/markdown/citations';
@@ -61,19 +62,44 @@ export function sourcesFromAnnotations(annotations: unknown): MarkdownCitationSo
 }
 
 /**
+ * A message's kept search sources, as stored: in order and never merged, since
+ * a source's place is the number its [n] marker cites. A malformed entry
+ * becomes an empty one rather than moving the ones after it.
+ */
+function readSearchSources(value: unknown): MarkdownCitationSource[] {
+  if (!Array.isArray(value)) return [];
+  const text = (field: unknown) => (typeof field === 'string' && field ? field : undefined);
+  return value.map((entry) => {
+    if (!isRecord(entry)) return {};
+    const url = text(entry.url);
+    const title = text(entry.title);
+    const description = text(entry.description);
+    return {
+      ...(url ? { url } : {}),
+      ...(title ? { title } : {}),
+      ...(description ? { description } : {}),
+    };
+  });
+}
+
+/**
  * What the reply's sources are: a tool-based search's own entry when there is
- * one (it also carries the search's progress and errors), otherwise the
- * citations a provider-native search returned, as a finished search.
+ * one (it also carries the search's progress and errors), then the list that
+ * search left on the message, then the citations a provider-native search
+ * returned, either of those as a finished search.
  */
 export function resolveMessageSources({
   searchEntry,
+  searchSources,
   annotations,
 }: {
   searchEntry?: SearchSourcesData;
+  searchSources?: unknown;
   annotations?: unknown;
 }): SearchSourcesData | undefined {
   if (searchEntry) return searchEntry;
-  const results = sourcesFromAnnotations(annotations);
+  const kept = readSearchSources(searchSources);
+  const results = kept.length > 0 ? kept : sourcesFromAnnotations(annotations);
   if (results.length === 0) return undefined;
   return { query: '', status: 'done', results };
 }

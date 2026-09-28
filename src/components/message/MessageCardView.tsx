@@ -93,9 +93,10 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
   // A tool-based search's results, or a provider-native search's citations:
   // the ledger and the reply's [n] links read the same list.
   const annotations = message?.annotations;
+  const searchSources = message?.searchSources;
   const sources = useMemo(
-    () => resolveMessageSources({ searchEntry: tavilyEntry, annotations }),
-    [tavilyEntry, annotations],
+    () => resolveMessageSources({ searchEntry: tavilyEntry, searchSources, annotations }),
+    [tavilyEntry, searchSources, annotations],
   );
 
   if (!message) return null;
