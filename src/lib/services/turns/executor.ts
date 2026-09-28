@@ -5,11 +5,9 @@ import { handleTurnApiError } from '@/lib/services/turns/errors';
 import { createTurnLifecycle } from '@/lib/agent/orchestrator/lifecycle';
 import { runTurn } from '@/lib/agent/orchestrator/turn';
 import { composeTurn } from '@/lib/agent/compose';
-import { applyPlanSideEffects } from '@/lib/agent/planning/sideEffects';
 import { streamFinal } from '@/lib/agent/streaming';
 import type { Repository } from '@/lib/db/repository';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
-import { finalizeShortCircuitMessage } from '@/lib/services/turns/shortCircuit';
 import type { TurnRuntimeContext } from '@/lib/turns/runtime';
 import type { Chat, Message, PersistedAttachment } from '@/lib/types';
 import type { StoreGetter, StoreSetter } from '@/lib/agent/types';
@@ -124,7 +122,7 @@ export const executeModelTurn = async ({
       modelId,
     });
 
-    const runResult = await runTurn({
+    await runTurn({
       chat: chatForModel,
       chatId: runtime.chatId,
       modelId,
@@ -140,22 +138,8 @@ export const executeModelTurn = async ({
       authResolver: () => modelContext.auth,
       attachmentPreparer: async () => attachments,
       fallbackAttachments: attachments,
-      hooks: {
-        ...lifecycle.hooks,
-        onPlanSideEffects: (effects) => applyPlanSideEffects({ sideEffects: effects, set }),
-      },
+      hooks: lifecycle.hooks,
     });
-
-    if (runResult.shortCircuited) {
-      await finalizeShortCircuitMessage({
-        assistantMessage,
-        lifecycle,
-        getState: get,
-        updateMessage,
-        persistMessage,
-      });
-      return;
-    }
   } catch (error: unknown) {
     handleTurnApiError(error, get);
     controller.abort();

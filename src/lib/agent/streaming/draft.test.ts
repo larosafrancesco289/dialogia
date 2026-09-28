@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { chooseFinalDraft, looksIncomplete } from '@/lib/agent/streaming/draft';
+import { looksIncomplete } from '@/lib/agent/streaming/draft';
 
 test('looksIncomplete treats empty and length-capped replies as unfinished', () => {
   assert.equal(looksIncomplete(''), true);
@@ -23,12 +23,4 @@ test('looksIncomplete spots dangling fences, brackets and narrated tool calls', 
 test('looksIncomplete accepts a finished reply', () => {
   assert.equal(looksIncomplete('Solve x + 2 = 5. What is x?'), false);
   assert.equal(looksIncomplete('```ts\nconst x = 1;\n```\nDone.'), false);
-});
-
-test('chooseFinalDraft keeps the visible text unless it is unfinished', () => {
-  assert.equal(chooseFinalDraft('A finished answer.', 'Another answer.'), 'A finished answer.');
-  assert.equal(chooseFinalDraft('Great start,', 'A finished answer.'), 'A finished answer.');
-  assert.equal(chooseFinalDraft('', 'A finished answer.'), 'A finished answer.');
-  assert.equal(chooseFinalDraft('Great start,', 'Also unfinished:'), 'Great start,');
-  assert.equal(chooseFinalDraft('', ''), '');
 });

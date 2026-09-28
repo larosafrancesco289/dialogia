@@ -1,8 +1,6 @@
 // Module: agent/streaming/draft
-// Responsibility: Judge whether a streamed reply reads as finished. The turn
-// uses this twice: to decide whether a tool-capable model that called no tool
-// deserves one retry, and to decide whether a draft written before a tool round
-// can stand as the final answer instead of being streamed again.
+// Responsibility: Judge whether a streamed reply reads as finished, so a
+// tool-capable model that called no tool and stopped mid-thought gets one retry.
 
 import type { StreamDoneExtras } from '@/lib/transport/types';
 
@@ -26,14 +24,4 @@ export function looksIncomplete(
   if (/[([{]$/.test(trimmed)) return true;
   if (/[,:;-]$/.test(trimmed)) return true;
   return false;
-}
-
-/**
- * The text to keep when a turn ends without a final stream: the draft already
- * on screen, unless it reads as unfinished and a complete fallback exists.
- */
-export function chooseFinalDraft(current: string, fallback: string): string {
-  const preferFallback =
-    !!fallback && (!current || looksIncomplete(current)) && !looksIncomplete(fallback);
-  return preferFallback ? fallback : current || fallback;
 }

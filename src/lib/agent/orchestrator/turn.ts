@@ -3,7 +3,6 @@ import type { UiSnapshot } from '@/lib/contracts/ui';
 import type {
   ComposeTurnArgs,
   PlanTurnResult,
-  PlanTurnSideEffect,
   TurnComposition,
   TurnContext,
   StreamFinalOptions,
@@ -20,7 +19,6 @@ type BaseTurnContext = Omit<TurnContext, 'auth'>;
 export type RunTurnHooks = {
   onComposition?: (composition: TurnComposition) => void;
   onPlanResult?: (plan: PlanTurnResult) => void;
-  onPlanSideEffects?: (effects: PlanTurnSideEffect[]) => void;
   beforeStream?: (args: { composition: TurnComposition; plan?: PlanTurnResult }) => void;
 };
 
@@ -51,7 +49,6 @@ export type RunTurnArgs = {
 export type RunTurnResult = {
   composition: TurnComposition;
   plan?: PlanTurnResult;
-  shortCircuited: boolean;
 };
 
 export const runTurn = async ({
@@ -123,7 +120,6 @@ export const runTurn = async ({
       pipeline,
       loop: composition.loop,
       onPlanResult: hooks?.onPlanResult,
-      onPlanSideEffects: hooks?.onPlanSideEffects,
     });
 
     const plan: PlanTurnResult = {
@@ -131,7 +127,7 @@ export const runTurn = async ({
       usedContentTool: streamingResult.usedContentTool,
       hasSearchResults: streamingResult.hasSearchResults,
     };
-    return { composition, plan, shortCircuited: !!streamingResult.shortCircuited };
+    return { composition, plan };
   }
 
   hooks?.beforeStream?.({ composition });
@@ -150,5 +146,5 @@ export const runTurn = async ({
     systemDynamic: composition.systemDynamic,
   });
 
-  return { composition, shortCircuited: false };
+  return { composition };
 };

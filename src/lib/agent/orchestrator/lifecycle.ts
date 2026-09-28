@@ -21,7 +21,6 @@ export type TurnLifecycle = {
   hooks: RunTurnHooks;
   latestComposition: () => TurnComposition | undefined;
   latestPlan: () => PlanTurnResult | undefined;
-  buildShortCircuitMessage: (baseMessage: Message) => Message;
 };
 
 export const createTurnLifecycle = (options: TurnLifecycleOptions): TurnLifecycle => {
@@ -66,15 +65,9 @@ export const createTurnLifecycle = (options: TurnLifecycleOptions): TurnLifecycl
     },
   };
 
-  const buildShortCircuitMessage = (baseMessage: Message): Message => ({
-    ...baseMessage,
-    ...(effects.messagePatch() ?? {}),
-  });
-
   return {
     hooks,
     latestComposition: () => latestComposition,
     latestPlan: () => latestPlan,
-    buildShortCircuitMessage,
   };
 };
