@@ -134,7 +134,7 @@
     color: var(--color-fg-muted);
   }
   /* Arrows a thumb can find: the full 44px, not the actions' 36px. */
-  @media (max-width: 767px) {
+  @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
     .reply-versions .message-action-btn {
       width: 44px;
       height: 44px;
