@@ -5,9 +5,11 @@
 // registry through here, not through `registry.ts` directly.
 
 import { registerSearchProvider } from '@/lib/search/providers/registry';
+import { openRouterSearchProvider } from '@/lib/search/providers/openrouter';
 import { tavilySearchProvider } from '@/lib/search/providers/tavily';
 
 export function registerBuiltInSearchProviders(): void {
+  registerSearchProvider(openRouterSearchProvider);
   registerSearchProvider(tavilySearchProvider);
 }
 

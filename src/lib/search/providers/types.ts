@@ -38,6 +38,8 @@ export type SearchProvider = {
   requiresKey: boolean;
   /** Key-store reference; defaults to the provider id. */
   keyRef?: string;
+  /** Runs on a model provider's key, so Settings asks for no key of its own. */
+  usesModelKey?: boolean;
   search(args: NormalizedSearchArgs, ctx: SearchContext): Promise<SearchOutcome>;
   /** Present only when the provider can read a single page; gates `web_fetch`. */
   fetchPage?(args: NormalizedFetchArgs, ctx: SearchContext): Promise<FetchOutcome>;
