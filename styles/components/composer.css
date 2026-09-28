@@ -339,17 +339,42 @@
     color: var(--color-fg-muted);
     padding-left: 0.25rem;
   }
-  /* A tool that is on says so in a word beside its icon. */
+  /* A tool that is on says so in a word beside its icon. The word opens in
+     width (a grid track easing from 0fr to 1fr), so the tools after it
+     slide over instead of jumping. The buttons size to their content, 34px
+     with the word closed. */
+  .composer-btn-search,
+  .composer-btn-reasoning {
+    width: auto;
+    min-width: 34px;
+    padding: 0 9px;
+  }
   .composer-tool-label {
-    margin-left: 5px;
+    display: grid;
+    grid-template-columns: 0fr;
+    opacity: 0;
     font-size: 0.8125rem;
     font-weight: 500;
     line-height: 1;
+    transition:
+      grid-template-columns var(--duration-fast) var(--ease-standard),
+      opacity var(--duration-fast) var(--ease-standard);
   }
-  .composer-btn-search:has(.composer-tool-label),
-  .composer-btn-reasoning:has(.composer-tool-label) {
-    width: auto;
-    padding: 0 10px 0 8px;
+  .composer-tool-label[data-open='true'] {
+    grid-template-columns: 1fr;
+    opacity: 1;
+  }
+  .composer-tool-label__text {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  /* The space before the word is inline content, not padding, so it closes
+     with the track instead of holding it open. */
+  .composer-tool-label__text::before {
+    content: '';
+    display: inline-block;
+    width: 5px;
   }
 
   /* Mobile adjustments */
@@ -361,6 +386,11 @@
     .composer-btn-stop {
       width: 44px;
       height: 44px;
+    }
+    .composer-btn-reasoning,
+    .composer-btn-search {
+      width: auto;
+      min-width: 44px;
     }
     .composer-btn-send,
     .composer-btn-stop {
