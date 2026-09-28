@@ -32,6 +32,11 @@ export type SendTurnOptions = {
   ledger?: boolean;
   /** Called once the turn's messages exist and the chat reads as streaming. */
   onStarted?: () => void;
+  /**
+   * Asked again just before the turn claims the chat. Loading the chat, the turn
+   * code and the ZDR check can take long enough for another tab to start a reply there.
+   */
+  mayStart?: () => boolean;
   set: StoreSetter;
   get: StoreGetter;
   repository: Repository;
@@ -86,6 +91,7 @@ export async function sendUserTurn({
   metadata,
   ledger,
   onStarted,
+  mayStart,
   set,
   get,
   repository,
@@ -101,6 +107,7 @@ export async function sendUserTurn({
     guardZdrOrNotifyCached(modelId, set, get),
   );
   if (!zdrAllowed) return;
+  if (mayStart && !mayStart()) return;
 
   if (ui.overrides) {
     set((state) => ({ ui: resetEphemeralUi(state.ui) }));
@@ -177,6 +184,8 @@ export async function sendUserTurn({
 export type RegenerateTurnArgs = {
   messageId: string;
   overrideModelId?: string;
+  /** As for a send, and asked before the old reply is retracted. */
+  mayStart?: () => boolean;
   set: StoreSetter;
   get: StoreGetter;
   repository: Repository;
@@ -185,6 +194,7 @@ export type RegenerateTurnArgs = {
 export async function regenerateTurn({
   messageId,
   overrideModelId,
+  mayStart,
   set,
   get,
   repository,
@@ -239,6 +249,7 @@ export async function regenerateTurn({
   if (!canUseModel) return;
 
   if (!getMessagesForChat(get(), chatId).some((m) => m.id === messageId)) return;
+  if (mayStart && !mayStart()) return;
   // The old reply's cards and what its turn recorded go before the new one is composed.
   await notifyReplyRetracted({ get: getState }, { chatId, messageId });
   const messages = getMessagesForChat(get(), chatId);
