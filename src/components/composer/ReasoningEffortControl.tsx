@@ -194,7 +194,7 @@ export function ReasoningEffortControl({
     <div>
       <button
         ref={reasoningButtonRef}
-        className={`composer-btn-reasoning ${reasoningActive ? 'is-active' : ''} ${reasoningOpen ? 'is-open' : ''}`}
+        className={`icon-button composer-btn-reasoning ${reasoningActive ? 'is-active' : ''} ${reasoningOpen ? 'is-open' : ''}`}
         data-effort={effort}
         aria-haspopup="true"
         aria-expanded={reasoningOpen}

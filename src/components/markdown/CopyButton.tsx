@@ -21,7 +21,7 @@ export function CopyButton({
   return (
     <button
       type="button"
-      className={className}
+      className={copied ? `${className} is-success` : className}
       aria-label={copied ? 'Copied' : label}
       title={copied ? 'Copied' : label}
       onClick={onCopy}

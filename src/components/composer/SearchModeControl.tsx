@@ -53,7 +53,7 @@ export function SearchModeControl({
     <div>
       <button
         ref={searchButtonRef}
-        className={`composer-btn-search ${searchEnabled ? 'is-active' : ''}`}
+        className={`icon-button composer-btn-search ${searchEnabled ? 'is-active' : ''}`}
         aria-pressed={hasSearchChoice ? undefined : searchEnabled}
         aria-haspopup={hasSearchChoice ? 'menu' : undefined}
         aria-expanded={hasSearchChoice ? searchMenuOpen : undefined}

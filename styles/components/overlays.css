@@ -33,11 +33,6 @@
     animation: drop-in var(--duration-fast) var(--ease-standard) both;
   }
   @media (max-width: 767px) {
-    /* Make small utility icon buttons larger for touch */
-    .icon-button {
-      height: 36px;
-      width: 36px;
-    }
     /* Prevent iOS text selection popover during long-press on chat rows */
     .chat-item {
       -webkit-user-select: none;

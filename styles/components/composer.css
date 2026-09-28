@@ -92,33 +92,16 @@
     border: 0 !important;
   }
 
-  /* Standalone icon buttons in the composer row — reasoning, web search, attach */
+  /* The composer's tools (attach, web search, reasoning): the shared icon
+     button (buttons.css) at 34px, the size of the send disc beside them. */
   .composer-btn-reasoning,
   .composer-btn-search,
   .composer-btn-attach {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 34px;
     height: 34px;
-    padding: 0;
-    border: none;
-    border-radius: var(--radius-editorial);
-    background: transparent;
-    color: var(--color-fg-muted);
-    cursor: pointer;
-    transition:
-      background-color var(--duration-fast) var(--ease-standard),
-      color var(--duration-fast) var(--ease-standard),
-      box-shadow var(--duration-fast) var(--ease-standard),
-      transform var(--duration-fast) var(--ease-standard);
     position: relative;
   }
-  .composer-btn-reasoning:hover,
-  .composer-btn-search:hover,
-  .composer-btn-attach:hover {
-    background: color-mix(in oklab, var(--color-fg) 5%, transparent);
-    color: var(--color-fg);
+  .composer-btn-attach {
+    width: 34px;
   }
   .composer-btn-reasoning.is-open {
     background: color-mix(in oklab, var(--color-fg) 7%, transparent);
@@ -130,10 +113,8 @@
   .composer-btn-search.is-active {
     color: var(--color-fg);
   }
-  .composer-btn-reasoning:focus-visible,
-  .composer-btn-search:focus-visible,
-  .composer-btn-attach:focus-visible {
-    box-shadow: 0 0 0 2px var(--focus-ring);
+  .composer-btn-search[aria-pressed='true']:not(:hover) {
+    background: transparent;
   }
 
   /* Reasoning effort: a quiet list, the app's ordinary menu, the chosen row
@@ -347,7 +328,7 @@
   .composer-btn-reasoning {
     width: auto;
     min-width: 34px;
-    padding: 0 9px;
+    padding: 0 8px;
   }
   .composer-tool-label {
     display: grid;
