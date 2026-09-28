@@ -77,6 +77,18 @@ export function formatThinkingTime(ms: number): string {
     : unit(minutes, 'minute');
 }
 
+/** How long a reply may wait for its first word before the wait is said aloud. */
+export const SILENT_WAIT_NOTICE_MS = 5_000;
+
+/**
+ * The quiet line beside the waiting mark once a reply has waited a while with
+ * nothing yet: "Waiting for the model… 12s". Empty before then.
+ */
+export function silentWaitLine(waitedMs: number): string {
+  if (waitedMs < SILENT_WAIT_NOTICE_MS) return '';
+  return `Waiting for the model… ${Math.floor(waitedMs / 1000)}s`;
+}
+
 /**
  * What the model's thinking came to, at rest: how long it took when that was
  * timed, otherwise how many words it ran to.

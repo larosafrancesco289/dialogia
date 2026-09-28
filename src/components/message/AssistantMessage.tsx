@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   PencilSquareIcon,
   CheckIcon,
@@ -21,6 +21,7 @@ import type { Chat, Message, ModelDescriptor, PersistedAttachment } from '@/lib/
 import { LogoMark } from '@/components/ui/LogoMark';
 import { toolCallInFlight } from '@/lib/ui/streaming';
 import { replyEndingNote } from '@/lib/ui/replyEnding';
+import { silentWaitLine } from '@/lib/ui/responseActivity';
 import styles from './MessageCard.module.css';
 
 export type AssistantMessageProps = {
@@ -64,6 +65,28 @@ export type AssistantMessageProps = {
   /** The reply's sources, numbered as its [n] markers cite them (`resolveMessageSources`). */
   citationSources?: MarkdownCitationSource[];
 };
+
+/**
+ * A long wait for the first word, said quietly beside the mark and counted up.
+ * It stands out of the flow, so neither its arrival nor its leaving (the
+ * moment anything arrives) moves the reply. Hidden from screen readers, which
+ * would otherwise hear it every second; the status already says a reply is coming.
+ */
+function SilentWait() {
+  const [startedAt] = useState(Date.now);
+  const [now, setNow] = useState(startedAt);
+  useEffect(() => {
+    const tick = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(tick);
+  }, []);
+  const line = silentWaitLine(now - startedAt);
+  if (!line) return null;
+  return (
+    <span className={`${styles.silentWait} motion-fade`} aria-hidden="true">
+      {line}
+    </span>
+  );
+}
 
 export function AssistantMessage({
   message,
@@ -133,8 +156,9 @@ export function AssistantMessage({
     // own paragraph, so the text arrives exactly where it waited.
     messageBody = (
       <div className="markdown" role="status" aria-label="Writing a reply">
-        <p>
+        <p className={styles.waiting}>
           <LogoMark className={`${styles.pen} ${styles.penWaiting}`} live />
+          <SilentWait />
         </p>
       </div>
     );
