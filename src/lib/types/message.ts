@@ -55,7 +55,7 @@ export type MessageActivityItem =
       text: string;
       timestamp: number;
       status?: 'streaming' | 'done';
-      /** How long the model thought, in ms: from its first thought to its first word of answer. */
+      /** How long the model thought, in ms: from the round's request to its first word of answer. */
       duration?: number;
       round?: number;
     }

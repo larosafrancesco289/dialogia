@@ -215,6 +215,27 @@
   top: calc(var(--ledger-mark-top) - 0.5rem);
 }
 
+/* The waiting paragraph anchors the line said beside its mark. */
+.waiting {
+  position: relative;
+}
+
+/* A long wait, said where the reasoning line's words would stand: beside the
+   mark, centred on its row, in the line's quiet italic. Out of the flow, so
+   it never moves the reply. */
+.silentWait {
+  position: absolute;
+  left: calc(var(--ledger-mark-width) + var(--space-2));
+  top: calc(var(--ledger-row) / 2 - 0.5rem);
+  translate: 0 -50%;
+  white-space: nowrap;
+  font-family: var(--font-serif-assistant);
+  font-style: italic;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--color-fg-muted);
+}
+
 /* Older replies keep their footer out of the way until hovered. */
 .footOnHover {
   opacity: 0;

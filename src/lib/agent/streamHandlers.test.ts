@@ -71,3 +71,22 @@ test('a finished reply is stored without the tool JSON a model echoed ahead of i
   assert.equal(stored()?.content, 'The answer.');
   assert.equal(persisted.at(-1)?.content, 'The answer.');
 });
+
+test('thinking is timed from the request, so a model that thinks silently first shows it', async () => {
+  const realNow = Date.now;
+  let now = 1_000;
+  Date.now = () => now;
+  try {
+    const { callbacks, stored } = harness();
+    // Three silent seconds before the first thought is streamed, one more after it.
+    now = 4_000;
+    callbacks.onReasoningToken?.('Weighing it up.');
+    now = 5_000;
+    callbacks.onToken?.('The answer.');
+    await callbacks.onDone?.('The answer.', { finishReason: 'stop' });
+    const thought = stored()?.activity?.find((item) => item.type === 'reasoning');
+    assert.equal(thought?.type === 'reasoning' ? thought.duration : undefined, 4_000);
+  } finally {
+    Date.now = realNow;
+  }
+});
