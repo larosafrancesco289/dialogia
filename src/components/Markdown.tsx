@@ -1,6 +1,8 @@
-import { lazy, memo, Suspense } from 'react';
+import { lazy, memo, Suspense, useEffect } from 'react';
 import type { MarkdownCitationSource } from '@/lib/markdown/citations';
 import { markdownToPlainText } from '@/lib/markdown/plainText';
+import { hasMathDelimiter, preprocessMarkdown } from '@/lib/markdown/preprocess';
+import { preloadKatex } from '@/components/markdown/loadKatex';
 
 export type { MarkdownCitationSource } from '@/lib/markdown/citations';
 
@@ -42,6 +44,14 @@ export const Markdown = memo(function Markdown({
   /** A single line set inside other text, without paragraphs or links. */
   inline?: boolean;
 }) {
+  // KaTeX is fetched from the first text that holds maths, streaming or from
+  // history, without waiting for the renderer's own chunk. Most text has no
+  // dollar or backslash at all and skips the full check.
+  const holdsMath = /[$\\]/.test(content) && hasMathDelimiter(preprocessMarkdown(content));
+  useEffect(() => {
+    if (holdsMath) preloadKatex();
+  }, [holdsMath]);
+
   return (
     // The text waits a moment before it shows, so a quick load goes straight
     // to the rendered page; a slow one shows prose without markdown syntax.

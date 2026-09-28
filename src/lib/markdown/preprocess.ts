@@ -95,6 +95,15 @@ export function normalizeMathDelimiters(text: string): string {
     );
 }
 
+// After preprocessMarkdown() an unescaped `$` is the only delimiter remark-math
+// recognizes (currency is escaped, `\(` and `\[` become dollars).
+const MATH_DELIMITER_RE = /(?<!\\)\$/;
+
+/** Whether preprocessed markdown holds maths, so KaTeX is worth fetching. */
+export function hasMathDelimiter(processed: string): boolean {
+  return MATH_DELIMITER_RE.test(processed);
+}
+
 export function preprocessMarkdown(content: string, sources?: MarkdownCitationSource[]): string {
   return mapOutsideCode(content, (prose) =>
     linkCitationMarkers(normalizeMathDelimiters(escapeCurrency(prose)), sources),

@@ -18,7 +18,8 @@ const render = (content: string, sources?: MarkdownCitationSource[]) =>
 const normalize = (html: string) =>
   html
     .replace(/<div class="markdown">/g, '')
-    .replace(/<\/div>/g, '')
+    // Whitespace between blocks is not read.
+    .replace(/<\/div>\s*/g, '')
     .replace(/(id="|href="#)[a-zA-Z0-9]*-/g, '$1')
     .replace(/>\s+</g, '><')
     .trim();
@@ -105,8 +106,8 @@ test('inline text keeps emphasis, code, maths and escapes, but no blocks or link
     renderToStaticMarkup(createElement(MarkdownRenderer, { content, inline: true }));
   assert.equal(
     inline('Evaluate \\(\\frac{1}{2}\\) for `a*b` at \\$6.66, *really* [here](https://x.test)'),
-    '<span class="markdown markdown--inline">Evaluate <code class="language-math math-inline">' +
-      '\\frac{1}{2}</code> for <code>a*b</code> at $6.66, <em>really</em> here</span>',
+    '<span class="markdown markdown--inline">Evaluate <span class="math-pending">' +
+      '\\frac{1}{2}</span> for <code>a*b</code> at $6.66, <em>really</em> here</span>',
   );
   assert.ok(!/<(p|ul|li|h1|a)[\s>]/.test(inline('# Title\n\n- one\n- two')));
 });
@@ -129,4 +130,12 @@ test('each block takes its direction from its own text, so Arabic and Hebrew set
   for (const tag of ['h1', 'p', 'li', 'blockquote', 'th', 'td']) {
     assert.match(html, new RegExp(`<${tag}\\b[^>]*\\bdir="auto"`), tag);
   }
+});
+
+test('before KaTeX arrives, maths is quiet plain text without its dollars, never code', () => {
+  const html = render('Area $\\pi r^2$ here.\n\n$$\nE = mc^2\n$$');
+  assert.match(html, /<span class="math-pending">\\pi r\^2<\/span>/);
+  assert.match(html, /<div class="math-pending math-pending--display">E = mc\^2<\/div>/);
+  assert.ok(!html.includes('$'));
+  assert.ok(!/<code|<pre/.test(html));
 });
