@@ -16,7 +16,8 @@ import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import { logger } from '@/lib/logger';
 import type { MarkdownCitationSource } from '@/lib/markdown/citations';
-import { preprocessMarkdown } from '@/lib/markdown/preprocess';
+import { hasMathDelimiter, preprocessMarkdown } from '@/lib/markdown/preprocess';
+import { loadKatexPlugin, loadedKatexPlugin } from '@/components/markdown/loadKatex';
 import { CodeBlock } from '@/components/markdown/CodeBlock';
 import {
   CodeFrame,
@@ -27,32 +28,6 @@ import { MermaidBlock } from '@/components/markdown/MermaidBlock';
 import { useImageZoom } from '@/components/markdown/useImageZoom';
 
 type RehypePlugins = NonNullable<React.ComponentProps<typeof ReactMarkdown>['rehypePlugins']>;
-type RehypePlugin = RehypePlugins[number];
-
-// An unescaped `$` after preprocessMarkdown() ran is the only delimiter remark-math
-// recognizes, so it is a sufficient signal that KaTeX is needed.
-const MATH_DELIMITER_RE = /(?<!\\)\$/;
-
-let katexPlugin: { plugin: RehypePlugin } | null = null;
-let katexPluginPromise: Promise<{ plugin: RehypePlugin }> | null = null;
-
-function loadKatexPlugin(): Promise<{ plugin: RehypePlugin }> {
-  if (!katexPluginPromise) {
-    katexPluginPromise = import('@/components/markdown/katex').then(
-      (mod) => {
-        katexPlugin = { plugin: mod.rehypeKatex as RehypePlugin };
-        return katexPlugin;
-      },
-      (error: unknown) => {
-        // A failed fetch (a dropped connection) is not remembered: the next
-        // reply with maths asks again instead of showing source for good.
-        katexPluginPromise = null;
-        throw error;
-      },
-    );
-  }
-  return katexPluginPromise;
-}
 
 export function MarkdownRenderer({
   content,
@@ -75,9 +50,10 @@ export function MarkdownRenderer({
   // Prism highlighting is handled per-block to avoid React clobbering DOM
 
   // KaTeX (plus its stylesheet) is ~110 kB, so it loads only for content that
-  // actually carries math delimiters. Until then math renders as raw source.
-  const hasMath = useMemo(() => MATH_DELIMITER_RE.test(processedContent), [processedContent]);
-  const [mathPlugin, setMathPlugin] = useState(katexPlugin);
+  // actually carries math delimiters. Until then maths is set as quiet plain
+  // text (`MathPending`).
+  const hasMath = useMemo(() => hasMathDelimiter(processedContent), [processedContent]);
+  const [mathPlugin, setMathPlugin] = useState(loadedKatexPlugin);
   useEffect(() => {
     if (!hasMath || mathPlugin) return;
     let cancelled = false;
@@ -142,12 +118,32 @@ const StreamingContext = createContext(false);
 
 const REMARK_PLUGINS = [remarkGfm, remarkMath];
 
+// Maths reaches these overrides only while KaTeX is still on its way (once
+// it is here, rehype-katex has replaced it): set it as quiet plain text, its
+// dollars already gone, at the size of the words around it, so the source
+// never flashes and the typeset formula lands about where the text stood.
+function Code({
+  className,
+  children,
+  node: _node,
+  ...codeProps
+}: ComponentProps<'code'> & ExtraProps) {
+  if (className?.includes('language-math')) return <span className="math-pending">{children}</span>;
+  return (
+    <code className={className} {...codeProps}>
+      {children}
+    </code>
+  );
+}
+
 function Pre({ children, node: _node, ...preProps }: ComponentProps<'pre'> & ExtraProps) {
   const streaming = useContext(StreamingContext);
   // Detect Mermaid blocks and render as diagrams instead of <pre>
   const lang = detectLanguageFromPreChildren(children);
   const code = extractCodeText(children);
   if (lang === 'mermaid') return <MermaidBlock code={code} streaming={streaming} />;
+  if (lang === 'math')
+    return <div className="math-pending math-pending--display">{code.trim()}</div>;
   return (
     <CodeFrame {...preProps} language={lang} rawText={code}>
       <CodeBlock code={code} language={lang} streaming={streaming} />
@@ -191,11 +187,7 @@ const COMPONENTS: Components = {
   pre: Pre,
   // react-markdown 9 passes no `inline` flag; a fenced block's <code> is
   // read and replaced by the <pre> override above.
-  code: ({ className, children, node: _node, ...codeProps }) => (
-    <code className={className || ''} {...codeProps}>
-      {children}
-    </code>
-  ),
+  code: Code,
   // `node` is react-markdown's syntax tree; spread onto the DOM it
   // becomes node="[object Object]".
   a: ({ href, children, node: _node, ...props }) => {
@@ -241,4 +233,5 @@ const INLINE_UNWRAPPED = [
 
 const INLINE_COMPONENTS: Components = {
   p: ({ children }) => <>{children}</>,
+  code: Code,
 };
