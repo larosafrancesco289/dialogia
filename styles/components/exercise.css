@@ -296,7 +296,7 @@
 
   /* Phones: the dots are a thumb's width apart, not the 44px floor every
      other button gets, which pushed the question count onto two lines. */
-  @media (max-width: 767px) {
+  @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
     .step-dot {
       width: 28px;
       height: 28px;

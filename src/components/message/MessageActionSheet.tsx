@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ArrowPathIcon,
   ArrowUturnRightIcon,
@@ -56,11 +56,26 @@ export function MessageActionSheet({
 }: MessageActionSheetProps) {
   const [selecting, setSelecting] = useState<Message | null>(null);
   const showReplyVersion = useChatStore((s) => s.showReplyVersion);
+  const openedOn = useRef<string | null>(null);
 
   // A new long press starts on the actions, never on an old selection page.
   useEffect(() => {
-    if (mobileSheet) setSelecting(null);
+    if (!mobileSheet) return;
+    openedOn.current = mobileSheet.id;
+    setSelecting(null);
   }, [mobileSheet]);
+
+  // The long-pressed message opened the sheet: closing puts focus back on it,
+  // so the reader is where they were. It is not a control, so it holds focus
+  // (tabIndex -1) only until focus moves on.
+  const backToMessage = () => {
+    const id = openedOn.current;
+    const card = id ? document.querySelector<HTMLElement>(`[data-mid="${CSS.escape(id)}"]`) : null;
+    if (!card || card.hasAttribute('tabindex')) return card;
+    card.tabIndex = -1;
+    card.addEventListener('blur', () => card.removeAttribute('tabindex'), { once: true });
+    return card;
+  };
 
   if (!isMobile) return null;
 
@@ -88,6 +103,7 @@ export function MessageActionSheet({
         label={isAssistant ? 'Reply actions' : 'Message actions'}
         title={title}
         onClose={onClose}
+        returnFocus={backToMessage}
       >
         <SheetItem
           icon={<ClipboardIcon />}
@@ -177,6 +193,7 @@ export function MessageActionSheet({
         open={!!selecting}
         label="Select text"
         title="Select text"
+        returnFocus={backToMessage}
         onClose={() => {
           setSelecting(null);
           onClose();

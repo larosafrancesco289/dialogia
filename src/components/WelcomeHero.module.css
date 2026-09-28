@@ -26,7 +26,7 @@
   width: 100%;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 768px) and (not ((pointer: coarse) and (max-height: 499px) and (max-width: 1023px))) {
   .heroDesktop {
     display: flex;
   }
@@ -142,7 +142,7 @@
   padding-bottom: var(--space-6);
 }
 
-@media (min-width: 768px) {
+@media (min-width: 768px) and (not ((pointer: coarse) and (max-height: 499px) and (max-width: 1023px))) {
   .heroMobile {
     display: none;
   }

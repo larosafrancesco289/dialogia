@@ -33,7 +33,7 @@
      so its words start where the reply's words start. The shell shrinks to
      the space above the keyboard, so the composer simply rides on top of
      it: nothing re-pins, nothing jumps. */
-  @media (max-width: 767px) {
+  @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
     .composer-chrome {
       left: var(--space-3);
       right: var(--space-3);
@@ -205,7 +205,7 @@
     color: var(--color-fg-muted);
   }
   /* Phones give every button a touch-sized floor. */
-  @media (max-width: 767px) {
+  @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
     .effort-menu__row {
       height: var(--touch-target-min);
     }
@@ -353,7 +353,7 @@
   }
 
   /* Mobile adjustments */
-  @media (max-width: 767px) {
+  @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
     .composer-btn-reasoning,
     .composer-btn-search,
     .composer-btn-attach,

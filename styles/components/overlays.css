@@ -32,7 +32,7 @@
   .motion-drop {
     animation: drop-in var(--duration-fast) var(--ease-standard) both;
   }
-  @media (max-width: 767px) {
+  @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
     /* Make small utility icon buttons larger for touch */
     .icon-button {
       height: 36px;

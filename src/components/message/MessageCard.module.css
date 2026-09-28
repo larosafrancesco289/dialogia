@@ -230,7 +230,7 @@
   z-index: 1;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
   .messageCard {
     -webkit-user-select: none;
     user-select: none;
@@ -267,7 +267,7 @@
   }
 }
 
-@media (min-width: 768px) {
+@media (min-width: 768px) and (not ((pointer: coarse) and (max-height: 499px) and (max-width: 1023px))) {
   .messageCard .actions {
     opacity: 0;
     pointer-events: none;
