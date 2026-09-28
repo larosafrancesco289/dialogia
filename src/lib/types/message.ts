@@ -110,8 +110,9 @@ export type Message = {
   content: string;
   // Not shown in the UI, but included in LLM conversation history
   hiddenContent?: string;
-  // Snapshot of the exact system prompt used for this assistant message
-  // so regen can reproduce the same context even if chat settings changed.
+  // The system prompt an older reply was sent with. No longer written (a retry
+  // is composed afresh, and the debug capture records the prompt); kept so
+  // saved replies still read.
   systemSnapshot?: string;
   // Snapshot of generation settings used for this assistant message
   // (temperature, top_p, tokens, reasoning, and feature toggles)
