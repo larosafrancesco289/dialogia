@@ -43,7 +43,7 @@ const draftThenTool =
     draft: string,
     name: string,
     args = '{}',
-    finishReason: 'tool_calls' | 'stop' = 'tool_calls',
+    finishReason: 'tool_calls' | 'stop' | 'length' = 'tool_calls',
   ): Round =>
   ({ callbacks }) => {
     callbacks?.onToolCallDelta?.([{ index: 0, function: { name } }]);
@@ -285,7 +285,7 @@ test('executeStreamingTurn adds the answer after a preamble that saved a note', 
   assert.equal(run.lastPersisted?.memoryWrites?.length, 1);
 });
 
-test('executeStreamingTurn writes the whole answer again when the added round calls another tool', async () => {
+test('executeStreamingTurn keeps a kept answer when a later round calls another tool, and adds to it', async () => {
   const run = await runTurn({
     tools: [...TOOLS, ...MEMORY_TOOLS],
     rounds: [
@@ -296,9 +296,35 @@ test('executeStreamingTurn writes the whole answer again when the added round ca
   });
 
   assert.equal(run.calls, 3);
-  assert.equal(run.visibleAtStart[2], '');
-  assert.equal(run.message?.content, ANSWER);
+  // The later round's own words go; the kept ones stay.
+  assert.equal(run.visibleAtStart[2], 'Noted.');
+  assert.equal(run.message?.content, `Noted.\n\n${ANSWER}`);
   assert.equal(run.lastPersisted?.memoryWrites?.length, 1);
+});
+
+test('executeStreamingTurn never empties a kept answer when the model then reads memory and adds nothing', async () => {
+  const run = await runTurn({
+    tools: [...TOOLS, ...MEMORY_TOOLS],
+    rounds: [
+      draftThenTool(ANSWER, 'memory_save', SAVE),
+      draftThenTool('', 'memory_read', JSON.stringify({ folder: 'About you' })),
+      finish(''),
+    ],
+  });
+
+  assert.equal(run.calls, 3);
+  assert.equal(run.lastPersisted?.content, ANSWER);
+});
+
+test('executeStreamingTurn does not run a tool call cut off at the token limit', async () => {
+  const run = await runTurn({
+    tools: [...TOOLS, ...MEMORY_TOOLS],
+    rounds: [draftThenTool(ANSWER, 'memory_save', '{"folder":"About', 'length')],
+  });
+
+  // A cut-off first reply is retried as before; its half-written call never runs.
+  assert.equal(run.memoryChanges.length, 0);
+  assert.equal(run.lastPersisted?.memoryWrites, undefined);
 });
 
 test('executeStreamingTurn runs tool calls that arrive with finish reason stop', async () => {

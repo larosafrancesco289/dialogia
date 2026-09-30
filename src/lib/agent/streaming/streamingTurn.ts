@@ -79,9 +79,13 @@ export async function executeStreamingTurn(
     const scheduled = scheduleTools(session, round.toolCalls);
     const text = joinRounds(kept, textOf(round));
     const keep = keepsText(session, round, scheduled, text);
-    kept = keep ? text : '';
-    if (!keep) clearVisibleDraft(session, ui);
-    if (scheduled.length > 0) await runToolRound(session, toolRounds, round, scheduled, keep);
+    // Once kept, an answer stays: a later round's own words may go, the kept ones never,
+    // and every later round is asked to add to them rather than write them again.
+    if (keep) kept = text;
+    else clearVisibleDraft(session, ui, kept);
+    if (scheduled.length > 0) {
+      await runToolRound(session, toolRounds, round, scheduled, kept !== '');
+    }
     // Pre-logged entries for calls the scheduler dropped would stay "pending"
     // in the ledger forever; executed calls have resolved by now.
     removeOrphanPendingToolCalls({ set: opts.turn.set, chatId: opts.chatId, messageId });
@@ -264,13 +268,16 @@ function messagesWithSystem(session: TurnSession, finalSystem: string): ModelMes
 
 // ── UI and store effects ────────────────────────────────────────────────────
 
-/** Takes a round's text off screen: it led to tool calls, so the next round writes the answer. */
-function clearVisibleDraft(session: TurnSession, ui: MessageStreamCallbacks): void {
+/**
+ * Takes a round's text off screen: it led to tool calls, so the next round
+ * writes the answer. What earlier rounds kept (`kept`) stays.
+ */
+function clearVisibleDraft(session: TurnSession, ui: MessageStreamCallbacks, kept = ''): void {
   const { turn, chatId, assistantMessage } = session.opts;
   ui.discardPendingText();
   turn.set((store) => {
     const result = updateMessageById(store, chatId, assistantMessage.id, (msg) =>
-      msg.content ? { ...msg, content: '' } : msg,
+      msg.content !== kept ? { ...msg, content: kept } : msg,
     );
     return result ?? {};
   });
