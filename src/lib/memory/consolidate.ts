@@ -6,7 +6,13 @@
 
 import type { MemoryChange, MemorySnapshot } from '@/lib/db/repository';
 import { orderedFolders } from '@/lib/memory/notebook';
-import { folderPath, noteHandle, resolveFolder, resolveNote } from '@/lib/memory/writes';
+import {
+  folderPath,
+  newFolderPlace,
+  noteHandle,
+  resolveFolder,
+  resolveNote,
+} from '@/lib/memory/writes';
 import {
   MEMORY_ABOUT_FOLDER_ID,
   MEMORY_LEARNING_FOLDER_ID,
@@ -134,20 +140,15 @@ export function applyOperations(args: {
     touchedFolders.add(folder.id);
   };
   const makeFolder = (ref: string, description: string): MemoryFolder | undefined => {
-    const parts = ref
-      .replace(/\s*[/›>]\s*/g, '/')
-      .split('/')
-      .filter(Boolean);
-    const name = parts.pop();
-    const parent = parts.length ? folderAt(parts.join('/')) : undefined;
-    if (!name || !description || (parts.length && !parent)) return undefined;
+    const place = newFolderPlace(live().folders, ref);
+    if (!place || !description) return undefined;
     const folder: MemoryFolder = {
       id: args.newId(),
-      name,
+      name: place.name,
       description,
       createdAt: now,
       updatedAt: now,
-      ...(parent ? { parentId: parent.id } : {}),
+      ...(place.parent ? { parentId: place.parent.id } : {}),
     };
     putFolder(folder);
     return folder;

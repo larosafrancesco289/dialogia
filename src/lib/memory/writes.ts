@@ -38,9 +38,33 @@ export function folderPath(folders: MemoryFolder[], folder: MemoryFolder): strin
   return names.join('/');
 }
 
+/** A folder path as a model may write it ("Projects › PhD thesis"), in its parts. */
+const pathParts = (ref: string) =>
+  ref
+    .trim()
+    .replace(/\s*[/›>]\s*/g, '/')
+    .split('/')
+    .filter(Boolean);
+
+/**
+ * Where a new folder named by a path would go: its name, and the folder it
+ * goes inside, which must be there already. Undefined when it cannot go anywhere.
+ */
+export function newFolderPlace(
+  folders: MemoryFolder[],
+  ref: string,
+): { name: string; parent?: MemoryFolder } | undefined {
+  const parts = pathParts(ref);
+  const name = parts.pop();
+  if (!name) return undefined;
+  if (!parts.length) return { name };
+  const parent = resolveFolder(folders, parts.join('/'));
+  return parent ? { name, parent } : undefined;
+}
+
 /** The folder a model named, by id, by path, or by a name only one folder has. */
 export function resolveFolder(folders: MemoryFolder[], ref: string): MemoryFolder | undefined {
-  const wanted = ref.trim().replace(/\s*[/›>]\s*/g, '/');
+  const wanted = pathParts(ref).join('/');
   if (!wanted) return undefined;
   const byId = folders.find((f) => f.id === wanted);
   if (byId) return byId;
@@ -77,20 +101,15 @@ export function planSave(args: {
   let folder = resolveFolder(memory.folders, args.folder);
   let created: MemoryFolder | undefined;
   if (!folder) {
-    const parts = args.folder
-      .trim()
-      .replace(/\s*[/›>]\s*/g, '/')
-      .split('/')
-      .filter(Boolean);
-    const name = parts.pop();
-    const parent = parts.length ? resolveFolder(memory.folders, parts.join('/')) : undefined;
-    if (!name || (parts.length && !parent)) {
+    const place = newFolderPlace(memory.folders, args.folder);
+    if (!place) {
       return {
         ok: false,
         error: `There is no folder "${args.folder}".`,
         hint: 'Use a folder from the memory index, or name a new one inside an existing folder.',
       };
     }
+    const { name, parent } = place;
     const description = args.newFolderDescription?.trim();
     if (!description) {
       return {
