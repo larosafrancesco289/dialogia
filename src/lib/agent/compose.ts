@@ -13,6 +13,7 @@ import type { Message } from '@/lib/types';
 import { buildSearchDateNotice, buildToolPreamble } from '@/lib/agent/prompts/toolPreamble';
 import { buildTimestampNotice } from '@/lib/agent/prompts/timestamps';
 import { buildMemoryPreamble } from '@/lib/memory/prompt';
+import { memoryOnInChat } from '@/lib/memory/notebook';
 import { MEMORY_TOOLS } from '@/lib/tools/definitions/memory';
 import { isToolCallingSupported } from '@/lib/models/capabilities';
 
@@ -61,10 +62,7 @@ export async function composeTurn({
   // model known to call tools: a user's own server that did not say so would
   // reject every request over them, so there memory is read-only.
   const memory = store?.get().memory;
-  const memoryOn =
-    !!memory?.loaded &&
-    ui?.memoryEnabled !== false &&
-    chat.settings.features?.memory?.enabled !== false;
+  const memoryOn = !!memory?.loaded && memoryOnInChat(ui, chat);
   if (memoryOn) stablePreambles.push(buildMemoryPreamble(memory));
   const memoryTools: ToolDefinition[] =
     memoryOn && isToolCallingSupported(settings.modelMeta) ? MEMORY_TOOLS : [];
