@@ -1,4 +1,5 @@
-import { ArrowUpIcon, StopIcon, PaperClipIcon } from '@heroicons/react/24/outline';
+import { ArrowUpIcon, BookOpenIcon, StopIcon, PaperClipIcon } from '@heroicons/react/24/outline';
+import { ComposerToolLabel } from '@/components/composer/ComposerToolLabel';
 import type { SearchMode } from '@/lib/search/providers/types';
 import type { ReasoningEffort } from '@/lib/types';
 import { ReasoningEffortControl } from '@/components/composer/ReasoningEffortControl';
@@ -26,6 +27,9 @@ export type ComposerActionsProps = {
   currentEffort?: ReasoningEffort;
   onSelectEffort: (effort: ReasoningEffort) => Promise<void> | void;
   hasContent?: boolean;
+  /** Whether this chat reads and writes memory; absent while memory is off everywhere. */
+  memoryOn?: boolean;
+  toggleMemory: () => void;
 };
 
 export function ComposerActions({
@@ -45,6 +49,8 @@ export function ComposerActions({
   currentEffort,
   onSelectEffort,
   hasContent,
+  memoryOn,
+  toggleMemory,
 }: ComposerActionsProps) {
   if (isStreaming) {
     return (
@@ -92,6 +98,25 @@ export function ComposerActions({
           toggleSearch={toggleSearch}
           selectSearchMode={selectSearchMode}
         />
+
+        {/* On is the usual state and stays quiet; a chat kept out of memory says so. */}
+        {memoryOn !== undefined && (
+          <button
+            type="button"
+            className={`icon-button composer-btn-memory${memoryOn ? '' : ' is-active'}`}
+            aria-pressed={!memoryOn}
+            aria-label="Keep this chat out of memory"
+            title={
+              memoryOn
+                ? 'Memory: on in this chat. Turn off to keep it out of memory.'
+                : 'Memory: off in this chat. Nothing is read or remembered.'
+            }
+            onClick={toggleMemory}
+          >
+            <BookOpenIcon className="h-4 w-4" aria-hidden="true" />
+            <ComposerToolLabel text={memoryOn ? null : 'Memory off'} />
+          </button>
+        )}
 
         {showReasoningMenu && (
           <ReasoningEffortControl

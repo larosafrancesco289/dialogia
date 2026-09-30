@@ -107,13 +107,15 @@ export function MemoryPage() {
   const setUI = useChatStore((s) => s.setUI);
   const chats = useChatStore((s) => s.chats);
   const [closing, setClosing] = useState(false);
-  const [page, setPage] = useState(MEMORY_ABOUT_FOLDER_ID);
+  const [page, setPage] = useState(
+    () => useChatStore.getState().ui.memoryFolderId ?? MEMORY_ABOUT_FOLDER_ID,
+  );
   const [records, setRecords] = useState<LearningRecord[]>([]);
   const drawerRef = useRef<HTMLDivElement>(null);
 
   const close = () => {
     setClosing(true);
-    window.setTimeout(() => setUI({ memoryOpen: false }), 190);
+    window.setTimeout(() => setUI({ memoryOpen: false, memoryFolderId: undefined }), 190);
   };
   useBackToClose(!closing, close);
 

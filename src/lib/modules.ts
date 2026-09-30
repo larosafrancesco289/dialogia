@@ -166,8 +166,16 @@ export type AppModule = {
 const coreModule: AppModule = {
   id: 'core',
   load: async () => {
-    const { registerCoreTools } = await import('@/lib/tools/core/searchTools');
-    return { registerTools: registerCoreTools };
+    const [{ registerCoreTools }, { registerMemoryTools }] = await Promise.all([
+      import('@/lib/tools/core/searchTools'),
+      import('@/lib/tools/core/memoryTools'),
+    ]);
+    return {
+      registerTools: () => {
+        registerCoreTools();
+        registerMemoryTools();
+      },
+    };
   },
 };
 

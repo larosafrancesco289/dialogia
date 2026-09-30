@@ -60,6 +60,8 @@ export type ChatFeatures = {
   search: ChatSearchSettings;
   /** Present only while the tutor module is installed. */
   tutor?: TutorSettings;
+  /** Long-term memory in this chat; absent means on. */
+  memory?: { enabled: boolean };
 };
 
 export type ChatSettings = {
@@ -78,6 +80,7 @@ export type ChatSettingsPatch = {
   features?: {
     search?: Partial<ChatSearchSettings>;
     tutor?: Partial<TutorSettings>;
+    memory?: { enabled: boolean };
   };
 };
 

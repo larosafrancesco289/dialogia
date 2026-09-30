@@ -371,6 +371,17 @@ small; the pure rules (built-in folders, reading order, how long a forgotten not
 forgotten note keeps its row with `forgottenAt` set and is deleted for good on the first load 30
 days later. Backups carry memory; keys stay out, as ever.
 
+The model reads and writes memory in every chat that has it on (`ui.memoryEnabled`, and a chat's
+`features.memory`, switched in its composer). `buildMemoryPreamble` (`src/lib/memory/prompt.ts`)
+puts About you in full and one index line per other folder into the stable preamble, so the index
+changes only between turns. The `memory_read` / `memory_save` / `memory_forget` tools
+(`src/lib/tools/core/memoryTools.ts`) are offered only to a model known to call tools, because a
+user's own server that did not declare tools would reject every request over them; there memory
+is read-only. Offering them runs the turn in the default tool loop. What a call changes is
+decided purely in `src/lib/memory/writes.ts`, and each change is kept on the reply as
+`Message.memoryWrites` (a per-version field, never sent to a model), which the reply shows as a
+quiet line with Undo (`undoMemoryWrite`).
+
 Numbers about learning are never copied into memory. The Learning folder lists a module's records
 (`AppModule.learningRecords`), read fresh each time the page opens: the tutor turns each tutor
 chat's folded log into its plan's path and estimates, so memory can never disagree with the Hub.

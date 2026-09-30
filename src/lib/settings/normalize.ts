@@ -50,6 +50,7 @@ export function normalizeChatSettings(
   const featuresRecord = isRecord(record.features) ? record.features : {};
   const searchRecord = isRecord(featuresRecord.search) ? featuresRecord.search : {};
   const tutorRecord = isRecord(featuresRecord.tutor) ? featuresRecord.tutor : {};
+  const memoryOff = isRecord(featuresRecord.memory) && featuresRecord.memory.enabled === false;
 
   const settings: ChatSettings = {
     modelId,
@@ -123,6 +124,7 @@ export function normalizeChatSettings(
             : undefined,
         learnerModel: tutorRecord.learnerModel as TutorSettings['learnerModel'],
       },
+      ...(memoryOff ? { memory: { enabled: false } } : {}),
     },
   };
 

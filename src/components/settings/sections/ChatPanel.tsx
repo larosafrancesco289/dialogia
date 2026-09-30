@@ -12,6 +12,7 @@ import {
 } from '@/lib/settings/systemPresets';
 import type { RenderSection } from '@/components/settings/types';
 import type { ReasoningEffort } from '@/lib/types';
+import { useChatStore } from '@/lib/store';
 
 type ChatPanelProps = {
   system: string;
@@ -201,6 +202,8 @@ export function ChatPanel(props: ChatPanelProps) {
         </SettingsSection>,
       )}
 
+      {renderSection('chat', 'memory', <MemorySettings />)}
+
       {renderSection(
         'chat',
         'reasoning',
@@ -298,5 +301,30 @@ export function ChatPanel(props: ChatPanelProps) {
         </SettingsSection>,
       )}
     </>
+  );
+}
+
+/** Memory on or off everywhere, said plainly, with the way into the Memory page. */
+function MemorySettings() {
+  const enabled = useChatStore((s) => s.ui.memoryEnabled !== false);
+  const setUI = useChatStore((s) => s.setUI);
+  return (
+    <SettingsSection title="Memory">
+      <ToggleSwitch
+        checked={enabled}
+        onChange={(on) => setUI({ memoryEnabled: on })}
+        label="Use memory"
+        description="The model reads your memory with every message and notes what it learns about you. What it reads goes to whichever provider the chat uses. To keep one chat out, switch memory off with the book in its composer."
+      />
+      <div>
+        <button
+          type="button"
+          className="btn-outline btn-sm"
+          onClick={() => setUI({ showSettings: false, memoryOpen: true })}
+        >
+          Open Memory
+        </button>
+      </div>
+    </SettingsSection>
   );
 }

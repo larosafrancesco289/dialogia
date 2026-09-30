@@ -12,6 +12,9 @@ import { loadModuleRuntimes } from '@/lib/modules';
 import type { Message } from '@/lib/types';
 import { buildSearchDateNotice, buildToolPreamble } from '@/lib/agent/prompts/toolPreamble';
 import { buildTimestampNotice } from '@/lib/agent/prompts/timestamps';
+import { buildMemoryPreamble } from '@/lib/memory/prompt';
+import { MEMORY_TOOLS } from '@/lib/tools/definitions/memory';
+import { isToolCallingSupported } from '@/lib/models/capabilities';
 
 export async function composeTurn({
   chat,
@@ -54,7 +57,22 @@ export async function composeTurn({
     if (toolSearch) stablePreambles.push(buildToolPreamble());
   }
 
-  const searchTools: ToolDefinition[] = toolSearch ? getSearchToolDefinition(searchProvider) : [];
+  // Memory rides along in every chat that has it on. Its tools go only to a
+  // model known to call tools: a user's own server that did not say so would
+  // reject every request over them, so there memory is read-only.
+  const memory = store?.get().memory;
+  const memoryOn =
+    !!memory?.loaded &&
+    ui?.memoryEnabled !== false &&
+    chat.settings.features?.memory?.enabled !== false;
+  if (memoryOn) stablePreambles.push(buildMemoryPreamble(memory));
+  const memoryTools: ToolDefinition[] =
+    memoryOn && isToolCallingSupported(settings.modelMeta) ? MEMORY_TOOLS : [];
+
+  const searchTools: ToolDefinition[] = [
+    ...(toolSearch ? getSearchToolDefinition(searchProvider) : []),
+    ...memoryTools,
+  ];
   const moduleTools: ToolDefinition[] = [];
   // Per module: its tools now, read again on each call when it can refresh them.
   const moduleToolSources: Array<() => ToolDefinition[]> = [];
@@ -129,7 +147,7 @@ export async function composeTurn({
     tools: tools.length > 0 ? tools : undefined,
     plugins: Array.isArray(plugins) && plugins.length > 0 ? plugins : undefined,
     hasPdf,
-    shouldPlan: toolSearch,
+    shouldPlan: toolSearch || memoryTools.length > 0,
     ...(modulesRequestAgentLoop ? { loop: 'agent' as const } : {}),
     ...(refreshTools ? { refreshTools } : {}),
     settings,

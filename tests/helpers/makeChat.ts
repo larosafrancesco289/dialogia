@@ -9,7 +9,7 @@ type ChatOverrides = Omit<Partial<Chat>, 'settings'> & { settings?: ChatSettings
  */
 export function makeChat(overrides: ChatOverrides = {}): Chat {
   const { settings = {}, ...rest } = overrides;
-  const { tutor, search } = settings.features ?? {};
+  const { tutor, search, memory } = settings.features ?? {};
   return {
     id: 'chat-1',
     title: 'Chat',
@@ -30,6 +30,7 @@ export function makeChat(overrides: ChatOverrides = {}): Chat {
       features: {
         search: { enabled: false, provider: 'openrouter', ...search },
         ...(tutor ? { tutor: { ...tutor } } : {}),
+        ...(memory ? { memory } : {}),
       },
     },
   };

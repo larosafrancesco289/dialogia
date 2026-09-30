@@ -13,6 +13,7 @@ const VERSION_KEYS = Object.keys({
   genSettings: true,
   annotations: true,
   searchSources: true,
+  memoryWrites: true,
   finishReason: true,
   stopPolicy: true,
   cutOff: true,

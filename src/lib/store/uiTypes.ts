@@ -48,6 +48,7 @@ export type PersistedUiState = {
   setupDismissed?: boolean;
   zdrOnly?: UiSnapshot['zdrOnly'];
   messageTimestamps?: UiSnapshot['messageTimestamps'];
+  memoryEnabled?: UiSnapshot['memoryEnabled'];
   dynamicDefaultResolutions?: UiSnapshot['dynamicDefaultResolutions'];
   chatDefaults?: ChatDefaults;
   flags?: Pick<UIFlags, 'experimentalTutor'>;

@@ -66,6 +66,14 @@ export type DialogiaDbLike = {
 /** Everything in long-term memory, forgotten notes included. */
 export type MemorySnapshot = { folders: MemoryFolder[]; notes: MemoryNote[] };
 
+/** Rows to write and rows to delete, applied together. */
+export type MemoryChange = {
+  folders?: MemoryFolder[];
+  notes?: MemoryNote[];
+  deleteNoteIds?: string[];
+  deleteFolderIds?: string[];
+};
+
 export type RepositorySnapshot = {
   chats: Chat[];
   folders: Folder[];
@@ -488,16 +496,13 @@ export function createRepository(db: DialogiaDbLike) {
     };
   };
 
-  /** Writes memory rows, and deletes notes by id, in one transaction. */
-  const writeMemory = async (change: {
-    folders?: MemoryFolder[];
-    notes?: MemoryNote[];
-    deleteNoteIds?: string[];
-  }) => {
+  /** Writes memory rows, and deletes rows by id, in one transaction. */
+  const writeMemory = async (change: MemoryChange) => {
     await runTransaction(db, [db.memoryFolders, db.memoryNotes], async () => {
       for (const folder of change.folders ?? []) await db.memoryFolders.put(folder);
       for (const note of change.notes ?? []) await db.memoryNotes.put(note);
       for (const id of change.deleteNoteIds ?? []) await db.memoryNotes.delete(id);
+      for (const id of change.deleteFolderIds ?? []) await db.memoryFolders.delete(id);
     });
   };
 
