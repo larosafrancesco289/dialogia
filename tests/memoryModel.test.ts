@@ -184,6 +184,14 @@ test('the prompt carries About you whole and one index line for each other folde
     notes: [{ ...m.notes[0], forgottenAt: 2 }],
   });
   assert.ok(!forgotten.includes('Milan'));
+  // About you keeps its newest 40 notes, and says where the rest are.
+  const many = Array.from({ length: 45 }, (_, i) => ({
+    ...note(`about-${i}`, MEMORY_ABOUT_FOLDER_ID, `Fact ${i}`),
+    createdAt: i,
+  }));
+  const capped = buildMemoryPreamble({ ...m, notes: many });
+  assert.ok(capped.includes('Fact 44') && !capped.includes('Fact 4\n'));
+  assert.match(capped, /5 older notes: memory_read "About you"/);
 });
 
 const modelIndex = createModelIndex([
