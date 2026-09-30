@@ -142,6 +142,7 @@ function reduce(state: TutorState, event: TutorEvent): TutorState {
           rationale: event.rationale,
           revision: event.revision,
           ...(event.startingEstimates ? { startingEstimates: event.startingEstimates } : {}),
+          ...(event.carriedOver ? { carriedOver: event.carriedOver } : {}),
           seq: event.seq,
           messageId: event.messageId,
         },
@@ -254,6 +255,7 @@ function reduce(state: TutorState, event: TutorEvent): TutorState {
             source: event.source,
             kind: event.kind,
             ...(event.ref ? { ref: event.ref } : {}),
+            ...(event.carriedOver ? { carriedOver: event.carriedOver } : {}),
           };
           return {
             ...topic,

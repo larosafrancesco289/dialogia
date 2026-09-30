@@ -154,6 +154,14 @@ export function relax(name: TutorToolName, value: unknown, adjusted: string[]): 
         if (Array.isArray(next.prerequisites)) {
           next.prerequisites = next.prerequisites.filter((p) => !isPlaceholder(p));
         }
+        const from = next.carriedFrom;
+        if (
+          from !== undefined &&
+          !(isRecord(from) && !isPlaceholder(from.chatId) && !isPlaceholder(from.topic))
+        ) {
+          adjusted.push(`ignored topics.${i}.carriedFrom: it needs both a chatId and a topic`);
+          delete next.carriedFrom;
+        }
         const estimate = next.startingEstimate;
         if (isRecord(estimate)) {
           let v = estimate.value;

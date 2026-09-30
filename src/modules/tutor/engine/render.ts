@@ -1,7 +1,7 @@
 // Module: tutor engine render
 // Responsibility: the compact plain-text state block the tutor reads every turn, and the learner's changes since a point in the log.
 
-import type { LearningPlanNode } from '@/lib/types';
+import type { LearningPlanNode, LearningRecord, LearningTopic } from '@/lib/types';
 import type { TutorEvent } from '@/modules/tutor/engine/events';
 import type { TutorFlags } from '@/modules/tutor/engine/flags';
 import { apply, effectiveEvents, fold } from '@/modules/tutor/engine/fold';
@@ -55,6 +55,9 @@ function topicLine(state: TutorState, node: LearningPlanNode): string {
     parts.push('not started');
   }
   parts.push(`${masteryBand(c)} ${percent(c)}%`);
+  if (state.mastery[node.id]?.evidence.some((entry) => entry.carriedOver)) {
+    parts.push('carried over from another chat');
+  }
   if (state.mastery[node.id]?.needsReview) parts.push('flagged for review');
   if (node.status === 'not_started' && state.plan) {
     const unmet = unmetPrerequisites(state.plan, node);
@@ -140,6 +143,32 @@ function shownOnTopic(state: TutorState, nodeId: string): string[] {
     .map((entry) => `- ${entry.kind ?? 'observed'}: ${quote(entry.details, 100)}`);
 }
 
+/** How many of the learner's other tutor chats the tutor is shown: the most recently studied. */
+const OTHER_CHATS_SHOWN = 5;
+
+const RECORD_STATE: Record<LearningTopic['state'], string> = {
+  done: 'done',
+  current: 'in progress',
+  ready: 'not started',
+  locked: 'not started',
+};
+
+/** The learner's other tutor chats, so a new plan can continue one: its subject, and topics to carry over. */
+function otherChatLines(records: readonly LearningRecord[]): string[] {
+  const shown = [...records].sort((a, b) => b.studiedAt - a.studiedAt).slice(0, OTHER_CHATS_SHOWN);
+  if (!shown.length) return [];
+  return [
+    "The learner's other tutor chats, most recently studied first. If your plan continues one, give it that chat's subject word for word, and set carriedFrom on each topic they already studied there:",
+    ...shown.flatMap((record) => [
+      `- [${record.chatId}] ${record.subject ? `${record.subject}: ` : ''}${record.goal}${record.finished ? ' (finished)' : ''}`,
+      ...record.topics.map(
+        (topic) =>
+          `  - ${topic.name}: ${RECORD_STATE[topic.state]}${topic.percent != null ? `, ${topic.percent}%` : ''}`,
+      ),
+    ]),
+  ];
+}
+
 function awaitingLine(state: TutorState): string | undefined {
   const open = state.awaiting;
   if (!open) return undefined;
@@ -173,6 +202,8 @@ export type RenderOptions = {
   flags: TutorFlags;
   /** From `learnerChangesSince`: shown last, as authoritative. */
   learnerChanges?: string[];
+  /** The learner's other tutor chats, shown until this chat has a plan. */
+  otherChats?: readonly LearningRecord[];
 };
 
 /** The tutor's view of the session, rendered fresh for every request. Plain text, short. */
@@ -245,6 +276,7 @@ export function renderStateBlock(state: TutorState, options: RenderOptions): str
         if (answer?.length) lines.push(`- ${quote(question.question, 60)}: ${answer.join(', ')}`);
       }
     }
+    lines.push(...otherChatLines(options.otherChats ?? []));
   }
   if (state.phase !== 'teaching') {
     for (const diagnostic of Object.values(state.diagnostics)) {

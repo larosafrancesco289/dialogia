@@ -29,6 +29,17 @@ export function decide(
   return error ? { ok: false, error } : { ok: true, events: out.events };
 }
 
+/** The other tutor chats `decide` reads for this command, to be given as `ctx.otherChats`. */
+export function otherChatsRead(state: TutorState, command: TutorCommand): string[] {
+  const ids =
+    command.type === 'propose_plan'
+      ? command.nodes.flatMap((node) => (node.carriedFrom ? [node.carriedFrom.chatId] : []))
+      : command.type === 'approve_plan'
+        ? Object.values(state.proposal?.carriedOver ?? {}).map((source) => source.chatId)
+        : [];
+  return [...new Set(ids)];
+}
+
 /** `decide`, then fold the new events in. */
 export function step(state: TutorState, command: TutorCommand, ctx: CommandContext): StepResult {
   const result = decide(state, command, ctx);

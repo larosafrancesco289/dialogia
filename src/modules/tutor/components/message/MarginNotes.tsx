@@ -8,6 +8,7 @@ import {
 import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
 import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 import { Markdown } from '@/components/Markdown';
+import { CarriedOverWords } from './CarriedOverWords';
 
 /**
  * Mastery changes annotated beside the exchange that earned them. The number
@@ -67,6 +68,15 @@ export function MarginNotes({
                 {percent(change.from)}% <span aria-hidden="true">→</span> {percent(change.to)}%
               </span>
             </p>
+            {change.carriedOver && (
+              <p className="margin-note__reason">
+                <CarriedOverWords
+                  carried={change.carriedOver}
+                  setTo={change.to}
+                  topic={nameOf(change.nodeId)}
+                />
+              </p>
+            )}
             {reason.text && (
               <p className="margin-note__reason">
                 <Markdown inline content={reason.text} />

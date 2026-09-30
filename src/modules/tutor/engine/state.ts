@@ -3,6 +3,7 @@
 
 import type { LearningPlan, LearningPlanNode, Misconception, TopicMastery } from '@/lib/types';
 import type {
+  CarrySource,
   DiagnosticItem,
   IntakeQuestion,
   QuizItem,
@@ -55,6 +56,7 @@ export type PendingProposal = {
   rationale?: string;
   revision: boolean;
   startingEstimates?: Record<string, StartingEstimate>;
+  carriedOver?: Record<string, CarrySource>;
   seq: number;
   messageId?: string;
 };
@@ -135,6 +137,10 @@ export function followsCorrection(state: TutorState, nodeId: string): boolean {
   const last = state.mastery[nodeId]?.evidence.at(-1);
   return last?.source === 'learner' && last.kind === 'adjusted';
 }
+
+// Every topic starts at a prior; only evidence makes it a measurement.
+export const isMeasured = (m: TopicMastery | undefined): m is TopicMastery =>
+  !!m && (m.interactions > 0 || m.evidence.length > 0);
 
 export function confidenceOf(state: TutorState, nodeId: string): number {
   return state.mastery[nodeId]?.confidence ?? MASTERY_PRIOR;

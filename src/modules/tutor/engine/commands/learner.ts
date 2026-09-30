@@ -5,6 +5,7 @@ import { apply } from '@/modules/tutor/engine/fold';
 import { nextReadyNode } from '@/modules/tutor/engine/plan';
 import {
   AFTER_CORRECTION_FACTOR,
+  STARTING_ESTIMATE_MAX,
   clamp01,
   diagnosticWeight,
   markKnownTarget,
@@ -15,6 +16,7 @@ import {
   confidenceOf,
   diagnosed,
   followsCorrection,
+  isMeasured,
   quizFinished,
   startingEstimateCap,
   type TutorState,
@@ -210,7 +212,7 @@ export function decideLearner(
       if (stale) return stale;
       const approved = out.push({ type: 'plan_approved', proposalId: cmd.proposalId });
       const after = apply(state, approved);
-      placeStartingEstimates(state, after, out);
+      placeStartingEstimates(state, after, out, ctx.otherChats);
       if (!after.currentNodeId) {
         const next = nextReadyNode(after.plan);
         if (next) out.push({ type: 'topic_started', nodeId: next.id }, 'system');
@@ -379,15 +381,46 @@ export function decideLearner(
 /**
  * A proposal's starting estimates, as evidence the learner can see, question
  * and contest like any other. Only a topic with no evidence of its own takes
- * one: what the learner has already shown outranks a guess made before.
+ * one: what the learner has already shown outranks a guess made before. A
+ * topic carried over from another tutor chat starts from that topic's
+ * estimate as it stands now, capped as a diagnostic's would be; the event
+ * keeps what was read, so replay never reads the other chat.
  */
-function placeStartingEstimates(before: TutorState, after: TutorState, out: Emitter): void {
-  const estimates = before.proposal?.startingEstimates;
-  if (!estimates) return;
+function placeStartingEstimates(
+  before: TutorState,
+  after: TutorState,
+  out: Emitter,
+  otherChats: CommandContext['otherChats'],
+): void {
+  const proposal = before.proposal;
+  const fresh = (nodeId: string) => after.mastery[nodeId]?.evidence.length === 0;
+  const carried = new Set<string>();
+  for (const [nodeId, source] of Object.entries(proposal?.carriedOver ?? {})) {
+    const from = otherChats?.[source.chatId]?.mastery[source.nodeId];
+    if (!fresh(nodeId) || !isMeasured(from)) continue;
+    carried.add(nodeId);
+    out.push(
+      {
+        type: 'evidence_recorded',
+        nodeId,
+        source: 'placement',
+        kind: 'placement',
+        setTo: Math.min(STARTING_ESTIMATE_MAX, from.confidence),
+        note: `Carried over from ${source.topic} in another tutor chat, at ${percent(from.confidence)}% there`,
+        carriedOver: {
+          chatId: source.chatId,
+          topic: source.topic,
+          estimate: from.confidence,
+          studiedAt: from.lastInteraction,
+        },
+      },
+      'system',
+    );
+  }
   const fromDiagnostic = diagnosed(before);
-  for (const [nodeId, estimate] of Object.entries(estimates)) {
+  for (const [nodeId, estimate] of Object.entries(proposal?.startingEstimates ?? {})) {
     const topic = after.mastery[nodeId];
-    if (!topic || topic.evidence.length > 0) continue;
+    if (!topic || !fresh(nodeId) || carried.has(nodeId)) continue;
     const setTo = Math.min(startingEstimateCap(before), clamp01(estimate.value));
     if (setTo === topic.confidence) continue;
     const reason = estimate.reason || 'From what the learner said before the plan';

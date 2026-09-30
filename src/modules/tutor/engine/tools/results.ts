@@ -4,7 +4,12 @@
 import type { TutorError, TutorToolCommand, TutorToolName } from '@/modules/tutor/engine/commands';
 import type { TutorEvent, TutorEventOf } from '@/modules/tutor/engine/events';
 import { nextReadyNode } from '@/modules/tutor/engine/plan';
-import { STARTING_ESTIMATE_SAID_MAX, masteryBand, percent } from '@/modules/tutor/engine/rules';
+import {
+  STARTING_ESTIMATE_MAX,
+  STARTING_ESTIMATE_SAID_MAX,
+  masteryBand,
+  percent,
+} from '@/modules/tutor/engine/rules';
 import {
   confidenceOf,
   diagnosed,
@@ -41,9 +46,14 @@ export function tutorToolError(error: TutorError): ToolResult {
   return { ok: false, error: error.code, message: error.message, hint: error.hint };
 }
 
-/** A result with what parsing ignored or corrected, so the model knows what did not count. */
+/**
+ * A result with what parsing ignored or corrected, so the model knows what
+ * did not count, ahead of anything the engine itself set aside.
+ */
 export function withAdjustments(result: ToolResult, adjusted: readonly string[] | undefined) {
-  return adjusted?.length ? { ...result, adjusted: [...adjusted] } : result;
+  if (!adjusted?.length) return result;
+  const engine = Array.isArray(result.adjusted) ? result.adjusted : [];
+  return { ...result, adjusted: [...adjusted, ...engine] };
 }
 
 /** Why an observation moved nothing, for the tutor to learn from. */
@@ -97,6 +107,18 @@ export function tutorToolResult(
       const proposal = after.proposal;
       const previous = new Set(before.plan?.nodes.map((n) => n.id) ?? []);
       const ids = proposal?.plan.nodes.map((n) => n.id) ?? [];
+      const carried = proposal?.carriedOver ?? {};
+      // The proposal's topics are the call's, in order.
+      const dropped =
+        command?.type === 'propose_plan'
+          ? command.nodes.flatMap(({ carriedFrom: from }, i) =>
+              from && !carried[ids[i]]
+                ? [
+                    `ignored topics.${i}.carriedFrom: no topic "${from.topic}" with an estimate in the tutor chat [${from.chatId}]; it starts like any other topic`,
+                  ]
+                : [],
+            )
+          : [];
       return {
         ok: true,
         shown: 'plan_proposal',
@@ -115,6 +137,15 @@ export function tutorToolResult(
                   }),
             }
           : {}),
+        ...(Object.keys(carried).length
+          ? {
+              carriedOver: Object.fromEntries(
+                Object.entries(carried).map(([id, source]) => [id, source.topic]),
+              ),
+              carriedOverNote: `On approval each carried-over topic starts from its estimate in the other chat, up to ${percent(STARTING_ESTIMATE_MAX)}%. Completing it still needs the learner's own answers here.`,
+            }
+          : {}),
+        ...(dropped.length ? { adjusted: dropped } : {}),
         ...(events.some((e) => e.type === 'card_dismissed')
           ? { closed: 'intake', closedNote: 'The unanswered intake card is closed.' }
           : {}),

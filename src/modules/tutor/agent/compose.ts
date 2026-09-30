@@ -12,6 +12,7 @@ import {
   type TutorEvent,
 } from '@/modules/tutor/engine';
 import { TUTOR_SYSTEM_PROMPT } from '@/modules/tutor/agent/systemPrompt';
+import { tutorLearningRecords } from '@/modules/tutor/lib/learningRecords';
 import { currentTutorSession, tutorStore } from '@/modules/tutor/store/access';
 import { EMPTY_TUTOR_SESSION } from '@/modules/tutor/store/tutorSlice';
 
@@ -44,6 +45,14 @@ export async function buildTutorComposeContribution({
   const { state, events } = session;
   const flags = resolveTutorFlags(chat.settings.features.tutor);
   const since = learnerChangesBaseline(priorMessages, events);
+  // Until this chat has a plan, the tutor sees what the learner studied in their other tutor chats.
+  const otherChats =
+    tutor && store && !state.plan
+      ? await tutorLearningRecords(
+          store.get().chats.filter((other) => other.id !== chat.id),
+          tutor.ensureTutorSession,
+        )
+      : [];
 
   return {
     tools: tutorToolDefinitions(state, flags),
@@ -53,7 +62,11 @@ export async function buildTutorComposeContribution({
       tutorToolDefinitions(currentTutorSession(store?.get, chat.id)?.state ?? state, flags),
     stablePreambles: [TUTOR_SYSTEM_PROMPT],
     dynamicPreambles: [
-      renderStateBlock(state, { flags, learnerChanges: learnerChangesSince(state, events, since) }),
+      renderStateBlock(state, {
+        flags,
+        learnerChanges: learnerChangesSince(state, events, since),
+        otherChats,
+      }),
     ],
     loop: 'agent',
     // The tutor prompt is a complete system prompt on its own.

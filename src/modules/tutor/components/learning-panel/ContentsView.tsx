@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import type { LearningPlan, LearningPlanNode, TopicMastery } from '@/lib/types';
-import { nextReadyNode, type TopicExplanation } from '@/modules/tutor/engine';
+import { isMeasured, nextReadyNode, type TopicExplanation } from '@/modules/tutor/engine';
 import type { TutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 import { readableNote } from '@/modules/tutor/ui/messageViews';
 import { listNames, PathStep, stepState, waitingOn, type StepState } from './PlanPath';
-import { isMeasured, pct, statusWords } from '@/modules/tutor/lib/topicStatus';
+import { pct, statusWords } from '@/modules/tutor/lib/topicStatus';
 import { Markdown } from '@/components/Markdown';
+import { CarriedOverWords } from '@/modules/tutor/components/message/CarriedOverWords';
 
 // Corrections are recorded for the tutor ("Learner said…"); read them back
 // to the learner in the second person.
@@ -284,20 +285,36 @@ function settingLabel(evidence: WhyStep['evidence']): string {
 }
 
 /** One line of "Why N%": what a piece of evidence did, or where it set the estimate. */
-function WhyLine({ step: { evidence, before, after }, first }: { step: WhyStep; first: boolean }) {
+function WhyLine({
+  step: { evidence, before, after },
+  first,
+  topic,
+}: {
+  step: WhyStep;
+  first: boolean;
+  topic: string;
+}) {
   if (isSetting(evidence)) {
     const details = evidence?.details ? readableNote(evidence.details) : '';
     // Where it was set from, so the story reads through: 61%, then your 46%.
     const was = !first && pct(before) !== pct(after) ? `It was ${pct(before)}%.` : '';
     // The learner's own correction is its own label ("You said the estimate
-    // felt too high."); other settings are named, with their reason under.
+    // felt too high."), as is where a carried-over estimate came from; other
+    // settings are named, with their reason under.
     const own = evidence?.source === 'learner' && evidence.kind === 'adjusted' && !!details;
-    const note = (own ? [was] : [details, was]).filter(Boolean).join(' ');
+    const carried = evidence?.carriedOver;
+    const note = (own || carried ? [was] : [details, was]).filter(Boolean).join(' ');
     return (
       <li className="is-edge">
         <span className="hub-why__figure">{pct(after)}%</span>
         <span>
-          {own ? <Markdown inline content={details} /> : settingLabel(evidence)}
+          {own ? (
+            <Markdown inline content={details} />
+          ) : carried ? (
+            <CarriedOverWords carried={carried} setTo={after} topic={topic} />
+          ) : (
+            settingLabel(evidence)
+          )}
           {note && (
             <span className="hub-why__note">
               <Markdown inline content={note} />
@@ -351,7 +368,12 @@ function Why({ mastery, explanation }: { mastery: TopicMastery; explanation?: To
           </li>
         )}
         {steps.map((step, i) => (
-          <WhyLine key={i} step={step} first={i === 0 && opensWithSetting} />
+          <WhyLine
+            key={i}
+            step={step}
+            first={i === 0 && opensWithSetting}
+            topic={explanation?.name ?? mastery.nodeId}
+          />
         ))}
         {!endsWithSetting && (
           <li className="is-now">

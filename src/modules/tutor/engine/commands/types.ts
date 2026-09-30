@@ -121,6 +121,12 @@ export type CommandContext = {
   flags: TutorFlags;
   /** The assistant message the resulting events belong to. */
   messageId?: string;
+  /**
+   * The learner's other tutor chats by chat id, those `otherChatsRead` names.
+   * Outside data: what `decide` reads here goes into the events, so `fold`
+   * never needs it.
+   */
+  otherChats?: Record<string, TutorState>;
 };
 
 export type DecideResult = { ok: true; events: TutorEvent[] } | { ok: false; error: TutorError };

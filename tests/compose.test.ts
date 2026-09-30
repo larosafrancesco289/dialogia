@@ -145,6 +145,30 @@ test('composeTurn merges tutor and search context with plugins and tools', async
   }
 });
 
+test('before its plan, a tutor chat’s state block lists the learner’s other tutor chats', async () => {
+  const earlier = { ...baseChat(), id: 'chat-algebra' };
+  const chat = makeChat({
+    id: 'chat-new',
+    settings: { modelId: 'provider/model-alpha', features: { tutor: { enabled: true } } },
+  });
+  const store = createTestStore();
+  store.setState({ chats: [earlier, chat] });
+  const ui = uiWithTutor(true);
+  const settings = resolveTurnSettings({ chat, ui, modelIndex, modelId: chat.settings.modelId });
+  const result = await composeTurn({
+    chat,
+    ui,
+    settings,
+    modelIndex,
+    prior: [],
+    newUser: { content: 'Can we do systems of equations next?' },
+    store: { get: store.getState, set: store.setState },
+  });
+  assert.ok(result.systemDynamic?.includes('- [chat-algebra] Master algebra fundamentals'));
+  assert.ok(result.systemDynamic?.includes('  - Linear Equations: in progress'));
+  assert.ok(!result.systemDynamic?.includes('[chat-new]'));
+});
+
 test('composeTurn uses tool-based search when the provider has a key', async () => {
   await setKey('tavily', 'tvly-test');
   const chat = baseChat();
