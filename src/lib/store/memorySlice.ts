@@ -20,9 +20,16 @@ import {
   NOTICE_CONSOLIDATION_PARTLY_UNDONE,
   NOTICE_CONSOLIDATION_STALE,
   NOTICE_MEMORY_CHANGED_SINCE,
+  NOTICE_SAVE_FAILED,
 } from '@/lib/store/notices';
 import { v4 as uuidv4 } from 'uuid';
-import type { ConsolidationPass, MemoryAuthor, MemoryFolder, MemoryNote } from '@/lib/types';
+import type {
+  ConsolidationPass,
+  MemoryAuthor,
+  MemoryFolder,
+  MemoryNote,
+  MemoryWrite,
+} from '@/lib/types';
 
 export type MemorySliceState = {
   memory: {
@@ -195,11 +202,29 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
           return;
         }
         // Marked before the write is awaited, so a second click finds it taken back.
-        set(
-          (s) =>
-            updateMessageById(s, message.chatId, messageId, (m) => markWriteUndone(m, write)) ?? {},
-        );
-        await changeMemory(change);
+        let taken: MemoryWrite | undefined;
+        set((s) => {
+          const result = updateMessageById(s, message.chatId, messageId, (m) =>
+            markWriteUndone(m, write),
+          );
+          taken = result?.messagesById?.[messageId]?.memoryWrites?.[index];
+          return result ?? {};
+        });
+        try {
+          await changeMemory(change);
+        } catch {
+          // Nothing was written: the line gets its Undo back, and memory is read again as stored.
+          set(
+            (s) =>
+              updateMessageById(s, message.chatId, messageId, (m) => ({
+                ...m,
+                memoryWrites: m.memoryWrites?.map((w) => (w === taken ? write : w)),
+              })) ?? {},
+          );
+          get().setNotice(NOTICE_SAVE_FAILED);
+          await get().refreshMemory();
+          return;
+        }
         // The reply as it is now, which may have grown or switched versions
         // meanwhile, so no older copy of it is saved.
         const marked = get().messagesById[messageId];

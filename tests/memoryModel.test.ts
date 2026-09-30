@@ -340,6 +340,33 @@ test('memory switched off, in the chat or everywhere, is neither read nor writte
   }
 });
 
+test("a memory read stays in the reply's tool log as a count, never a copy of the notes", async () => {
+  const store = createTestStore();
+  await store.getState().loadMemory();
+  const bike = await store.getState().addMemoryNote(MEMORY_ABOUT_FOLDER_ID, 'Has a bike');
+  const logged: unknown[] = [];
+  const context = {
+    chatId: 'chat-6',
+    assistantMessage: { id: 'reply-6', chatId: 'chat-6', role: 'assistant', content: '' },
+    set: store.setState,
+    get: store.getState,
+    logger: {
+      start: () => ({ success: (output: unknown) => logged.push(output), error: () => undefined }),
+    },
+  } as unknown as ToolExecutionContext;
+  const outcome = await getToolHandler('memory_read')!({
+    toolCall: { id: 'r', type: 'function', function: { name: 'memory_read', arguments: '{}' } },
+    parsedArgs: { folder: 'About you' },
+    aggregatedResults: [],
+    context,
+  });
+
+  assert.equal(outcome.result?.ok, true);
+  assert.deepEqual(logged, [{ ok: true, folder: 'About you', notes: 1 }]);
+  // The database is shared with the tests below.
+  await store.getState().changeMemory({ deleteNoteIds: [bike!.id] });
+});
+
 test('the tools write to memory, keep each change on the reply, and undo it', async () => {
   const store = createTestStore();
   await store.getState().loadMemory();
@@ -458,6 +485,42 @@ test('a second click while Undo is writing finds the write taken back, and says 
   assert.equal(store.getState().ui.notice, undefined);
   assert.equal(store.getState().messagesById[reply.id].memoryWrites![0].undone, true);
   assert.ok(store.getState().memory.notes.find((n) => n.id === added!.id)?.forgottenAt);
+});
+
+test('an Undo that cannot be written gives the line its Undo back and says so', async () => {
+  const store = createTestStore();
+  await store.getState().loadMemory();
+  const added = await store.getState().addMemoryNote(MEMORY_ABOUT_FOLDER_ID, 'Has a cat');
+  const reply = {
+    id: 'reply-5',
+    chatId: 'chat-5',
+    role: 'assistant',
+    content: '',
+    memoryWrites: [
+      { noteId: added!.id, action: 'added', text: 'Has a cat', folderId: MEMORY_ABOUT_FOLDER_ID },
+    ],
+  } as Message;
+  store.setState({
+    messagesById: { [reply.id]: reply },
+    messageIdsByChatId: { 'chat-5': [reply.id] },
+  });
+  const writeMemory = repository.writeMemory;
+  repository.writeMemory = async () => {
+    throw new Error('The transaction was aborted.');
+  };
+  try {
+    await store.getState().undoMemoryWrite(reply.id, 0);
+  } finally {
+    repository.writeMemory = writeMemory;
+  }
+
+  assert.ok(store.getState().ui.notice);
+  assert.notEqual(store.getState().messagesById[reply.id].memoryWrites![0].undone, true);
+  // Memory is read again as stored: the note is still there.
+  assert.equal(
+    store.getState().memory.notes.find((n) => n.id === added!.id)?.forgottenAt,
+    undefined,
+  );
 });
 
 test('Undo marks the version clicked, even when another is shown before it finishes', async () => {
