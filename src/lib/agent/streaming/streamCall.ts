@@ -103,9 +103,13 @@ export type RoundCapture = {
   toolCalls: ToolCall[];
 };
 
-/** A tool call in the stream counts whatever the finish reason says: some providers report 'stop' alongside calls. */
+/**
+ * A round's tool calls count whatever the finish reason says (some providers
+ * report 'stop' alongside calls), unless the round was cut off at its token
+ * limit: a call it was still writing has arguments that never finished.
+ */
 export function roundWantsTools(round: RoundCapture): boolean {
-  return round.toolCalls.length > 0;
+  return round.toolCalls.length > 0 && round.finishReason !== 'length';
 }
 
 /**
