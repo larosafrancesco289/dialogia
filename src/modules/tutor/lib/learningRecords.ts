@@ -5,7 +5,7 @@
 import type { Chat, LearningRecord } from '@/lib/types';
 import type { TutorState } from '@/modules/tutor/engine/state';
 import type { TutorSession } from '@/modules/tutor/store/tutorSlice';
-import { isTutorChat } from '@/modules/tutor/store/selectors';
+import { isSharedTutorChat } from '@/modules/tutor/store/selectors';
 import { isMeasured, nextReadyNode } from '@/modules/tutor/engine';
 import { stepState, waitingOn } from '@/modules/tutor/components/learning-panel/PlanPath';
 import { pct, statusWords } from '@/modules/tutor/lib/topicStatus';
@@ -35,16 +35,16 @@ export function learningRecord(chat: Chat, state: TutorState): LearningRecord | 
 }
 
 /**
- * The record of each tutor chat among `chats` that has an approved plan,
- * loading its log first. A chat whose plan names no subject (older plans
- * never did) takes the subject of a later chat that carried a topic over
- * from it, so the two read together.
+ * The record of each tutor chat among `chats` that has an approved plan and
+ * has not switched memory off, loading its log first. A chat whose plan names
+ * no subject (older plans never did) takes the subject of a later chat that
+ * carried a topic over from it, so the two read together.
  */
 export async function tutorLearningRecords(
   chats: readonly Chat[],
   ensureTutorSession: (chatId: string) => Promise<TutorSession>,
 ): Promise<LearningRecord[]> {
-  const tutorChats = chats.filter(isTutorChat);
+  const tutorChats = chats.filter(isSharedTutorChat);
   const states = await Promise.all(
     tutorChats.map(async (chat) => (await ensureTutorSession(chat.id)).state),
   );

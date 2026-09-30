@@ -1,14 +1,29 @@
 // Module: memory/notebook
-// Responsibility: Pure rules for long-term memory's folders and notes: the folders
-// every memory has, how long a forgotten note waits, what a load mends, and how a
-// folder is counted.
+// Responsibility: Pure rules for long-term memory's folders and notes: which chats
+// have memory, the folders every memory has, how long a forgotten note waits, what
+// a load mends, and how a folder is counted.
 
+import type { UiSnapshot } from '@/lib/contracts/ui';
 import {
   MEMORY_ABOUT_FOLDER_ID,
   MEMORY_LEARNING_FOLDER_ID,
+  type Chat,
   type MemoryFolder,
   type MemoryNote,
 } from '@/lib/types';
+
+/**
+ * The chat's own switch, the bookmark in its composer. Off keeps the chat out of
+ * memory altogether: the model has none there, and no other chat is shown it.
+ */
+export const chatAllowsMemory = (chat: Pick<Chat, 'settings'>) =>
+  chat.settings.features?.memory?.enabled !== false;
+
+/** Whether the model has memory in this chat: on everywhere, and not switched off in the chat. */
+export const memoryOnInChat = (
+  ui: Pick<UiSnapshot, 'memoryEnabled'> | undefined,
+  chat: Pick<Chat, 'settings'>,
+) => ui?.memoryEnabled !== false && chatAllowsMemory(chat);
 
 /** How long a forgotten note waits in Recently forgotten before it is gone. */
 export const FORGOTTEN_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -63,6 +78,10 @@ export function repairs(
       .map((note) => ({ ...note, folderId: MEMORY_ABOUT_FOLDER_ID })),
   };
 }
+
+/** The folder a note goes back to: its own while that folder is there, or else About you. */
+export const returningFolder = (folders: MemoryFolder[], folderId: string) =>
+  folders.some((folder) => folder.id === folderId) ? folderId : MEMORY_ABOUT_FOLDER_ID;
 
 /** Forgotten notes whose wait is over. */
 export function expiredNotes(notes: MemoryNote[], now: number): MemoryNote[] {
