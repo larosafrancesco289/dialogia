@@ -93,6 +93,7 @@ test('partialize emits the same key set the pre-refactor build wrote', () => {
     'flags',
     'introSeen',
     'memoryEnabled',
+    'memorySensitive',
     'messageTimestamps',
     'plan',
     'setupDismissed',

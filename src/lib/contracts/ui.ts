@@ -90,6 +90,8 @@ export type UiSnapshot = {
   messageTimestamps?: boolean;
   /** Long-term memory is read and written in chats; absent means on. */
   memoryEnabled?: boolean;
+  /** The model may save sensitive details (health, beliefs) unasked; absent means on. */
+  memorySensitive?: boolean;
   /** Last concrete model each dynamic default alias resolved to. */
   dynamicDefaultResolutions?: Record<string, string>;
   flags: UiFlagsSnapshot;

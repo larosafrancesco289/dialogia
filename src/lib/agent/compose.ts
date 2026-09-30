@@ -63,7 +63,9 @@ export async function composeTurn({
   // reject every request over them, so there memory is read-only.
   const memory = store?.get().memory;
   const memoryOn = !!memory?.loaded && memoryOnInChat(ui, chat);
-  if (memoryOn) stablePreambles.push(buildMemoryPreamble(memory));
+  if (memoryOn) {
+    stablePreambles.push(buildMemoryPreamble(memory, { sensitive: ui?.memorySensitive !== false }));
+  }
   const memoryTools: ToolDefinition[] =
     memoryOn && isToolCallingSupported(settings.modelMeta) ? MEMORY_TOOLS : [];
 
