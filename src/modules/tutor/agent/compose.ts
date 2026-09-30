@@ -3,6 +3,7 @@
 // block rendered from the event log, the tools the engine would accept now, and the agent loop.
 
 import type { ModuleComposeArgs, ModuleComposeContribution } from '@/lib/modules';
+import { memoryOnInChat } from '@/lib/memory/notebook';
 import type { Message } from '@/lib/types';
 import {
   learnerChangesSince,
@@ -34,6 +35,7 @@ export function learnerChangesBaseline(priorMessages: Message[], events: TutorEv
 
 export async function buildTutorComposeContribution({
   chat,
+  ui,
   settings,
   priorMessages,
   store,
@@ -45,9 +47,10 @@ export async function buildTutorComposeContribution({
   const { state, events } = session;
   const flags = resolveTutorFlags(chat.settings.features.tutor);
   const since = learnerChangesBaseline(priorMessages, events);
-  // Until this chat has a plan, the tutor sees what the learner studied in their other tutor chats.
+  // Until this chat has a plan, and while it has memory, the tutor sees what the
+  // learner studied in their other tutor chats.
   const otherChats =
-    tutor && store && !state.plan
+    tutor && store && !state.plan && memoryOnInChat(ui, chat)
       ? await tutorLearningRecords(
           store.get().chats.filter((other) => other.id !== chat.id),
           tutor.ensureTutorSession,

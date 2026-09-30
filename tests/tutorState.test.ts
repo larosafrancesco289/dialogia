@@ -5,6 +5,7 @@ import type { LearnerModel, LearningPlan, Message, TopicMastery, TutorSettings }
 import {
   ENABLED_MODULES,
   canRedoReply,
+  loadLearningRecords,
   messageHasModuleContent,
   notifyChatDeleted,
   notifyEventsChangedElsewhere,
@@ -12,6 +13,8 @@ import {
 } from '@/lib/modules';
 import { createAssistantMessage, createUserMessage } from '@/lib/messages/createMessage';
 import { appendMessagesToChat, getMessagesForChat } from '@/lib/messages/indexing';
+import type { ResolvedTurnSettings } from '@/lib/settings/resolve';
+import { buildTutorComposeContribution } from '@/modules/tutor/agent/compose';
 import { remainingBudgets } from '@/modules/tutor/engine';
 import { CALCULUS, QUIZ_ITEMS } from '@/modules/tutor/engine/testSupport';
 import { cardsForMessage } from '@/modules/tutor/ui/messageViews';
@@ -1054,14 +1057,15 @@ test('deleting a chat mid-dispatch leaves no events behind and refuses what was 
   assert.ok(!exported.tutorEvents.some((e) => e.chatId === id));
 });
 
-test('a plan carries a topic over from another tutor chat, whose log is loaded to decide it', async () => {
-  const { id: source, store: first } = await teachingChat();
-  const { dispatchTutor: teach } = first.getState();
-  await teach(source, { by: 'tutor', type: 'give_quiz', items: QUIZ_ITEMS }, { by: 'tutor' });
-  const quizId = first.getState().tutorSessions[source].state.awaiting!.id;
+/** A tutor chat on disk whose Limits has an estimate from a quiz answered in full. */
+async function studiedChat() {
+  const { id, store } = await teachingChat();
+  const { dispatchTutor: teach } = store.getState();
+  await teach(id, { by: 'tutor', type: 'give_quiz', items: QUIZ_ITEMS }, { by: 'tutor' });
+  const quizId = store.getState().tutorSessions[id].state.awaiting!.id;
   for (const [i, item] of QUIZ_ITEMS.entries()) {
     await teach(
-      source,
+      id,
       {
         by: 'learner',
         type: 'answer_quiz_item',
@@ -1072,7 +1076,11 @@ test('a plan carries a topic over from another tutor chat, whose log is loaded t
       { by: 'learner' },
     );
   }
-  const studied = first.getState().tutorSessions[source].state.mastery.limits.confidence;
+  return { id, studied: store.getState().tutorSessions[id].state.mastery.limits.confidence };
+}
+
+test('a plan carries a topic over from another tutor chat, whose log is loaded to decide it', async () => {
+  const { id: source, studied } = await studiedChat();
 
   // A later visit: only the new chat's log is in memory to begin with.
   const id = chatId('continues');
@@ -1114,4 +1122,68 @@ test('a plan carries a topic over from another tutor chat, whose log is loaded t
   // What was read is on disk with the event, for a replay that never reads the source.
   const stored = await repository.loadTutorEvents(id);
   assert.ok(stored.some((row) => (row as { carriedOver?: unknown }).carriedOver));
+});
+
+test('memory switched off keeps a tutor chat from the others, and the others from it', async () => {
+  const { id: source } = await studiedChat();
+  const { id: hidden } = await studiedChat();
+  const tutorChatWithMemory = (id: string, on: boolean) =>
+    makeChat({
+      id,
+      title: 'Calculus',
+      settings: {
+        features: { tutor: { enabled: true }, ...(on ? {} : { memory: { enabled: false } }) },
+      },
+    });
+  const setUp = ({ own = true, everywhere = true } = {}) => {
+    const id = chatId('next');
+    const store = createTestStore();
+    store.setState((s) => ({
+      chats: [tutorChat(source), tutorChatWithMemory(hidden, false), tutorChatWithMemory(id, own)],
+      ui: { ...s.ui, memoryEnabled: everywhere },
+    }));
+    return { id, store };
+  };
+  const shown = async ({ id, store }: ReturnType<typeof setUp>) => {
+    const state = store.getState();
+    const contribution = await buildTutorComposeContribution({
+      chat: state.chats.find((c) => c.id === id)!,
+      ui: state.ui,
+      settings: { tutorEnabled: true } as ResolvedTurnSettings,
+      priorMessages: [],
+      store: { get: store.getState, set: store.setState },
+    });
+    return contribution!.dynamicPreambles!.join('\n');
+  };
+  const carried = async ({ id, store }: ReturnType<typeof setUp>) => {
+    const nodes = CALCULUS.nodes.map((node, i) =>
+      i < 2 ? { ...node, carriedFrom: { chatId: [source, hidden][i], topic: 'Limits' } } : node,
+    );
+    await store
+      .getState()
+      .dispatchTutor(
+        id,
+        { by: 'tutor', type: 'propose_plan', ...CALCULUS, nodes },
+        { by: 'tutor', messageId: 'm1' },
+      );
+    return Object.keys(store.getState().tutorSessions[id].state.proposal!.carriedOver ?? {});
+  };
+
+  const on = setUp();
+  const block = await shown(on);
+  assert.ok(block.includes(`[${source}]`));
+  assert.ok(!block.includes(hidden), 'a chat with memory off is not listed');
+  assert.deepEqual(await carried(on), ['limits'], 'nor carried from');
+  const records = await loadLearningRecords({ get: on.store.getState });
+  assert.deepEqual(
+    records.map((record) => record.chatId),
+    [source],
+    'nor in memory’s Learning',
+  );
+
+  for (const off of [{ own: false }, { everywhere: false }]) {
+    const chat = setUp(off);
+    assert.ok(!(await shown(chat)).includes(source), 'a chat with memory off is shown none');
+    assert.deepEqual(await carried(chat), [], 'and carries over from none');
+  }
 });

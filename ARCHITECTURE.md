@@ -405,7 +405,8 @@ says so when it left some alone.
 Numbers about learning are never copied into memory. The Learning folder lists a module's records
 (`AppModule.learningRecords`), read fresh each time the page opens: the tutor turns each tutor
 chat's folded log into its plan's path and estimates, so memory can never disagree with the Hub.
-Without the tutor, Learning simply holds notes.
+A tutor chat with memory switched off in its composer has no record (`isSharedTutorChat`). Without
+the tutor, Learning simply holds notes.
 
 ### The tutor
 
@@ -459,7 +460,8 @@ not kept waiting on the card.
 Tutor chats build on one another. A plan has an optional `subject`, and until a chat has a plan its
 state block lists the learner's other tutor chats (the five most recently studied, from the same
 records memory's Learning folder shows), so the tutor can reuse a subject and set `carriedFrom` on a
-topic the learner already studied elsewhere. On approval such a topic starts from the source
+topic the learner already studied elsewhere. This is memory, so a chat without it (`memoryOnInChat`)
+is shown no other chat and carries over from none. On approval such a topic starts from the source
 topic's estimate, capped at `STARTING_ESTIMATE_MAX`, as `placement` evidence that is contested
 like any other and never counts toward mastery. Another chat's log is outside data: the store loads
 the chats a command names (`otherChatsRead`) and passes their states to `decide` as
