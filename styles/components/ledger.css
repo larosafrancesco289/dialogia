@@ -105,6 +105,15 @@
     min-width: 0;
     min-height: calc(0.9rem * 1.5);
   }
+  /* The summary's baseline, held even while no summary shows ("Thinking"
+     alone), so the title sits on one line and never drops when a thought
+     arrives. Zero width; the negative margin gives back the gap. */
+  .response-ledger__label::before {
+    content: '\200b';
+    font-family: var(--font-serif-assistant);
+    font-size: 0.9rem;
+    margin-inline-end: calc(-1 * var(--space-2));
+  }
   .response-ledger__title {
     flex: none;
     color: var(--color-rubric);
