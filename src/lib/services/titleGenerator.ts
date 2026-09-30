@@ -101,9 +101,15 @@ export function resolveTitleModelId(
   return builtInTitleModel(endpoint.id, models) ?? chatModelId;
 }
 
+/** Whether a title model may be called; the turn passes its ZDR gate. */
+type TitleModelGate = (modelId: string) => Promise<boolean>;
+
+const anyModel: TitleModelGate = async () => true;
+
 /**
  * Generate a chat title from the first user message.
- * Returns null on any failure (timeout, API error, invalid response).
+ * Returns null on any failure (timeout, API error, invalid response) and when
+ * the gate refuses the title model, which is often not the model the turn checked.
  * Designed to be called fire-and-forget style.
  */
 export async function generateChatTitle(
@@ -112,13 +118,14 @@ export async function generateChatTitle(
   chatModelId?: string,
   zdrOnly = false,
   models: ModelDescriptor[] = [],
+  mayUseModel: TitleModelGate = anyModel,
 ): Promise<string | null> {
   if (!userMessage.trim()) {
     return null;
   }
 
   const model = resolveTitleModelId(endpoint, chatModelId, models);
-  if (!model) return null;
+  if (!model || !(await mayUseModel(model))) return null;
 
   // A built-in title model is known to title well without thinking, which is
   // twice as fast and cannot spend the whole budget before writing a word. A
@@ -178,8 +185,16 @@ export function triggerAsyncTitleGeneration(
   zdrOnly = false,
   chatModelId?: string,
   models: ModelDescriptor[] = [],
+  mayUseModel?: TitleModelGate,
 ) {
-  generateChatTitle(userMessage, endpoint ?? getDefaultEndpoint(), chatModelId, zdrOnly, models)
+  generateChatTitle(
+    userMessage,
+    endpoint ?? getDefaultEndpoint(),
+    chatModelId,
+    zdrOnly,
+    models,
+    mayUseModel,
+  )
     .catch((error) => {
       logger.error('[titleGenerator] Async title generation error', error);
       return null;

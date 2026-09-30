@@ -9,7 +9,7 @@ import type { StoreGetter as StoreStateGetter } from '@/lib/store/stateTypes';
 import { applyModuleSettingsDefaults } from '@/lib/settings/moduleDefaults';
 import { regenerate } from '@/lib/agent/regenerate';
 import { isUntitledChat } from '@/lib/services/chatService';
-import { guardZdrOrNotifyCached } from '@/lib/policy/zdr/cache';
+import { guardZdrOrNotifyCached, isZdrAllowedCached } from '@/lib/policy/zdr/cache';
 import { clearTurnController, setTurnController } from '@/lib/turns/runtime';
 import { prepareSendRuntime } from '@/lib/turns/runtime';
 import { spawnTurnMessages } from '@/lib/services/turns/spawn';
@@ -155,6 +155,9 @@ export async function sendUserTurn({
       get().ui.zdrOnly === true,
       primaryModelId,
       get().models,
+      // The title model is usually a cheaper one the gate above never saw.
+      // Without it the chat keeps its first-message title, and no notice.
+      (modelId) => enforceZdrGate(get().ui, [modelId], async (id) => isZdrAllowedCached(id, get)),
     );
   }
 
