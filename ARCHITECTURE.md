@@ -300,9 +300,14 @@ native search rather than failing (`selectSearchMode`).
 A turn with tools runs one of two loops in `src/lib/agent/streaming/`.
 
 - **The default loop** (`streamingTurn.ts`, used by search and memory) streams every round into
-  the reply and clears a round that calls tools, so the first round that answers is the reply. A
-  round that wrote a finished answer and then only saved or forgot memory notes keeps its text and
-  ends the turn once those calls ran, since the model is told not to announce a save.
+  the reply and clears a round that calls tools, so the first round that answers is the reply.
+  Tool calls in a round run whatever the finish reason says. A round whose calls only save or
+  forget memory notes, or name tools the turn never offered, keeps the reply's text instead
+  (`keepsText`): the writes run, and the next round adds to that text after a blank line, with a
+  follow-up that tells it not to repeat itself. It reads its own words and the results, so it can
+  finish a preamble or correct a save that failed, and after a clean save it usually adds nothing.
+  When none of those calls ran, the text is the reply and no further round is sent, unless it
+  stops mid-thought.
 - **The agent loop** (`agentLoop.ts`, requested by a module with `loop: 'agent'`) streams every
   round visibly into the one reply, a blank line between rounds. Tool calls present in a round
   run whatever the finish reason says, and every call gets a result: a handler returns a
