@@ -19,6 +19,7 @@ import { followUpPrompt } from '@/lib/agent/prompts/followUp';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
 import { applyCacheBreakpoints, buildSystemMessage } from '@/lib/agent/cache';
 import { sumUsage } from '@/lib/api/normalizers';
+import { isAbortLike } from '@/lib/store/notices';
 import { MEMORY_FORGET_TOOL, MEMORY_SAVE_TOOL } from '@/lib/tools/definitions/memory';
 import type { ModelMessage, ToolCall } from '@/lib/agent/types';
 import { looksIncomplete } from '@/lib/agent/streaming/draft';
@@ -56,8 +57,8 @@ export async function executeStreamingTurn(
   const messageId = opts.assistantMessage.id;
   // The reply's usage is every round's, not only the one that answered.
   let usage: ReturnType<typeof sumUsage>;
-  const stream = async (round: number, toolChoice: 'auto' | 'none') => {
-    const capture = await streamRound(session, ui, round, toolChoice);
+  const stream = async (round: number, toolChoice: 'auto' | 'none', continuing = false) => {
+    const capture = await streamRound(session, ui, round, toolChoice, continuing);
     usage = sumUsage(usage, capture.extras?.usage);
     return capture;
   };
@@ -95,7 +96,7 @@ export async function executeStreamingTurn(
     }
     const closing = scheduled.length === 0 || toolRounds >= MAX_PLANNING_ROUNDS;
     ui.beginRound();
-    round = await stream(toolRounds, closing ? 'none' : 'auto');
+    round = await stream(toolRounds, closing ? 'none' : 'auto', kept !== '');
     if (closing) break;
   }
 
@@ -129,13 +130,16 @@ async function streamWithoutTools(session: TurnSession): Promise<StreamingTurnRe
 /**
  * One round, painted as it streams. The first round sends the turn's own
  * system prompt; a round after tools sends it with the sources found so far,
- * so the answer can cite them by number.
+ * so the answer can cite them by number. A round `continuing` a kept answer
+ * that is stopped before it adds a word ends the reply as it stood: the answer
+ * was already whole, so nothing was cut off.
  */
 async function streamRound(
   session: TurnSession,
   ui: MessageStreamCallbacks,
   round: number,
   toolChoice: 'auto' | 'none',
+  continuing = false,
 ): Promise<RoundCapture> {
   // Stream indices restart every round; so does the pre-log bookkeeping.
   session.preLoggedToolIndices.clear();
@@ -144,15 +148,25 @@ async function streamRound(
     onToolCallDelta:
       toolChoice === 'auto' ? (deltas) => preLogToolCalls(session, deltas) : undefined,
   });
-  await executeStreamCall(session.call, {
-    messages: applyCacheBreakpoints(
-      round === 0 ? session.convo : messagesWithSystem(session, finalSystemFor(session)),
-    ),
-    tools: session.tools,
-    toolChoice,
-    callbacks,
-    round,
-  });
+  const stoppedWhole = (error: unknown) =>
+    continuing && isAbortLike(error) && capture.content === '';
+  callbacks.onError = (error) => {
+    if (!stoppedWhole(error)) ui.onError?.(error);
+  };
+  try {
+    await executeStreamCall(session.call, {
+      messages: applyCacheBreakpoints(
+        round === 0 ? session.convo : messagesWithSystem(session, finalSystemFor(session)),
+      ),
+      tools: session.tools,
+      toolChoice,
+      callbacks,
+      round,
+    });
+  } catch (error) {
+    if (!stoppedWhole(error)) throw error;
+    capture.finishReason = 'stop';
+  }
   return capture;
 }
 
