@@ -14,6 +14,7 @@ import {
 } from '@/lib/types';
 import { AddNote, FolderHead, NoteList, formatMemoryDate } from '@/components/memory/MemoryNotes';
 import { LearningRecords } from '@/components/memory/LearningRecords';
+import { ConsolidateAction, ConsolidationReport } from '@/components/memory/Consolidation';
 
 const FORGOTTEN_PAGE = 'forgotten';
 
@@ -156,7 +157,9 @@ export function MemoryPage() {
       drawerRef={drawerRef}
       title="Memory"
       closeLabel="Close memory"
+      actions={<ConsolidateAction />}
     >
+      <ConsolidationReport />
       <div className="memory-body">
         <nav className="memory-nav" aria-label="Memory folders">
           {ordered.map(({ folder: f, depth }) => (

@@ -19,6 +19,8 @@ export const NOTICE_CATALOG = {
     'Another tab is writing a reply in this chat. Send once it has finished, so both tabs keep the same conversation.',
   saveFailed:
     'The reply could not be saved to this browser. It is on screen now, but may be cut short after a reload.',
+  consolidationFailed:
+    'Memory could not be consolidated. Nothing was changed; try again in a moment.',
 } as const;
 
 export type NoticeId = keyof typeof NOTICE_CATALOG;
@@ -175,3 +177,4 @@ export const NOTICE_EXPORTED_CHATS = NOTICE_CATALOG.exportedChats;
 export const NOTICE_PLAN_APPLY_FAILED = NOTICE_CATALOG.planApplyFailed;
 export const NOTICE_REPLY_IN_OTHER_TAB = NOTICE_CATALOG.replyInOtherTab;
 export const NOTICE_SAVE_FAILED = NOTICE_CATALOG.saveFailed;
+export const NOTICE_CONSOLIDATION_FAILED = NOTICE_CATALOG.consolidationFailed;

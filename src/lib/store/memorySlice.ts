@@ -3,17 +3,32 @@
 // to it, by the person or the model. Each change is set at once and then written,
 // and the repository tells the other tabs.
 
-import { repository } from '@/lib/db';
+import { kvGet, kvSet, repository } from '@/lib/db';
 import type { MemoryChange } from '@/lib/db/repository';
 import { createStoreSlice } from '@/lib/store/createSlice';
 import { expiredNotes, missingBuiltInFolders } from '@/lib/memory/notebook';
 import { undoChange } from '@/lib/memory/writes';
+import { restoreSnapshot, type ConsolidationPass } from '@/lib/memory/consolidate';
+import { NOTICE_CONSOLIDATION_FAILED } from '@/lib/store/notices';
 import { v4 as uuidv4 } from 'uuid';
 import type { MemoryAuthor, MemoryFolder, MemoryNote } from '@/lib/types';
 
 export type MemorySliceState = {
-  memory: { folders: MemoryFolder[]; notes: MemoryNote[]; loaded: boolean };
+  memory: {
+    folders: MemoryFolder[];
+    notes: MemoryNote[];
+    loaded: boolean;
+    /** The last consolidation; its lines and snapshot stay until dismissed or undone. */
+    pass?: ConsolidationPass;
+    consolidating?: boolean;
+  };
 };
+
+/** Where the last consolidation is kept, so its Undo survives a reload. */
+const PASS_KEY = 'memory:lastConsolidation';
+
+const loadConsolidation = () =>
+  import('@/lib/services/memoryConsolidation').then((mod) => mod.planConsolidation);
 
 export type MemorySliceActions = {
   /** Reads memory, adds the built-in folders it lacks, and lets expired forgotten notes go. */
@@ -36,6 +51,12 @@ export type MemorySliceActions = {
   ) => Promise<void>;
   /** Takes back what a reply wrote to a note, and marks it taken back on the reply. */
   undoMemoryWrite: (messageId: string, noteId: string) => Promise<void>;
+  /** Asks the model to tidy all of memory, and applies what it proposes. */
+  consolidateMemory: () => Promise<void>;
+  /** Puts memory back as it was before the last consolidation. */
+  undoConsolidation: () => Promise<void>;
+  /** Puts the last consolidation's report away, keeping when it ran. */
+  dismissConsolidation: () => Promise<void>;
 };
 
 const replaceById = <T extends { id: string }>(list: T[], rows: T[] = [], drop: string[] = []) => {
@@ -71,7 +92,10 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
 
       async loadMemory() {
         const now = Date.now();
-        const stored = await repository.loadMemory();
+        const [stored, pass] = await Promise.all([
+          repository.loadMemory(),
+          kvGet<ConsolidationPass>(PASS_KEY).catch(() => undefined),
+        ]);
         const added = missingBuiltInFolders(stored.folders, now);
         const expired = new Set(expiredNotes(stored.notes, now).map((note) => note.id));
         set(() => ({
@@ -79,6 +103,7 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
             folders: [...stored.folders, ...added],
             notes: stored.notes.filter((note) => !expired.has(note.id)),
             loaded: true,
+            ...(pass ? { pass } : {}),
           },
         }));
         if (added.length || expired.size) {
@@ -88,7 +113,7 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
 
       async refreshMemory() {
         const stored = await repository.loadMemory();
-        set(() => ({ memory: { ...stored, loaded: true } }));
+        set((s) => ({ memory: { ...s.memory, ...stored, loaded: true } }));
       },
 
       changeMemory,
@@ -150,6 +175,50 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
         };
         set((s) => ({ messagesById: { ...s.messagesById, [messageId]: next } }));
         await repository.saveMessage(next);
+      },
+
+      async consolidateMemory() {
+        if (get().memory.consolidating) return;
+        const keepPass = async (pass: ConsolidationPass) => {
+          set((s) => ({ memory: { ...s.memory, pass } }));
+          await kvSet(PASS_KEY, pass);
+        };
+        set((s) => ({ memory: { ...s.memory, consolidating: true } }));
+        try {
+          const planConsolidation = await loadConsolidation();
+          const { change, lines, before } = await planConsolidation(get);
+          const at = Date.now();
+          if (lines.length) {
+            await changeMemory(change);
+            await keepPass({ at, lines, before, previousAt: get().memory.pass?.at, shown: true });
+          } else {
+            await keepPass({ at, lines: [], shown: true });
+          }
+        } catch {
+          get().setNotice(NOTICE_CONSOLIDATION_FAILED);
+        } finally {
+          set((s) => ({ memory: { ...s.memory, consolidating: false } }));
+        }
+      },
+
+      async undoConsolidation() {
+        const pass = get().memory.pass;
+        if (!pass?.before) return;
+        const { folders, notes } = get().memory;
+        await changeMemory(restoreSnapshot({ folders, notes }, pass.before));
+        // As if it never ran: the nudge counts from the pass before it.
+        const back: ConsolidationPass | undefined =
+          pass.previousAt !== undefined ? { at: pass.previousAt, lines: [] } : undefined;
+        set((s) => ({ memory: { ...s.memory, pass: back } }));
+        await kvSet(PASS_KEY, back);
+      },
+
+      async dismissConsolidation() {
+        const pass = get().memory.pass;
+        if (!pass) return;
+        const kept = { at: pass.at, lines: [] };
+        set((s) => ({ memory: { ...s.memory, pass: kept } }));
+        await kvSet(PASS_KEY, kept);
       },
     };
   },

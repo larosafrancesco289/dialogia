@@ -37,6 +37,64 @@
     color: var(--color-fg-muted);
   }
 
+  /* Consolidate, in the header: the nudge, and the live mark while it runs. */
+  .memory-nudge {
+    font-size: 0.8125rem;
+    color: var(--color-fg-muted);
+    white-space: nowrap;
+  }
+  .memory-running {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: 0.875rem;
+    color: var(--color-fg);
+    white-space: nowrap;
+  }
+  .memory-running__mark {
+    height: 14px;
+  }
+
+  /* What a consolidation changed: a band across the page, above the
+     folders, since it may have touched any of them. */
+  .memory-report {
+    flex-shrink: 0;
+    padding: var(--space-4) var(--space-5);
+    border-bottom: 1px solid var(--chrome-rule);
+    background: var(--surface-inset);
+  }
+  .memory-report__head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .memory-report__title {
+    flex: 1;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-rubric);
+  }
+  .memory-report__changes {
+    margin: var(--space-2) 0 0;
+    padding-left: var(--space-5);
+    list-style: disc;
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+  .memory-report__changes li::marker {
+    color: var(--color-rubric);
+  }
+  .memory-report__changes li + li {
+    margin-top: var(--space-1);
+  }
+  .memory-report__quiet {
+    margin: var(--space-1) 0 0;
+    font-size: 0.875rem;
+    color: var(--color-fg-muted);
+  }
+
   /* The page never scrolls as a whole: the list of folders stays put and
      only the open folder scrolls. */
   .memory-body {
@@ -400,6 +458,12 @@
   @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
     .memory-body {
       flex-direction: column;
+    }
+    .memory-nudge {
+      display: none;
+    }
+    .memory-report {
+      padding: var(--space-3) var(--space-4);
     }
     .memory-nav {
       flex-direction: row;
