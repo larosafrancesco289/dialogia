@@ -1,5 +1,6 @@
 import type {
   Chat,
+  MemoryFolder,
   Message,
   MessageToolRound,
   ModelDescriptor,
@@ -11,6 +12,7 @@ import { createToolCallIdAllocator, replayAssistantTurn } from './replay';
 import { AttachmentProcessor } from '@/lib/attachments/prompt';
 import { formatMessageTimestamp } from '@/lib/agent/prompts/timestamps';
 import { estimateTokens } from '@/lib/tokenEstimate';
+import { memoryWriteRound } from '@/lib/memory/writes';
 
 export function buildChatCompletionMessages(params: {
   chat: Chat;
@@ -19,6 +21,8 @@ export function buildChatCompletionMessages(params: {
   newUserContent?: string;
   newUserAttachments?: PersistedAttachment[];
   timestamps?: boolean;
+  /** Memory's folders when this turn offers its tools: each reply's writes replay as its calls. */
+  replayMemoryWrites?: MemoryFolder[];
 }): ModelMessage[] {
   const { chat, priorMessages, models, newUserContent, newUserAttachments, timestamps } = params;
   const modelInfo = models.find((m) => m.id === chat.settings.modelId);
@@ -49,10 +53,15 @@ export function buildChatCompletionMessages(params: {
       m.role === 'assistant'
         ? [base, typeof hidden === 'string' ? hidden : ''].filter((x) => x && x.trim()).join('\n\n')
         : base;
-    const toolRounds =
-      m.role === 'assistant' && Array.isArray(m.toolRounds) && m.toolRounds.length > 0
-        ? m.toolRounds
+    const memoryRound =
+      params.replayMemoryWrites && m.role === 'assistant'
+        ? memoryWriteRound(m.memoryWrites, params.replayMemoryWrites)
         : undefined;
+    const rounds = [
+      ...(m.role === 'assistant' && Array.isArray(m.toolRounds) ? m.toolRounds : []),
+      ...(memoryRound ? [memoryRound] : []),
+    ];
+    const toolRounds = rounds.length > 0 ? rounds : undefined;
     if (!combined && !toolRounds) continue;
     history.push({
       role: m.role,

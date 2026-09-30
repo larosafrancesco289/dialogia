@@ -8,6 +8,7 @@ import { loadLearningRecords } from '@/lib/modules';
 import { notesIn, orderedFolders } from '@/lib/memory/notebook';
 import { noteLine } from '@/lib/memory/prompt';
 import {
+  alreadySaved,
   folderPath,
   noteHandle,
   planForget,
@@ -86,11 +87,24 @@ async function apply(plan: WritePlan, context: ToolExecutionContext) {
 }
 
 const saveMemory: PlanningToolHandler = async ({ parsedArgs, context }) => {
+  const { memory } = context.get();
+  const replaces = text(parsedArgs.replaces) || undefined;
+  // Saved already, in an earlier reply say: the model is told where, and nothing is copied.
+  const saved = replaces ? undefined : alreadySaved(memory.notes, text(parsedArgs.note));
+  if (saved) {
+    const folder = memory.folders.find((f) => f.id === saved.folderId);
+    return done({
+      ok: true,
+      id: noteHandle(saved.id),
+      action: 'already saved',
+      ...(folder ? { folder: folderPath(memory.folders, folder) } : {}),
+    });
+  }
   const plan = planSave({
-    memory: context.get().memory,
+    memory,
     folder: text(parsedArgs.folder),
     text: text(parsedArgs.note),
-    replaces: text(parsedArgs.replaces) || undefined,
+    replaces,
     newFolderDescription: text(parsedArgs.new_folder_description) || undefined,
     chatId: context.chatId,
     now: Date.now(),

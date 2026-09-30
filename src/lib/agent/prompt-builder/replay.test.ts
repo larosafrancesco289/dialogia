@@ -182,3 +182,52 @@ test('the budget drops a message with its rounds together, never orphaning a res
     'assistant(Old answer.)',
   ]);
 });
+
+test('a reply that saved to memory replays its saves, so a later turn does not save them again', () => {
+  const noteId = 'abcdef12-0000-0000-0000-000000000000';
+  const writes: Message['memoryWrites'] = [
+    { noteId, action: 'added', text: 'Sharpens knives on whetstones', folderId: 'cooking' },
+    {
+      noteId: 'undone00-0000',
+      action: 'added',
+      text: 'Taken back',
+      folderId: 'cooking',
+      undone: true,
+    },
+  ];
+  const prior = [
+    message('u1', 'user', 'Answer, then save that I sharpen on whetstones.'),
+    message('a1', 'assistant', 'Press lightly.', { memoryWrites: writes }),
+  ];
+  const withTools = buildChatCompletionMessages({
+    chat,
+    priorMessages: prior,
+    models: [model(16000)],
+    newUserContent: 'Next.',
+    replayMemoryWrites: [
+      { id: 'cooking', name: 'Cooking', description: 'Kitchen', createdAt: 1, updatedAt: 1 },
+    ],
+  });
+  assert.deepEqual(shape(withTools), [
+    'user(Answer, then save that I sharpen on whetstones.)',
+    'assistant()[memory_0]',
+    'tool:memory_0',
+    'assistant(Press lightly.)',
+    'user(Next.)',
+  ]);
+  const call = withTools[1];
+  assert.ok(call.role === 'assistant' && call.tool_calls);
+  assert.equal(call.tool_calls[0].function.name, 'memory_save');
+  assert.deepEqual(JSON.parse(call.tool_calls[0].function.arguments), {
+    folder: 'Cooking',
+    note: 'Sharpens knives on whetstones',
+  });
+  assert.match(String(withTools[2].content), /"id":"abcdef12"/);
+
+  // Without the memory tools on offer, the reply goes as its words alone.
+  assert.deepEqual(shape(build(prior)), [
+    'user(Answer, then save that I sharpen on whetstones.)',
+    'assistant(Press lightly.)',
+    'user(Next.)',
+  ]);
+});

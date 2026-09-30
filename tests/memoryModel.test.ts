@@ -315,6 +315,12 @@ async function compose(modelId: string, opts: { chatOff?: boolean; everywhereOff
   });
 }
 
+test('the prompt dates the day, so a note says when rather than "next month"', () => {
+  const preamble = buildMemoryPreamble(memory(), new Date('2026-09-30T12:00:00Z'));
+  assert.match(preamble, /Today is 30 September 2026\./);
+  assert.match(preamble, /Learning holds only what they study with the tutor/);
+});
+
 test('a turn reads memory and may write it, on a model known to call tools', async () => {
   const result = await compose('openai/gpt-test');
   assert.ok(result.systemStable?.includes('## Memory'));
@@ -410,6 +416,46 @@ test('the tools write to memory, keep each change on the reply, and undo it', as
     forgottenNotes(stored.notes).map((n) => n.text),
     ['Plays the cello'],
     'the note waits in Recently forgotten',
+  );
+});
+
+test('a note saved again word for word is not copied: the model hears where it already is', async () => {
+  const store = createTestStore();
+  await store.getState().loadMemory();
+  const reply = { id: 'reply-1', chatId: 'chat-1', role: 'assistant', content: '' } as Message;
+  store.setState({
+    messagesById: { [reply.id]: reply },
+    messageIdsByChatId: { 'chat-1': [reply.id] },
+  });
+  const context = {
+    chatId: 'chat-1',
+    assistantMessage: reply,
+    set: store.setState,
+    get: store.getState,
+    logger: { start: () => ({ success: () => undefined, error: () => undefined }) },
+  } as unknown as ToolExecutionContext;
+  const save = (args: Record<string, unknown>) =>
+    getToolHandler('memory_save')!({
+      toolCall: {
+        id: 'save',
+        type: 'function',
+        function: { name: 'memory_save', arguments: '{}' },
+      },
+      parsedArgs: args,
+      aggregatedResults: [],
+      context,
+    });
+
+  await save({ folder: 'About you', note: 'Plays the violin.' });
+  const again = await save({ folder: 'Learning', note: 'plays the violin' });
+  assert.equal(again.result?.ok, true);
+  assert.equal(again.result?.action, 'already saved');
+  assert.equal(again.result?.folder, 'About you');
+  assert.equal(store.getState().messagesById[reply.id].memoryWrites?.length, 1);
+  const live = store.getState().memory.notes.filter((n) => n.forgottenAt === undefined);
+  assert.deepEqual(
+    live.map((n) => n.text),
+    ['Plays the violin.'],
   );
 });
 

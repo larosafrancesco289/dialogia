@@ -135,6 +135,7 @@ export async function composeTurn({
     newUserContent,
     newUserAttachments: userAttachments,
     timestamps: settings.timestampsEnabled,
+    ...(memoryTools.length > 0 ? { replayMemoryWrites: memory!.folders } : {}),
   });
 
   return {
