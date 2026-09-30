@@ -14,6 +14,8 @@ export type TabAnnouncement =
   | { kind: 'messages'; chatId: string; ids: string[] }
   /** One chat's tutor event log changed. */
   | { kind: 'tutorEvents'; chatId: string }
+  /** Long-term memory changed. It is small, so the receiver reads all of it again. */
+  | { kind: 'memory' }
   /** A backup was imported: every table may have changed. */
   | { kind: 'replaced' }
   /**
@@ -76,6 +78,7 @@ export function parseAnnouncement(data: unknown): TabAnnouncement | undefined {
             writing: value.writing,
           }
         : undefined;
+    case 'memory':
     case 'replaced':
     case 'hello':
     case 'keys':

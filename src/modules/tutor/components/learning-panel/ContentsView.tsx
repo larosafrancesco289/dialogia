@@ -4,13 +4,8 @@ import { nextReadyNode, type TopicExplanation } from '@/modules/tutor/engine';
 import type { TutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 import { readableNote } from '@/modules/tutor/ui/messageViews';
 import { listNames, PathStep, stepState, waitingOn, type StepState } from './PlanPath';
+import { isMeasured, pct, statusWords } from '@/modules/tutor/lib/topicStatus';
 import { Markdown } from '@/components/Markdown';
-
-const pct = (value: number) => Math.round(value * 100);
-
-// Every topic starts at a prior; only evidence makes it a measurement.
-const isMeasured = (m: TopicMastery | undefined): m is TopicMastery =>
-  !!m && (m.interactions > 0 || m.evidence.length > 0);
 
 // Corrections are recorded for the tutor ("Learner said…"); read them back
 // to the learner in the second person.
@@ -105,13 +100,6 @@ export function ContentsView({
       )}
     </div>
   );
-}
-
-function statusWords(state: StepState, upNext: boolean, waiting: string[]): string {
-  if (state === 'done') return 'Done';
-  if (state === 'current') return 'In progress';
-  if (state === 'locked') return `Starts after ${listNames(waiting)}`;
-  return upNext ? 'Up next' : 'Not started';
 }
 
 function ContentsItem({

@@ -1,5 +1,17 @@
-import type { Chat, Folder, Message, TutorEventRecord } from '@/lib/types';
-import { sanitizeMessageRecord, sanitizeTutorEventRecord } from '@/lib/db/sanitize';
+import type {
+  Chat,
+  Folder,
+  MemoryFolder,
+  MemoryNote,
+  Message,
+  TutorEventRecord,
+} from '@/lib/types';
+import {
+  sanitizeMemoryFolder,
+  sanitizeMemoryNote,
+  sanitizeMessageRecord,
+  sanitizeTutorEventRecord,
+} from '@/lib/db/sanitize';
 import { sortMessages } from '@/lib/messages/ordering';
 import { normalizeChatSettings } from '@/lib/settings/normalize';
 import { migrateGenSettingsRecord } from '@/lib/settings/migrations';
@@ -47,7 +59,12 @@ export type DialogiaDbLike = {
   messages: DbTable<Message>;
   folders: DbTable<Folder>;
   tutorEvents: DbTable<TutorEventRecord>;
+  memoryFolders: DbTable<MemoryFolder>;
+  memoryNotes: DbTable<MemoryNote>;
 };
+
+/** Everything in long-term memory, forgotten notes included. */
+export type MemorySnapshot = { folders: MemoryFolder[]; notes: MemoryNote[] };
 
 export type RepositorySnapshot = {
   chats: Chat[];
@@ -167,7 +184,9 @@ type TransactionTable =
   | DbTable<Chat>
   | DbTable<Message>
   | DbTable<Folder>
-  | DbTable<TutorEventRecord>;
+  | DbTable<TutorEventRecord>
+  | DbTable<MemoryFolder>
+  | DbTable<MemoryNote>;
 type DbTransaction = (mode: 'r' | 'rw', ...args: unknown[]) => PromiseLike<unknown>;
 
 async function runTransaction(
@@ -214,11 +233,13 @@ export function createRepository(db: DialogiaDbLike) {
   };
 
   const exportAll = async () => {
-    const [chats, messages, folders, tutorEvents] = await Promise.all([
+    const [chats, messages, folders, tutorEvents, memoryFolders, memoryNotes] = await Promise.all([
       db.chats.toArray(),
       db.messages.toArray(),
       db.folders.toArray(),
       db.tutorEvents.toArray(),
+      db.memoryFolders.toArray(),
+      db.memoryNotes.toArray(),
     ]);
     // A log whose chat is gone (a write that raced its deletion) is not exported.
     const chatIds = new Set(chats.map((chat) => chat.id));
@@ -229,6 +250,8 @@ export function createRepository(db: DialogiaDbLike) {
       tutorEvents: tutorEvents
         .filter((event) => chatIds.has(event.chatId))
         .sort((a, b) => (a.chatId === b.chatId ? a.seq - b.seq : a.chatId.localeCompare(b.chatId))),
+      memoryFolders,
+      memoryNotes,
     };
   };
 
@@ -237,6 +260,8 @@ export function createRepository(db: DialogiaDbLike) {
     messages?: unknown;
     folders?: unknown;
     tutorEvents?: unknown;
+    memoryFolders?: unknown;
+    memoryNotes?: unknown;
   }) => {
     const rawChats = Array.isArray(data?.chats) ? data.chats : [];
     const rawMessages = Array.isArray(data?.messages) ? data.messages : [];
@@ -293,16 +318,35 @@ export function createRepository(db: DialogiaDbLike) {
       seenPositions.add(position);
       tutorEvents.push(event);
     }
+    // Exports from before long-term memory have neither list. Rows merge by
+    // id, as chats do: a note in both keeps the backup's words.
+    const memoryFolders = (Array.isArray(data?.memoryFolders) ? data.memoryFolders : [])
+      .map(sanitizeMemoryFolder)
+      .filter((folder): folder is MemoryFolder => !!folder);
+    const memoryNotes = (Array.isArray(data?.memoryNotes) ? data.memoryNotes : [])
+      .map(sanitizeMemoryNote)
+      .filter((note): note is MemoryNote => !!note);
+
     // A chat's log is one sequence: an imported log replaces the local one
     // rather than interleaving two sets of positions.
     const chatsWithEvents = new Set(tutorEvents.map((event) => event.chatId));
 
-    await runTransaction(db, [db.chats, db.messages, db.folders, db.tutorEvents], async () => {
+    const tables = [
+      db.chats,
+      db.messages,
+      db.folders,
+      db.tutorEvents,
+      db.memoryFolders,
+      db.memoryNotes,
+    ];
+    await runTransaction(db, tables, async () => {
       for (const c of chats) await db.chats.put(c);
       for (const m of messages) await db.messages.put(m);
       for (const f of folders) await db.folders.put(f);
       for (const chatId of chatsWithEvents) await deleteTutorEventsForChat(db, chatId);
       for (const e of tutorEvents) await db.tutorEvents.put(e);
+      for (const f of memoryFolders) await db.memoryFolders.put(f);
+      for (const n of memoryNotes) await db.memoryNotes.put(n);
     });
     // What was read and what was not, so the person hears which it was.
     return { chats: chats.length, skippedChats: rawChats.length - chats.length };
@@ -430,6 +474,33 @@ export function createRepository(db: DialogiaDbLike) {
     await db.folders.delete(folderId);
   };
 
+  /** All of memory; rows whose shape cannot be trusted are skipped. */
+  const loadMemory = async (): Promise<MemorySnapshot> => {
+    const [folders, notes] = await Promise.all([
+      db.memoryFolders.toArray(),
+      db.memoryNotes.toArray(),
+    ]);
+    return {
+      folders: folders
+        .map(sanitizeMemoryFolder)
+        .filter((folder): folder is MemoryFolder => !!folder),
+      notes: notes.map(sanitizeMemoryNote).filter((note): note is MemoryNote => !!note),
+    };
+  };
+
+  /** Writes memory rows, and deletes notes by id, in one transaction. */
+  const writeMemory = async (change: {
+    folders?: MemoryFolder[];
+    notes?: MemoryNote[];
+    deleteNoteIds?: string[];
+  }) => {
+    await runTransaction(db, [db.memoryFolders, db.memoryNotes], async () => {
+      for (const folder of change.folders ?? []) await db.memoryFolders.put(folder);
+      for (const note of change.notes ?? []) await db.memoryNotes.put(note);
+      for (const id of change.deleteNoteIds ?? []) await db.memoryNotes.delete(id);
+    });
+  };
+
   return {
     saveChat,
     saveMessage,
@@ -450,6 +521,8 @@ export function createRepository(db: DialogiaDbLike) {
     appendTutorEvents,
     seedTutorEvents,
     deleteTutorEvents,
+    loadMemory,
+    writeMemory,
   };
 }
 

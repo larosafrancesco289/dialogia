@@ -95,6 +95,12 @@ async function runBootstrap(set: StoreSetter, get: StoreGetter): Promise<void> {
     hydrated: true,
   }));
 
+  try {
+    await get().loadMemory();
+  } catch {
+    /* memory failing to load must never block startup */
+  }
+
   for (const appModule of ENABLED_MODULES) {
     try {
       await appModule.onBootstrap?.({ get, set });

@@ -28,6 +28,9 @@ const SettingsDrawer = lazyClient(() =>
     default: mod.SettingsDrawer,
   })),
 );
+const MemoryPage = lazyClient(() =>
+  import('@/components/memory/MemoryPage').then((mod) => ({ default: mod.MemoryPage })),
+);
 const GlobalNotice = lazyClient(() =>
   import('@/components/GlobalNotice').then((mod) => ({ default: mod.GlobalNotice })),
 );
@@ -42,6 +45,7 @@ export function HomeClient() {
   const {
     collapsed,
     isSettingsOpen,
+    isMemoryOpen,
     isSetupOpen,
     isIntroOpen,
     tutorActive,
@@ -53,6 +57,7 @@ export function HomeClient() {
     (s) => ({
       collapsed: s.ui.sidebarCollapsed ?? false,
       isSettingsOpen: s.ui.showSettings,
+      isMemoryOpen: s.ui.memoryOpen ?? false,
       isSetupOpen: selectSetupSheetOpen(s),
       isIntroOpen: selectIntroTourOpen(s),
       tutorActive: selectIsTutorEnabled(s),
@@ -132,6 +137,7 @@ export function HomeClient() {
             <ChatPane />
           </div>
           {isSettingsOpen && <SettingsDrawer />}
+          {isMemoryOpen && <MemoryPage />}
           {/* Never both: setup comes first, the tour once it is settled. */}
           {isSetupOpen && <SetupSheet />}
           {isIntroOpen && <IntroTour />}

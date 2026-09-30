@@ -24,6 +24,8 @@ type SettingsDrawerShellProps = {
   title?: string;
   /** Back to the list of Settings pages (phones). */
   onBack?: () => void;
+  /** What the close button says it does. */
+  closeLabel?: string;
 };
 
 export function SettingsDrawerShell({
@@ -35,6 +37,7 @@ export function SettingsDrawerShell({
   onSearchChange,
   title = 'Settings',
   onBack,
+  closeLabel = 'Close settings',
 }: SettingsDrawerShellProps) {
   // Escape is the drawer's own (below), so a field inside can claim it first.
   useModalFocus(!closing, drawerRef);
@@ -104,7 +107,7 @@ export function SettingsDrawerShell({
                 )}
 
                 <div className="ml-auto">
-                  <IconButton title="Close settings" onClick={onClose}>
+                  <IconButton title={closeLabel} onClick={onClose}>
                     <XMarkIcon className="h-5 w-5" />
                   </IconButton>
                 </div>

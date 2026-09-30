@@ -101,12 +101,13 @@ other words), and so does Try again where a module's record follows the transcri
 
 There are three separate stores, deliberately.
 
-| Data                                 | Where                         | Versioned by              |
-| ------------------------------------ | ----------------------------- | ------------------------- |
-| Chats, messages, folders, KV records | IndexedDB `dialogia` (Dexie)  | `DB_SCHEMA_VERSION`       |
-| Tutor event logs (`tutorEvents`)     | IndexedDB `dialogia` (Dexie)  | `DB_SCHEMA_VERSION`       |
-| UI preferences, endpoint configs     | `localStorage['dialogia-ui']` | `STORE_MIGRATION_VERSION` |
-| Provider and search API keys         | IndexedDB `dialogia-keys`     | its own Dexie version     |
+| Data                                              | Where                         | Versioned by              |
+| ------------------------------------------------- | ----------------------------- | ------------------------- |
+| Chats, messages, folders, KV records              | IndexedDB `dialogia` (Dexie)  | `DB_SCHEMA_VERSION`       |
+| Tutor event logs (`tutorEvents`)                  | IndexedDB `dialogia` (Dexie)  | `DB_SCHEMA_VERSION`       |
+| Long-term memory (`memoryFolders`, `memoryNotes`) | IndexedDB `dialogia` (Dexie)  | `DB_SCHEMA_VERSION`       |
+| UI preferences, endpoint configs                  | `localStorage['dialogia-ui']` | `STORE_MIGRATION_VERSION` |
+| Provider and search API keys                      | IndexedDB `dialogia-keys`     | its own Dexie version     |
 
 Keys live in a database of their own so that `exportAll`/`importAll`, which walk the `dialogia`
 database, cannot reach them even by accident. "Keys are never exported" is structural rather than a
@@ -135,6 +136,8 @@ follows through a `BroadcastChannel` (`src/lib/sync/tabChannel.ts`, a no-op wher
   store. Messages go only into a chat whose messages are loaded; an unloaded chat just becomes
   non-empty, and lazy hydration loads it later. A deleted chat goes the way a local delete goes. A
   module re-reads its log through `onEventsChangedElsewhere`.
+- **Memory says only that it changed.** Every memory write announces `memory`, and the receiver
+  reads all of memory again (`refreshMemory`), which is small, and writes nothing back.
 - **Keys say only that they changed.** `src/lib/keys/store.ts` announces `keys` after saving or
   removing one, naming neither the key nor its provider. The receiver reads its key cache again
   from `dialogia-keys` and reloads the models, as saving a key in the same tab does.
@@ -358,6 +361,21 @@ repository validates only that), `Message.tutorSeq`, `Message.ledger`, and the p
 `ChatSettings.features.tutor`), which are kept readable but are read only by the tutor's one-time
 legacy import. The module owns all behaviour.
 
+### Long-term memory
+
+Memory is core, like chats and folders: notes in words, kept in folders, which the person reads
+and edits on the Memory page (`src/components/memory/`) and, later, the model reads and writes
+through tools. `memorySlice` owns it in the store and loads all of it at startup, since it is
+small; the pure rules (built-in folders, reading order, how long a forgotten note waits) live in
+`src/lib/memory/notebook.ts`. Two folders always exist under fixed ids, About you and Learning. A
+forgotten note keeps its row with `forgottenAt` set and is deleted for good on the first load 30
+days later. Backups carry memory; keys stay out, as ever.
+
+Numbers about learning are never copied into memory. The Learning folder lists a module's records
+(`AppModule.learningRecords`), read fresh each time the page opens: the tutor turns each tutor
+chat's folded log into its plan's path and estimates, so memory can never disagree with the Hub.
+Without the tutor, Learning simply holds notes.
+
 ### The tutor
 
 The tutor's state is one append-only event log per chat, folded by the pure engine in
@@ -466,6 +484,7 @@ A browser-held key is readable by the page holding it. That is inherent to bring
 | Search                   | `src/lib/search/**`                                                                         |
 | Endpoints, auth, clients | `src/lib/transport/**`, `src/lib/{openrouter,anthropic,openaiCompat}/**`, `src/lib/auth/**` |
 | Keys                     | `src/lib/keys/store.ts`                                                                     |
+| Long-term memory         | `src/lib/memory/**`, `src/lib/store/memorySlice.ts`, `src/components/memory/**`             |
 | Chat persistence         | `src/lib/db/**`                                                                             |
 | Cross-tab sync           | `src/lib/sync/tabChannel.ts`, `src/lib/db/announce.ts`, `src/lib/store/tabSync.ts`          |
 | Feature modules          | `src/modules/**`, listed in `src/lib/modules.ts`                                            |

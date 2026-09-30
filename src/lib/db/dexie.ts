@@ -1,5 +1,13 @@
 import Dexie, { Table } from 'dexie';
-import type { Chat, Folder, KVRecord, Message, TutorEventRecord } from '@/lib/types';
+import type {
+  Chat,
+  Folder,
+  KVRecord,
+  MemoryFolder,
+  MemoryNote,
+  Message,
+  TutorEventRecord,
+} from '@/lib/types';
 import { sanitizeMessageRecord } from '@/lib/db/sanitize';
 import { DB_SCHEMA_VERSION } from '@/lib/db/versions';
 import { migrateGenSettingsRecord } from '@/lib/settings/migrations';
@@ -13,6 +21,8 @@ export class DialogiaDB extends Dexie {
   folders!: Table<Folder, string>;
   kv!: Table<KVRecord, string>;
   tutorEvents!: Table<TutorEventRecord, string>;
+  memoryFolders!: Table<MemoryFolder, string>;
+  memoryNotes!: Table<MemoryNote, string>;
 
   constructor(name = 'dialogia') {
     super(name);
@@ -86,13 +96,23 @@ export class DialogiaDB extends Dexie {
         }
       });
     // The tutor's append-only event log. New table only; nothing to transform.
-    this.version(DB_SCHEMA_VERSION).stores({
+    this.version(6).stores({
       chats: 'id, updatedAt, createdAt, folderId',
       messages: 'id, chatId, createdAt',
       folders: 'id, updatedAt, createdAt, parentId',
       kv: 'key',
       // One event per log position: a second tab's append at a taken position fails.
       tutorEvents: 'id, chatId, &[chatId+seq]',
+    });
+    // Long-term memory. New tables only; nothing to transform.
+    this.version(DB_SCHEMA_VERSION).stores({
+      chats: 'id, updatedAt, createdAt, folderId',
+      messages: 'id, chatId, createdAt',
+      folders: 'id, updatedAt, createdAt, parentId',
+      kv: 'key',
+      tutorEvents: 'id, chatId, &[chatId+seq]',
+      memoryFolders: 'id',
+      memoryNotes: 'id, folderId',
     });
   }
 }

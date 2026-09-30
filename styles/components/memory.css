@@ -1,0 +1,422 @@
+@layer components {
+  /* ===== Memory page =====
+     Settings' shape: folders down the side, one folder at a time. A note is
+     the model's voice at rest, set in the book face, and a plain field in the
+     same type while you edit it. */
+  .memory-link {
+    padding: 0;
+    background: none;
+    border: 0;
+    color: inherit;
+    font: inherit;
+    text-decoration: underline;
+    text-decoration-color: color-mix(in oklab, var(--color-fg) 25%, transparent);
+    text-underline-offset: 3px;
+    cursor: pointer;
+  }
+  .memory-link:hover {
+    text-decoration-color: var(--color-fg);
+  }
+  .memory-quiet {
+    padding: 0;
+    background: none;
+    border: 0;
+    font-size: 0.75rem;
+    color: var(--color-fg-muted);
+    cursor: pointer;
+  }
+  .memory-quiet:hover {
+    color: var(--color-fg);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .memory-hint {
+    margin: var(--space-3) 0;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--color-fg-muted);
+  }
+
+  /* The page never scrolls as a whole: the list of folders stays put and
+     only the open folder scrolls. */
+  .memory-body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+  .memory-nav {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    width: 13rem;
+    padding: var(--space-3);
+    overflow-y: auto;
+    border-right: 1px solid var(--chrome-rule);
+  }
+  .memory-nav__item {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+  }
+  .memory-nav__item.is-child {
+    padding-left: 28px;
+  }
+  .memory-nav__name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .memory-nav__count {
+    font-size: 0.75rem;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-fg-muted);
+  }
+  .memory-nav__item--aside {
+    margin-top: auto;
+    font-size: 0.8125rem;
+    color: var(--color-fg-muted);
+  }
+  .memory-page {
+    flex: 1;
+    min-width: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .memory-page__inner {
+    max-width: 38rem;
+    padding: 0 var(--space-8) 48px;
+  }
+
+  /* A folder's heading: its name, then the line the model reads in its
+     index, in italic so it never reads as one of the notes. */
+  .memory-head {
+    padding: var(--space-6) 0 var(--space-4);
+  }
+  .memory-head--2 {
+    padding: var(--space-8) 0 var(--space-3);
+  }
+  .memory-head__title {
+    margin: 0;
+    font-family: var(--font-serif-assistant);
+    font-size: 1.5rem;
+    font-weight: 500;
+    letter-spacing: -0.012em;
+    line-height: 1.2;
+    color: var(--color-fg);
+  }
+  .memory-head--2 .memory-head__title {
+    font-size: 1.1875rem;
+  }
+  .memory-head__line,
+  .memory-head__field {
+    display: block;
+    width: 100%;
+    margin: var(--space-1) 0 0;
+    padding: 0;
+    background: none;
+    border: 0;
+    text-align: left;
+    font-family: var(--font-serif-assistant);
+    font-style: italic;
+    font-size: 1rem;
+    line-height: 1.45;
+    color: var(--color-fg-muted);
+  }
+  .memory-head__line:not(.is-static) {
+    cursor: text;
+  }
+  .memory-head__line:not(.is-static):hover {
+    color: var(--color-fg);
+  }
+  .memory-head__field {
+    resize: none;
+    overflow: hidden;
+    color: var(--color-fg);
+    border-bottom: 1px solid var(--focus-ring);
+  }
+
+  /* Notes, one to a ruled line. */
+  .memory-notes {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--rule-light);
+  }
+  .memory-note {
+    margin: 0 calc(-1 * var(--space-3));
+    padding: var(--space-3);
+    border-radius: var(--radius-inner);
+  }
+  .memory-notes > .memory-note {
+    border-bottom: 1px solid var(--rule-light);
+    border-radius: 0;
+  }
+  .memory-note:hover:not(.is-editing) {
+    background: color-mix(in oklab, var(--color-fg) 4%, transparent);
+  }
+  .memory-note__text,
+  .memory-note__field {
+    display: block;
+    width: 100%;
+    padding: 0;
+    background: none;
+    border: 0;
+    text-align: left;
+    font-family: var(--font-serif-assistant);
+    font-size: 1.0625rem;
+    line-height: 1.55;
+    color: var(--color-fg);
+    white-space: pre-wrap;
+  }
+  .memory-note__text {
+    cursor: text;
+  }
+  .memory-note__field {
+    resize: none;
+    overflow: hidden;
+  }
+  .memory-note.is-editing {
+    background: var(--color-surface);
+    box-shadow: 0 0 0 1px var(--focus-ring);
+    border-radius: var(--radius-inner);
+  }
+  .memory-note__foot {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+    margin-top: var(--space-1);
+  }
+  .memory-note__meta {
+    font-size: 0.75rem;
+    line-height: 1.45;
+    color: var(--color-fg-muted);
+  }
+  .memory-note__forget,
+  .memory-note__restore {
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+  /* Forget waits for the pointer; on touch, and for the keyboard, it is there. */
+  @media (hover: hover) {
+    .memory-note__forget {
+      opacity: 0;
+      transition: opacity var(--duration-fast) var(--ease-standard);
+    }
+    .memory-note:hover .memory-note__forget,
+    .memory-note:focus-within .memory-note__forget {
+      opacity: 1;
+    }
+  }
+  .memory-forgotten__text {
+    display: block;
+    font-family: var(--font-serif-assistant);
+    font-size: 1.0625rem;
+    line-height: 1.55;
+    color: var(--color-fg-muted);
+    text-decoration: line-through;
+    text-decoration-color: color-mix(in oklab, var(--color-fg) 30%, transparent);
+  }
+  .memory-add {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+    padding: var(--space-1) 0;
+    background: none;
+    border: 0;
+    font-size: 0.875rem;
+    color: var(--color-fg-muted);
+    cursor: pointer;
+  }
+  .memory-add:hover {
+    color: var(--color-fg);
+  }
+  .memory-add__field {
+    margin-top: var(--space-3);
+  }
+
+  /* Learning: each tutor chat, its goal, and a small copy of the Hub's path,
+     read live from the chat. */
+  .memory-records {
+    padding-top: var(--space-4);
+  }
+  .memory-record {
+    margin-top: var(--space-5);
+  }
+  .memory-record__title {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 0;
+    background: none;
+    border: 0;
+    text-align: left;
+    font-family: var(--font-serif-assistant);
+    font-size: 1.125rem;
+    font-weight: 500;
+    color: var(--color-fg);
+    cursor: pointer;
+  }
+  .memory-record__title svg {
+    flex-shrink: 0;
+    color: var(--color-fg-muted);
+  }
+  .memory-record__title:hover {
+    text-decoration: underline;
+    text-decoration-color: var(--rule-light);
+    text-underline-offset: 3px;
+  }
+  .memory-record__goal {
+    margin: 2px 0 0;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: var(--color-fg);
+  }
+  .memory-record__meta {
+    margin: 2px 0 var(--space-3);
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: var(--color-fg-muted);
+  }
+  .memory-path {
+    --dot: 18px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .memory-path__step {
+    position: relative;
+    display: grid;
+    grid-template-columns: var(--dot) minmax(0, 1fr) minmax(48px, 96px) 4ch;
+    align-items: center;
+    column-gap: var(--space-3);
+    padding: 5px 0;
+    font-size: 0.875rem;
+  }
+  .memory-path__step:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: calc(var(--dot) / 2 - 0.5px);
+    top: calc(50% + var(--dot) / 2);
+    height: calc(100% - var(--dot));
+    width: 1px;
+    background: color-mix(in oklab, var(--color-fg) 14%, transparent);
+  }
+  .memory-path__step.is-done:not(:last-child)::before {
+    background: color-mix(in oklab, var(--color-fg) 55%, transparent);
+  }
+  .memory-path__dot {
+    display: grid;
+    place-items: center;
+    width: var(--dot);
+    height: var(--dot);
+    border-radius: 50%;
+    background: var(--color-canvas);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-fg) 22%, transparent);
+    font-size: 0.625rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-fg-muted);
+  }
+  .memory-path__dot svg {
+    width: 10px;
+    height: 10px;
+    stroke-width: 2.4;
+  }
+  .memory-path__step.is-done .memory-path__dot {
+    background: color-mix(in oklab, var(--color-fg) 82%, var(--color-canvas));
+    box-shadow: none;
+    color: var(--color-canvas);
+  }
+  .memory-path__step.is-current .memory-path__dot {
+    box-shadow: inset 0 0 0 1.5px var(--color-fg);
+    color: var(--color-fg);
+  }
+  .memory-path__step.is-locked .memory-path__name,
+  .memory-path__step.is-ready .memory-path__name {
+    color: var(--color-fg-muted);
+  }
+  .memory-path__meter {
+    display: block;
+    height: 4px;
+    border-radius: 2px;
+    background: color-mix(in oklab, var(--color-fg) 10%, transparent);
+    overflow: hidden;
+  }
+  .memory-path__meter > span {
+    display: block;
+    height: 100%;
+    border-radius: 2px;
+    background: color-mix(in oklab, var(--color-fg) 58%, transparent);
+    transform-origin: left center;
+  }
+  .memory-path__pct {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .memory-path__status {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--color-fg-muted);
+  }
+
+  @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
+    .memory-body {
+      flex-direction: column;
+    }
+    .memory-nav {
+      flex-direction: row;
+      flex-shrink: 0;
+      gap: var(--space-1);
+      width: auto;
+      overflow-x: auto;
+      scrollbar-width: none;
+      border-right: 0;
+      border-bottom: 1px solid var(--chrome-rule);
+      padding: var(--space-2) var(--space-4);
+    }
+    .memory-nav__item {
+      flex-shrink: 0;
+      width: auto;
+    }
+    .memory-nav__item.is-child {
+      padding-left: var(--space-3);
+    }
+    .memory-nav__name {
+      overflow: visible;
+    }
+    .memory-nav__count {
+      display: none;
+    }
+    .memory-nav__item--aside {
+      margin-top: 0;
+      font-size: inherit;
+    }
+    .memory-page__inner {
+      padding: 0 var(--space-5) 40px;
+    }
+    .memory-path__step {
+      grid-template-columns: var(--dot) minmax(0, 1fr) 56px 4ch;
+    }
+  }
+}
+
+/* Unlayered: the global :focus-visible outline and the drawer's Tailwind
+   overflow utility both outrank layered rules. A field's own ring already
+   shows its focus; and the Memory page fits itself to the drawer as a
+   column, so the drawer itself never scrolls. */
+.memory-note__field:focus-visible,
+.memory-head__field:focus-visible {
+  outline: none;
+}
+.settings-panel:has(> .memory-body) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.settings-panel:has(> .memory-body) > .settings-panel__header {
+  flex-shrink: 0;
+}

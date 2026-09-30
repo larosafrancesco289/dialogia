@@ -9,6 +9,7 @@ import type {
 } from '@/lib/contracts/store';
 import type { ChatSliceActions, ChatSliceState } from '@/lib/store/chatSlice';
 import type { EndpointSliceActions, EndpointSliceState } from '@/lib/store/endpointSlice';
+import type { MemorySliceActions, MemorySliceState } from '@/lib/store/memorySlice';
 import type { MessageSliceActions, MessageSliceState } from '@/lib/store/messageSlice';
 import type { ModelSliceActions, ModelSliceState } from '@/lib/store/modelSlice';
 import type { UiSliceActions, UiSliceState } from '@/lib/store/uiSlice';
@@ -22,6 +23,7 @@ export interface ModuleStoreState {}
 
 export type StoreDataState = ChatSliceState &
   EndpointSliceState &
+  MemorySliceState &
   MessageSliceState &
   ModelSliceState &
   UiSliceState &
@@ -36,6 +38,7 @@ export interface ModuleStoreActions {}
 
 export type StoreActions = ChatSliceActions &
   EndpointSliceActions &
+  MemorySliceActions &
   MessageSliceActions &
   ModelSliceActions &
   UiSliceActions &
