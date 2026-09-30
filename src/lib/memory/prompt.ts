@@ -34,9 +34,14 @@ export function buildMemoryPreamble(memory: {
     .filter(({ folder }) => folder.id !== MEMORY_ABOUT_FOLDER_ID)
     .map(({ folder }) => {
       const count = notesIn(memory.notes, folder.id).length;
-      const extra = folder.id === MEMORY_LEARNING_FOLDER_ID ? ', plus their tutor chats' : '';
-      const notes = `${count} ${count === 1 ? 'note' : 'notes'}${extra}`;
-      return `- ${folderPath(memory.folders, folder)}: ${folder.description || 'no description'} (${notes})`;
+      // A folder that only holds folders is not empty: say so, or it reads as one to skip.
+      const subfolders = memory.folders.filter((f) => f.parentId === folder.id).length;
+      const parts = [
+        `${count} ${count === 1 ? 'note' : 'notes'}`,
+        ...(subfolders ? [`${subfolders} ${subfolders === 1 ? 'subfolder' : 'subfolders'}`] : []),
+        ...(folder.id === MEMORY_LEARNING_FOLDER_ID ? ['plus their tutor chats'] : []),
+      ];
+      return `- ${folderPath(memory.folders, folder)}: ${folder.description || 'no description'} (${parts.join(', ')})`;
     });
 
   return [
