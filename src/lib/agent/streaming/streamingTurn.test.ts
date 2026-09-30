@@ -316,6 +316,40 @@ test('executeStreamingTurn never empties a kept answer when the model then reads
   assert.equal(run.lastPersisted?.content, ANSWER);
 });
 
+/** The person presses Stop during a round, after it streamed `text`. */
+const stopped =
+  (text = ''): Round =>
+  ({ callbacks }) => {
+    if (text) callbacks?.onToken?.(text);
+    const error = new Error('The operation was aborted.');
+    error.name = 'AbortError';
+    callbacks?.onError?.(error);
+    throw error;
+  };
+
+test('executeStreamingTurn ends a whole kept answer as done when Stop lands before the next round adds a word', async () => {
+  const run = await runTurn({
+    tools: [...TOOLS, ...MEMORY_TOOLS],
+    rounds: [draftThenTool(ANSWER, 'memory_save', SAVE), stopped()],
+  });
+
+  assert.equal(run.calls, 2);
+  assert.equal(run.lastPersisted?.content, ANSWER);
+  assert.equal(run.lastPersisted?.cutOff, undefined);
+  assert.equal(run.lastPersisted?.finishReason, 'stop');
+  assert.equal(run.lastPersisted?.memoryWrites?.length, 1);
+});
+
+test('executeStreamingTurn marks a kept answer stopped when Stop lands after the next round began adding to it', async () => {
+  await assert.rejects(
+    runTurn({
+      tools: [...TOOLS, ...MEMORY_TOOLS],
+      rounds: [draftThenTool('Noted, and', 'memory_save', SAVE), stopped(' here is')],
+    }),
+    { name: 'AbortError' },
+  );
+});
+
 test('executeStreamingTurn does not run a tool call cut off at the token limit', async () => {
   const run = await runTurn({
     tools: [...TOOLS, ...MEMORY_TOOLS],
