@@ -175,6 +175,7 @@ test('the prompt carries About you whole and one index line for each other folde
   const preamble = buildMemoryPreamble(m);
   assert.match(preamble, /\[milan-00\] Lives in Milan/);
   assert.match(preamble, /- Projects\/PhD thesis: PhD thesis things \(0 notes\)/);
+  assert.match(preamble, /- Projects: Projects things \(0 notes, 1 subfolder\)/);
   assert.match(preamble, /- Learning: Learning things \(0 notes, plus their tutor chats\)/);
   assert.ok(!preamble.includes('About you: About you things'));
   // A forgotten note is out of the model's sight.
