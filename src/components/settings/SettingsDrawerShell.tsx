@@ -26,6 +26,8 @@ type SettingsDrawerShellProps = {
   onBack?: () => void;
   /** What the close button says it does. */
   closeLabel?: string;
+  /** Page-wide actions, beside the close button. */
+  actions?: ReactNode;
 };
 
 export function SettingsDrawerShell({
@@ -38,6 +40,7 @@ export function SettingsDrawerShell({
   title = 'Settings',
   onBack,
   closeLabel = 'Close settings',
+  actions,
 }: SettingsDrawerShellProps) {
   // Escape is the drawer's own (below), so a field inside can claim it first.
   useModalFocus(!closing, drawerRef);
@@ -106,7 +109,8 @@ export function SettingsDrawerShell({
                   />
                 )}
 
-                <div className="ml-auto">
+                <div className="ml-auto flex items-center gap-3">
+                  {actions}
                   <IconButton title={closeLabel} onClick={onClose}>
                     <XMarkIcon className="h-5 w-5" />
                   </IconButton>

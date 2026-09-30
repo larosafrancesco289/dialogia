@@ -382,6 +382,15 @@ decided purely in `src/lib/memory/writes.ts`, and each change is kept on the rep
 `Message.memoryWrites` (a per-version field, never sent to a model), which the reply shows as a
 quiet line with Undo (`undoMemoryWrite`).
 
+Consolidate (the Memory page's header) sends all of memory to the model new chats start with and
+asks for a plan of operations as JSON: merge, rewrite, move, forget, new_folder, describe,
+remove_folder, each with a sentence for the person. The app applies the plan itself
+(`src/lib/memory/consolidate.ts`): an operation naming a note or folder that is not there, or
+breaking a rule (a built-in folder removed, a non-empty folder removed), is skipped and not
+reported. The pass keeps a snapshot of memory as it was, stored under KV `memory:lastConsolidation`
+with its report, so one Undo restores all of it, even after a reload, until the report is put
+away.
+
 Numbers about learning are never copied into memory. The Learning folder lists a module's records
 (`AppModule.learningRecords`), read fresh each time the page opens: the tutor turns each tutor
 chat's folded log into its plan's path and estimates, so memory can never disagree with the Hub.
