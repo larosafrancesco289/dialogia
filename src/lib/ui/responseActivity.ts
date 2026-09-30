@@ -310,7 +310,8 @@ export function summarizeActivity({
   // A failed search does not hold the head while the model carries on without it.
   if (isLive) {
     const thought = latestActivity?.type === 'reasoning' ? latestActivity.text : reasoning;
-    return currentThoughtLine(thought) || 'Thinking…';
+    // With no line of thought yet, the head's "Thinking" speaks alone.
+    return currentThoughtLine(thought);
   }
   if (hasSearchError) return sources?.error || 'Search failed';
   if (orderedActivity.length > 0) {

@@ -102,11 +102,12 @@ export function ResponseContextPanel({
   };
 
   const showSourcesEntry = hasSources || isSearching || hasSearchError;
-  // The label names the thinking: "Reasoning" while the model is at it,
-  // then "Thought for 8 seconds". Without thinking the summary speaks alone
+  // One word pair names the work: "Thinking" for as long as the model is at
+  // it, whatever it is doing ("Thinking · Memory read"), then "Thought for 8
+  // seconds". A reply that never thought has a summary that speaks alone
   // ("1 search", or the search's failure).
   const hasThought = hasReasoning || orderedActivity.some((item) => item.type === 'reasoning');
-  const title = hasThought ? (isLive ? 'Reasoning' : 'Thought') : null;
+  const title = isLive ? 'Thinking' : hasThought ? 'Thought' : null;
 
   return (
     <section

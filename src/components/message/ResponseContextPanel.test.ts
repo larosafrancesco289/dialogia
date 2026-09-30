@@ -175,6 +175,17 @@ test('the summary names a running tool and, while live, the line of thought', ()
     }),
     'First point.',
   );
+  // Between rounds, with no line of thought yet, no filler: the head's "Thinking" speaks alone.
+  const done = { ...pending, id: 'done', status: 'success' as const };
+  assert.equal(
+    summarizeActivity({
+      orderedActivity: buildOrderedResponseActivity({ reasoning: '', toolCalls: [done] }),
+      toolCalls: [done],
+      reasoning: '',
+      isLive: true,
+    }),
+    '',
+  );
 });
 
 test('a tool row speaks plainly: refusals quietly, failures on their own line, no clock for quick work', () => {
