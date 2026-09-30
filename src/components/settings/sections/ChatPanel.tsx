@@ -307,6 +307,7 @@ export function ChatPanel(props: ChatPanelProps) {
 /** Memory on or off everywhere, said plainly, with the way into the Memory page. */
 function MemorySettings() {
   const enabled = useChatStore((s) => s.ui.memoryEnabled !== false);
+  const sensitive = useChatStore((s) => s.ui.memorySensitive !== false);
   const setUI = useChatStore((s) => s.setUI);
   return (
     <SettingsSection title="Memory">
@@ -315,6 +316,13 @@ function MemorySettings() {
         onChange={(on) => setUI({ memoryEnabled: on })}
         label="Use memory"
         description="The model reads your memory with every message and notes what it learns about you. What it reads goes to whichever provider the chat uses. To keep one chat out, switch memory off with the bookmark in its composer."
+      />
+      <ToggleSwitch
+        checked={sensitive}
+        disabled={!enabled}
+        onChange={(on) => setUI({ memorySensitive: on })}
+        label="Include sensitive topics"
+        description="Let the model note details like health conditions or religious beliefs without being asked. Memory is kept only in this browser, and goes to the chat's provider like the rest of it. Off, it saves them only when you ask."
       />
       <div>
         <button

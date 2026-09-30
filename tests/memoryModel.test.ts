@@ -316,9 +316,17 @@ async function compose(modelId: string, opts: { chatOff?: boolean; everywhereOff
 }
 
 test('the prompt dates the day, so a note says when rather than "next month"', () => {
-  const preamble = buildMemoryPreamble(memory(), new Date('2026-09-30T12:00:00Z'));
+  const preamble = buildMemoryPreamble(memory(), { now: new Date('2026-09-30T12:00:00Z') });
   assert.match(preamble, /Today is 30 September 2026\./);
   assert.match(preamble, /Learning holds only what they study with the tutor/);
+});
+
+test('sensitive details are saved like anything else unless the person switched that off', () => {
+  assert.match(buildMemoryPreamble(memory()), /Save sensitive details .* like anything else/);
+  assert.match(
+    buildMemoryPreamble(memory(), { sensitive: false }),
+    /sensitive details .* only when the person asks/,
+  );
 });
 
 test('a turn reads memory and may write it, on a model known to call tools', async () => {

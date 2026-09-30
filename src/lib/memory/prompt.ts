@@ -36,7 +36,7 @@ export function buildMemoryPreamble(
     folders: MemoryFolder[];
     notes: MemoryNote[];
   },
-  now: Date = new Date(),
+  { now = new Date(), sensitive = true }: { now?: Date; sensitive?: boolean } = {},
 ): string {
   const about = notesIn(memory.notes, MEMORY_ABOUT_FOLDER_ID);
   const shown = about.slice(-ABOUT_NOTES_IN_PROMPT);
@@ -78,7 +78,10 @@ export function buildMemoryPreamble(
     '- Before saving, check the folder (About you is above; memory_read the others). Replace a note (replaces: its id) instead of adding a near-duplicate, and when a new fact contradicts a note, replace that note, keeping whatever in it is still true.',
     `- ${WHERE_NOTES_GO} Make a subject's folder when needed; to move a note into it, memory_save with replaces: its id and the new folder.`,
     '- One fact to a note: two unrelated facts are two notes.',
-    '- Do not save secrets (passwords, keys, card or ID numbers), and save sensitive details (health, beliefs, sexuality, politics) only when the person asks you to remember them.',
+    // Memory is kept in this browser; the person chooses whether sensitive details go in unasked.
+    sensitive
+      ? '- Do not save secrets (passwords, keys, card or ID numbers). Save sensitive details (health, beliefs, sexuality, politics) like anything else that will matter later: an allergy or a condition is worth remembering.'
+      : '- Do not save secrets (passwords, keys, card or ID numbers), and save sensitive details (health, beliefs, sexuality, politics) only when the person asks you to remember them.',
     '- When they ask you to forget something, use memory_forget. When they ask what you remember, read the relevant folders and tell them plainly.',
     '- Write each note as one short line about them in the third person ("Prefers metric units").',
     // Stable within a day, like the search notice: the prompt stays cacheable.
