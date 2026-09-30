@@ -147,7 +147,7 @@ export function refreshSessionTools(session: TurnSession): void {
  * the turn withheld (memory switched off, say) must not reach it.
  */
 export function scheduleTools(session: TurnSession, toolCalls: ToolCall[]): ToolCall[] {
-  const offered = new Set(session.tools?.map((def) => def.function?.name));
+  const offered = offeredToolNames(session);
   return schedulePlanningRound({
     toolCalls: toolCalls.filter((call) => offered.has(call.function?.name)),
     gate: session.gate,
@@ -156,6 +156,11 @@ export function scheduleTools(session: TurnSession, toolCalls: ToolCall[]): Tool
     searchProvider: session.searchProvider,
     toolsUsedThisTurn: session.state.toolsUsedThisTurn,
   });
+}
+
+/** The names of the tools the current round offers. */
+export function offeredToolNames(session: TurnSession): Set<string | undefined> {
+  return new Set(session.tools?.map((def) => def.function?.name));
 }
 
 /** Shows a tool call as pending the moment its name arrives, before its arguments finish streaming. */
