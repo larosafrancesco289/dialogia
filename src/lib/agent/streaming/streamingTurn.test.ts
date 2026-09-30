@@ -12,6 +12,7 @@ import type { ToolDefinition } from '@/lib/agent/types';
 import type { StreamCallbacks } from '@/lib/transport/types';
 import { missingBuiltInFolders } from '@/lib/memory/notebook';
 import { registerMemoryTools } from '@/lib/tools/core/memoryTools';
+import { MEMORY_TOOLS } from '@/lib/tools/definitions/memory';
 import { createTestStoreState } from '../../../../tests/helpers/createTestStoreState';
 import { makeChat } from '../../../../tests/helpers/makeChat';
 
@@ -221,6 +222,48 @@ test('executeStreamingTurn omits follow-up user prompt after Anthropic tool resu
 });
 
 const SAVE = JSON.stringify({ folder: 'About you', note: 'Solving linear equations' });
+
+test('executeStreamingTurn keeps an answer followed only by a memory save, in one round', async () => {
+  const run = await runTurn({
+    tools: [...TOOLS, ...MEMORY_TOOLS],
+    rounds: [draftThenTool(ANSWER, 'memory_save', SAVE), finish('a rewrite')],
+  });
+
+  assert.equal(run.calls, 1, 'no second round writes the answer again');
+  assert.equal(run.memoryChanges.length, 1, 'the save ran');
+  assert.equal(run.message?.content, ANSWER);
+  assert.equal(run.lastPersisted?.content, ANSWER);
+  assert.equal(run.lastPersisted?.memoryWrites?.[0]?.text, 'Solving linear equations');
+  assert.equal(run.lastPersisted?.usage?.prompt_tokens, 100);
+  assert.equal(run.lastPersisted?.cutOff, undefined);
+  assert.ok(!run.lastPersisted?.toolCalls?.some((entry) => entry.status === 'pending'));
+});
+
+test('executeStreamingTurn writes the answer again after a memory read', async () => {
+  const run = await runTurn({
+    tools: [...TOOLS, ...MEMORY_TOOLS],
+    rounds: [
+      draftThenTool(ANSWER, 'memory_read', JSON.stringify({ folder: 'About you' })),
+      finish('A rewrite.'),
+    ],
+  });
+
+  assert.equal(run.calls, 2);
+  assert.equal(run.visibleAtStart[1], '');
+  assert.equal(run.message?.content, 'A rewrite.');
+});
+
+test('executeStreamingTurn writes the answer after a memory save that came before any', async () => {
+  const run = await runTurn({
+    tools: [...TOOLS, ...MEMORY_TOOLS],
+    rounds: [draftThenTool('', 'memory_save', SAVE), finish(ANSWER)],
+  });
+
+  assert.equal(run.calls, 2);
+  assert.equal(run.memoryChanges.length, 1);
+  assert.equal(run.message?.content, ANSWER);
+  assert.equal(run.lastPersisted?.memoryWrites?.length, 1);
+});
 
 test('executeStreamingTurn never runs a call to a tool the turn did not offer', async () => {
   const run = await runTurn({
