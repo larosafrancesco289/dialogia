@@ -177,9 +177,14 @@ export function decideTutor(
       const carriedOver: Record<string, CarrySource> = {};
       const startingEstimates: Record<string, StartingEstimate> = {};
       const cap = startingEstimateCap(state);
+      // An earlier topic carries to one topic here: what was shown on it says
+      // nothing yet about the topics built on it.
+      const carried = new Set<string>();
       cmd.nodes.forEach((node, i) => {
         const id = built.plan.nodes[i]?.id;
-        const source = carrySource(node.carriedFrom, ctx.otherChats);
+        const found = carrySource(node.carriedFrom, ctx.otherChats);
+        const source = found && !carried.has(`${found.chatId}/${found.nodeId}`) ? found : undefined;
+        if (source) carried.add(`${source.chatId}/${source.nodeId}`);
         if (id && source) carriedOver[id] = source;
         const estimate = node.startingEstimate;
         if (!id || source || !estimate || !Number.isFinite(estimate.value) || estimate.value <= 0) {

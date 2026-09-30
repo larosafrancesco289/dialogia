@@ -109,12 +109,20 @@ export function tutorToolResult(
       const ids = proposal?.plan.nodes.map((n) => n.id) ?? [];
       const carried = proposal?.carriedOver ?? {};
       // The proposal's topics are the call's, in order.
+      const carriedAlready = (from: { chatId: string; topic: string }) =>
+        Object.values(carried).some(
+          (source) =>
+            source.chatId === from.chatId &&
+            source.topic.trim().toLowerCase() === from.topic.trim().toLowerCase(),
+        );
       const dropped =
         command?.type === 'propose_plan'
           ? command.nodes.flatMap(({ carriedFrom: from }, i) =>
               from && !carried[ids[i]]
                 ? [
-                    `ignored topics.${i}.carriedFrom: no topic "${from.topic}" with an estimate in the tutor chat [${from.chatId}]; it starts like any other topic`,
+                    carriedAlready(from)
+                      ? `ignored topics.${i}.carriedFrom: "${from.topic}" already carries over to an earlier topic here, and one earlier topic carries to one topic; it starts like any other topic`
+                      : `ignored topics.${i}.carriedFrom: no topic "${from.topic}" with an estimate in the tutor chat [${from.chatId}]; it starts like any other topic`,
                   ]
                 : [],
             )
