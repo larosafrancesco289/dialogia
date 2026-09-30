@@ -1,6 +1,7 @@
 import type { SearchMode } from '@/lib/search/providers/types';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
+import { chatAllowsMemory } from '@/lib/memory/notebook';
 import { shallow } from 'zustand/shallow';
 import { useAutogrowTextarea } from '@/lib/hooks/useAutogrowTextarea';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
@@ -277,8 +278,7 @@ export function Composer({
   };
 
   const memoryEverywhere = useChatStore((s) => s.ui.memoryEnabled !== false);
-  const memoryOn =
-    chat && memoryEverywhere ? chat.settings.features.memory?.enabled !== false : undefined;
+  const memoryOn = chat && memoryEverywhere ? chatAllowsMemory(chat) : undefined;
   const toggleMemory = () => {
     if (chat) void updateSettings({ features: { memory: { enabled: !memoryOn } } });
   };
