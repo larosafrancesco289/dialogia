@@ -49,6 +49,7 @@ export async function executeStreamingTurn(
   if (opts.loop === 'agent') return runAgentLoop(session);
 
   const ui = createUiCallbacks(session);
+  const messageId = opts.assistantMessage.id;
   // The reply's usage is every round's, not only the one that answered.
   let usage: ReturnType<typeof sumUsage>;
   const stream = async (round: number, toolChoice: 'auto' | 'none') => {
@@ -67,6 +68,9 @@ export async function executeStreamingTurn(
     const scheduled = scheduleTools(session, round.toolCalls);
     clearVisibleDraft(session, ui);
     if (scheduled.length > 0) await runToolRound(session, toolRounds, round, scheduled);
+    // Pre-logged entries for calls the scheduler dropped would stay "pending"
+    // in the ledger forever; executed calls have resolved by now.
+    removeOrphanPendingToolCalls({ set: opts.turn.set, chatId: opts.chatId, messageId });
     const closing = scheduled.length === 0 || toolRounds >= MAX_PLANNING_ROUNDS;
     ui.beginRound();
     round = await stream(toolRounds, closing ? 'none' : 'auto');
@@ -174,10 +178,6 @@ async function runToolRound(
     },
     state: session.state,
   });
-
-  // Pre-logged entries for calls the scheduler dropped would stay "pending"
-  // in the ledger forever; executed calls have resolved by now.
-  removeOrphanPendingToolCalls({ set: turn.set, chatId, messageId: assistantMessage.id });
 
   if (session.appendToolFollowUp) {
     convo.push({

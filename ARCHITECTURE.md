@@ -312,6 +312,9 @@ A turn with tools runs one of two loops in `src/lib/agent/streaming/`.
   what it showed. The loop is capped at `AGENT_MAX_ROUNDS`, and the last round is sent with
   `tool_choice: 'none'`.
 
+In both loops a call runs only if the round that made it offered its tool (`scheduleTools`). The
+registry holds every tool, so a call to one the turn withheld is refused like any other.
+
 A tool registered with `metadata.replay: true` has its agent-loop rounds stored on the assistant
 message as `Message.toolRounds`. `buildChatCompletionMessages` replays them on later turns as real
 assistant tool calls and tool results around the reply text, and the token budget keeps or drops a
