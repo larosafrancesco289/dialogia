@@ -3,6 +3,7 @@
 // its cards, and what its events changed (margin notes, a finished chapter).
 
 import type { CarriedOver, Evidence, LearningPlan, TopicMastery } from '@/lib/types';
+import { shortDate } from '@/lib/ui/shortDate';
 import {
   MASTERY_EVIDENCE_MIN,
   apply,
@@ -115,15 +116,6 @@ export type MasteryChange = {
   /** The change started the topic from another tutor chat; its note is said in `carriedOverWords`. */
   carriedOver?: CarriedOver;
 };
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-/** "27 Sep", with the year when it is not this one. */
-function shortDate(at: number): string {
-  const date = new Date(at);
-  const day = `${date.getDate()} ${MONTHS[date.getMonth()]}`;
-  return date.getFullYear() === new Date().getFullYear() ? day : `${day} ${date.getFullYear()}`;
-}
 
 /**
  * Where a carried-over estimate came from, as the learner reads it: "Carried

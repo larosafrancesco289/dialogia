@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { shortDate } from '@/lib/ui/shortDate';
 import { shallow } from 'zustand/shallow';
 import { SettingsDrawerShell } from '@/components/settings/SettingsDrawerShell';
 import { useChatStore } from '@/lib/store';
@@ -12,7 +13,7 @@ import {
   type MemoryFolder,
   type MemoryNote,
 } from '@/lib/types';
-import { AddNote, FolderHead, NoteList, formatMemoryDate } from '@/components/memory/MemoryNotes';
+import { AddNote, FolderHead, NoteList } from '@/components/memory/MemoryNotes';
 import { LearningRecords } from '@/components/memory/LearningRecords';
 import { ConsolidateAction, ConsolidationReport } from '@/components/memory/Consolidation';
 
@@ -76,7 +77,7 @@ function ForgottenPage({ notes, folders }: { notes: MemoryNote[]; folders: Memor
               <div className="memory-note__foot">
                 <span className="memory-note__meta">
                   From {folders.find((f) => f.id === note.folderId)?.name ?? 'a folder'} · forgotten{' '}
-                  {formatMemoryDate(note.forgottenAt ?? note.updatedAt)}
+                  {shortDate(note.forgottenAt ?? note.updatedAt)}
                 </span>
                 <button
                   type="button"

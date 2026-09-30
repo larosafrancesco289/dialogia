@@ -1,8 +1,8 @@
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import { shortDate } from '@/lib/ui/shortDate';
 import { shallow } from 'zustand/shallow';
 import { IconButton } from '@/components/ui/IconButton';
 import { LogoMark } from '@/components/ui/LogoMark';
-import { formatMemoryDate } from '@/components/memory/MemoryNotes';
 import { notesSince } from '@/lib/memory/consolidate';
 import { useChatStore } from '@/lib/store';
 
@@ -30,11 +30,7 @@ export function ConsolidateAction() {
   // Beside the report nothing more needs saying; before any pass, nothing does.
   const fresh = notesSince(notes, pass?.at);
   const nudge =
-    !pass || pass.shown
-      ? null
-      : fresh
-        ? `${fresh} new since ${formatMemoryDate(pass.at)}`
-        : 'Up to date';
+    !pass || pass.shown ? null : fresh ? `${fresh} new since ${shortDate(pass.at)}` : 'Up to date';
   return (
     <>
       {nudge && <span className="memory-nudge">{nudge}</span>}
@@ -63,7 +59,7 @@ export function ConsolidationReport() {
     <section className="memory-report motion-drop" aria-label="What consolidation changed">
       <div className="memory-report__head">
         <span className="memory-report__title">
-          {pass.before ? `Consolidated ${formatMemoryDate(pass.at)}` : 'Already tidy'}
+          {pass.before ? `Consolidated ${shortDate(pass.at)}` : 'Already tidy'}
         </span>
         {pass.before && (
           <button

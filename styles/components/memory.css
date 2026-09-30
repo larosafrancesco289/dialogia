@@ -301,6 +301,17 @@
   .memory-records {
     padding-top: var(--space-4);
   }
+  .memory-subject {
+    margin-top: var(--space-6);
+  }
+  .memory-subject__name {
+    margin: 0 0 calc(-1 * var(--space-2));
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-rubric);
+  }
   .memory-record {
     margin-top: var(--space-5);
   }

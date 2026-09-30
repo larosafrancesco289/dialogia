@@ -1,7 +1,8 @@
 import { ArrowUpRightIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { shortDate } from '@/lib/ui/shortDate';
 import { useChatStore } from '@/lib/store';
 import type { LearningRecord } from '@/lib/types';
-import { formatMemoryDate, useOpenChat } from '@/components/memory/MemoryNotes';
+import { useOpenChat } from '@/components/memory/MemoryNotes';
 
 /**
  * A tutor chat in memory's Learning folder: its goal and a small copy of the
@@ -24,8 +25,8 @@ function RecordView({ record }: { record: LearningRecord }) {
       {record.goal && title && <p className="memory-record__goal">{record.goal}</p>}
       <p className="memory-record__meta">
         {record.finished
-          ? `Finished ${formatMemoryDate(record.studiedAt)}`
-          : `${done} of ${record.topics.length} done · last studied ${formatMemoryDate(record.studiedAt)}`}
+          ? `Finished ${shortDate(record.studiedAt)}`
+          : `${done} of ${record.topics.length} done · last studied ${shortDate(record.studiedAt)}`}
       </p>
       <ol className="memory-path">
         {record.topics.map((topic, index) => (
@@ -56,6 +57,21 @@ function RecordView({ record }: { record: LearningRecord }) {
   );
 }
 
+/**
+ * Records under their subject, subjects in the order their latest chat was
+ * studied; a chat whose plan names no subject stands on its own.
+ */
+function bySubject(records: LearningRecord[]): { subject?: string; records: LearningRecord[] }[] {
+  const groups: { subject?: string; records: LearningRecord[] }[] = [];
+  for (const record of records) {
+    const key = record.subject?.trim().toLowerCase();
+    const group = key && groups.find((g) => g.subject?.trim().toLowerCase() === key);
+    if (group) group.records.push(record);
+    else groups.push({ subject: record.subject?.trim() || undefined, records: [record] });
+  }
+  return groups;
+}
+
 export function LearningRecords({ records }: { records: LearningRecord[] }) {
   if (!records.length) return null;
   return (
@@ -63,8 +79,13 @@ export function LearningRecords({ records }: { records: LearningRecord[] }) {
       <p className="memory-hint">
         Tutor chats appear here on their own, with their progress read live from the chat.
       </p>
-      {records.map((record) => (
-        <RecordView key={record.chatId} record={record} />
+      {bySubject(records).map((group, i) => (
+        <div key={group.subject ?? `alone-${i}`} className="memory-subject">
+          {group.subject && <h4 className="memory-subject__name">{group.subject}</h4>}
+          {group.records.map((record) => (
+            <RecordView key={record.chatId} record={record} />
+          ))}
+        </div>
       ))}
     </section>
   );
