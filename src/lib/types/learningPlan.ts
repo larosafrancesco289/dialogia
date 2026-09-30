@@ -1,6 +1,8 @@
 // Learning Plan System Types
 export type LearningPlan = {
   goal: string; // "Master calculus derivatives"
+  /** A short plain-language subject ("Probability", "Rust") that groups tutor chats. */
+  subject?: string;
   generatedAt: number; // Unix timestamp
   updatedAt: number; // Last modification time
   version: number; // Schema version (for migrations)

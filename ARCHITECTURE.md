@@ -445,6 +445,17 @@ plan: at most `PRACTISING` on the learner's word, and up to just below `READY` o
 tested them. A plan proposal closes an unanswered intake, so a learner who skips the questions is
 not kept waiting on the card.
 
+Tutor chats build on one another. A plan has an optional `subject`, and until a chat has a plan its
+state block lists the learner's other tutor chats (the five most recently studied, from the same
+records memory's Learning folder shows), so the tutor can reuse a subject and set `carriedFrom` on a
+topic the learner already studied elsewhere. On approval such a topic starts from the source
+topic's estimate, capped at `STARTING_ESTIMATE_MAX`, as `placement` evidence that is contested
+like any other and never counts toward mastery. Another chat's log is outside data: the store loads
+the chats a command names (`otherChatsRead`) and passes their states to `decide` as
+`ctx.otherChats`, and the `evidence_recorded` event stores what was read (`carriedOver`: chat,
+topic, estimate, when studied), so `fold` replays it without them. An unknown chat or topic, or one
+with no estimate, is dropped and named back in the result's `adjusted`.
+
 The tutor's own evidence is judged per reply, from a record `fold` keeps of the tutor's latest
 reply: one piece per topic, and none that gains on a topic the same reply noted a misconception
 on that the answer it responds to showed. Evidence recorded after the note moves nothing; a gain

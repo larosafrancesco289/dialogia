@@ -14,10 +14,14 @@ export type PlanNodeInput = {
   estimatedMinutes?: number;
   /** Where the topic's estimate starts once the plan is approved; see `STARTING_ESTIMATE_MAX`. */
   startingEstimate?: { value: number; reason?: string };
+  /** A topic of another tutor chat this one continues: its id, and the topic's id or name there. */
+  carriedFrom?: { chatId: string; topic: string };
 };
 
 export type PlanInput = {
   goal: string;
+  /** Kept from the plan it revises when a revision leaves it out. */
+  subject?: string;
   nodes: PlanNodeInput[];
   metadata?: LearningPlan['metadata'];
 };
@@ -236,8 +240,10 @@ export function buildPlan(
   problems.push(...planProblems(nodes).filter((p) => !problems.includes(p)));
   if (problems.length) return { ok: false, problems };
 
+  const subject = input.subject?.trim() || current?.subject;
   const plan: LearningPlan = {
     goal,
+    ...(subject ? { subject } : {}),
     generatedAt: current?.generatedAt ?? at,
     updatedAt: at,
     version: (current?.version ?? 0) + 1,

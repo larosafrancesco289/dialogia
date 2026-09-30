@@ -181,6 +181,20 @@ export type EvidenceSource =
   /** A plan's starting estimate from intake or conversation before the plan. */
   | 'placement';
 
+/**
+ * A topic's starting point carried over from a topic in another tutor chat,
+ * as it was read when the plan was approved.
+ */
+export type CarriedOver = {
+  chatId: string;
+  /** The source topic's name. */
+  topic: string;
+  /** The source topic's estimate then, before the cap. */
+  estimate: number;
+  /** When the source topic was last studied. */
+  studiedAt: number;
+};
+
 export type Evidence = {
   timestamp: number;
   type:
@@ -209,6 +223,7 @@ export type Evidence = {
   /** The engine's own name for what happened; `type` is its legacy equivalent. */
   kind?: string;
   ref?: { quizId?: string; diagnosticId?: string; itemId?: string; eventId?: string };
+  carriedOver?: CarriedOver;
 };
 
 export type Misconception = {

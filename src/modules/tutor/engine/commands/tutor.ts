@@ -2,12 +2,19 @@
 // Responsibility: `decide` for the tutor's tool calls: the gate first, then each tool's own rules.
 
 import type {
+  CarrySource,
   DiagnosticItem,
   IntakeOption,
   IntakeQuestion,
   StartingEstimate,
 } from '@/modules/tutor/engine/events';
-import { buildPlan, slugify, uniqueId } from '@/modules/tutor/engine/plan';
+import {
+  buildPlan,
+  findPlanNode,
+  slugify,
+  uniqueId,
+  type PlanNodeInput,
+} from '@/modules/tutor/engine/plan';
 import {
   AFTER_CORRECTION_FACTOR,
   LIMITS,
@@ -28,6 +35,7 @@ import {
   demonstratedEvidence,
   earlierMistake,
   followsCorrection,
+  isMeasured,
   openMisconceptions,
   replyRecord,
   startingEstimateCap,
@@ -152,7 +160,7 @@ export function decideTutor(
 
     case 'propose_plan': {
       const built = buildPlan(
-        { goal: cmd.goal, nodes: cmd.nodes, metadata: cmd.metadata },
+        { goal: cmd.goal, subject: cmd.subject, nodes: cmd.nodes, metadata: cmd.metadata },
         state.plan,
         ctx.at,
       );
@@ -166,12 +174,17 @@ export function decideTutor(
           `Fix these and call propose_plan again.${keep}`,
         );
       }
+      const carriedOver: Record<string, CarrySource> = {};
       const startingEstimates: Record<string, StartingEstimate> = {};
       const cap = startingEstimateCap(state);
       cmd.nodes.forEach((node, i) => {
-        const estimate = node.startingEstimate;
         const id = built.plan.nodes[i]?.id;
-        if (!id || !estimate || !Number.isFinite(estimate.value) || estimate.value <= 0) return;
+        const source = carrySource(node.carriedFrom, ctx.otherChats);
+        if (id && source) carriedOver[id] = source;
+        const estimate = node.startingEstimate;
+        if (!id || source || !estimate || !Number.isFinite(estimate.value) || estimate.value <= 0) {
+          return;
+        }
         startingEstimates[id] = {
           value: Math.min(cap, clamp01(estimate.value)),
           reason: text(estimate.reason),
@@ -187,6 +200,7 @@ export function decideTutor(
         ...(text(cmd.rationale) ? { rationale: text(cmd.rationale) } : {}),
         revision: !!state.plan,
         ...(Object.keys(startingEstimates).length ? { startingEstimates } : {}),
+        ...(Object.keys(carriedOver).length ? { carriedOver } : {}),
       });
       return null;
     }
@@ -371,6 +385,24 @@ export function decideTutor(
       }
       return startTopic(state, cmd.nodeId, 'tutor', out);
   }
+}
+
+/**
+ * The topic of another tutor chat a proposed topic continues, or undefined
+ * when that chat or topic is unknown, or the topic has no estimate to carry.
+ */
+function carrySource(
+  ref: PlanNodeInput['carriedFrom'],
+  otherChats: CommandContext['otherChats'],
+): CarrySource | undefined {
+  const chat = ref ? otherChats?.[ref.chatId] : undefined;
+  if (!ref || !chat?.plan) return undefined;
+  const wanted = text(ref.topic).toLowerCase();
+  const node =
+    findPlanNode(chat.plan, ref.topic) ??
+    chat.plan.nodes.find((n) => n.name.trim().toLowerCase() === wanted);
+  if (!node || !isMeasured(chat.mastery[node.id])) return undefined;
+  return { chatId: ref.chatId, nodeId: node.id, topic: node.name };
 }
 
 /**

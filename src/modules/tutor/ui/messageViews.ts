@@ -2,12 +2,14 @@
 // Responsibility: what one assistant message's tutor surfaces show, read from the event log:
 // its cards, and what its events changed (margin notes, a finished chapter).
 
-import type { Evidence, LearningPlan, TopicMastery } from '@/lib/types';
+import type { CarriedOver, Evidence, LearningPlan, TopicMastery } from '@/lib/types';
 import {
+  MASTERY_EVIDENCE_MIN,
   apply,
   confidenceOf,
   effectiveEvents,
   emptyTutorState,
+  percent,
   type CompletionHow,
   type DiagnosticRecord,
   type IntakeRecord,
@@ -110,7 +112,43 @@ export type MasteryChange = {
    * while this note was still the estimate (from the note or from the Hub).
    */
   corrected?: number;
+  /** The change started the topic from another tutor chat; its note is said in `carriedOverWords`. */
+  carriedOver?: CarriedOver;
 };
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** "27 Sep", with the year when it is not this one. */
+function shortDate(at: number): string {
+  const date = new Date(at);
+  const day = `${date.getDate()} ${MONTHS[date.getMonth()]}`;
+  return date.getFullYear() === new Date().getFullYear() ? day : `${day} ${date.getFullYear()}`;
+}
+
+/**
+ * Where a carried-over estimate came from, as the learner reads it: "Carried
+ * over from Learning Bayes’ rule (84%, 27 Sep), capped at 75% until you
+ * answer two questions here." `title` is the source chat's, while it exists;
+ * the source topic is named when it differs from `topic`, the one here.
+ */
+export function carriedOverWords(
+  carried: CarriedOver,
+  setTo: number,
+  topic: string,
+  title: string | undefined,
+): string {
+  const sameTopic = carried.topic.trim().toLowerCase() === topic.trim().toLowerCase();
+  const from = !title
+    ? `${carried.topic} in another tutor chat`
+    : sameTopic
+      ? title
+      : `${carried.topic} in ${title}`;
+  const capped =
+    percent(setTo) < percent(carried.estimate)
+      ? `, capped at ${percent(setTo)}% until you answer ${countWord(MASTERY_EVIDENCE_MIN)} questions here`
+      : '';
+  return `Carried over from ${from} (${percent(carried.estimate)}%, ${shortDate(carried.studiedAt)})${capped}.`;
+}
 
 /**
  * The changes a message's margin notes show: every topic whose estimate it
@@ -249,17 +287,18 @@ export function effectsByMessage(events: readonly TutorEvent[]): Map<string, Mes
       const moved = to !== confidenceOf(before, event.nodeId);
       if (change) {
         change.to = to;
-        change.notes.push(event.note);
+        if (!event.carriedOver) change.notes.push(event.note);
         if (moved) delete change.corrected;
       } else {
         change = {
           nodeId: event.nodeId,
           from: confidenceOf(before, event.nodeId),
           to,
-          notes: [event.note],
+          notes: event.carriedOver ? [] : [event.note],
         };
         entry.masteryChanges.push(change);
       }
+      if (event.carriedOver) change.carriedOver = event.carriedOver;
       if (moved) standing.set(event.nodeId, change);
       out.set(messageId, entry);
     } else if (event.type === 'misconception_noted') {
@@ -298,6 +337,7 @@ type EvidenceGroup =
   | 'correction'
   | 'practice'
   | 'estimate'
+  | 'carried'
   | 'earlier';
 
 const GROUP_WORDS: Record<EvidenceGroup, (n: number) => string> = {
@@ -310,10 +350,13 @@ const GROUP_WORDS: Record<EvidenceGroup, (n: number) => string> = {
   practice: (n) =>
     n === 1 ? 'your request for more practice' : `${countWord(n)} requests for more practice`,
   estimate: (n) => (n === 1 ? 'a starting estimate' : `${countWord(n)} starting estimates`),
+  // Only a topic with no evidence yet takes one, so there is never a second.
+  carried: () => 'what you showed in another tutor chat',
   earlier: (n) => `${countWord(n)} earlier note${n === 1 ? '' : 's'}`,
 };
 
 function groupOf(entry: Evidence): EvidenceGroup {
+  if (entry.carriedOver) return 'carried';
   if (entry.kind === 'placement' || entry.source === 'placement') return 'estimate';
   // Older logs: asking for more practice used to cap the estimate. It corrected nothing.
   if (entry.kind === 'more_practice') return 'practice';
@@ -350,6 +393,7 @@ export function evidenceBehind(evidence: readonly Evidence[]): string | undefine
     'correction',
     'practice',
     'earlier',
+    'carried',
     'estimate',
   ];
   const parts = order.filter((g) => counts.has(g)).map((g) => GROUP_WORDS[g](counts.get(g)!));

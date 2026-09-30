@@ -23,7 +23,7 @@ import { inLatestExchange } from '@/lib/messages/latestExchange';
 import { createTutorSlice } from '@/modules/tutor/store/tutorSlice';
 import { tutorSettingsDefaults } from '@/modules/tutor/lib/defaults';
 import { tutorPanels } from '@/modules/tutor/panels';
-import { learningRecord } from '@/modules/tutor/lib/learningRecords';
+import { tutorLearningRecords } from '@/modules/tutor/lib/learningRecords';
 import {
   hasTutorPlan,
   messageCarriesTutorCard,
@@ -195,15 +195,7 @@ const tutorModule: AppModule = {
   onReplyRetracted: async ({ get }, { chatId, messageId }) => {
     await get().retractTutorReply(chatId, messageId);
   },
-  learningRecords: async ({ get }) => {
-    const chats = get().chats.filter((chat) => chat.settings?.features?.tutor?.enabled);
-    const records = await Promise.all(
-      chats.map(async (chat) =>
-        learningRecord(chat, (await get().ensureTutorSession(chat.id)).state),
-      ),
-    );
-    return records.filter((record): record is LearningRecord => !!record);
-  },
+  learningRecords: ({ get }) => tutorLearningRecords(get().chats, get().ensureTutorSession),
   latestExchangeOnly: tutorFollowsTranscript,
   messageHasContent: messageCarriesTutorCard,
   load: async () => (await import('@/modules/tutor/moduleEntry')).tutorRuntime,

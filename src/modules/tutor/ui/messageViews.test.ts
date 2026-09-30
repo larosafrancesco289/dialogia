@@ -9,6 +9,7 @@ import {
 } from '@/modules/tutor/engine/testSupport';
 import {
   cardsForMessage,
+  carriedOverWords,
   effectsByMessage,
   evidenceBehind,
   marginChanges,
@@ -88,6 +89,51 @@ test('the evidence behind an estimate is counted whole, every source named', () 
     'one answer, two things it noticed and a starting estimate',
   );
   assert.equal(evidenceBehind([]), undefined);
+});
+
+test('a carried-over start says where it came from, in the note under the approval and in words', () => {
+  const source = teaching();
+  master(source);
+  const h = harness();
+  h.otherChats = { 'chat-src': source.state };
+  h.tutor(
+    {
+      type: 'propose_plan',
+      ...CALCULUS,
+      nodes: CALCULUS.nodes.map((node, i) =>
+        i === 0 ? { ...node, carriedFrom: { chatId: 'chat-src', topic: 'Limits' } } : node,
+      ),
+    },
+    'plan-1',
+  );
+  h.learner({ type: 'approve_plan', proposalId: h.state.proposal!.proposalId }, 'plan-1');
+  const [change] = marginChanges(effectsByMessage(h.events).get('plan-1')!);
+  assert.equal(change.to, 0.75);
+  assert.deepEqual(change.notes, []);
+  const carried = change.carriedOver!;
+  assert.equal(carried.chatId, 'chat-src');
+  assert.equal(
+    evidenceBehind(h.state.mastery.limits.evidence),
+    'what you showed in another tutor chat',
+  );
+
+  const at = {
+    ...carried,
+    estimate: 0.84,
+    studiedAt: new Date(new Date().getFullYear(), 8, 27).getTime(),
+  };
+  assert.equal(
+    carriedOverWords(at, 0.75, 'Limits', 'Learning limits'),
+    'Carried over from Learning limits (84%, 27 Sep), capped at 75% until you answer two questions here.',
+  );
+  assert.equal(
+    carriedOverWords({ ...at, estimate: 0.6 }, 0.6, 'Limits of functions', undefined),
+    'Carried over from Limits in another tutor chat (60%, 27 Sep).',
+  );
+  assert.equal(
+    carriedOverWords({ ...at, estimate: 0.6 }, 0.6, 'Limits of functions', 'Calculus I'),
+    'Carried over from Limits in Calculus I (60%, 27 Sep).',
+  );
 });
 
 test('a proposal card settles for good: approved, changes requested, revised below', () => {
