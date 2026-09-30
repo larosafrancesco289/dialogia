@@ -1,11 +1,18 @@
 // Module: memory/writes
 // Responsibility: What a model's memory tool call changes, decided purely: which
 // folder a name means, a note saved, replaced or forgotten, and the change that
-// takes a write back. Each plan is a `MemoryChange` to apply and the `MemoryWrite`
-// the reply keeps so the person can see it and undo it.
+// takes a write back while the note is as the write left it. Each plan is a
+// `MemoryChange` to apply and the `MemoryWrite` the reply keeps so the person can
+// see it and undo it.
 
 import type { MemoryChange } from '@/lib/db/repository';
-import type { MemoryFolder, MemoryNote, MemoryWrite } from '@/lib/types';
+import {
+  MEMORY_ABOUT_FOLDER_ID,
+  type MemoryFolder,
+  type MemoryNote,
+  type MemoryWrite,
+  type Message,
+} from '@/lib/types';
 
 type Memory = { folders: MemoryFolder[]; notes: MemoryNote[] };
 
@@ -31,9 +38,33 @@ export function folderPath(folders: MemoryFolder[], folder: MemoryFolder): strin
   return names.join('/');
 }
 
+/** A folder path as a model may write it ("Projects › PhD thesis"), in its parts. */
+const pathParts = (ref: string) =>
+  ref
+    .trim()
+    .replace(/\s*[/›>]\s*/g, '/')
+    .split('/')
+    .filter(Boolean);
+
+/**
+ * Where a new folder named by a path would go: its name, and the folder it
+ * goes inside, which must be there already. Undefined when it cannot go anywhere.
+ */
+export function newFolderPlace(
+  folders: MemoryFolder[],
+  ref: string,
+): { name: string; parent?: MemoryFolder } | undefined {
+  const parts = pathParts(ref);
+  const name = parts.pop();
+  if (!name) return undefined;
+  if (!parts.length) return { name };
+  const parent = resolveFolder(folders, parts.join('/'));
+  return parent ? { name, parent } : undefined;
+}
+
 /** The folder a model named, by id, by path, or by a name only one folder has. */
 export function resolveFolder(folders: MemoryFolder[], ref: string): MemoryFolder | undefined {
-  const wanted = ref.trim().replace(/\s*[/›>]\s*/g, '/');
+  const wanted = pathParts(ref).join('/');
   if (!wanted) return undefined;
   const byId = folders.find((f) => f.id === wanted);
   if (byId) return byId;
@@ -70,20 +101,15 @@ export function planSave(args: {
   let folder = resolveFolder(memory.folders, args.folder);
   let created: MemoryFolder | undefined;
   if (!folder) {
-    const parts = args.folder
-      .trim()
-      .replace(/\s*[/›>]\s*/g, '/')
-      .split('/')
-      .filter(Boolean);
-    const name = parts.pop();
-    const parent = parts.length ? resolveFolder(memory.folders, parts.join('/')) : undefined;
-    if (!name || (parts.length && !parent)) {
+    const place = newFolderPlace(memory.folders, args.folder);
+    if (!place) {
       return {
         ok: false,
         error: `There is no folder "${args.folder}".`,
         hint: 'Use a folder from the memory index, or name a new one inside an existing folder.',
       };
     }
+    const { name, parent } = place;
     const description = args.newFolderDescription?.trim();
     if (!description) {
       return {
@@ -179,18 +205,63 @@ export function planForget(args: { memory: Memory; note: string; now: number }):
 }
 
 /**
- * The change that takes a write back: a new note goes for good, a replaced
- * or forgotten one returns as it was, and a folder the write made goes too
- * when nothing else has come to live in it.
+ * The change that takes a write back, or undefined when the note is no longer
+ * as the write left it (a later write, the person's edit, consolidation), so
+ * nothing newer is lost. A new note is forgotten, and waits in Recently
+ * forgotten; a replaced or forgotten one returns as it was. A folder the write
+ * made goes too when nothing else is in it. No note is left in a folder that is
+ * gone: one forgotten out of it moves to the folder above, and one returning
+ * to a folder removed since goes to About you.
  */
-export function undoChange(write: MemoryWrite, memory: Memory): MemoryChange {
+export function undoChange(
+  write: MemoryWrite,
+  memory: Memory,
+  now: number,
+): MemoryChange | undefined {
+  const note = memory.notes.find((n) => n.id === write.noteId);
+  const asLeft =
+    note &&
+    note.text === write.text &&
+    note.folderId === write.folderId &&
+    (note.forgottenAt !== undefined) === (write.action === 'forgotten');
+  if (!asLeft) return undefined;
+  const made = memory.folders.find((f) => f.id === write.createdFolderId);
   const folderGone =
-    write.createdFolderId &&
-    !memory.notes.some((n) => n.folderId === write.createdFolderId && n.id !== write.noteId) &&
-    !memory.folders.some((f) => f.parentId === write.createdFolderId);
-  const deleteFolderIds = folderGone ? [write.createdFolderId!] : undefined;
+    made &&
+    !memory.notes.some((n) => n.folderId === made.id && n.id !== note.id) &&
+    !memory.folders.some((f) => f.parentId === made.id);
+  const deleteFolderIds = folderGone ? { deleteFolderIds: [made.id] } : {};
   if (write.action === 'added' || !write.before) {
-    return { deleteNoteIds: [write.noteId], ...(deleteFolderIds ? { deleteFolderIds } : {}) };
+    const folderId = folderGone ? (made.parentId ?? MEMORY_ABOUT_FOLDER_ID) : note.folderId;
+    return { notes: [{ ...note, folderId, forgottenAt: now }], ...deleteFolderIds };
   }
-  return { notes: [write.before], ...(deleteFolderIds ? { deleteFolderIds } : {}) };
+  const { before } = write;
+  const folderId = memory.folders.some((f) => f.id === before.folderId)
+    ? before.folderId
+    : MEMORY_ABOUT_FOLDER_ID;
+  return { notes: [{ ...before, folderId }], ...deleteFolderIds };
+}
+
+const sameWrite = (a: MemoryWrite, b: MemoryWrite) =>
+  a.noteId === b.noteId && a.action === b.action && a.text === b.text && !a.undone;
+
+/**
+ * The reply with its write at `index` marked taken back, in whichever version
+ * holds it now: the shown one may have changed since the person clicked.
+ */
+export function markWriteUndone(message: Message, index: number, write: MemoryWrite): Message {
+  const mark = <T extends { memoryWrites?: MemoryWrite[] }>(version: T): T | undefined => {
+    const at = version.memoryWrites?.[index];
+    if (!at || !sameWrite(at, write)) return undefined;
+    const memoryWrites = version.memoryWrites!.map((w, i) =>
+      i === index ? { ...w, undone: true } : w,
+    );
+    return { ...version, memoryWrites };
+  };
+  const shown = mark(message);
+  if (shown) return shown;
+  const at = message.versions?.findIndex((version) => mark(version)) ?? -1;
+  if (at === -1) return message;
+  const versions = message.versions!.map((version, i) => (i === at ? mark(version)! : version));
+  return { ...message, versions };
 }

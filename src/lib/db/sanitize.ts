@@ -1,6 +1,8 @@
 import type {
+  ConsolidationPass,
   MemoryFolder,
   MemoryNote,
+  MemoryWrite,
   Message,
   MessageToolRound,
   MessageToolRoundCall,
@@ -106,6 +108,14 @@ export function sanitizeMessageRecord(message: Message): { next: Message; change
       next.versions = versions.value;
       if (versions.index !== undefined) next.versionIndex = versions.index;
     }
+  }
+
+  if ('memoryWrites' in next) {
+    const raw: unknown[] = Array.isArray(next.memoryWrites) ? next.memoryWrites : [];
+    const writes = raw.map(sanitizeMemoryWrite).filter((w): w is MemoryWrite => !!w);
+    if (writes.length !== raw.length || !Array.isArray(next.memoryWrites)) changed = true;
+    if (writes.length) next.memoryWrites = writes;
+    else delete next.memoryWrites;
   }
 
   if ('ledger' in next && (next.ledger !== true || next.role !== 'user')) {
@@ -278,5 +288,60 @@ export function sanitizeMemoryNote(value: unknown): MemoryNote | undefined {
     updatedAt,
     ...(isString(sourceChatId) && sourceChatId ? { sourceChatId } : {}),
     ...(isTime(forgottenAt) ? { forgottenAt } : {}),
+  };
+}
+
+const WRITE_ACTIONS = new Set<unknown>(['added', 'updated', 'forgotten']);
+
+/**
+ * One change a reply made to memory, or undefined when its shape cannot be
+ * trusted: an Undo acts on it, so a `before` must be the same note, and only a
+ * new note has none.
+ */
+function sanitizeMemoryWrite(value: unknown): MemoryWrite | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const { noteId, action, text, folderId, before, createdFolderId, undone } = value as Record<
+    string,
+    unknown
+  >;
+  if (!isString(noteId) || !noteId || !WRITE_ACTIONS.has(action)) return undefined;
+  if (!isString(text) || !isString(folderId) || !folderId) return undefined;
+  const was = before === undefined ? undefined : sanitizeMemoryNote(before);
+  if (before !== undefined && was?.id !== noteId) return undefined;
+  if ((action === 'added') !== (was === undefined)) return undefined;
+  return {
+    noteId,
+    action: action as MemoryWrite['action'],
+    text,
+    folderId,
+    ...(was ? { before: was } : {}),
+    ...(isString(createdFolderId) && createdFolderId ? { createdFolderId } : {}),
+    ...(undone === true ? { undone } : {}),
+  };
+}
+
+/**
+ * The last consolidation, or undefined when it cannot be read. Its Undo is
+ * kept only in the shape that records what the pass wrote; a pass stored
+ * before that shows its report without one.
+ */
+export function sanitizeConsolidationPass(value: unknown): ConsolidationPass | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const { at, lines, undo, previousAt, shown } = value as Record<string, unknown>;
+  if (!isTime(at) || !Array.isArray(lines)) return undefined;
+  const record = undo as { before?: Record<string, unknown>; after?: Record<string, unknown> };
+  const lists = [
+    record?.before?.folders,
+    record?.before?.notes,
+    record?.after?.folders,
+    record?.after?.notes,
+    record?.after?.deleteFolderIds,
+  ];
+  return {
+    at,
+    lines: lines.filter(isString),
+    ...(lists.every(Array.isArray) ? { undo: undo as ConsolidationPass['undo'] } : {}),
+    ...(isTime(previousAt) ? { previousAt } : {}),
+    ...(shown === true ? { shown } : {}),
   };
 }
