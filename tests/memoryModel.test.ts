@@ -3,7 +3,16 @@ import assert from 'node:assert/strict';
 import { composeTurn } from '@/lib/agent/compose';
 import { repository } from '@/lib/db';
 import { buildMemoryPreamble } from '@/lib/memory/prompt';
-import { noteHandle, planForget, planSave, resolveFolder, undoChange } from '@/lib/memory/writes';
+import { forgottenNotes } from '@/lib/memory/notebook';
+import {
+  markWriteUndone,
+  noteHandle,
+  planForget,
+  planSave,
+  resolveFolder,
+  resolveNote,
+  undoChange,
+} from '@/lib/memory/writes';
 import { createModelIndex } from '@/lib/models';
 import { resolveTurnSettings } from '@/lib/settings/resolve';
 import { registerMemoryTools } from '@/lib/tools/core/memoryTools';
@@ -140,6 +149,14 @@ test('a new folder needs a description, and is made inside the one its path name
   assert.equal(lost.ok, false);
 });
 
+test('a handle two notes share names neither; the whole id still does', () => {
+  const notes = [note('abcdef12-one', 'about'), note('abcdef12-two', 'about')];
+  assert.equal(resolveNote(notes, 'abcdef12'), undefined);
+  assert.equal(resolveNote(notes, 'abcdef12-two')?.id, 'abcdef12-two');
+  const refused = planForget({ memory: { ...memory(), notes }, note: 'abcdef12', now: 1 });
+  assert.equal(refused.ok, false);
+});
+
 test('undo takes each kind of write back, and a folder the write made with it', () => {
   const m = memory();
   const added = planSave({
@@ -156,18 +173,65 @@ test('undo takes each kind of write back, and a folder the write made with it', 
     folders: [...m.folders, ...added.change.folders!],
     notes: [...m.notes, ...added.change.notes!],
   };
-  assert.deepEqual(undoChange(added.write, after), {
-    deleteNoteIds: [added.write.noteId],
+  // A new note is forgotten, not deleted, and leaves the folder it made for the one above.
+  const [saved] = added.change.notes!;
+  assert.deepEqual(undoChange(added.write, after, 7), {
+    notes: [{ ...saved, folderId: MEMORY_ABOUT_FOLDER_ID, forgottenAt: 7 }],
     deleteFolderIds: [added.write.createdFolderId],
   });
-  // Something else moved into the folder meanwhile: it stays.
+  // Something else moved into the folder meanwhile: it stays, and so does the note.
   const shared = { ...after, notes: [...after.notes, note('other-0001', added.write.folderId)] };
-  assert.deepEqual(undoChange(added.write, shared), { deleteNoteIds: [added.write.noteId] });
+  assert.deepEqual(undoChange(added.write, shared, 7), {
+    notes: [{ ...saved, forgottenAt: 7 }],
+  });
 
   const forgot = planForget({ memory: m, note: 'milan-0001', now: 3 });
   assert.ok(forgot.ok);
   assert.equal(forgot.change.notes![0].forgottenAt, 3);
-  assert.deepEqual(undoChange(forgot.write, m), { notes: [m.notes[0]] });
+  const forgotten = { ...m, notes: forgot.change.notes! };
+  assert.deepEqual(undoChange(forgot.write, forgotten, 7), { notes: [m.notes[0]] });
+});
+
+test('undo changes nothing once the note has changed since the write', () => {
+  const m = memory();
+  const saved = planSave({
+    memory: m,
+    folder: 'About you',
+    text: 'Lives in Berlin',
+    replaces: 'milan-0001',
+    chatId: 'c',
+    now: 5,
+    newId,
+  });
+  assert.ok(saved.ok);
+  const [written] = saved.change.notes!;
+  const edited = { ...written, text: 'Lives in Berlin, in Kreuzberg', author: 'user' as const };
+  const moved = { ...written, folderId: 'projects' };
+  const forgotten = { ...written, forgottenAt: 6 };
+  for (const now of [edited, moved, forgotten]) {
+    assert.equal(undoChange(saved.write, { ...m, notes: [now] }, 7), undefined);
+  }
+  assert.equal(undoChange(saved.write, { ...m, notes: [] }, 7), undefined, 'or is gone');
+  assert.deepEqual(undoChange(saved.write, { ...m, notes: [written] }, 7), {
+    notes: [m.notes[0]],
+  });
+});
+
+test('a write is marked taken back in the version that holds it', () => {
+  const write = { noteId: 'n1', action: 'added' as const, text: 'Plays cello', folderId: 'about' };
+  const other = { ...write, noteId: 'n2', text: 'Plays piano' };
+  const reply = {
+    id: 'r',
+    chatId: 'c',
+    role: 'assistant',
+    content: 'Second try',
+    memoryWrites: [other],
+    versions: [{ content: 'First try', memoryWrites: [write] }],
+    versionIndex: 1,
+  } as Message;
+  const marked = markWriteUndone(reply, 0, write);
+  assert.equal(marked.memoryWrites![0].undone, undefined, 'the shown version wrote another note');
+  assert.equal(marked.versions![0].memoryWrites![0].undone, true);
 });
 
 test('the prompt carries About you whole and one index line for each other folder', () => {
@@ -300,8 +364,57 @@ test('the tools write to memory, keep each change on the reply, and undo it', as
   const bad = await call('memory_forget', { note: 'nothing' });
   assert.equal(bad.result?.ok, false);
 
-  await store.getState().undoMemoryWrite(reply.id, write.noteId);
+  await store.getState().undoMemoryWrite(reply.id, 0);
   assert.equal(store.getState().messagesById[reply.id].memoryWrites![0].undone, true);
   const stored = await repository.loadMemory();
-  assert.ok(!stored.notes.some((n) => n.id === write.noteId), 'the note is gone for good');
+  assert.deepEqual(
+    forgottenNotes(stored.notes).map((n) => n.text),
+    ['Plays the cello'],
+    'the note waits in Recently forgotten',
+  );
+});
+
+test('two writes to one note in one reply are taken back newest first', async () => {
+  const store = createTestStore();
+  await store.getState().loadMemory();
+  const reply = { id: 'reply-2', chatId: 'chat-2', role: 'assistant', content: '' } as Message;
+  store.setState({
+    messagesById: { [reply.id]: reply },
+    messageIdsByChatId: { 'chat-2': [reply.id] },
+  });
+  const context = {
+    chatId: 'chat-2',
+    assistantMessage: reply,
+    set: store.setState,
+    get: store.getState,
+  } as unknown as ToolExecutionContext;
+  const save = (args: Record<string, unknown>) =>
+    getToolHandler('memory_save')!({
+      toolCall: { id: 's', type: 'function', function: { name: 'memory_save', arguments: '{}' } },
+      parsedArgs: args,
+      aggregatedResults: [],
+      context,
+    });
+
+  await save({ folder: 'About you', note: 'Has a cat' });
+  const [added] = store.getState().messagesById[reply.id].memoryWrites!;
+  await save({ folder: 'About you', note: 'Has two cats', replaces: noteHandle(added.noteId) });
+  const current = () => store.getState().memory.notes.find((n) => n.id === added.noteId)!;
+  const writes = () => store.getState().messagesById[reply.id].memoryWrites!;
+
+  await store.getState().undoMemoryWrite(reply.id, 0);
+  assert.equal(current().text, 'Has two cats', 'the later write is not lost');
+  assert.equal(writes()[0].undone, undefined);
+  assert.match(store.getState().ui.notice ?? '', /changed since/);
+
+  await store.getState().undoMemoryWrite(reply.id, 1);
+  assert.equal(current().text, 'Has a cat');
+  await store.getState().undoMemoryWrite(reply.id, 0);
+  assert.ok(current().forgottenAt);
+  assert.deepEqual(
+    writes().map((w) => w.undone),
+    [true, true],
+  );
+  const saved = await repository.getChatWithMessages('chat-2');
+  assert.equal(saved.messages[0]?.memoryWrites?.[0]?.undone, true, 'the reply is saved');
 });

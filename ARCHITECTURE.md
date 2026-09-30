@@ -369,7 +369,9 @@ through tools. `memorySlice` owns it in the store and loads all of it at startup
 small; the pure rules (built-in folders, reading order, how long a forgotten note waits) live in
 `src/lib/memory/notebook.ts`. Two folders always exist under fixed ids, About you and Learning. A
 forgotten note keeps its row with `forgottenAt` set and is deleted for good on the first load 30
-days later. Backups carry memory; keys stay out, as ever.
+days later. A load also mends what could not be shown: a folder under a missing parent, or inside
+itself, moves to the top, and a note whose folder is gone moves to About you. Backups carry memory;
+keys stay out, as ever.
 
 The model reads and writes memory in every chat that has it on (`ui.memoryEnabled`, and a chat's
 `features.memory`, switched in its composer). `buildMemoryPreamble` (`src/lib/memory/prompt.ts`)
@@ -380,7 +382,8 @@ user's own server that did not declare tools would reject every request over the
 is read-only. Offering them runs the turn in the default tool loop. What a call changes is
 decided purely in `src/lib/memory/writes.ts`, and each change is kept on the reply as
 `Message.memoryWrites` (a per-version field, never sent to a model), which the reply shows as a
-quiet line with Undo (`undoMemoryWrite`).
+quiet line with Undo (`undoMemoryWrite`). Undo acts only while the note is as that write left it,
+so nothing written since is lost, and takes a new note back by forgetting it.
 
 Consolidate (the Memory page's header) sends all of memory to the model new chats start with and
 asks for a plan of operations as JSON: merge, rewrite, move, forget, new_folder, describe,

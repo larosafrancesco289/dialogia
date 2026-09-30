@@ -1,6 +1,7 @@
 // Module: memory/notebook
 // Responsibility: Pure rules for long-term memory's folders and notes: the folders
-// every memory has, how long a forgotten note waits, and how a folder is counted.
+// every memory has, how long a forgotten note waits, what a load mends, and how a
+// folder is counted.
 
 import {
   MEMORY_ABOUT_FOLDER_ID,
@@ -33,6 +34,34 @@ export function missingBuiltInFolders(folders: MemoryFolder[], now: number): Mem
     createdAt: now,
     updatedAt: now,
   }));
+}
+
+/**
+ * The rows memory needs mended to be read at all: a folder whose parent is
+ * missing, or which sits inside itself, goes to the top level, and a note
+ * whose folder is missing goes to About you. Empty when nothing needs it.
+ */
+export function repairs(
+  folders: MemoryFolder[],
+  notes: MemoryNote[],
+): { folders: MemoryFolder[]; notes: MemoryNote[] } {
+  const byId = new Map(folders.map((folder) => [folder.id, folder]));
+  const inItself = (folder: MemoryFolder) => {
+    let at = folder.parentId ? byId.get(folder.parentId) : undefined;
+    for (let steps = 0; at && steps < byId.size; steps += 1) {
+      if (at.id === folder.id) return true;
+      at = at.parentId ? byId.get(at.parentId) : undefined;
+    }
+    return false;
+  };
+  return {
+    folders: folders
+      .filter((f) => f.parentId !== undefined && (!byId.has(f.parentId) || inItself(f)))
+      .map(({ parentId: _parentId, ...folder }) => folder),
+    notes: notes
+      .filter((note) => !byId.has(note.folderId))
+      .map((note) => ({ ...note, folderId: MEMORY_ABOUT_FOLDER_ID })),
+  };
 }
 
 /** Forgotten notes whose wait is over. */

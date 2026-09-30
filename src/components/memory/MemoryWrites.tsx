@@ -19,8 +19,9 @@ export function MemoryWrites({ message }: { message: Message }) {
   if (!writes?.length) return null;
   return (
     <ul className="memory-writes" aria-label="Changes to memory">
-      {writes.map((write) => (
-        <li key={`${write.action}-${write.noteId}`} className="memory-writes__line">
+      {writes.map((write, index) => (
+        // One reply may write one note twice, so each line is its place in the list.
+        <li key={index} className="memory-writes__line">
           <BookmarkIcon className="memory-writes__glyph" aria-hidden="true" />
           {write.undone ? (
             <span className="memory-writes__undone">
@@ -46,7 +47,7 @@ export function MemoryWrites({ message }: { message: Message }) {
               <button
                 type="button"
                 className="memory-quiet"
-                onClick={() => void undoMemoryWrite(message.id, write.noteId)}
+                onClick={() => void undoMemoryWrite(message.id, index)}
               >
                 Undo
               </button>

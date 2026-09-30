@@ -6,12 +6,19 @@
 import { kvGet, kvSet, repository } from '@/lib/db';
 import type { MemoryChange } from '@/lib/db/repository';
 import { createStoreSlice } from '@/lib/store/createSlice';
-import { expiredNotes, missingBuiltInFolders } from '@/lib/memory/notebook';
-import { undoChange } from '@/lib/memory/writes';
+import { expiredNotes, missingBuiltInFolders, repairs } from '@/lib/memory/notebook';
+import { markWriteUndone, undoChange } from '@/lib/memory/writes';
 import { restoreSnapshot, type ConsolidationPass } from '@/lib/memory/consolidate';
-import { NOTICE_CONSOLIDATION_FAILED } from '@/lib/store/notices';
+import { updateMessageById } from '@/lib/messages/updateMessageById';
+import { NOTICE_CONSOLIDATION_FAILED, NOTICE_MEMORY_CHANGED_SINCE } from '@/lib/store/notices';
 import { v4 as uuidv4 } from 'uuid';
-import type { MemoryAuthor, MemoryFolder, MemoryNote } from '@/lib/types';
+import {
+  MEMORY_ABOUT_FOLDER_ID,
+  type MemoryAuthor,
+  type MemoryFolder,
+  type MemoryNote,
+  type Message,
+} from '@/lib/types';
 
 export type MemorySliceState = {
   memory: {
@@ -31,7 +38,10 @@ const loadConsolidation = () =>
   import('@/lib/services/memoryConsolidation').then((mod) => mod.planConsolidation);
 
 export type MemorySliceActions = {
-  /** Reads memory, adds the built-in folders it lacks, and lets expired forgotten notes go. */
+  /**
+   * Reads memory, adds the built-in folders it lacks, lets expired forgotten
+   * notes go, and mends what could not be read (`repairs`), writing only then.
+   */
   loadMemory: () => Promise<void>;
   /** Another tab changed memory: read it again, writing nothing. */
   refreshMemory: () => Promise<void>;
@@ -49,8 +59,11 @@ export type MemorySliceActions = {
     id: string,
     patch: Partial<Pick<MemoryFolder, 'name' | 'description'>>,
   ) => Promise<void>;
-  /** Takes back what a reply wrote to a note, and marks it taken back on the reply. */
-  undoMemoryWrite: (messageId: string, noteId: string) => Promise<void>;
+  /**
+   * Takes back the reply's write at `index`, and marks it taken back on the reply,
+   * unless the note has changed since: then nothing is changed, and the person is told.
+   */
+  undoMemoryWrite: (messageId: string, index: number) => Promise<void>;
   /** Asks the model to tidy all of memory, and applies what it proposes. */
   consolidateMemory: () => Promise<void>;
   /** Puts memory back as it was before the last consolidation. */
@@ -98,16 +111,23 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
         ]);
         const added = missingBuiltInFolders(stored.folders, now);
         const expired = new Set(expiredNotes(stored.notes, now).map((note) => note.id));
+        const folders = [...stored.folders, ...added];
+        const notes = stored.notes.filter((note) => !expired.has(note.id));
+        const mended = repairs(folders, notes);
         set(() => ({
           memory: {
-            folders: [...stored.folders, ...added],
-            notes: stored.notes.filter((note) => !expired.has(note.id)),
+            folders: replaceById(folders, mended.folders),
+            notes: replaceById(notes, mended.notes),
             loaded: true,
             ...(pass ? { pass } : {}),
           },
         }));
-        if (added.length || expired.size) {
-          await repository.writeMemory({ folders: added, deleteNoteIds: [...expired] });
+        if (added.length || expired.size || mended.folders.length || mended.notes.length) {
+          await repository.writeMemory({
+            folders: [...added, ...mended.folders],
+            notes: mended.notes,
+            deleteNoteIds: [...expired],
+          });
         }
       },
 
@@ -150,7 +170,13 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
       },
 
       async restoreMemoryNote(id) {
-        await changeNote(id, ({ forgottenAt: _forgotten, ...note }) => note);
+        const { folders } = get().memory;
+        // Back into its folder, or About you when that folder has gone meanwhile.
+        await changeNote(id, ({ forgottenAt: _forgotten, ...note }) =>
+          folders.some((f) => f.id === note.folderId)
+            ? note
+            : { ...note, folderId: MEMORY_ABOUT_FOLDER_ID },
+        );
       },
 
       async editMemoryFolder(id, patch) {
@@ -162,19 +188,29 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
         await changeMemory({ folders: [{ ...folder, name, description, updatedAt: Date.now() }] });
       },
 
-      async undoMemoryWrite(messageId, noteId) {
-        const message = get().messagesById[messageId];
-        const write = message?.memoryWrites?.find((w) => w.noteId === noteId && !w.undone);
-        if (!message || !write) return;
-        await changeMemory(undoChange(write, get().memory));
-        const next = {
-          ...message,
-          memoryWrites: message.memoryWrites!.map((w) =>
-            w === write ? { ...w, undone: true } : w,
-          ),
-        };
-        set((s) => ({ messagesById: { ...s.messagesById, [messageId]: next } }));
-        await repository.saveMessage(next);
+      async undoMemoryWrite(messageId, index) {
+        const write = get().messagesById[messageId]?.memoryWrites?.[index];
+        if (!write || write.undone) return;
+        const change = undoChange(write, get().memory, Date.now());
+        if (!change) {
+          get().setNotice(NOTICE_MEMORY_CHANGED_SINCE, 'info');
+          return;
+        }
+        await changeMemory(change);
+        // Marked on the reply as it is now, which may have grown or switched
+        // versions meanwhile, so no older copy of it is saved.
+        let marked: Message | undefined;
+        set((s) => {
+          const message = s.messagesById[messageId];
+          const result =
+            message &&
+            updateMessageById(s, message.chatId, messageId, (m) =>
+              markWriteUndone(m, index, write),
+            );
+          marked = result?.messagesById?.[messageId];
+          return result ?? {};
+        });
+        if (marked) await repository.saveMessage(marked);
       },
 
       async consolidateMemory() {
