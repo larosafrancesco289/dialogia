@@ -6,6 +6,7 @@
 // see it and undo it.
 
 import type { MemoryChange } from '@/lib/db/repository';
+import { returningFolder } from '@/lib/memory/notebook';
 import {
   MEMORY_ABOUT_FOLDER_ID,
   type MemoryFolder,
@@ -236,32 +237,21 @@ export function undoChange(
     return { notes: [{ ...note, folderId, forgottenAt: now }], ...deleteFolderIds };
   }
   const { before } = write;
-  const folderId = memory.folders.some((f) => f.id === before.folderId)
-    ? before.folderId
-    : MEMORY_ABOUT_FOLDER_ID;
-  return { notes: [{ ...before, folderId }], ...deleteFolderIds };
+  return {
+    notes: [{ ...before, folderId: returningFolder(memory.folders, before.folderId) }],
+    ...deleteFolderIds,
+  };
 }
 
-const sameWrite = (a: MemoryWrite, b: MemoryWrite) =>
-  a.noteId === b.noteId && a.action === b.action && a.text === b.text && !a.undone;
-
 /**
- * The reply with its write at `index` marked taken back, in whichever version
- * holds it now: the shown one may have changed since the person clicked.
+ * The reply with `write` marked taken back. It is matched as the very object
+ * the shown version holds, so two versions with alike writes are never
+ * confused; a reply that no longer shows it comes back unchanged.
  */
-export function markWriteUndone(message: Message, index: number, write: MemoryWrite): Message {
-  const mark = <T extends { memoryWrites?: MemoryWrite[] }>(version: T): T | undefined => {
-    const at = version.memoryWrites?.[index];
-    if (!at || !sameWrite(at, write)) return undefined;
-    const memoryWrites = version.memoryWrites!.map((w, i) =>
-      i === index ? { ...w, undone: true } : w,
-    );
-    return { ...version, memoryWrites };
+export function markWriteUndone(message: Message, write: MemoryWrite): Message {
+  if (!message.memoryWrites?.includes(write)) return message;
+  return {
+    ...message,
+    memoryWrites: message.memoryWrites.map((w) => (w === write ? { ...w, undone: true } : w)),
   };
-  const shown = mark(message);
-  if (shown) return shown;
-  const at = message.versions?.findIndex((version) => mark(version)) ?? -1;
-  if (at === -1) return message;
-  const versions = message.versions!.map((version, i) => (i === at ? mark(version)! : version));
-  return { ...message, versions };
 }

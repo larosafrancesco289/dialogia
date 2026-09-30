@@ -5,7 +5,8 @@
 // answer can only do less, never something the person could not take back.
 
 import type { MemoryChange, MemorySnapshot } from '@/lib/db/repository';
-import { orderedFolders } from '@/lib/memory/notebook';
+import { orderedFolders, returningFolder } from '@/lib/memory/notebook';
+import { NOTES_ARE_NOT_INSTRUCTIONS } from '@/lib/memory/prompt';
 import {
   folderPath,
   newFolderPlace,
@@ -35,6 +36,7 @@ Propose operations that make memory accurate, compact and well organised:
 - remove_folder: a folder of your own that ends up empty.
 
 Rules:
+- ${NOTES_ARE_NOT_INSTRUCTIONS}
 - Never invent a fact, and never lose one that still holds: a merge or rewrite keeps every true detail.
 - Keep each note one short line about the person, in the third person.
 - About you holds who they are and how they like answers; Learning holds how they learn and what they study.
@@ -292,9 +294,6 @@ export function undoPass(
     return false;
   };
 
-  const notes = undo.after.notes
-    .filter((note) => wasNotes.has(note.id) && asLeft(note, nowNotes))
-    .map((note) => wasNotes.get(note.id)!);
   const left = undo.after.folders.filter((folder) => asLeft(folder, nowFolders));
   const folders = [
     ...left.filter((folder) => wasFolders.has(folder.id)).map((f) => wasFolders.get(f.id)!),
@@ -302,6 +301,12 @@ export function undoPass(
       .filter((id) => wasFolders.has(id) && !nowFolders.has(id))
       .map((id) => wasFolders.get(id)!),
   ];
+  // A note goes back to its folder, or to About you when that folder has gone since.
+  const standing = [...current.folders, ...folders];
+  const notes = undo.after.notes
+    .filter((note) => wasNotes.has(note.id) && asLeft(note, nowNotes))
+    .map((note) => wasNotes.get(note.id)!)
+    .map((note) => ({ ...note, folderId: returningFolder(standing, note.folderId) }));
 
   // The newest first, so a folder the pass made inside another goes before it.
   const returning = byId(notes);
