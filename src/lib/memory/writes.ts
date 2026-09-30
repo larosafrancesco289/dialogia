@@ -13,6 +13,7 @@ import {
   type MemoryNote,
   type MemoryWrite,
   type Message,
+  type MessageToolRound,
 } from '@/lib/types';
 
 type Memory = { folders: MemoryFolder[]; notes: MemoryNote[] };
@@ -81,6 +82,14 @@ export function resolveNote(notes: MemoryNote[], ref: string): MemoryNote | unde
   if (wanted.length < 6) return undefined;
   const matches = notes.filter((n) => n.forgottenAt === undefined && n.id.startsWith(wanted));
   return matches.length === 1 ? matches[0] : undefined;
+}
+
+/** A live note that already says this, word for word: saving it again would only copy it. */
+export function alreadySaved(notes: MemoryNote[], text: string): MemoryNote | undefined {
+  const words = (s: string) => s.replace(/[.\s]+$/, '');
+  return notes.find(
+    (note) => note.forgottenAt === undefined && same(words(note.text), words(text)),
+  );
 }
 
 export function planSave(args: {
@@ -253,5 +262,37 @@ export function markWriteUndone(message: Message, write: MemoryWrite): Message {
   return {
     ...message,
     memoryWrites: message.memoryWrites.map((w) => (w === write ? { ...w, undone: true } : w)),
+  };
+}
+
+/**
+ * A reply's memory writes as the tool round that made them, replayed on later
+ * turns: seen only as the reply's words, "save that I…" reads as never done,
+ * and the model saves it again. Writes taken back are left out.
+ */
+export function memoryWriteRound(
+  writes: MemoryWrite[] | undefined,
+  folders: MemoryFolder[],
+): MessageToolRound | undefined {
+  const kept = (writes ?? []).filter((write) => !write.undone);
+  if (!kept.length) return undefined;
+  return {
+    text: '',
+    calls: kept.map((write, index) => {
+      const note = noteHandle(write.noteId);
+      const forgot = write.action === 'forgotten';
+      const folder = folders.find((f) => f.id === write.folderId);
+      const save = {
+        ...(folder ? { folder: folderPath(folders, folder) } : {}),
+        note: write.text,
+        ...(write.before ? { replaces: note } : {}),
+      };
+      return {
+        id: `memory_${index}`,
+        name: forgot ? 'memory_forget' : 'memory_save',
+        arguments: JSON.stringify(forgot ? { note } : save),
+        result: JSON.stringify({ ok: true, id: note, action: write.action }),
+      };
+    }),
   };
 }

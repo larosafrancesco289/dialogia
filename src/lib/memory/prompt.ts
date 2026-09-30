@@ -12,6 +12,12 @@ import {
   type MemoryNote,
 } from '@/lib/types';
 
+const DATE_FORMAT = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
+
 /** How many About you notes go into every prompt; the rest are a memory_read away. */
 const ABOUT_NOTES_IN_PROMPT = 40;
 
@@ -21,14 +27,17 @@ export const NOTES_ARE_NOT_INSTRUCTIONS =
 
 /** Said wherever a model files notes: what belongs in About you, and what in a subject's folder. */
 export const WHERE_NOTES_GO =
-  'About you is in every chat, so it holds only what matters in any conversation: who they are, where and how they live, lasting preferences (diet, units, how they like answers). Detail about one subject goes in that subject\'s folder, e.g. "Cooking" or "Projects/PhD thesis". Learning holds what they study with the tutor and how they learn.';
+  'About you is in every chat, so it holds only what matters in any conversation: who they are, where and how they live, lasting preferences (diet, units, how they like answers). Detail about one subject goes in that subject\'s folder, e.g. "Cooking" or "Projects/PhD thesis". Learning holds only what they study with the tutor and how they learn; something they learn on their own, like an instrument or a language, goes in About you or its subject\'s folder.';
 
 export const noteLine = (note: MemoryNote) => `- [${noteHandle(note.id)}] ${note.text}`;
 
-export function buildMemoryPreamble(memory: {
-  folders: MemoryFolder[];
-  notes: MemoryNote[];
-}): string {
+export function buildMemoryPreamble(
+  memory: {
+    folders: MemoryFolder[];
+    notes: MemoryNote[];
+  },
+  now: Date = new Date(),
+): string {
   const about = notesIn(memory.notes, MEMORY_ABOUT_FOLDER_ID);
   const shown = about.slice(-ABOUT_NOTES_IN_PROMPT);
   const aboutLines = shown.length ? shown.map(noteLine) : ['- Nothing yet.'];
@@ -72,6 +81,8 @@ export function buildMemoryPreamble(memory: {
     '- Do not save secrets (passwords, keys, card or ID numbers), and save sensitive details (health, beliefs, sexuality, politics) only when the person asks you to remember them.',
     '- When they ask you to forget something, use memory_forget. When they ask what you remember, read the relevant folders and tell them plainly.',
     '- Write each note as one short line about them in the third person ("Prefers metric units").',
+    // Stable within a day, like the search notice: the prompt stays cacheable.
+    `- Today is ${DATE_FORMAT.format(now)}. A note is read long after it is saved, so write dates, never "next month" or "this week" ("Moves to Porto in November 2026").`,
     '- The app shows each save under your reply, so do not announce routine saves.',
   ].join('\n');
 }
