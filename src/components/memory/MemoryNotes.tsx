@@ -1,16 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { useChatStore } from '@/lib/store';
+import { shortDate } from '@/lib/ui/shortDate';
 import type { MemoryFolder, MemoryNote } from '@/lib/types';
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-/** "30 Sep", or "30 Sep 2025" outside this year. */
-export function formatMemoryDate(at: number): string {
-  const date = new Date(at);
-  const day = `${date.getDate()} ${MONTHS[date.getMonth()]}`;
-  return date.getFullYear() === new Date().getFullYear() ? day : `${day} ${date.getFullYear()}`;
-}
 
 /** Opens a chat from the Memory page, which steps aside for it. */
 export function useOpenChat() {
@@ -35,7 +27,7 @@ function Provenance({ note }: { note: MemoryNote }) {
         : 'Written by you';
   return (
     <span className="memory-note__meta">
-      {who} · {formatMemoryDate(note.updatedAt)}
+      {who} · {shortDate(note.updatedAt)}
       {source && (
         <>
           {' · from '}
