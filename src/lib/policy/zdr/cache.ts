@@ -8,6 +8,7 @@ import type {
 } from '@/lib/contracts/store';
 import {
   ensureZdrLists,
+  evaluateZdrModel,
   filterZdrModels,
   toZdrState,
   type ZdrLists,
@@ -119,4 +120,17 @@ export async function guardZdrOrNotifyCached<S extends ZdrCacheState>(
   const result = await computeZdrFilterCached([{ id: modelId }], 'enforce', set, get, fetchers);
   const setNotice = get().setNotice;
   return guardModelOrNotice(modelId, set, result.lists, setNotice);
+}
+
+/**
+ * The cached verdict without a notice, for background calls that skip quietly
+ * rather than tell the person about a model they never picked.
+ */
+export function isZdrAllowedCached<S extends ZdrCacheState>(
+  modelId: string,
+  get: StoreGetter<S>,
+): boolean {
+  const snapshot = getZdrCacheSnapshot(get);
+  const lists = { modelIds: toSet(snapshot.modelIds), providerIds: toSet(snapshot.providerIds) };
+  return evaluateZdrModel(modelId, lists).status === 'allowed';
 }

@@ -5,7 +5,7 @@ import {
   fallbackChatTitle,
   triggerAsyncTitleGeneration,
 } from './titleGenerator';
-import type { ProviderEndpoint } from '@/lib/transport/endpoints';
+import { OPENROUTER_ENDPOINT, type ProviderEndpoint } from '@/lib/transport/endpoints';
 
 test('fallback title is the first line, plain and capitalized', () => {
   assert.equal(fallbackChatTitle('how do I keep basil alive?'), 'How do I keep basil alive?');
@@ -42,6 +42,32 @@ test('a chat with titling turned off is named after its first message', async ()
     );
   });
   assert.deepEqual(renamed, ['What should I cook tonight?']);
+});
+
+test('a title model the gate refuses is never called, and the chat keeps its first message', async () => {
+  const checked: string[] = [];
+  const renamed: string[] = [];
+  await new Promise<void>((resolve) => {
+    triggerAsyncTitleGeneration(
+      'c1',
+      'plan a week in Lisbon',
+      async (_id, title) => {
+        renamed.push(title);
+        resolve();
+      },
+      OPENROUTER_ENDPOINT,
+      true,
+      'anthropic/claude-opus-5',
+      [],
+      async (modelId) => {
+        checked.push(modelId);
+        return false;
+      },
+    );
+  });
+  // The gate sees the cheap title model, not the chat's own.
+  assert.deepEqual(checked, ['openai/gpt-6-luna']);
+  assert.deepEqual(renamed, ['Plan a week in Lisbon']);
 });
 
 test('a fallback title keeps the words as written, without markdown', () => {

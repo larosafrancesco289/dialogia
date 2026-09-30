@@ -4,6 +4,7 @@ import {
   refreshZdrListsIfNeeded,
   computeZdrFilterCached,
   guardZdrOrNotifyCached,
+  isZdrAllowedCached,
 } from '@/lib/policy/zdr/cache';
 import type { StoreGetter, StoreSetter } from '@/lib/agent/types';
 import { createModelIndex } from '@/lib/models';
@@ -121,4 +122,18 @@ test('refreshZdrListsIfNeeded dedupes concurrent refreshes into one fetch', asyn
   assert.equal(calls, 1);
   assert.ok(first.modelIds.has('provider/model'));
   assert.equal(first, second);
+});
+
+test('isZdrAllowedCached reads the cached lists and never sets a notice', () => {
+  const { state, get } = createStore();
+  state.zdrModelIds = ['provider/zdr-model'];
+  state.zdrProviderIds = ['provider'];
+  state.zdrFetchedAt = Date.now();
+
+  assert.equal(isZdrAllowedCached('provider/zdr-model', get), true);
+  assert.equal(isZdrAllowedCached('provider/other-model', get), false);
+  state.zdrModelIds = [];
+  state.zdrProviderIds = [];
+  assert.equal(isZdrAllowedCached('provider/zdr-model', get), false);
+  assert.equal(state.ui.notice, undefined);
 });
