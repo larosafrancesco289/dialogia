@@ -42,8 +42,9 @@ export function SettingsDrawerShell({
   closeLabel = 'Close settings',
   actions,
 }: SettingsDrawerShellProps) {
-  // Escape is the drawer's own (below), so a field inside can claim it first.
-  useModalFocus(!closing, drawerRef);
+  // A field that uses Escape (clearing a search, closing its list) marks it
+  // handled; only a free Escape closes the drawer, wherever focus fell.
+  useModalFocus(!closing, drawerRef, { onEscape: onClose });
 
   return (
     <AnimatePresence>
@@ -79,11 +80,6 @@ export function SettingsDrawerShell({
               exit="exit"
               variants={SLIDE_FROM_RIGHT}
               transition={motionTransition.layout}
-              onKeyDown={(e) => {
-                // A field that used Escape (clearing a search, closing its
-                // list) marks it handled; only a free Escape closes Settings.
-                if (e.key === 'Escape' && !e.defaultPrevented) onClose();
-              }}
             >
               {/* Minimal Header */}
               <header data-settings-header className="settings-panel__header">
