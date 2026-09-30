@@ -15,6 +15,7 @@ export function buildPersistedUiState(ui: UIState): PersistedUiState {
     setupDismissed: ui.setupDismissed,
     zdrOnly: ui.zdrOnly,
     messageTimestamps: ui.messageTimestamps,
+    memoryEnabled: ui.memoryEnabled,
     dynamicDefaultResolutions: ui.dynamicDefaultResolutions,
     chatDefaults: ui.chatDefaults,
     flags: { experimentalTutor: ui.flags.experimentalTutor },

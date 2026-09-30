@@ -74,6 +74,8 @@ export type UiSnapshot = {
   setupOpen?: boolean;
   /** The Memory page is open; session-scoped, never persisted. */
   memoryOpen?: boolean;
+  /** The folder the Memory page opens on, when something asked for one. */
+  memoryFolderId?: string;
   /**
    * The sidebar is folded because the window is phone-width, not because the
    * reader folded it; session-scoped, and the fold is not saved as their choice.
@@ -86,6 +88,8 @@ export type UiSnapshot = {
   overrides?: UiNextOverrides;
   zdrOnly?: boolean;
   messageTimestamps?: boolean;
+  /** Long-term memory is read and written in chats; absent means on. */
+  memoryEnabled?: boolean;
   /** Last concrete model each dynamic default alias resolved to. */
   dynamicDefaultResolutions?: Record<string, string>;
   flags: UiFlagsSnapshot;

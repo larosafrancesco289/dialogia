@@ -15,6 +15,7 @@ import { MessageModuleSlot } from '@/components/ModuleSlot';
 import { ActionButton, MessageEditBar } from '@/components/message/MessageActions';
 import { MessageColophon } from '@/components/message/MessageColophon';
 import { StreamingMarkdown } from '@/components/message/StreamingMarkdown';
+import { MemoryWrites } from '@/components/memory/MemoryWrites';
 import { useChatStore } from '@/lib/store';
 import { rendersAsBlocks } from '@/lib/markdown/blocks';
 import { messageHasModuleContent } from '@/lib/modules';
@@ -218,6 +219,8 @@ export function AssistantMessage({
       <MessageAttachments attachments={attachments} onOpenLightbox={setLightbox} />
 
       {messageBody && <div className="px-4 py-3">{messageBody}</div>}
+
+      {!isEditing && <MemoryWrites message={message} />}
 
       {isEditing && (
         <div className="px-4 pb-3">

@@ -96,6 +96,7 @@
      button (buttons.css) at 34px, the size of the send disc beside them. */
   .composer-btn-reasoning,
   .composer-btn-search,
+  .composer-btn-memory,
   .composer-btn-attach {
     height: 34px;
     position: relative;
@@ -110,10 +111,12 @@
   /* Search or reasoning switched on is a setting: ink, not gold, and no
      chip behind it; the word beside the icon already says it is on. */
   .composer-btn-reasoning.is-active,
-  .composer-btn-search.is-active {
+  .composer-btn-search.is-active,
+  .composer-btn-memory.is-active {
     color: var(--color-fg);
   }
-  .composer-btn-search[aria-pressed='true']:not(:hover) {
+  .composer-btn-search[aria-pressed='true']:not(:hover),
+  .composer-btn-memory[aria-pressed='true']:not(:hover) {
     background: transparent;
   }
 
@@ -325,6 +328,7 @@
      slide over instead of jumping. The buttons size to their content, 34px
      with the word closed. */
   .composer-btn-search,
+  .composer-btn-memory,
   .composer-btn-reasoning {
     width: auto;
     min-width: 34px;
@@ -362,6 +366,7 @@
   @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
     .composer-btn-reasoning,
     .composer-btn-search,
+    .composer-btn-memory,
     .composer-btn-attach,
     .composer-btn-send,
     .composer-btn-stop {
@@ -369,7 +374,8 @@
       height: 44px;
     }
     .composer-btn-reasoning,
-    .composer-btn-search {
+    .composer-btn-search,
+    .composer-btn-memory {
       width: auto;
       min-width: 44px;
     }

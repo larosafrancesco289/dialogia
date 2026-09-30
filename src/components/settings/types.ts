@@ -10,6 +10,7 @@ export type SectionId =
   | 'favorites'
   | 'privacy'
   | 'general'
+  | 'memory'
   | 'reasoning'
   | 'tutor'
   | 'theme'

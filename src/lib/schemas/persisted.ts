@@ -12,6 +12,7 @@ import type {
   LearnerModel,
   MessageMetrics,
   MessageSearchSource,
+  MemoryWrite,
   MessageToolRound,
   MessageTutor,
   ReplyVersion,
@@ -87,6 +88,7 @@ export const ChatSettingsSchema = z
     features: z.object({
       search: ChatSearchSettingsSchema,
       tutor: TutorSettingsSchema.optional(),
+      memory: z.object({ enabled: z.boolean() }).optional(),
     }),
   })
   .passthrough();
@@ -146,6 +148,7 @@ export const MessageSchema = z
     annotations: z.unknown().optional(),
     // Read through `resolveMessageSources`, which skips anything malformed.
     searchSources: z.custom<MessageSearchSource[]>().optional(),
+    memoryWrites: z.custom<MemoryWrite[]>().optional(),
     createdAt: z.number(),
     finishReason: z.enum(['stop', 'tool_calls', 'length', 'content_filter']).optional(),
     stopPolicy: z.string().optional(),

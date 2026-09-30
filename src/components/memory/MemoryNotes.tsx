@@ -18,7 +18,7 @@ export function useOpenChat() {
   const setUI = useChatStore((s) => s.setUI);
   return (chatId: string) => {
     selectChat(chatId);
-    setUI({ memoryOpen: false, mobile: { drawerOpen: false } });
+    setUI({ memoryOpen: false, memoryFolderId: undefined, mobile: { drawerOpen: false } });
   };
 }
 

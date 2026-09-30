@@ -30,7 +30,13 @@ test("loadModuleRuntimes registers every enabled module's tools", () => {
   assert.ok(isRegisteredTool('web_fetch'));
   assert.ok(isRegisteredTool('give_quiz'));
 
-  assert.deepEqual(listTools({ module: 'core' }).sort(), ['web_fetch', 'web_search']);
+  assert.deepEqual(listTools({ module: 'core' }).sort(), [
+    'memory_forget',
+    'memory_read',
+    'memory_save',
+    'web_fetch',
+    'web_search',
+  ]);
 });
 
 test('every tutor engine tool is registered, and nothing else under the tutor', () => {

@@ -51,3 +51,19 @@ export type LearningTopic = {
   /** Where the topic stands, in plain words ("Done", "Starts after Limits"). */
   status: string;
 };
+
+/**
+ * One change a reply made to memory, kept on the reply so the person sees it
+ * and can take it back. `before` is the note as it was, absent for a new one.
+ */
+export type MemoryWrite = {
+  noteId: string;
+  action: 'added' | 'updated' | 'forgotten';
+  /** The note's words after the change (before it, for a forgotten note). */
+  text: string;
+  folderId: string;
+  before?: MemoryNote;
+  /** A folder the write created, removed again on undo if nothing else is in it. */
+  createdFolderId?: string;
+  undone?: boolean;
+};

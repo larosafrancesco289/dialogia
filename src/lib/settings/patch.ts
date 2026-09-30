@@ -29,6 +29,7 @@ export function mergeChatSettingsPatch(base: ChatSettings, patch: ChatSettingsPa
         ...(baseFeatures.tutor ?? FALLBACK_FEATURES.tutor),
         ...(patch.features?.tutor ?? {}),
       },
+      ...(patch.features?.memory ? { memory: patch.features.memory } : {}),
     },
   };
 }

@@ -276,6 +276,13 @@ export function Composer({
     }
   };
 
+  const memoryEverywhere = useChatStore((s) => s.ui.memoryEnabled !== false);
+  const memoryOn =
+    chat && memoryEverywhere ? chat.settings.features.memory?.enabled !== false : undefined;
+  const toggleMemory = () => {
+    if (chat) void updateSettings({ features: { memory: { enabled: !memoryOn } } });
+  };
+
   const selectSearchMode = (mode: SearchMode) => {
     if (chat) {
       void updateSettings({ features: { search: { enabled: true, provider: mode } } });
@@ -351,6 +358,8 @@ export function Composer({
           currentEffort={currentEffort}
           onSelectEffort={handleSelectEffort}
           hasContent={text.trim().length > 0 || attachments.length > 0}
+          memoryOn={memoryOn}
+          toggleMemory={toggleMemory}
         />
       </div>
     </ComposerLayout>

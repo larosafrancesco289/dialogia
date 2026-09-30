@@ -2,6 +2,7 @@ import type { PersistedAttachment } from '@/lib/types/attachments';
 import type { GenerationSettings, SearchMode } from '@/lib/types/chat';
 import type { MessageMetrics } from '@/lib/types/metrics';
 import type { LearnerModel, MessageTutor } from '@/lib/types/tutor';
+import type { MemoryWrite } from '@/lib/types/memory';
 import type { Usage } from '@/lib/api/normalizers';
 import type {
   MessageRole,
@@ -126,6 +127,8 @@ export type Message = {
   // What the reply's tool-based searches found, in the order its [n] markers
   // count them. Never sent to a model; it keeps citations linked after reload.
   searchSources?: MessageSearchSource[];
+  /** What the reply wrote to long-term memory. Never sent to a model. */
+  memoryWrites?: MemoryWrite[];
   createdAt: number;
   // Why the provider stopped generating; 'content_filter' marks a safety
   // classifier refusal (Anthropic stop_reason "refusal") the UI must surface.
@@ -208,6 +211,7 @@ export type ReplyVersionKey =
   | 'genSettings'
   | 'annotations'
   | 'searchSources'
+  | 'memoryWrites'
   | 'finishReason'
   | 'stopPolicy'
   | 'cutOff'
