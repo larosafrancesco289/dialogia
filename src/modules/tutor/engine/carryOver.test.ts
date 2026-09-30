@@ -119,6 +119,26 @@ test('an unknown chat or topic, or one with no estimate, is dropped and named ba
   assert.match(adjusted[3], /topics\.2\.carriedFrom.*"Integrals"/);
 });
 
+test('an earlier topic carries to one topic here: the topics built on it start fresh', () => {
+  const source = earlierChat();
+  const h = harness();
+  h.otherChats = { [SOURCE]: source };
+  const command = {
+    by: 'tutor',
+    type: 'propose_plan',
+    ...continuing([
+      { chatId: SOURCE, topic: 'Limits' },
+      { chatId: SOURCE, topic: 'Limits' },
+    ]),
+  } satisfies TutorToolCommand;
+  const before = h.state;
+  const result = step(before, command, h.ctx());
+  assert.ok(result.ok);
+  assert.deepEqual(Object.keys(result.state.proposal!.carriedOver!), ['limits']);
+  const read = tutorToolResult('propose_plan', before, result.state, result.events, command);
+  assert.match((read.adjusted as string[])[0], /topics\.1\.carriedFrom.*already carries over/);
+});
+
 test('a carried-over estimate never closes a topic without two of the learner’s own answers', () => {
   const h = harness();
   h.otherChats = { [SOURCE]: earlierChat() };

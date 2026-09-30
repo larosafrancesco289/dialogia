@@ -149,7 +149,7 @@ export const ARGS = {
             })
             .optional()
             .describe(
-              `Only when this topic is one the learner already studied in another tutor chat listed in the tutor state, with an estimate there. On approval it starts from that estimate, up to ${percent(STARTING_ESTIMATE_MAX)}%, in place of startingEstimate.`,
+              `Only when this topic covers the same ground as one the learner already studied in another tutor chat listed in the tutor state, with an estimate there; each earlier topic carries to one topic here. On approval it starts from that estimate, up to ${percent(STARTING_ESTIMATE_MAX)}%, in place of startingEstimate.`,
             ),
         }),
       )
