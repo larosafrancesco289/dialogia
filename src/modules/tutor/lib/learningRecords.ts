@@ -4,9 +4,11 @@
 
 import type { Chat, LearningRecord } from '@/lib/types';
 import type { TutorState } from '@/modules/tutor/engine/state';
-import { nextReadyNode } from '@/modules/tutor/engine';
+import type { TutorSession } from '@/modules/tutor/store/tutorSlice';
+import { isTutorChat } from '@/modules/tutor/store/selectors';
+import { isMeasured, nextReadyNode } from '@/modules/tutor/engine';
 import { stepState, waitingOn } from '@/modules/tutor/components/learning-panel/PlanPath';
-import { isMeasured, pct, statusWords } from '@/modules/tutor/lib/topicStatus';
+import { pct, statusWords } from '@/modules/tutor/lib/topicStatus';
 
 /** The chat's record, or undefined while it has no approved plan. */
 export function learningRecord(chat: Chat, state: TutorState): LearningRecord | undefined {
@@ -16,6 +18,7 @@ export function learningRecord(chat: Chat, state: TutorState): LearningRecord | 
   return {
     chatId: chat.id,
     goal: plan.goal,
+    ...(plan.subject ? { subject: plan.subject } : {}),
     studiedAt: chat.updatedAt,
     finished: plan.nodes.every((node) => node.status === 'completed'),
     topics: plan.nodes.map((node) => {
@@ -29,4 +32,17 @@ export function learningRecord(chat: Chat, state: TutorState): LearningRecord | 
       };
     }),
   };
+}
+
+/** The record of each tutor chat among `chats` that has an approved plan, loading its log first. */
+export async function tutorLearningRecords(
+  chats: readonly Chat[],
+  ensureTutorSession: (chatId: string) => Promise<TutorSession>,
+): Promise<LearningRecord[]> {
+  const records = await Promise.all(
+    chats
+      .filter(isTutorChat)
+      .map(async (chat) => learningRecord(chat, (await ensureTutorSession(chat.id)).state)),
+  );
+  return records.filter((record): record is LearningRecord => !!record);
 }

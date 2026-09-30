@@ -1053,3 +1053,65 @@ test('deleting a chat mid-dispatch leaves no events behind and refuses what was 
   const exported = await repository.exportAll();
   assert.ok(!exported.tutorEvents.some((e) => e.chatId === id));
 });
+
+test('a plan carries a topic over from another tutor chat, whose log is loaded to decide it', async () => {
+  const { id: source, store: first } = await teachingChat();
+  const { dispatchTutor: teach } = first.getState();
+  await teach(source, { by: 'tutor', type: 'give_quiz', items: QUIZ_ITEMS }, { by: 'tutor' });
+  const quizId = first.getState().tutorSessions[source].state.awaiting!.id;
+  for (const [i, item] of QUIZ_ITEMS.entries()) {
+    await teach(
+      source,
+      {
+        by: 'learner',
+        type: 'answer_quiz_item',
+        quizId,
+        itemId: `q${i + 1}`,
+        choice: item.correct,
+      },
+      { by: 'learner' },
+    );
+  }
+  const studied = first.getState().tutorSessions[source].state.mastery.limits.confidence;
+
+  // A later visit: only the new chat's log is in memory to begin with.
+  const id = chatId('continues');
+  const plain = chatId('plain');
+  const store = createTestStore();
+  store.setState({
+    chats: [tutorChat(source), tutorChat(id), makeChat({ id: plain, title: 'Not a tutor chat' })],
+  });
+  const { dispatchTutor } = store.getState();
+  const proposed = await dispatchTutor(
+    id,
+    {
+      by: 'tutor',
+      type: 'propose_plan',
+      ...CALCULUS,
+      nodes: CALCULUS.nodes.map((node, i) =>
+        i === 0
+          ? { ...node, carriedFrom: { chatId: source, topic: 'Limits' } }
+          : i === 1
+            ? { ...node, carriedFrom: { chatId: plain, topic: 'Limits' } }
+            : node,
+      ),
+    },
+    { by: 'tutor', messageId: 'm1' },
+  );
+  assert.ok(proposed.ok);
+  const proposal = store.getState().tutorSessions[id].state.proposal!;
+  assert.deepEqual(Object.keys(proposal.carriedOver ?? {}), ['limits']);
+
+  await dispatchTutor(
+    id,
+    { by: 'learner', type: 'approve_plan', proposalId: proposal.proposalId },
+    { by: 'learner', messageId: 'm1' },
+  );
+  const [entry] = store.getState().tutorSessions[id].state.mastery.limits.evidence;
+  assert.equal(entry.carriedOver?.chatId, source);
+  assert.equal(entry.carriedOver?.estimate, studied);
+  assert.equal(entry.setTo, 0.75);
+  // What was read is on disk with the event, for a replay that never reads the source.
+  const stored = await repository.loadTutorEvents(id);
+  assert.ok(stored.some((row) => (row as { carriedOver?: unknown }).carriedOver));
+});

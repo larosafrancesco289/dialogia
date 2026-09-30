@@ -22,6 +22,8 @@ type WithoutBy<T> = T extends unknown ? Omit<T, 'by'> : never;
 
 export type Harness = {
   flags: TutorFlags;
+  /** The learner's other tutor chats, given to every command as `ctx.otherChats`. */
+  otherChats: Record<string, TutorState>;
   readonly state: TutorState;
   readonly events: TutorEvent[];
   ctx(messageId?: string): CommandContext;
@@ -41,6 +43,7 @@ export function harness(flags: Partial<TutorFlags> = {}): Harness {
 
   const h: Harness = {
     flags: { ...DEFAULT_TUTOR_FLAGS, ...flags },
+    otherChats: {},
     get state() {
       return state;
     },
@@ -53,6 +56,7 @@ export function harness(flags: Partial<TutorFlags> = {}): Harness {
         idFactory: () => `id-${++ids}`,
         flags: h.flags,
         ...(messageId ? { messageId } : {}),
+        otherChats: h.otherChats,
       };
     },
     tutor(command, messageId) {

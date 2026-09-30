@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Chat, LearningPlanNode, TopicMastery } from '@/lib/types';
-import { emptyTutorState } from '@/modules/tutor/engine/state';
-import { learningRecord } from '@/modules/tutor/lib/learningRecords';
+import { emptyTutorState, type TutorState } from '@/modules/tutor/engine/state';
+import { learningRecord, tutorLearningRecords } from '@/modules/tutor/lib/learningRecords';
 
 const chat = { id: 'c1', title: 'Bayes', updatedAt: 42 } as Chat;
 
@@ -59,4 +59,34 @@ test('a record shows the whole path, with numbers only where there is evidence',
     { name: 'C', state: 'locked', status: 'Starts after B' },
     { name: 'D', state: 'ready', status: 'Up next' },
   ]);
+});
+
+test('a record carries its plan’s subject, and only tutor chats with a plan have one', async () => {
+  const planned = emptyTutorState();
+  planned.plan = {
+    goal: 'Read a test result',
+    subject: 'Probability',
+    generatedAt: 0,
+    updatedAt: 0,
+    version: 1,
+    nodes: [node('a', 'in_progress')],
+  };
+  planned.mastery = { a: mastery('a', 0.4) };
+  const tutorChat = (id: string) =>
+    ({ id, updatedAt: 1, settings: { features: { tutor: { enabled: true } } } }) as Chat;
+  const states: Record<string, TutorState> = { t1: planned, t2: emptyTutorState() };
+  const loaded: string[] = [];
+
+  const records = await tutorLearningRecords(
+    [tutorChat('t1'), tutorChat('t2'), { id: 'plain', settings: { features: {} } } as Chat],
+    async (chatId) => {
+      loaded.push(chatId);
+      return { events: [], state: states[chatId], loaded: true };
+    },
+  );
+  assert.deepEqual(loaded, ['t1', 't2']);
+  assert.deepEqual(
+    records.map((record) => [record.chatId, record.subject]),
+    [['t1', 'Probability']],
+  );
 });
