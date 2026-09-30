@@ -22,7 +22,7 @@ import {
   MEMORY_SAVE_TOOL,
 } from '@/lib/tools/definitions/memory';
 import type { ToolExecutionContext, ToolResult } from '@/lib/tools/execution';
-import { registerTool, type PlanningToolHandler } from '@/lib/tools/registry';
+import { getToolLogCategory, registerTool, type PlanningToolHandler } from '@/lib/tools/registry';
 import { MEMORY_LEARNING_FOLDER_ID } from '@/lib/types';
 import type { StoreGetter } from '@/lib/store/types';
 
@@ -108,25 +108,41 @@ const forgetMemory: PlanningToolHandler = async ({ parsedArgs, context }) =>
 /**
  * A handler whose call stays in the reply's tool log with how it went, as a
  * search's does; unlogged, the row shown while the call streamed would be
- * dropped as never run.
+ * dropped as never run. `record` is what the log keeps of a result.
  */
 const logged =
-  (name: string, handler: PlanningToolHandler): PlanningToolHandler =>
+  (
+    name: string,
+    handler: PlanningToolHandler,
+    record: (result: ToolResult) => Record<string, unknown> = (result) => result,
+  ): PlanningToolHandler =>
   async (args) => {
-    const log = args.context.logger.start({ name, input: args.parsedArgs });
+    const log = args.context.logger.start({
+      name,
+      input: args.parsedArgs,
+      category: getToolLogCategory(name),
+    });
     const outcome = await handler(args);
     const { result } = outcome;
-    if (result?.ok) log.success(result);
+    if (result?.ok) log.success(record(result));
     else log.error(result, result?.error);
     return outcome;
   };
+
+// The log is kept with the reply, so a read keeps no copy of the notes: a note
+// forgotten later is not still sitting in an old reply's tool log.
+const readRecord = (result: ToolResult) => ({
+  ok: result.ok,
+  folder: result.folder,
+  notes: Array.isArray(result.notes) ? result.notes.length : 0,
+});
 
 export function registerMemoryTools(): void {
   const metadata = { module: 'core', kind: 'action' as const };
   registerTool('memory_read', {
     definition: MEMORY_READ_TOOL,
     metadata,
-    handler: logged('memory_read', readMemory),
+    handler: logged('memory_read', readMemory, readRecord),
   });
   registerTool('memory_save', {
     definition: MEMORY_SAVE_TOOL,

@@ -147,15 +147,6 @@ export function ResponseContextPanel({
                 <ActivityEntry key={item.id} item={item} />
               ))}
 
-              {!hasActivity && isStreaming && (
-                <div className="response-ledger__entry">
-                  <span className="response-ledger__entry-bead" aria-hidden="true" />
-                  <p className="response-ledger__thought">
-                    <span className="response-ledger__pulse" aria-hidden="true" /> Thinking…
-                  </p>
-                </div>
-              )}
-
               {showSourcesEntry && (
                 <SourcesEntry
                   sources={sources}
