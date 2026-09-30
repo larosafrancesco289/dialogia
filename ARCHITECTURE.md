@@ -137,7 +137,8 @@ follows through a `BroadcastChannel` (`src/lib/sync/tabChannel.ts`, a no-op wher
   non-empty, and lazy hydration loads it later. A deleted chat goes the way a local delete goes. A
   module re-reads its log through `onEventsChangedElsewhere`.
 - **Memory says only that it changed.** Every memory write announces `memory`, and the receiver
-  reads all of memory again (`refreshMemory`), which is small, and writes nothing back.
+  reads all of memory again (`refreshMemory`), which is small, and writes nothing back. The last
+  consolidation is saved in the same write as the rows it changed, so it arrives with them.
 - **Keys say only that they changed.** `src/lib/keys/store.ts` announces `keys` after saving or
   removing one, naming neither the key nor its provider. The receiver reads its key cache again
   from `dialogia-keys` and reloads the models, as saving a key in the same tab does.
@@ -369,7 +370,9 @@ through tools. `memorySlice` owns it in the store and loads all of it at startup
 small; the pure rules (built-in folders, reading order, how long a forgotten note waits) live in
 `src/lib/memory/notebook.ts`. Two folders always exist under fixed ids, About you and Learning. A
 forgotten note keeps its row with `forgottenAt` set and is deleted for good on the first load 30
-days later. Backups carry memory; keys stay out, as ever.
+days later. A load also mends what could not be shown: a folder under a missing parent, or inside
+itself, moves to the top, and a note whose folder is gone moves to About you. Backups carry memory;
+keys stay out, as ever.
 
 The model reads and writes memory in every chat that has it on (`ui.memoryEnabled`, and a chat's
 `features.memory`, switched in its composer). `buildMemoryPreamble` (`src/lib/memory/prompt.ts`)
@@ -380,16 +383,20 @@ user's own server that did not declare tools would reject every request over the
 is read-only. Offering them runs the turn in the default tool loop. What a call changes is
 decided purely in `src/lib/memory/writes.ts`, and each change is kept on the reply as
 `Message.memoryWrites` (a per-version field, never sent to a model), which the reply shows as a
-quiet line with Undo (`undoMemoryWrite`).
+quiet line with Undo (`undoMemoryWrite`). Undo acts only while the note is as that write left it,
+so nothing written since is lost, and takes a new note back by forgetting it.
 
 Consolidate (the Memory page's header) sends all of memory to the model new chats start with and
 asks for a plan of operations as JSON: merge, rewrite, move, forget, new_folder, describe,
 remove_folder, each with a sentence for the person. The app applies the plan itself
-(`src/lib/memory/consolidate.ts`): an operation naming a note or folder that is not there, or
-breaking a rule (a built-in folder removed, a non-empty folder removed), is skipped and not
-reported. The pass keeps a snapshot of memory as it was, stored under KV `memory:lastConsolidation`
-with its report, so one Undo restores all of it, even after a reload, until the report is put
-away.
+(`src/lib/memory/consolidate.ts`): an operation naming a note or folder that is not there,
+breaking a rule (a built-in folder removed, a non-empty folder removed), or without its sentence,
+is skipped and not reported. The plan is applied only if memory has not changed while the model
+answered, and an answer that cannot be read, or was cut off, is a failed pass. The request passes
+the zero-data-retention guard a turn does. The pass keeps the rows it wrote and the same rows as
+they were, under KV `memory:lastConsolidation` with its report, so Undo works even after a reload,
+until the report is put away. Undo puts back only rows still exactly as the pass left them, and
+says so when it left some alone.
 
 Numbers about learning are never copied into memory. The Learning folder lists a module's records
 (`AppModule.learningRecords`), read fresh each time the page opens: the tutor turns each tutor

@@ -59,9 +59,9 @@ export function ConsolidationReport() {
     <section className="memory-report motion-drop" aria-label="What consolidation changed">
       <div className="memory-report__head">
         <span className="memory-report__title">
-          {pass.before ? `Consolidated ${shortDate(pass.at)}` : 'Already tidy'}
+          {pass.lines.length ? `Consolidated ${shortDate(pass.at)}` : 'Already tidy'}
         </span>
-        {pass.before && (
+        {pass.undo && (
           <button
             type="button"
             className="btn-outline btn-sm"
@@ -74,10 +74,10 @@ export function ConsolidationReport() {
           <XMarkIcon className="h-4 w-4" />
         </IconButton>
       </div>
-      {pass.before ? (
+      {pass.lines.length ? (
         <ul className="memory-report__changes">
-          {pass.lines.map((line) => (
-            <li key={line}>{line}</li>
+          {pass.lines.map((line, index) => (
+            <li key={index}>{line}</li>
           ))}
         </ul>
       ) : (

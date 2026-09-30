@@ -8,6 +8,7 @@ import {
   missingBuiltInFolders,
   notesIn,
   orderedFolders,
+  repairs,
 } from '@/lib/memory/notebook';
 import { connectTabSync } from '@/lib/store/tabSync';
 import { createTabChannel, parseAnnouncement } from '@/lib/sync/tabChannel';
@@ -16,6 +17,7 @@ import {
   MEMORY_LEARNING_FOLDER_ID,
   type MemoryFolder,
   type MemoryNote,
+  type Message,
 } from '@/lib/types';
 import { createFakeBus } from './helpers/fakeTabBus';
 import { createTestStore } from './helpers/createTestStoreState';
@@ -119,6 +121,54 @@ test('loading memory saves the built-in folders and lets expired notes go', asyn
   );
 });
 
+test('a folder inside itself or under a missing one goes to the top, a lost note to About you', () => {
+  const folders = [
+    folder(MEMORY_ABOUT_FOLDER_ID, 'About you'),
+    folder('a', 'A', 'b'),
+    folder('b', 'B', 'a'),
+    folder('c', 'C', 'a'),
+    folder('orphan', 'Orphan', 'gone'),
+    folder('self', 'Self', 'self'),
+    folder('kid', 'Kid', 'orphan'),
+  ];
+  const mended = repairs(folders, [note('kept', 'kid'), note('lost', 'gone')]);
+  assert.deepEqual(
+    mended.folders.map((f) => [f.id, f.parentId]),
+    [
+      ['a', undefined],
+      ['b', undefined],
+      ['orphan', undefined],
+      ['self', undefined],
+    ],
+  );
+  assert.deepEqual(
+    mended.notes.map((n) => [n.id, n.folderId]),
+    [['lost', MEMORY_ABOUT_FOLDER_ID]],
+  );
+  assert.deepEqual(repairs([folder('x', 'X')], [note('n', 'x')]), { folders: [], notes: [] });
+});
+
+test('loading memory saves its repairs; reading another tab’s change saves nothing', async () => {
+  await clearMemory();
+  const store = createTestStore();
+  await store.getState().loadMemory();
+  await repository.writeMemory({
+    folders: [folder('loop', 'Loop', 'loop')],
+    notes: [note('lost', 'gone')],
+  });
+
+  await store.getState().refreshMemory();
+  const unsaved = await repository.loadMemory();
+  assert.equal(unsaved.folders.find((f) => f.id === 'loop')?.parentId, 'loop');
+  assert.equal(unsaved.notes.find((n) => n.id === 'lost')?.folderId, 'gone');
+
+  await store.getState().loadMemory();
+  const saved = await repository.loadMemory();
+  assert.equal(saved.folders.find((f) => f.id === 'loop')?.parentId, undefined);
+  assert.equal(saved.notes.find((n) => n.id === 'lost')?.folderId, MEMORY_ABOUT_FOLDER_ID);
+  assert.deepEqual(store.getState().memory.folders, saved.folders);
+});
+
 test('adding, editing, forgetting and restoring a note are all saved', async () => {
   await clearMemory();
   const store = createTestStore();
@@ -204,6 +254,41 @@ test('a backup carries memory, and rows that cannot be trusted are left out', as
   await repository.importAll({ chats: [], messages: [] });
 });
 
+test('a backup’s record of a reply’s memory writes keeps only entries Undo can trust', async () => {
+  const good = { noteId: 'n1', action: 'added', text: 'Has a cat', folderId: 'about' };
+  const updated = {
+    noteId: 'n2',
+    action: 'updated',
+    text: 'Lives in Rome',
+    folderId: 'about',
+    before: note('n2', 'about', { text: 'Lives in Milan' }),
+  };
+  const writes = [
+    good,
+    updated,
+    { ...updated, before: note('someone-else', 'about') },
+    { ...good, action: 'rewrote' },
+    { ...good, noteId: 42 },
+    { ...updated, before: undefined },
+    'nonsense',
+  ];
+  const chat = { id: 'chat-w', title: 'W', createdAt: 1, updatedAt: 1, settings: {} };
+  const reply = {
+    id: 'reply-w',
+    chatId: 'chat-w',
+    role: 'assistant',
+    content: 'Second',
+    createdAt: 2,
+    memoryWrites: writes,
+    versions: [{ content: 'First', memoryWrites: [...writes] }],
+  };
+  await repository.importAll({ chats: [chat], messages: [reply] });
+  const { messages } = await repository.getChatWithMessages('chat-w');
+  const [stored] = messages as Message[];
+  assert.deepEqual(stored.memoryWrites, [good, updated]);
+  assert.deepEqual(stored.versions?.[0]?.memoryWrites, [good, updated]);
+});
+
 test('another tab’s memory change is read in, and never written back', async () => {
   await clearMemory();
   assert.deepEqual(parseAnnouncement({ kind: 'memory' }), { kind: 'memory' });
@@ -232,4 +317,19 @@ test('another tab’s memory change is read in, and never written back', async (
   );
   await bus.settle();
   assert.deepEqual(heardByWriter, [], 'the reading tab announced nothing back');
+
+  // The last consolidation travels with memory, and putting it away does too.
+  await writer
+    .getState()
+    .changeMemory({ pass: { at: 5, lines: ['Merged two notes'], shown: true } });
+  writerChannel.post({ kind: 'memory' });
+  await bus.settle();
+  await readerSync.idle();
+  assert.deepEqual(reader.getState().memory.pass?.lines, ['Merged two notes']);
+  await writer.getState().dismissConsolidation();
+  writerChannel.post({ kind: 'memory' });
+  await bus.settle();
+  await readerSync.idle();
+  assert.deepEqual(reader.getState().memory.pass, { at: 5, lines: [] });
+  assert.deepEqual(heardByWriter, []);
 });

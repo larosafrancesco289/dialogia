@@ -1,41 +1,54 @@
 // Module: store/memorySlice
 // Responsibility: Own long-term memory in the store: load it, and every change made
 // to it, by the person or the model. Each change is set at once and then written,
-// and the repository tells the other tabs.
+// and the repository tells the other tabs, the last consolidation included.
 
-import { kvGet, kvSet, repository } from '@/lib/db';
+import { repository } from '@/lib/db';
 import type { MemoryChange } from '@/lib/db/repository';
 import { createStoreSlice } from '@/lib/store/createSlice';
-import { expiredNotes, missingBuiltInFolders } from '@/lib/memory/notebook';
-import { undoChange } from '@/lib/memory/writes';
-import { restoreSnapshot, type ConsolidationPass } from '@/lib/memory/consolidate';
-import { NOTICE_CONSOLIDATION_FAILED } from '@/lib/store/notices';
+import { expiredNotes, missingBuiltInFolders, repairs } from '@/lib/memory/notebook';
+import { markWriteUndone, undoChange } from '@/lib/memory/writes';
+import { sameMemory, undoPass } from '@/lib/memory/consolidate';
+import { updateMessageById } from '@/lib/messages/updateMessageById';
+import {
+  NOTICE_CONSOLIDATION_FAILED,
+  NOTICE_CONSOLIDATION_PARTLY_UNDONE,
+  NOTICE_CONSOLIDATION_STALE,
+  NOTICE_MEMORY_CHANGED_SINCE,
+} from '@/lib/store/notices';
 import { v4 as uuidv4 } from 'uuid';
-import type { MemoryAuthor, MemoryFolder, MemoryNote } from '@/lib/types';
+import {
+  MEMORY_ABOUT_FOLDER_ID,
+  type ConsolidationPass,
+  type MemoryAuthor,
+  type MemoryFolder,
+  type MemoryNote,
+  type Message,
+} from '@/lib/types';
 
 export type MemorySliceState = {
   memory: {
     folders: MemoryFolder[];
     notes: MemoryNote[];
     loaded: boolean;
-    /** The last consolidation; its lines and snapshot stay until dismissed or undone. */
+    /** The last consolidation; its lines and what Undo needs stay until dismissed or undone. */
     pass?: ConsolidationPass;
     consolidating?: boolean;
   };
 };
 
-/** Where the last consolidation is kept, so its Undo survives a reload. */
-const PASS_KEY = 'memory:lastConsolidation';
-
 const loadConsolidation = () =>
   import('@/lib/services/memoryConsolidation').then((mod) => mod.planConsolidation);
 
 export type MemorySliceActions = {
-  /** Reads memory, adds the built-in folders it lacks, and lets expired forgotten notes go. */
+  /**
+   * Reads memory, adds the built-in folders it lacks, lets expired forgotten
+   * notes go, and mends what could not be read (`repairs`), writing only then.
+   */
   loadMemory: () => Promise<void>;
-  /** Another tab changed memory: read it again, writing nothing. */
+  /** Another tab changed memory or its last consolidation: read both again, writing nothing. */
   refreshMemory: () => Promise<void>;
-  /** Sets and saves rows, and removes rows, as one change. */
+  /** Sets and saves rows, removes rows, and keeps the last consolidation, as one change. */
   changeMemory: (change: MemoryChange) => Promise<void>;
   addMemoryNote: (
     folderId: string,
@@ -49,11 +62,14 @@ export type MemorySliceActions = {
     id: string,
     patch: Partial<Pick<MemoryFolder, 'name' | 'description'>>,
   ) => Promise<void>;
-  /** Takes back what a reply wrote to a note, and marks it taken back on the reply. */
-  undoMemoryWrite: (messageId: string, noteId: string) => Promise<void>;
+  /**
+   * Takes back the reply's write at `index`, and marks it taken back on the reply,
+   * unless the note has changed since: then nothing is changed, and the person is told.
+   */
+  undoMemoryWrite: (messageId: string, index: number) => Promise<void>;
   /** Asks the model to tidy all of memory, and applies what it proposes. */
   consolidateMemory: () => Promise<void>;
-  /** Puts memory back as it was before the last consolidation. */
+  /** Takes the last consolidation back, apart from what has changed since. */
   undoConsolidation: () => Promise<void>;
   /** Puts the last consolidation's report away, keeping when it ran. */
   dismissConsolidation: () => Promise<void>;
@@ -75,6 +91,7 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
           ...s.memory,
           folders: replaceById(s.memory.folders, change.folders, change.deleteFolderIds),
           notes: replaceById(s.memory.notes, change.notes, change.deleteNoteIds),
+          ...(change.pass !== undefined ? { pass: change.pass ?? undefined } : {}),
         },
       }));
       await repository.writeMemory(change);
@@ -92,22 +109,26 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
 
       async loadMemory() {
         const now = Date.now();
-        const [stored, pass] = await Promise.all([
-          repository.loadMemory(),
-          kvGet<ConsolidationPass>(PASS_KEY).catch(() => undefined),
-        ]);
+        const { pass, ...stored } = await repository.loadMemory();
         const added = missingBuiltInFolders(stored.folders, now);
         const expired = new Set(expiredNotes(stored.notes, now).map((note) => note.id));
+        const folders = [...stored.folders, ...added];
+        const notes = stored.notes.filter((note) => !expired.has(note.id));
+        const mended = repairs(folders, notes);
         set(() => ({
           memory: {
-            folders: [...stored.folders, ...added],
-            notes: stored.notes.filter((note) => !expired.has(note.id)),
+            folders: replaceById(folders, mended.folders),
+            notes: replaceById(notes, mended.notes),
             loaded: true,
             ...(pass ? { pass } : {}),
           },
         }));
-        if (added.length || expired.size) {
-          await repository.writeMemory({ folders: added, deleteNoteIds: [...expired] });
+        if (added.length || expired.size || mended.folders.length || mended.notes.length) {
+          await repository.writeMemory({
+            folders: [...added, ...mended.folders],
+            notes: mended.notes,
+            deleteNoteIds: [...expired],
+          });
         }
       },
 
@@ -150,7 +171,13 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
       },
 
       async restoreMemoryNote(id) {
-        await changeNote(id, ({ forgottenAt: _forgotten, ...note }) => note);
+        const { folders } = get().memory;
+        // Back into its folder, or About you when that folder has gone meanwhile.
+        await changeNote(id, ({ forgottenAt: _forgotten, ...note }) =>
+          folders.some((f) => f.id === note.folderId)
+            ? note
+            : { ...note, folderId: MEMORY_ABOUT_FOLDER_ID },
+        );
       },
 
       async editMemoryFolder(id, patch) {
@@ -162,38 +189,50 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
         await changeMemory({ folders: [{ ...folder, name, description, updatedAt: Date.now() }] });
       },
 
-      async undoMemoryWrite(messageId, noteId) {
-        const message = get().messagesById[messageId];
-        const write = message?.memoryWrites?.find((w) => w.noteId === noteId && !w.undone);
-        if (!message || !write) return;
-        await changeMemory(undoChange(write, get().memory));
-        const next = {
-          ...message,
-          memoryWrites: message.memoryWrites!.map((w) =>
-            w === write ? { ...w, undone: true } : w,
-          ),
-        };
-        set((s) => ({ messagesById: { ...s.messagesById, [messageId]: next } }));
-        await repository.saveMessage(next);
+      async undoMemoryWrite(messageId, index) {
+        const write = get().messagesById[messageId]?.memoryWrites?.[index];
+        if (!write || write.undone) return;
+        const change = undoChange(write, get().memory, Date.now());
+        if (!change) {
+          get().setNotice(NOTICE_MEMORY_CHANGED_SINCE, 'info');
+          return;
+        }
+        await changeMemory(change);
+        // Marked on the reply as it is now, which may have grown or switched
+        // versions meanwhile, so no older copy of it is saved.
+        let marked: Message | undefined;
+        set((s) => {
+          const message = s.messagesById[messageId];
+          const result =
+            message &&
+            updateMessageById(s, message.chatId, messageId, (m) =>
+              markWriteUndone(m, index, write),
+            );
+          marked = result?.messagesById?.[messageId];
+          return result ?? {};
+        });
+        if (marked) await repository.saveMessage(marked);
       },
 
       async consolidateMemory() {
         if (get().memory.consolidating) return;
-        const keepPass = async (pass: ConsolidationPass) => {
-          set((s) => ({ memory: { ...s.memory, pass } }));
-          await kvSet(PASS_KEY, pass);
-        };
         set((s) => ({ memory: { ...s.memory, consolidating: true } }));
         try {
           const planConsolidation = await loadConsolidation();
-          const { change, lines, before } = await planConsolidation(get);
-          const at = Date.now();
-          if (lines.length) {
-            await changeMemory(change);
-            await keepPass({ at, lines, before, previousAt: get().memory.pass?.at, shown: true });
-          } else {
-            await keepPass({ at, lines: [], shown: true });
+          const plan = await planConsolidation(set, get);
+          if (!plan) return;
+          // The plan names notes as they were when it was asked for.
+          if (!sameMemory(plan.before, get().memory)) {
+            get().setNotice(NOTICE_CONSOLIDATION_STALE);
+            return;
           }
+          const { change, lines, undo } = plan;
+          const at = Date.now();
+          const previous = get().memory.pass;
+          const pass: ConsolidationPass = lines.length
+            ? { at, lines, undo, ...(previous ? { previousAt: previous.at } : {}), shown: true }
+            : { at, lines, shown: true };
+          await changeMemory({ ...change, pass });
         } catch {
           get().setNotice(NOTICE_CONSOLIDATION_FAILED);
         } finally {
@@ -203,22 +242,18 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
 
       async undoConsolidation() {
         const pass = get().memory.pass;
-        if (!pass?.before) return;
-        const { folders, notes } = get().memory;
-        await changeMemory(restoreSnapshot({ folders, notes }, pass.before));
+        if (!pass?.undo) return;
+        const { change, skipped } = undoPass(get().memory, pass.undo);
         // As if it never ran: the nudge counts from the pass before it.
-        const back: ConsolidationPass | undefined =
-          pass.previousAt !== undefined ? { at: pass.previousAt, lines: [] } : undefined;
-        set((s) => ({ memory: { ...s.memory, pass: back } }));
-        await kvSet(PASS_KEY, back);
+        const back = pass.previousAt !== undefined ? { at: pass.previousAt, lines: [] } : null;
+        await changeMemory({ ...change, pass: back });
+        if (skipped) get().setNotice(NOTICE_CONSOLIDATION_PARTLY_UNDONE, 'info');
       },
 
       async dismissConsolidation() {
         const pass = get().memory.pass;
         if (!pass) return;
-        const kept = { at: pass.at, lines: [] };
-        set((s) => ({ memory: { ...s.memory, pass: kept } }));
-        await kvSet(PASS_KEY, kept);
+        await changeMemory({ pass: { at: pass.at, lines: [] } });
       },
     };
   },
