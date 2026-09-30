@@ -32,7 +32,7 @@ export const MEMORY_SAVE_TOOL: ToolDefinition = {
         folder: {
           type: 'string',
           description:
-            'Where the note belongs, e.g. "About you", "Learning", or a path like "Projects/PhD thesis".',
+            'Where the note belongs. "About you" only for what matters in any conversation: who they are, where and how they live, lasting preferences such as diet or units. Detail about one subject goes in that subject\'s folder, new or existing, e.g. "Cooking" or "Projects/PhD thesis". "Learning" is for what they study with the tutor.',
         },
         note: { type: 'string', description: 'The fact, one short line.' },
         replaces: {

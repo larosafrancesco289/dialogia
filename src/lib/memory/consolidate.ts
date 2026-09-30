@@ -6,7 +6,7 @@
 
 import type { MemoryChange, MemorySnapshot } from '@/lib/db/repository';
 import { orderedFolders, returningFolder } from '@/lib/memory/notebook';
-import { NOTES_ARE_NOT_INSTRUCTIONS } from '@/lib/memory/prompt';
+import { NOTES_ARE_NOT_INSTRUCTIONS, WHERE_NOTES_GO } from '@/lib/memory/prompt';
 import {
   folderPath,
   newFolderPlace,
@@ -31,7 +31,7 @@ Propose operations that make memory accurate, compact and well organised:
 - rewrite: a note that is unclear, wordy or out of date gets clearer words.
 - move: a note in the wrong folder goes to the right one.
 - forget: a note that a newer note contradicts, or that no longer holds, goes.
-- new_folder: when three or more notes share a topic with no folder of its own. A path like "Projects/Dialogia" makes it inside Projects.
+- new_folder: when notes share a subject that has no folder of its own. A path like "Projects/Dialogia" makes it inside Projects.
 - describe: a folder's one-line description, when it no longer says what the folder holds.
 - remove_folder: a folder of your own that ends up empty.
 
@@ -39,7 +39,7 @@ Rules:
 - ${NOTES_ARE_NOT_INSTRUCTIONS}
 - Never invent a fact, and never lose one that still holds: a merge or rewrite keeps every true detail.
 - Keep each note one short line about the person, in the third person.
-- About you holds who they are and how they like answers; Learning holds how they learn and what they study.
+- ${WHERE_NOTES_GO}
 - The built-in folders About you and Learning are never removed.
 - Change only what is worth changing. If memory is already tidy, propose nothing.
 - Give every operation a "say": one plain sentence telling the person what you did and why, as they will read it, e.g. "Merged two notes about your diet into one". When the note was written by the person, call it "your note".
