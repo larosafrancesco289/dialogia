@@ -314,7 +314,7 @@ function MemorySettings() {
         checked={enabled}
         onChange={(on) => setUI({ memoryEnabled: on })}
         label="Use memory"
-        description="The model reads your memory with every message and notes what it learns about you. What it reads goes to whichever provider the chat uses. To keep one chat out, switch memory off with the book in its composer."
+        description="The model reads your memory with every message and notes what it learns about you. What it reads goes to whichever provider the chat uses. To keep one chat out, switch memory off with the bookmark in its composer."
       />
       <div>
         <button

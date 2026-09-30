@@ -34,15 +34,35 @@ export function learningRecord(chat: Chat, state: TutorState): LearningRecord | 
   };
 }
 
-/** The record of each tutor chat among `chats` that has an approved plan, loading its log first. */
+/**
+ * The record of each tutor chat among `chats` that has an approved plan,
+ * loading its log first. A chat whose plan names no subject (older plans
+ * never did) takes the subject of a later chat that carried a topic over
+ * from it, so the two read together.
+ */
 export async function tutorLearningRecords(
   chats: readonly Chat[],
   ensureTutorSession: (chatId: string) => Promise<TutorSession>,
 ): Promise<LearningRecord[]> {
-  const records = await Promise.all(
-    chats
-      .filter(isTutorChat)
-      .map(async (chat) => learningRecord(chat, (await ensureTutorSession(chat.id)).state)),
+  const tutorChats = chats.filter(isTutorChat);
+  const states = await Promise.all(
+    tutorChats.map(async (chat) => (await ensureTutorSession(chat.id)).state),
   );
-  return records.filter((record): record is LearningRecord => !!record);
+  const inherited = new Map<string, string>();
+  states.forEach((state) => {
+    const subject = state.plan?.subject;
+    if (!subject) return;
+    for (const topic of Object.values(state.mastery)) {
+      for (const evidence of topic.evidence) {
+        const from = evidence.carriedOver?.chatId;
+        if (from && !inherited.has(from)) inherited.set(from, subject);
+      }
+    }
+  });
+  return tutorChats.flatMap((chat, i) => {
+    const record = learningRecord(chat, states[i]);
+    if (!record) return [];
+    const subject = record.subject ?? inherited.get(chat.id);
+    return [subject ? { ...record, subject } : record];
+  });
 }

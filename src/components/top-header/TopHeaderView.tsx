@@ -1,4 +1,4 @@
-import { BookOpenIcon, Cog6ToothIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { BookmarkIcon, Cog6ToothIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { ModuleSlot } from '@/components/ModuleSlot';
 import { SidebarIcon } from '@/components/ui/icons';
 import { HeaderDivider } from '@/components/top-header/HeaderDivider';
@@ -71,7 +71,7 @@ export function TopHeaderView({
               import('@/components/memory/MemoryPage').catch(() => undefined);
             }}
           >
-            <BookOpenIcon className="h-5 w-5" />
+            <BookmarkIcon className="h-5 w-5" />
           </button>
           <button
             className="icon-button icon-button--lg hide-on-mobile"

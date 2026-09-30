@@ -1,4 +1,4 @@
-import { ArrowUpIcon, BookOpenIcon, StopIcon, PaperClipIcon } from '@heroicons/react/24/outline';
+import { ArrowUpIcon, BookmarkIcon, StopIcon, PaperClipIcon } from '@heroicons/react/24/outline';
 import { ComposerToolLabel } from '@/components/composer/ComposerToolLabel';
 import type { SearchMode } from '@/lib/search/providers/types';
 import type { ReasoningEffort } from '@/lib/types';
@@ -113,7 +113,7 @@ export function ComposerActions({
             }
             onClick={toggleMemory}
           >
-            <BookOpenIcon className="h-4 w-4" aria-hidden="true" />
+            <BookmarkIcon className="h-4 w-4" aria-hidden="true" />
             <ComposerToolLabel text={memoryOn ? null : 'Memory off'} />
           </button>
         )}
