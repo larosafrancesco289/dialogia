@@ -141,9 +141,15 @@ export function refreshSessionTools(session: TurnSession): void {
   if (offered.length) session.tools = offered;
 }
 
+/**
+ * The round's calls that may run, in order. Only a tool the round offered may
+ * run: the registry holds every tool, so a provider that returns a call to one
+ * the turn withheld (memory switched off, say) must not reach it.
+ */
 export function scheduleTools(session: TurnSession, toolCalls: ToolCall[]): ToolCall[] {
+  const offered = new Set(session.tools?.map((def) => def.function?.name));
   return schedulePlanningRound({
-    toolCalls,
+    toolCalls: toolCalls.filter((call) => offered.has(call.function?.name)),
     gate: session.gate,
     usedContentTool: session.state.usedContentTool,
     searchEnabled: session.searchEnabled,

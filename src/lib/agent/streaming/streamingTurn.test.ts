@@ -10,6 +10,9 @@ import { buildMessageIndex } from '@/lib/messages/indexing';
 import type { Message, ModelDescriptor } from '@/lib/types';
 import type { ToolDefinition } from '@/lib/agent/types';
 import type { StreamCallbacks } from '@/lib/transport/types';
+import { missingBuiltInFolders } from '@/lib/memory/notebook';
+import { registerMemoryTools } from '@/lib/tools/core/memoryTools';
+import { MEMORY_TOOLS } from '@/lib/tools/definitions/memory';
 import { createTestStoreState } from '../../../../tests/helpers/createTestStoreState';
 import { makeChat } from '../../../../tests/helpers/makeChat';
 
@@ -19,6 +22,8 @@ const TOOLS: ToolDefinition[] = ['advance_topic', 'quiz'].map((name) => ({
   type: 'function',
   function: { name, description: name, parameters: { type: 'object', properties: {} } },
 }));
+
+registerMemoryTools();
 
 const OPENROUTER_MODEL: ModelDescriptor = {
   id: 'provider/model',
@@ -36,6 +41,7 @@ const USAGE = { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 };
 const draftThenTool =
   (draft: string, name: string, args = '{}'): Round =>
   ({ callbacks }) => {
+    callbacks?.onToolCallDelta?.([{ index: 0, function: { name } }]);
     callbacks?.onToken?.(draft);
     callbacks?.onDone?.(draft, {
       finishReason: 'tool_calls',
@@ -56,10 +62,12 @@ async function runTurn({
   rounds,
   model = OPENROUTER_MODEL,
   endpoint = OPENROUTER_ENDPOINT,
+  tools = TOOLS,
 }: {
   rounds: Round[];
   model?: ModelDescriptor;
   endpoint?: typeof OPENROUTER_ENDPOINT;
+  tools?: ToolDefinition[];
 }) {
   const chatId = `chat-streaming-${Math.random().toString(36).slice(2)}`;
   const chat = makeChat({
@@ -77,11 +85,16 @@ async function runTurn({
     model: model.id,
     createdAt: Date.now(),
   });
+  const memoryChanges: unknown[] = [];
   const { state, set, get } = createTestStoreState({
     chats: [chat],
     ...buildMessageIndex({ [chatId]: [assistantMessage] }),
     models: [model],
     modelIndex: createModelIndex([model]),
+    memory: { folders: missingBuiltInFolders([], 1), notes: [], loaded: true },
+    changeMemory: async (change) => {
+      memoryChanges.push(change);
+    },
   });
 
   const persisted: Message[] = [];
@@ -130,7 +143,7 @@ async function runTurn({
       timestampsEnabled: false,
       system: undefined,
     },
-    toolDefinition: TOOLS,
+    toolDefinition: tools,
     userContent,
     combinedSystem: 'You are a tutor.',
     pipeline,
@@ -142,6 +155,7 @@ async function runTurn({
     roles,
     toolChoices,
     visibleAtStart,
+    memoryChanges,
     message: get().messagesById[assistantMessage.id],
     lastPersisted: persisted[persisted.length - 1],
   };
@@ -205,4 +219,60 @@ test('executeStreamingTurn omits follow-up user prompt after Anthropic tool resu
   assert.equal(run.calls, 2);
   assert.deepEqual(run.roles[1], ['system', 'user', 'assistant', 'tool']);
   assert.equal(run.message?.content, ANSWER);
+});
+
+const SAVE = JSON.stringify({ folder: 'About you', note: 'Solving linear equations' });
+
+test('executeStreamingTurn keeps an answer followed only by a memory save, in one round', async () => {
+  const run = await runTurn({
+    tools: [...TOOLS, ...MEMORY_TOOLS],
+    rounds: [draftThenTool(ANSWER, 'memory_save', SAVE), finish('a rewrite')],
+  });
+
+  assert.equal(run.calls, 1, 'no second round writes the answer again');
+  assert.equal(run.memoryChanges.length, 1, 'the save ran');
+  assert.equal(run.message?.content, ANSWER);
+  assert.equal(run.lastPersisted?.content, ANSWER);
+  assert.equal(run.lastPersisted?.memoryWrites?.[0]?.text, 'Solving linear equations');
+  assert.equal(run.lastPersisted?.usage?.prompt_tokens, 100);
+  assert.equal(run.lastPersisted?.cutOff, undefined);
+  assert.ok(!run.lastPersisted?.toolCalls?.some((entry) => entry.status === 'pending'));
+});
+
+test('executeStreamingTurn writes the answer again after a memory read', async () => {
+  const run = await runTurn({
+    tools: [...TOOLS, ...MEMORY_TOOLS],
+    rounds: [
+      draftThenTool(ANSWER, 'memory_read', JSON.stringify({ folder: 'About you' })),
+      finish('A rewrite.'),
+    ],
+  });
+
+  assert.equal(run.calls, 2);
+  assert.equal(run.visibleAtStart[1], '');
+  assert.equal(run.message?.content, 'A rewrite.');
+});
+
+test('executeStreamingTurn writes the answer after a memory save that came before any', async () => {
+  const run = await runTurn({
+    tools: [...TOOLS, ...MEMORY_TOOLS],
+    rounds: [draftThenTool('', 'memory_save', SAVE), finish(ANSWER)],
+  });
+
+  assert.equal(run.calls, 2);
+  assert.equal(run.memoryChanges.length, 1);
+  assert.equal(run.message?.content, ANSWER);
+  assert.equal(run.lastPersisted?.memoryWrites?.length, 1);
+});
+
+test('executeStreamingTurn never runs a call to a tool the turn did not offer', async () => {
+  const run = await runTurn({
+    rounds: [draftThenTool('Let me note that.', 'memory_save', SAVE), finish(ANSWER)],
+  });
+
+  assert.equal(run.memoryChanges.length, 0);
+  assert.equal(run.lastPersisted?.memoryWrites, undefined);
+  // Nothing ran, so the closing round answers with tools withheld.
+  assert.deepEqual(run.toolChoices, ['auto', 'none']);
+  assert.ok(!run.lastPersisted?.toolCalls?.some((entry) => entry.status === 'pending'));
 });

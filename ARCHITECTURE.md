@@ -299,9 +299,10 @@ native search rather than failing (`selectSearchMode`).
 
 A turn with tools runs one of two loops in `src/lib/agent/streaming/`.
 
-- **The default loop** (`streamingTurn.ts`, used by search) paints the first round, clears it if
-  the model calls tools, runs further rounds silently, then streams a closing answer or keeps the
-  first draft.
+- **The default loop** (`streamingTurn.ts`, used by search and memory) streams every round into
+  the reply and clears a round that calls tools, so the first round that answers is the reply. A
+  round that wrote a finished answer and then only saved or forgot memory notes keeps its text and
+  ends the turn once those calls ran, since the model is told not to announce a save.
 - **The agent loop** (`agentLoop.ts`, requested by a module with `loop: 'agent'`) streams every
   round visibly into the one reply, a blank line between rounds. Tool calls present in a round
   run whatever the finish reason says, and every call gets a result: a handler returns a
@@ -312,6 +313,9 @@ A turn with tools runs one of two loops in `src/lib/agent/streaming/`.
   `resultBeforeText` instead and gets one more round, with `tool_choice: 'none'`, to introduce
   what it showed. The loop is capped at `AGENT_MAX_ROUNDS`, and the last round is sent with
   `tool_choice: 'none'`.
+
+In both loops a call runs only if the round that made it offered its tool (`scheduleTools`). The
+registry holds every tool, so a call to one the turn withheld is refused like any other.
 
 A tool registered with `metadata.replay: true` has its agent-loop rounds stored on the assistant
 message as `Message.toolRounds`. `buildChatCompletionMessages` replays them on later turns as real

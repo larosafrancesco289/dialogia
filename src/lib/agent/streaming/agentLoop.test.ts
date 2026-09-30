@@ -11,6 +11,7 @@ import { loadModuleRuntimes } from '@/lib/modules';
 import { createAssistantMessage } from '@/lib/messages/createMessage';
 import { buildMessageIndex } from '@/lib/messages/indexing';
 import { registerTool, type PlanningToolHandler } from '@/lib/tools';
+import { registerMemoryTools } from '@/lib/tools/core/memoryTools';
 import type { ModelMessage, ToolCall, ToolDefinition } from '@/lib/agent/types';
 import type { StreamCallbacks, TransportStreamParams } from '@/lib/transport/types';
 import type { Message, ModelDescriptor } from '@/lib/types';
@@ -42,6 +43,7 @@ let stopController: AbortController | undefined;
 
 before(async () => {
   await loadModuleRuntimes();
+  registerMemoryTools();
   const register = (name: string, replay: boolean, respond: Parameters<typeof handler>[0]): void =>
     registerTool(name, {
       definition: definition(name),
@@ -574,4 +576,29 @@ test("without a refresh, or with an empty one, the first round's tools stay offe
     await turn.run;
     assert.deepEqual(offeredNames(turn.requests[1]), [TOOL_NOTE, TOOL_LOOKUP]);
   }
+});
+
+test('a call runs only if its tool was offered in the round that made it', async () => {
+  const turn = await runAgentTurn(
+    (round, callbacks) => {
+      if (round === 1) {
+        return reply(callbacks, 'Noting.', [
+          call('memory_save', { folder: 'About you', note: 'Likes tea' }),
+          call(TOOL_CARD, {}, 'early-card'),
+          call(TOOL_NOTE),
+        ]);
+      }
+      return reply(callbacks, 'Now a check.', [call(TOOL_CARD)]);
+    },
+    { tools: [TOOL_NOTE], refreshTools: () => [TOOL_NOTE, TOOL_CARD].map(definition) },
+  );
+  await turn.run;
+
+  const results = toolMessages(turn.requests[1].messages).map((m) => JSON.parse(m.content));
+  assert.equal(results.length, 3, 'every call is answered');
+  const notRun = results.filter((result) => result.error === 'This call was not run.');
+  assert.equal(notRun.length, 2, 'the memory save and the card not yet offered');
+  assert.equal(turn.message()?.memoryWrites, undefined);
+  // Offered after the refresh, the card runs in round two and ends the turn.
+  assert.equal(turn.requests.length, 2);
 });
