@@ -1,7 +1,7 @@
 // Module: tutor engine events
 // Responsibility: the append-only facts a tutor session is folded from.
 
-import type { EvidenceSource, LearnerModel, LearningPlan } from '@/lib/types';
+import type { CarriedOver, EvidenceSource, LearnerModel, LearningPlan } from '@/lib/types';
 import type { EvidenceKind } from '@/modules/tutor/engine/rules';
 
 export type EventActor = 'tutor' | 'learner' | 'system';
@@ -54,6 +54,12 @@ export type EvidenceRef = {
 /** A proposal's starting estimate for a topic, applied as evidence when the plan is approved. */
 export type StartingEstimate = { value: number; reason: string };
 
+/**
+ * A proposal's topic that continues a topic of another tutor chat. Its
+ * estimate there is read when the plan is approved, and stored then.
+ */
+export type CarrySource = { chatId: string; nodeId: string; topic: string };
+
 type Payloads = {
   /**
    * One-time import of pre-rebuild state. It belongs to no reply, so no
@@ -73,6 +79,8 @@ type Payloads = {
     revision: boolean;
     /** By topic id; only topics that start with no evidence of their own take theirs. */
     startingEstimates?: Record<string, StartingEstimate>;
+    /** By topic id; a topic carried over takes no starting estimate. */
+    carriedOver?: Record<string, CarrySource>;
   };
   plan_approved: { proposalId: string };
   plan_declined: { proposalId: string; feedback?: string };
@@ -89,6 +97,8 @@ type Payloads = {
     setTo?: number;
     note: string;
     ref?: EvidenceRef;
+    /** A starting point from another tutor chat, with what was read there, so replay needs nothing else. */
+    carriedOver?: CarriedOver;
   };
   misconception_noted: {
     nodeId: string;

@@ -135,6 +135,7 @@ const PAYLOADS: Record<TutorEventType, z.ZodTypeAny> = {
     rationale: z.string().optional(),
     revision: z.boolean(),
     startingEstimates: z.record(z.object({ value: z.number(), reason: z.string() })).optional(),
+    carriedOver: z.record(z.object({ chatId: id, nodeId: id, topic: z.string() })).optional(),
   }),
   plan_approved: z.object({ proposalId: id }),
   plan_declined: z.object({ proposalId: id, feedback: z.string().optional() }),
@@ -171,6 +172,9 @@ const PAYLOADS: Record<TutorEventType, z.ZodTypeAny> = {
         itemId: z.string().optional(),
         eventId: z.string().optional(),
       })
+      .optional(),
+    carriedOver: z
+      .object({ chatId: id, topic: z.string(), estimate: z.number(), studiedAt: z.number() })
       .optional(),
   }),
   misconception_noted: z.object({

@@ -85,6 +85,7 @@ function toCommand(name: TutorToolName, data: unknown): TutorToolCommand {
         by: 'tutor',
         type: name,
         goal: args.goal,
+        subject: args.subject,
         rationale: args.rationale,
         nodes: args.topics,
       };

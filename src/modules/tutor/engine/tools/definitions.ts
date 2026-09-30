@@ -96,6 +96,12 @@ export const ARGS = {
   }),
   propose_plan: z.object({
     goal: z.string().min(1),
+    subject: z
+      .string()
+      .optional()
+      .describe(
+        'The subject in a word or two, e.g. Probability, Rust. The exact subject of an earlier tutor chat when this plan continues it.',
+      ),
     rationale: z
       .string()
       .optional()
@@ -135,6 +141,15 @@ export const ARGS = {
             .optional()
             .describe(
               `Only for a topic the learner said they know, or a diagnostic tested; knowing a prerequisite is not knowing the topic. Up to ${percent(STARTING_ESTIMATE_SAID_MAX)}% on their word, ${percent(STARTING_ESTIMATE_MAX)}% after a diagnostic. Omit otherwise.`,
+            ),
+          carriedFrom: z
+            .object({
+              chatId: z.string().min(1).describe('The chat id in [brackets] in the tutor state.'),
+              topic: z.string().min(1).describe('The topic name as listed under that chat.'),
+            })
+            .optional()
+            .describe(
+              `Only when this topic is one the learner already studied in another tutor chat listed in the tutor state, with an estimate there. On approval it starts from that estimate, up to ${percent(STARTING_ESTIMATE_MAX)}%, in place of startingEstimate.`,
             ),
         }),
       )

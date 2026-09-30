@@ -37,6 +37,8 @@ export type MemoryNote = {
 export type LearningRecord = {
   chatId: string;
   goal: string;
+  /** The plan's subject, shared by tutor chats that continue one another. */
+  subject?: string;
   /** When the chat was last studied in. */
   studiedAt: number;
   finished: boolean;

@@ -14,6 +14,7 @@ import {
   branchEvents,
   emptyTutorState,
   fold,
+  otherChatsRead,
   parseTutorEvent,
   resolveTutorFlags,
   retractReply,
@@ -25,6 +26,7 @@ import {
   type TutorState,
 } from '@/modules/tutor/engine';
 import { buildLegacyImport } from '@/modules/tutor/store/legacyImport';
+import { isTutorChat } from '@/modules/tutor/store/selectors';
 import {
   buildPlanWelcomeMessage,
   prepareTutorWelcomeMessage as prepareTutorWelcomeMessageService,
@@ -295,6 +297,18 @@ export function createTutorSlice(
     return pending;
   };
 
+  /** The states of the other tutor chats among `chatIds`, for `decide` to read. */
+  const otherTutorStates = async (chatId: string, chatIds: string[]) => {
+    const states: Record<string, TutorState> = {};
+    for (const id of chatIds) {
+      const chat = get().chats.find((c) => c.id === id);
+      if (id !== chatId && chat && isTutorChat(chat)) {
+        states[id] = (await ensureTutorSession(id)).state;
+      }
+    }
+    return states;
+  };
+
   const decideAndAppend = async (
     chatId: string,
     command: TutorCommand,
@@ -312,7 +326,8 @@ export function createTutorSlice(
       };
     }
     const since = epoch;
-    await ensureTutorSession(chatId);
+    const loaded = await ensureTutorSession(chatId);
+    const otherChats = await otherTutorStates(chatId, otherChatsRead(loaded.state, command));
     if (!live(chatId, since)) return { ok: false, error: GONE };
     const session = get().tutorSessions[chatId] ?? EMPTY_TUTOR_SESSION;
     const chat = get().chats.find((c) => c.id === chatId);
@@ -322,6 +337,7 @@ export function createTutorSlice(
       idFactory: uuidv4,
       flags: resolveTutorFlags(chat?.settings.features.tutor),
       ...(meta.messageId ? { messageId: meta.messageId } : {}),
+      otherChats,
     });
     if (!result.ok) return result;
     // Accepted, and nothing to change (the tutor started a topic already in progress).
