@@ -1,6 +1,6 @@
 import { useEffect, useRef, type RefObject } from 'react';
 import { cancelFrame, frame, motion, useTransform, type MotionValue } from 'framer-motion';
-import { BookOpenIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
+import { BookmarkIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
 import { ChatSidebar } from '@/components/sidebar/ChatSidebar';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { ModuleSlot } from '@/components/ModuleSlot';
@@ -101,7 +101,7 @@ export function MobileDrawer({
 
       <div className={styles.foot}>
         <button type="button" className={styles.footItem} onClick={onOpenMemory}>
-          <BookOpenIcon className="h-5 w-5" aria-hidden="true" />
+          <BookmarkIcon className="h-5 w-5" aria-hidden="true" />
           <span>Memory</span>
         </button>
         <button type="button" className={styles.footItem} onClick={onOpenSettings}>

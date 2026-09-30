@@ -1,4 +1,4 @@
-import { BookOpenIcon } from '@heroicons/react/24/outline';
+import { BookmarkIcon } from '@heroicons/react/24/outline';
 import { useChatStore } from '@/lib/store';
 import type { Message, MemoryWrite } from '@/lib/types';
 
@@ -21,7 +21,7 @@ export function MemoryWrites({ message }: { message: Message }) {
     <ul className="memory-writes" aria-label="Changes to memory">
       {writes.map((write) => (
         <li key={`${write.action}-${write.noteId}`} className="memory-writes__line">
-          <BookOpenIcon className="memory-writes__glyph" aria-hidden="true" />
+          <BookmarkIcon className="memory-writes__glyph" aria-hidden="true" />
           {write.undone ? (
             <span className="memory-writes__undone">
               Taken back: <span className="memory-writes__text">{write.text}</span>

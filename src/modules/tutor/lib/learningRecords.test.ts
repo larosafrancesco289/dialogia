@@ -90,3 +90,46 @@ test('a record carries its plan’s subject, and only tutor chats with a plan ha
     [['t1', 'Probability']],
   );
 });
+
+test('a chat with no subject takes the subject of a later chat that carried a topic from it', async () => {
+  const older = emptyTutorState();
+  older.plan = {
+    goal: 'Positive results',
+    generatedAt: 0,
+    updatedAt: 0,
+    version: 1,
+    nodes: [node('a', 'in_progress')],
+  };
+  older.mastery = { a: mastery('a', 0.5) };
+  const newer = emptyTutorState();
+  newer.plan = { ...older.plan, goal: 'False positives', subject: 'Screening tests' };
+  newer.mastery = {
+    a: {
+      ...mastery('a', 0.5),
+      evidence: [
+        {
+          timestamp: 0,
+          type: 'placement',
+          details: '',
+          weight: 1,
+          carriedOver: { chatId: 'old', topic: 'A', estimate: 0.5, studiedAt: 0 },
+        } as TopicMastery['evidence'][number],
+      ],
+    },
+  };
+  const tutorChat = (id: string) =>
+    ({ id, updatedAt: 1, settings: { features: { tutor: { enabled: true } } } }) as Chat;
+  const states: Record<string, TutorState> = { old: older, new: newer };
+  const records = await tutorLearningRecords([tutorChat('new'), tutorChat('old')], async (id) => ({
+    events: [],
+    state: states[id],
+    loaded: true,
+  }));
+  assert.deepEqual(
+    records.map((record) => [record.chatId, record.subject]),
+    [
+      ['new', 'Screening tests'],
+      ['old', 'Screening tests'],
+    ],
+  );
+});
