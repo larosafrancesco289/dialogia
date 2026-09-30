@@ -298,9 +298,10 @@ native search rather than failing (`selectSearchMode`).
 
 A turn with tools runs one of two loops in `src/lib/agent/streaming/`.
 
-- **The default loop** (`streamingTurn.ts`, used by search) paints the first round, clears it if
-  the model calls tools, runs further rounds silently, then streams a closing answer or keeps the
-  first draft.
+- **The default loop** (`streamingTurn.ts`, used by search and memory) streams every round into
+  the reply and clears a round that calls tools, so the first round that answers is the reply. A
+  round that wrote a finished answer and then only saved or forgot memory notes keeps its text and
+  ends the turn once those calls ran, since the model is told not to announce a save.
 - **The agent loop** (`agentLoop.ts`, requested by a module with `loop: 'agent'`) streams every
   round visibly into the one reply, a blank line between rounds. Tool calls present in a round
   run whatever the finish reason says, and every call gets a result: a handler returns a

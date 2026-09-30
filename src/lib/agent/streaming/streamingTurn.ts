@@ -3,13 +3,15 @@
 // streams into the reply as it arrives. When a round asks for tools, what it
 // wrote is cleared, the tools run, and the next round streams with the sources
 // found so far in its system prompt; the first round that answers without a
-// tool call is the reply, so the answer is written once. After
+// tool call is the reply, so the answer is written once. One exception: a
+// round that answered and then only saved or forgot memory notes keeps its
+// text as the reply, and ends the turn once those calls ran. After
 // MAX_PLANNING_ROUNDS tool rounds, or when none of a round's calls may run, one
 // closing round answers with tools withheld. A module that asks for
 // `loop: 'agent'` gets the visible agent loop in `agentLoop.ts` instead, which
 // keeps every round's text.
 
-import type { MessageStreamCallbacks } from '@/lib/agent/streamHandlers';
+import { cleanStreamedText, type MessageStreamCallbacks } from '@/lib/agent/streamHandlers';
 import { removeOrphanPendingToolCalls } from '@/lib/turns/runtime';
 import { MAX_PLANNING_ROUNDS } from '@/lib/agent/policy';
 import { applyToolExecutions } from '@/lib/agent/planning/apply';
@@ -17,6 +19,7 @@ import { followUpPrompt } from '@/lib/agent/prompts/followUp';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
 import { applyCacheBreakpoints, buildSystemMessage } from '@/lib/agent/cache';
 import { sumUsage } from '@/lib/api/normalizers';
+import { MEMORY_FORGET_TOOL, MEMORY_SAVE_TOOL } from '@/lib/tools/definitions/memory';
 import type { ModelMessage, ToolCall } from '@/lib/agent/types';
 import { looksIncomplete } from '@/lib/agent/streaming/draft';
 import {
@@ -66,11 +69,13 @@ export async function executeStreamingTurn(
 
   for (let toolRounds = 1; roundWantsTools(round); toolRounds += 1) {
     const scheduled = scheduleTools(session, round.toolCalls);
-    clearVisibleDraft(session, ui);
+    const answered = answeredThenWroteMemory(session, round, scheduled);
+    if (!answered) clearVisibleDraft(session, ui);
     if (scheduled.length > 0) await runToolRound(session, toolRounds, round, scheduled);
     // Pre-logged entries for calls the scheduler dropped would stay "pending"
     // in the ledger forever; executed calls have resolved by now.
     removeOrphanPendingToolCalls({ set: opts.turn.set, chatId: opts.chatId, messageId });
+    if (answered) break;
     const closing = scheduled.length === 0 || toolRounds >= MAX_PLANNING_ROUNDS;
     ui.beginRound();
     round = await stream(toolRounds, closing ? 'none' : 'auto');
@@ -138,6 +143,31 @@ function shouldRetryFirstRound(session: TurnSession, round: RoundCapture): boole
     looksIncomplete(round.full || round.content, round.finishReason) &&
     !session.opts.controller.signal.aborted
   );
+}
+
+const MEMORY_WRITE_TOOLS = new Set([
+  MEMORY_SAVE_TOOL.function.name,
+  MEMORY_FORGET_TOOL.function.name,
+]);
+
+/**
+ * A round that wrote a finished answer and then called only memory writes, all
+ * of which may run: the prompt tells the model not to announce a save, so the
+ * answer is already whole. Its text stays as the reply instead of being
+ * cleared and written again. Any other call, `memory_read` included, may
+ * change the answer, and a refused call goes the way refused calls go.
+ */
+function answeredThenWroteMemory(
+  session: TurnSession,
+  round: RoundCapture,
+  scheduled: ToolCall[],
+): boolean {
+  const { toolCalls } = round;
+  if (scheduled.length !== toolCalls.length) return false;
+  if (!toolCalls.every((call) => MEMORY_WRITE_TOOLS.has(call.function.name))) return false;
+  const timestamps = session.opts.turn.get().ui?.messageTimestamps === true;
+  const text = cleanStreamedText(round.full || round.content, timestamps);
+  return !looksIncomplete(text, round.finishReason);
 }
 
 // ── Tool rounds ─────────────────────────────────────────────────────────────
