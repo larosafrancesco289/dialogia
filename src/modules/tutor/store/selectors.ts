@@ -1,10 +1,15 @@
+import { chatAllowsMemory } from '@/lib/memory/notebook';
 import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 import type { StoreState } from '@/lib/store/types';
 import type { Chat, Message } from '@/lib/types';
 import { effectiveEvents, type TutorEvent } from '@/modules/tutor/engine';
 
-/** A tutor chat: memory lists it, and another tutor chat may carry a topic over from it. */
-export const isTutorChat = (chat: Chat) => !!chat.settings?.features?.tutor?.enabled;
+/**
+ * A tutor chat memory may show: memory lists it, and another tutor chat may
+ * carry a topic over from it. One with memory switched off in its composer is neither.
+ */
+export const isSharedTutorChat = (chat: Chat) =>
+  !!chat.settings?.features?.tutor?.enabled && chatAllowsMemory(chat);
 
 /** The selected chat has an approved plan in its (loaded) tutor session. */
 export function hasTutorPlan(state: StoreState): boolean {

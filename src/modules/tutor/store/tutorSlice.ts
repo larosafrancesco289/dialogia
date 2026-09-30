@@ -7,6 +7,7 @@ import type { StoreSetter, StoreState } from '@/lib/store/types';
 import type { Message } from '@/lib/types';
 import { repository, TutorLogConflictError } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import { memoryOnInChat } from '@/lib/memory/notebook';
 import { notify } from '@/lib/store/notify';
 import { getMessagesForChat } from '@/lib/messages/indexing';
 import { readNextOverrides } from '@/lib/ui/next';
@@ -26,7 +27,7 @@ import {
   type TutorState,
 } from '@/modules/tutor/engine';
 import { buildLegacyImport } from '@/modules/tutor/store/legacyImport';
-import { isTutorChat } from '@/modules/tutor/store/selectors';
+import { isSharedTutorChat } from '@/modules/tutor/store/selectors';
 import {
   buildPlanWelcomeMessage,
   prepareTutorWelcomeMessage as prepareTutorWelcomeMessageService,
@@ -297,12 +298,17 @@ export function createTutorSlice(
     return pending;
   };
 
-  /** The states of the other tutor chats among `chatIds`, for `decide` to read. */
+  /**
+   * The states of the other tutor chats among `chatIds`, for `decide` to read:
+   * none where this chat has memory off, as its state block listed none.
+   */
   const otherTutorStates = async (chatId: string, chatIds: string[]) => {
     const states: Record<string, TutorState> = {};
+    const own = get().chats.find((c) => c.id === chatId);
+    if (!own || !memoryOnInChat(get().ui, own)) return states;
     for (const id of chatIds) {
       const chat = get().chats.find((c) => c.id === id);
-      if (id !== chatId && chat && isTutorChat(chat)) {
+      if (id !== chatId && chat && isSharedTutorChat(chat)) {
         states[id] = (await ensureTutorSession(id)).state;
       }
     }

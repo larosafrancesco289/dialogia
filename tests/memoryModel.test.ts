@@ -13,6 +13,7 @@ import {
   resolveNote,
   undoChange,
 } from '@/lib/memory/writes';
+import { showVersion } from '@/lib/messages/versions';
 import { createModelIndex } from '@/lib/models';
 import { resolveTurnSettings } from '@/lib/settings/resolve';
 import { registerMemoryTools } from '@/lib/tools/core/memoryTools';
@@ -217,21 +218,32 @@ test('undo changes nothing once the note has changed since the write', () => {
   });
 });
 
-test('a write is marked taken back in the version that holds it', () => {
-  const write = { noteId: 'n1', action: 'added' as const, text: 'Plays cello', folderId: 'about' };
-  const other = { ...write, noteId: 'n2', text: 'Plays piano' };
+test('a write is marked taken back exactly, never an alike write in another version', () => {
+  const before = note('n1', 'about', 'Plays viola');
+  const write = {
+    noteId: 'n1',
+    action: 'updated' as const,
+    text: 'Plays cello',
+    folderId: 'about',
+    before,
+  };
+  // The other version replaced the same note with the same words, from another note.
+  const alike = { ...write, before: { ...before, text: 'Plays violin', updatedAt: 2 } };
   const reply = {
     id: 'r',
     chatId: 'c',
     role: 'assistant',
     content: 'Second try',
-    memoryWrites: [other],
-    versions: [{ content: 'First try', memoryWrites: [write] }],
+    memoryWrites: [write],
+    versions: [{ content: 'First try', memoryWrites: [alike] }],
     versionIndex: 1,
   } as Message;
-  const marked = markWriteUndone(reply, 0, write);
-  assert.equal(marked.memoryWrites![0].undone, undefined, 'the shown version wrote another note');
-  assert.equal(marked.versions![0].memoryWrites![0].undone, true);
+  const marked = markWriteUndone(reply, write);
+  assert.equal(marked.memoryWrites![0].undone, true);
+  assert.equal(marked.versions![0].memoryWrites![0].undone, undefined);
+  // Shown the other version, the reply no longer holds the write clicked: nothing is marked.
+  const switched = { ...reply, memoryWrites: [alike], versions: [{ memoryWrites: [write] }] };
+  assert.equal(markWriteUndone(switched as Message, { ...write }), switched);
 });
 
 test('the prompt carries About you whole and one index line for each other folder', () => {
@@ -417,4 +429,76 @@ test('two writes to one note in one reply are taken back newest first', async ()
   );
   const saved = await repository.getChatWithMessages('chat-2');
   assert.equal(saved.messages[0]?.memoryWrites?.[0]?.undone, true, 'the reply is saved');
+});
+
+test('a second click while Undo is writing finds the write taken back, and says nothing', async () => {
+  const store = createTestStore();
+  await store.getState().loadMemory();
+  const added = await store.getState().addMemoryNote(MEMORY_ABOUT_FOLDER_ID, 'Has a dog');
+  const reply = {
+    id: 'reply-3',
+    chatId: 'chat-3',
+    role: 'assistant',
+    content: '',
+    memoryWrites: [
+      { noteId: added!.id, action: 'added', text: 'Has a dog', folderId: MEMORY_ABOUT_FOLDER_ID },
+    ],
+  } as Message;
+  store.setState({
+    messagesById: { [reply.id]: reply },
+    messageIdsByChatId: { 'chat-3': [reply.id] },
+  });
+  store.getState().setNotice(undefined);
+
+  await Promise.all([
+    store.getState().undoMemoryWrite(reply.id, 0),
+    store.getState().undoMemoryWrite(reply.id, 0),
+  ]);
+  assert.equal(store.getState().ui.notice, undefined);
+  assert.equal(store.getState().messagesById[reply.id].memoryWrites![0].undone, true);
+  assert.ok(store.getState().memory.notes.find((n) => n.id === added!.id)?.forgottenAt);
+});
+
+test('Undo marks the version clicked, even when another is shown before it finishes', async () => {
+  const store = createTestStore();
+  await store.getState().loadMemory();
+  const viola = await store.getState().addMemoryNote(MEMORY_ABOUT_FOLDER_ID, 'Plays viola');
+  const now = { ...viola!, text: 'Plays cello', author: 'model' as const, updatedAt: 9 };
+  await store.getState().changeMemory({ notes: [now] });
+  const write = {
+    noteId: now.id,
+    action: 'updated' as const,
+    text: 'Plays cello',
+    folderId: MEMORY_ABOUT_FOLDER_ID,
+    before: viola!,
+  };
+  // The other try made an alike write, from the note as it read then.
+  const alike = { ...write, before: { ...viola!, text: 'Plays violin', updatedAt: 3 } };
+  const reply = {
+    id: 'reply-4',
+    chatId: 'chat-4',
+    role: 'assistant',
+    content: 'Second try',
+    memoryWrites: [write],
+    versions: [{ content: 'First try', memoryWrites: [alike] }],
+  } as Message;
+  store.setState({
+    messagesById: { [reply.id]: reply },
+    messageIdsByChatId: { 'chat-4': [reply.id] },
+  });
+
+  const undoing = store.getState().undoMemoryWrite(reply.id, 0);
+  store.setState((s) => ({
+    messagesById: { [reply.id]: showVersion(s.messagesById[reply.id], 0) },
+  }));
+  await undoing;
+
+  const shown = store.getState().messagesById[reply.id];
+  assert.equal(shown.content, 'First try');
+  assert.equal(shown.memoryWrites![0].undone, undefined, 'the alike write is not the one clicked');
+  assert.equal(shown.versions![0].memoryWrites![0].undone, true);
+  assert.equal(store.getState().memory.notes.find((n) => n.id === now.id)?.text, 'Plays viola');
+  const saved = await repository.getChatWithMessages('chat-4');
+  assert.equal(saved.messages[0]?.content, 'First try', 'the reply as it is now is saved');
+  assert.equal(saved.messages[0]?.versions?.[0]?.memoryWrites?.[0]?.undone, true);
 });

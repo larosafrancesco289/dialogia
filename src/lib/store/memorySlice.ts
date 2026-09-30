@@ -6,7 +6,12 @@
 import { repository } from '@/lib/db';
 import type { MemoryChange } from '@/lib/db/repository';
 import { createStoreSlice } from '@/lib/store/createSlice';
-import { expiredNotes, missingBuiltInFolders, repairs } from '@/lib/memory/notebook';
+import {
+  expiredNotes,
+  missingBuiltInFolders,
+  repairs,
+  returningFolder,
+} from '@/lib/memory/notebook';
 import { markWriteUndone, undoChange } from '@/lib/memory/writes';
 import { sameMemory, undoPass } from '@/lib/memory/consolidate';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
@@ -17,14 +22,7 @@ import {
   NOTICE_MEMORY_CHANGED_SINCE,
 } from '@/lib/store/notices';
 import { v4 as uuidv4 } from 'uuid';
-import {
-  MEMORY_ABOUT_FOLDER_ID,
-  type ConsolidationPass,
-  type MemoryAuthor,
-  type MemoryFolder,
-  type MemoryNote,
-  type Message,
-} from '@/lib/types';
+import type { ConsolidationPass, MemoryAuthor, MemoryFolder, MemoryNote } from '@/lib/types';
 
 export type MemorySliceState = {
   memory: {
@@ -172,12 +170,10 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
 
       async restoreMemoryNote(id) {
         const { folders } = get().memory;
-        // Back into its folder, or About you when that folder has gone meanwhile.
-        await changeNote(id, ({ forgottenAt: _forgotten, ...note }) =>
-          folders.some((f) => f.id === note.folderId)
-            ? note
-            : { ...note, folderId: MEMORY_ABOUT_FOLDER_ID },
-        );
+        await changeNote(id, ({ forgottenAt: _forgotten, ...note }) => ({
+          ...note,
+          folderId: returningFolder(folders, note.folderId),
+        }));
       },
 
       async editMemoryFolder(id, patch) {
@@ -190,27 +186,23 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
       },
 
       async undoMemoryWrite(messageId, index) {
-        const write = get().messagesById[messageId]?.memoryWrites?.[index];
-        if (!write || write.undone) return;
+        const message = get().messagesById[messageId];
+        const write = message?.memoryWrites?.[index];
+        if (!message || !write || write.undone) return;
         const change = undoChange(write, get().memory, Date.now());
         if (!change) {
           get().setNotice(NOTICE_MEMORY_CHANGED_SINCE, 'info');
           return;
         }
+        // Marked before the write is awaited, so a second click finds it taken back.
+        set(
+          (s) =>
+            updateMessageById(s, message.chatId, messageId, (m) => markWriteUndone(m, write)) ?? {},
+        );
         await changeMemory(change);
-        // Marked on the reply as it is now, which may have grown or switched
-        // versions meanwhile, so no older copy of it is saved.
-        let marked: Message | undefined;
-        set((s) => {
-          const message = s.messagesById[messageId];
-          const result =
-            message &&
-            updateMessageById(s, message.chatId, messageId, (m) =>
-              markWriteUndone(m, index, write),
-            );
-          marked = result?.messagesById?.[messageId];
-          return result ?? {};
-        });
+        // The reply as it is now, which may have grown or switched versions
+        // meanwhile, so no older copy of it is saved.
+        const marked = get().messagesById[messageId];
         if (marked) await repository.saveMessage(marked);
       },
 

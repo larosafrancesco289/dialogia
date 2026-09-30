@@ -61,7 +61,7 @@ test('a record shows the whole path, with numbers only where there is evidence',
   ]);
 });
 
-test('a record carries its plan’s subject, and only tutor chats with a plan have one', async () => {
+test('a record carries its plan’s subject, and only tutor chats with a plan and memory have one', async () => {
   const planned = emptyTutorState();
   planned.plan = {
     goal: 'Read a test result',
@@ -76,9 +76,20 @@ test('a record carries its plan’s subject, and only tutor chats with a plan ha
     ({ id, updatedAt: 1, settings: { features: { tutor: { enabled: true } } } }) as Chat;
   const states: Record<string, TutorState> = { t1: planned, t2: emptyTutorState() };
   const loaded: string[] = [];
+  // Memory switched off in its composer keeps a chat out of memory, plan or not.
+  const keptOut = {
+    id: 'private',
+    updatedAt: 1,
+    settings: { features: { tutor: { enabled: true }, memory: { enabled: false } } },
+  } as Chat;
 
   const records = await tutorLearningRecords(
-    [tutorChat('t1'), tutorChat('t2'), { id: 'plain', settings: { features: {} } } as Chat],
+    [
+      tutorChat('t1'),
+      tutorChat('t2'),
+      { id: 'plain', settings: { features: {} } } as Chat,
+      keptOut,
+    ],
     async (chatId) => {
       loaded.push(chatId);
       return { events: [], state: states[chatId], loaded: true };
