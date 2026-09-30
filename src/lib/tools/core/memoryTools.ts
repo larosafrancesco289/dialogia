@@ -105,13 +105,37 @@ const forgetMemory: PlanningToolHandler = async ({ parsedArgs, context }) =>
     context,
   );
 
+/**
+ * A handler whose call stays in the reply's tool log with how it went, as a
+ * search's does; unlogged, the row shown while the call streamed would be
+ * dropped as never run.
+ */
+const logged =
+  (name: string, handler: PlanningToolHandler): PlanningToolHandler =>
+  async (args) => {
+    const log = args.context.logger.start({ name, input: args.parsedArgs });
+    const outcome = await handler(args);
+    const { result } = outcome;
+    if (result?.ok) log.success(result);
+    else log.error(result, result?.error);
+    return outcome;
+  };
+
 export function registerMemoryTools(): void {
   const metadata = { module: 'core', kind: 'action' as const };
-  registerTool('memory_read', { definition: MEMORY_READ_TOOL, metadata, handler: readMemory });
-  registerTool('memory_save', { definition: MEMORY_SAVE_TOOL, metadata, handler: saveMemory });
+  registerTool('memory_read', {
+    definition: MEMORY_READ_TOOL,
+    metadata,
+    handler: logged('memory_read', readMemory),
+  });
+  registerTool('memory_save', {
+    definition: MEMORY_SAVE_TOOL,
+    metadata,
+    handler: logged('memory_save', saveMemory),
+  });
   registerTool('memory_forget', {
     definition: MEMORY_FORGET_TOOL,
     metadata,
-    handler: forgetMemory,
+    handler: logged('memory_forget', forgetMemory),
   });
 }

@@ -220,7 +220,8 @@ export function AssistantMessage({
 
       {messageBody && <div className="px-4 py-3">{messageBody}</div>}
 
-      {!isEditing && <MemoryWrites message={message} />}
+      {/* Under the reply once it is written, never above an answer still to come. */}
+      {!isEditing && !(isStreaming && isLatestAssistant) && <MemoryWrites message={message} />}
 
       {isEditing && (
         <div className="px-4 pb-3">

@@ -399,6 +399,7 @@ test('two writes to one note in one reply are taken back newest first', async ()
     assistantMessage: reply,
     set: store.setState,
     get: store.getState,
+    logger: { start: () => ({ success: () => undefined, error: () => undefined }) },
   } as unknown as ToolExecutionContext;
   const save = (args: Record<string, unknown>) =>
     getToolHandler('memory_save')!({
