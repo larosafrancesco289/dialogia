@@ -4,10 +4,10 @@
 // wrote is cleared, the tools run, and the next round streams with the sources
 // found so far in its system prompt; the first round that answers without a
 // tool call is the reply, so the answer is written once. One exception: a
-// round that answered and then only saved or forgot memory notes keeps its
-// text as the reply, and ends the turn once those calls ran. After
-// MAX_PLANNING_ROUNDS tool rounds, or when none of a round's calls may run, one
-// closing round answers with tools withheld. A module that asks for
+// round whose calls only save or forget memory notes (or were never offered)
+// keeps its text, and the round after its writes adds to it (`keepsText`).
+// After MAX_PLANNING_ROUNDS tool rounds, or when none of a round's calls may
+// run, one closing round answers with tools withheld. A module that asks for
 // `loop: 'agent'` gets the visible agent loop in `agentLoop.ts` instead, which
 // keeps every round's text.
 
@@ -33,6 +33,7 @@ import {
   createUiCallbacks,
   emitPlanResult,
   finalSystemFor,
+  offeredToolNames,
   openSession,
   preLogToolCalls,
   scheduleTools,
@@ -67,15 +68,27 @@ export async function executeStreamingTurn(
     round = await stream(0, 'auto');
   }
 
+  const timestamps = opts.turn.get().ui?.messageTimestamps === true;
+  const textOf = (capture: RoundCapture) =>
+    cleanStreamedText(capture.full || capture.content, timestamps);
+  // The reply's text so far while rounds that only wrote memory keep it on screen.
+  let kept = '';
+  let reply: string | undefined;
+
   for (let toolRounds = 1; roundWantsTools(round); toolRounds += 1) {
     const scheduled = scheduleTools(session, round.toolCalls);
-    const answered = answeredThenWroteMemory(session, round, scheduled);
-    if (!answered) clearVisibleDraft(session, ui);
-    if (scheduled.length > 0) await runToolRound(session, toolRounds, round, scheduled);
+    const text = joinRounds(kept, textOf(round));
+    const keep = keepsText(session, round, scheduled, text);
+    kept = keep ? text : '';
+    if (!keep) clearVisibleDraft(session, ui);
+    if (scheduled.length > 0) await runToolRound(session, toolRounds, round, scheduled, keep);
     // Pre-logged entries for calls the scheduler dropped would stay "pending"
     // in the ledger forever; executed calls have resolved by now.
     removeOrphanPendingToolCalls({ set: opts.turn.set, chatId: opts.chatId, messageId });
-    if (answered) break;
+    if (keep && scheduled.length === 0) {
+      reply = kept;
+      break;
+    }
     const closing = scheduled.length === 0 || toolRounds >= MAX_PLANNING_ROUNDS;
     ui.beginRound();
     round = await stream(toolRounds, closing ? 'none' : 'auto');
@@ -84,7 +97,13 @@ export async function executeStreamingTurn(
 
   const finalSystem = finalSystemFor(session);
   emitPlanResult(session, finalSystem);
-  await ui.onDone?.(round.full, { ...round.extras, usage });
+  // A kept round's calls are not why the reply ended.
+  const finishReason = round.finishReason === 'tool_calls' ? 'stop' : round.finishReason;
+  await ui.onDone?.(reply ?? joinRounds(kept, textOf(round)), {
+    ...round.extras,
+    finishReason,
+    usage,
+  });
   return buildResult(session, finalSystem);
 }
 
@@ -151,23 +170,32 @@ const MEMORY_WRITE_TOOLS = new Set([
 ]);
 
 /**
- * A round that wrote a finished answer and then called only memory writes, all
- * of which may run: the prompt tells the model not to announce a save, so the
- * answer is already whole. Its text stays as the reply instead of being
- * cleared and written again. Any other call, `memory_read` included, may
- * change the answer, and a refused call goes the way refused calls go.
+ * A round whose every call is a memory write, or a call the turn never offered,
+ * leaves the reply's text on screen instead of clearing it: a save cannot
+ * change the answer, and an unoffered call never runs. When a write ran, the
+ * next round adds to that text, reading its own words and the results, so it
+ * can finish a preamble or correct a save that failed. When nothing ran,
+ * nothing follows, so the text is the reply unless it stops mid-thought.
+ * Any other call, `memory_read` included, may change the answer.
  */
-function answeredThenWroteMemory(
+function keepsText(
   session: TurnSession,
   round: RoundCapture,
   scheduled: ToolCall[],
+  text: string,
 ): boolean {
-  const { toolCalls } = round;
-  if (scheduled.length !== toolCalls.length) return false;
-  if (!toolCalls.every((call) => MEMORY_WRITE_TOOLS.has(call.function.name))) return false;
-  const timestamps = session.opts.turn.get().ui?.messageTimestamps === true;
-  const text = cleanStreamedText(round.full || round.content, timestamps);
-  return !looksIncomplete(text, round.finishReason);
+  if (!text) return false;
+  const offered = offeredToolNames(session);
+  const onlyWrites = round.toolCalls.every(
+    ({ function: fn }) => MEMORY_WRITE_TOOLS.has(fn.name) || !offered.has(fn.name),
+  );
+  if (!onlyWrites) return false;
+  return scheduled.length > 0 || !looksIncomplete(text, round.finishReason);
+}
+
+/** Rounds of one reply, set off by a blank line as `beginRound` shows them. */
+function joinRounds(before: string, after: string): string {
+  return [before, after].filter(Boolean).join('\n\n');
 }
 
 // ── Tool rounds ─────────────────────────────────────────────────────────────
@@ -178,6 +206,7 @@ async function runToolRound(
   round: number,
   capture: RoundCapture,
   scheduled: ToolCall[],
+  continuing: boolean,
 ): Promise<void> {
   const { opts, convo } = session;
   const { chat, chatId, assistantMessage, userContent, controller, turn } = opts;
@@ -215,6 +244,7 @@ async function runToolRound(
       content: followUpPrompt({
         searchEnabled: session.searchEnabled,
         searchProvider: session.searchProvider,
+        continuing,
       }),
     });
   }
