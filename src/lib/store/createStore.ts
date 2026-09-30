@@ -8,6 +8,7 @@ import type { StateCreator } from 'zustand';
 import type { StoreGetter, StoreSetter, StoreState } from '@/lib/store/types';
 import { createChatSlice } from '@/lib/store/chatSlice';
 import { createEndpointSlice } from '@/lib/store/endpointSlice';
+import { createMemorySlice } from '@/lib/store/memorySlice';
 import { createMessageSlice } from '@/lib/store/messageSlice';
 import { createModelSlice } from '@/lib/store/modelSlice';
 import { createUiSlice } from '@/lib/store/uiSlice';
@@ -35,6 +36,7 @@ export function buildStoreInitializer(modules: AppModule[] = ENABLED_MODULES): S
       ...createModelSlice(set, get, store),
       ...createChatSlice(sliceSet, sliceGet, store),
       ...createMessageSlice(sliceSet, sliceGet, store),
+      ...createMemorySlice(set, get, store),
       ...createUiSlice(set, get, store),
       ...moduleSlices,
     } as StoreState;

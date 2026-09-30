@@ -200,6 +200,8 @@ export function connectTabSync(
         // Modules order their own work; this queue need not wait for it.
         void notifyEventsChangedElsewhere({ get }, announcement.chatId);
         return;
+      case 'memory':
+        return get().refreshMemory();
       case 'replaced':
         return replaceAll();
       case 'streaming':

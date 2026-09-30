@@ -1,4 +1,12 @@
-import type { Chat, Folder, KVRecord, Message, TutorEventRecord } from '@/lib/types';
+import type {
+  Chat,
+  Folder,
+  KVRecord,
+  MemoryFolder,
+  MemoryNote,
+  Message,
+  TutorEventRecord,
+} from '@/lib/types';
 
 function cloneValue<T>(value: T): T {
   try {
@@ -109,6 +117,8 @@ export class InMemoryDialogiaDB {
   folders = new InMemoryTable<Folder>((folder) => folder.id);
   kv = new InMemoryTable<KVRecord>((record) => record.key);
   tutorEvents = new InMemoryTable<TutorEventRecord>((event) => event.id);
+  memoryFolders = new InMemoryTable<MemoryFolder>((folder) => folder.id);
+  memoryNotes = new InMemoryTable<MemoryNote>((note) => note.id);
 
   /** Transactions run one after another, as IndexedDB runs overlapping read-write ones. */
   private transactions: Promise<unknown> = Promise.resolve();
@@ -138,6 +148,10 @@ export class InMemoryDialogiaDB {
             return this.kv as unknown as InMemoryTable<U>;
           case 'tutorEvents':
             return this.tutorEvents as unknown as InMemoryTable<U>;
+          case 'memoryFolders':
+            return this.memoryFolders as unknown as InMemoryTable<U>;
+          case 'memoryNotes':
+            return this.memoryNotes as unknown as InMemoryTable<U>;
           default:
             throw new Error(`Unknown table: ${name}`);
         }

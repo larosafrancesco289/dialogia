@@ -1,4 +1,6 @@
 import type {
+  MemoryFolder,
+  MemoryNote,
   Message,
   MessageToolRound,
   MessageToolRoundCall,
@@ -234,4 +236,47 @@ export function sanitizeTutorEventRecord(value: unknown): TutorEventRecord | und
   const next = { ...record } as TutorEventRecord;
   if (messageId !== undefined && (!isString(messageId) || !messageId)) delete next.messageId;
   return next;
+}
+
+const isTime = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
+
+/** A memory folder row, or undefined when its shape cannot be trusted. */
+export function sanitizeMemoryFolder(value: unknown): MemoryFolder | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const { id, parentId, name, description, createdAt, updatedAt } = value as Record<
+    string,
+    unknown
+  >;
+  if (!isString(id) || !id || !isString(name) || !name.trim()) return undefined;
+  if (!isTime(createdAt) || !isTime(updatedAt)) return undefined;
+  return {
+    id,
+    ...(isString(parentId) && parentId ? { parentId } : {}),
+    name,
+    description: isString(description) ? description : '',
+    createdAt,
+    updatedAt,
+  };
+}
+
+/** A memory note row, or undefined when its shape cannot be trusted. */
+export function sanitizeMemoryNote(value: unknown): MemoryNote | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const { id, folderId, text, author, createdAt, updatedAt, sourceChatId, forgottenAt } =
+    value as Record<string, unknown>;
+  if (!isString(id) || !id || !isString(folderId) || !folderId) return undefined;
+  if (!isString(text) || !text.trim()) return undefined;
+  if (author !== 'user' && author !== 'model') return undefined;
+  if (!isTime(createdAt) || !isTime(updatedAt)) return undefined;
+  return {
+    id,
+    folderId,
+    text,
+    author,
+    createdAt,
+    updatedAt,
+    ...(isString(sourceChatId) && sourceChatId ? { sourceChatId } : {}),
+    ...(isTime(forgottenAt) ? { forgottenAt } : {}),
+  };
 }

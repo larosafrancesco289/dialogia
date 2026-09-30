@@ -9,10 +9,12 @@ export type TopHeaderState = {
   chat?: Chat;
   collapsed: boolean;
   isSettingsOpen: boolean;
+  isMemoryOpen: boolean;
   tutorActive: boolean;
   tutorModelLabel: string;
   onToggleSidebar: () => void;
   onToggleSettings: () => void;
+  onToggleMemory: () => void;
   onNewChat: () => void;
 };
 
@@ -23,6 +25,7 @@ export function useTopHeaderState(): TopHeaderState {
     newChat,
     collapsed,
     isSettingsOpen,
+    isMemoryOpen,
     tutorDefaultModelId,
     models,
     tutorActive,
@@ -33,6 +36,7 @@ export function useTopHeaderState(): TopHeaderState {
       newChat: s.newChat,
       collapsed: s.ui.sidebarCollapsed ?? false,
       isSettingsOpen: s.ui.showSettings,
+      isMemoryOpen: s.ui.memoryOpen ?? false,
       tutorDefaultModelId: s.ui.tutor?.defaultModelId,
       models: s.models,
       tutorActive: selectIsTutorEnabled(s),
@@ -62,6 +66,10 @@ export function useTopHeaderState(): TopHeaderState {
     setUI({ showSettings: !isSettingsOpen });
   }, [isSettingsOpen, setUI]);
 
+  const onToggleMemory = useCallback(() => {
+    setUI({ memoryOpen: !isMemoryOpen });
+  }, [isMemoryOpen, setUI]);
+
   const onNewChat = useCallback(() => {
     void newChat();
   }, [newChat]);
@@ -70,9 +78,11 @@ export function useTopHeaderState(): TopHeaderState {
     chat,
     collapsed,
     isSettingsOpen,
+    isMemoryOpen,
     tutorActive,
     tutorModelLabel,
     onToggleSidebar,
+    onToggleMemory,
     onToggleSettings,
     onNewChat,
   };

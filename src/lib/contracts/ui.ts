@@ -72,6 +72,8 @@ export type UiSnapshot = {
    * shows unless the visitor dismissed it (see `selectSetupSheetOpen`).
    */
   setupOpen?: boolean;
+  /** The Memory page is open; session-scoped, never persisted. */
+  memoryOpen?: boolean;
   /**
    * The sidebar is folded because the window is phone-width, not because the
    * reader folded it; session-scoped, and the fold is not saved as their choice.

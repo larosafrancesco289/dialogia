@@ -1,6 +1,6 @@
 import { useEffect, useRef, type RefObject } from 'react';
 import { cancelFrame, frame, motion, useTransform, type MotionValue } from 'framer-motion';
-import { Cog6ToothIcon } from '@heroicons/react/24/outline';
+import { BookOpenIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
 import { ChatSidebar } from '@/components/sidebar/ChatSidebar';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { ModuleSlot } from '@/components/ModuleSlot';
@@ -16,6 +16,7 @@ export function MobileDrawer({
   width,
   offset,
   onOpenSettings,
+  onOpenMemory,
   onClose,
   returnFocusRef,
 }: {
@@ -23,6 +24,7 @@ export function MobileDrawer({
   width: number;
   offset: MotionValue<number>;
   onOpenSettings: () => void;
+  onOpenMemory: () => void;
   onClose: () => void;
   /** The button that opens the drawer, where focus goes when it is put away. */
   returnFocusRef: RefObject<HTMLElement | null>;
@@ -98,6 +100,10 @@ export function MobileDrawer({
       </div>
 
       <div className={styles.foot}>
+        <button type="button" className={styles.footItem} onClick={onOpenMemory}>
+          <BookOpenIcon className="h-5 w-5" aria-hidden="true" />
+          <span>Memory</span>
+        </button>
         <button type="button" className={styles.footItem} onClick={onOpenSettings}>
           <Cog6ToothIcon className="h-5 w-5" aria-hidden="true" />
           <span>Settings</span>

@@ -71,5 +71,9 @@ export function announceWrites(
       await repository.deleteTutorEvents(chatId);
       announce({ kind: 'tutorEvents', chatId });
     },
+    async writeMemory(change) {
+      await repository.writeMemory(change);
+      announce({ kind: 'memory' });
+    },
   };
 }

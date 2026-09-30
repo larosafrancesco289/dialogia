@@ -17,12 +17,13 @@ import type { PersistFragment, StoreGetter, StoreSetter, StoreState } from '@/li
 import type { ModuleSettingsDefaults, ModuleSettingsPhase } from '@/lib/settings/moduleDefaults';
 import type { ModulePanels } from '@/lib/ui/panels';
 import type { TurnStore } from '@/lib/agent/contracts';
-import type { Chat, Message } from '@/lib/types';
+import type { Chat, LearningRecord, Message } from '@/lib/types';
 import { getMessagesForChat } from '@/lib/messages/indexing';
 import { inLatestExchange } from '@/lib/messages/latestExchange';
 import { createTutorSlice } from '@/modules/tutor/store/tutorSlice';
 import { tutorSettingsDefaults } from '@/modules/tutor/lib/defaults';
 import { tutorPanels } from '@/modules/tutor/panels';
+import { learningRecord } from '@/modules/tutor/lib/learningRecords';
 import {
   hasTutorPlan,
   messageCarriesTutorCard,
@@ -147,6 +148,11 @@ export type AppModule = {
    * card), so the reply is not empty even when it has no text. Boot half.
    */
   messageHasContent?(state: StoreState, message: Message): boolean;
+  /**
+   * The module's chats as memory's Learning folder lists them, read fresh
+   * from the module's own records. Boot half.
+   */
+  learningRecords?(store: { get: StoreGetter }): Promise<LearningRecord[]>;
   /** Fills in the module's own chat-settings block. Boot half. */
   settingsDefaults?(args: {
     chat: Pick<Chat, 'settings'>;
@@ -180,6 +186,15 @@ const tutorModule: AppModule = {
   },
   onReplyRetracted: async ({ get }, { chatId, messageId }) => {
     await get().retractTutorReply(chatId, messageId);
+  },
+  learningRecords: async ({ get }) => {
+    const chats = get().chats.filter((chat) => chat.settings?.features?.tutor?.enabled);
+    const records = await Promise.all(
+      chats.map(async (chat) =>
+        learningRecord(chat, (await get().ensureTutorSession(chat.id)).state),
+      ),
+    );
+    return records.filter((record): record is LearningRecord => !!record);
   },
   latestExchangeOnly: tutorFollowsTranscript,
   messageHasContent: messageCarriesTutorCard,
@@ -293,4 +308,14 @@ export function loadModuleRuntimes(): Promise<ModuleRuntime[]> {
  */
 export function loadedModuleRuntimes(): ModuleRuntime[] {
   return loaded;
+}
+
+/** Every module's Learning records, most recently studied first; a failing module adds none. */
+export async function loadLearningRecords(store: { get: StoreGetter }): Promise<LearningRecord[]> {
+  const lists = await Promise.allSettled(
+    ENABLED_MODULES.map(async (appModule) => (await appModule.learningRecords?.(store)) ?? []),
+  );
+  return lists
+    .flatMap((list) => (list.status === 'fulfilled' ? list.value : []))
+    .sort((a, b) => b.studiedAt - a.studiedAt);
 }

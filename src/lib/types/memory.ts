@@ -1,0 +1,53 @@
+// Long-term memory: notes in words, kept in folders, read by the model and
+// by the person alike. Numbers about learning are never copied in here; the
+// Learning folder shows them live from the tutor's own records.
+
+/** Folders every memory has, under fixed ids. */
+export const MEMORY_ABOUT_FOLDER_ID = 'about';
+export const MEMORY_LEARNING_FOLDER_ID = 'learning';
+
+export type MemoryFolder = {
+  id: string;
+  /** Absent at the top level. */
+  parentId?: string;
+  name: string;
+  /** The folder's line in the root index: what the model reads first. */
+  description: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type MemoryAuthor = 'user' | 'model';
+
+export type MemoryNote = {
+  id: string;
+  folderId: string;
+  text: string;
+  /** Who last wrote the words. */
+  author: MemoryAuthor;
+  createdAt: number;
+  updatedAt: number;
+  /** The chat the note came from, when it came from one. */
+  sourceChatId?: string;
+  /** Set while the note waits in Recently forgotten. */
+  forgottenAt?: number;
+};
+
+/** One tutor chat as memory's Learning folder shows it, read live from the tutor. */
+export type LearningRecord = {
+  chatId: string;
+  goal: string;
+  /** When the chat was last studied in. */
+  studiedAt: number;
+  finished: boolean;
+  topics: LearningTopic[];
+};
+
+export type LearningTopic = {
+  name: string;
+  state: 'done' | 'current' | 'ready' | 'locked';
+  /** The tutor's estimate, 0–100, once there is evidence for it. */
+  percent?: number;
+  /** Where the topic stands, in plain words ("Done", "Starts after Limits"). */
+  status: string;
+};

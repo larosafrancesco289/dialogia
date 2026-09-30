@@ -21,6 +21,9 @@ const SettingsDrawer = lazyClient(() =>
     default: mod.SettingsDrawer,
   })),
 );
+const MemoryPage = lazyClient(() =>
+  import('@/components/memory/MemoryPage').then((mod) => ({ default: mod.MemoryPage })),
+);
 
 const GlobalNotice = lazyClient(() =>
   import('@/components/GlobalNotice').then((mod) => ({ default: mod.GlobalNotice })),
@@ -40,6 +43,7 @@ const IntroTour = lazyClient(() =>
 export function MobileShell() {
   const {
     settingsOpen,
+    memoryOpen,
     setupOpen,
     introOpen,
     selectedChatId,
@@ -50,6 +54,7 @@ export function MobileShell() {
   } = useChatStore(
     (s) => ({
       settingsOpen: s.ui.showSettings,
+      memoryOpen: s.ui.memoryOpen ?? false,
       setupOpen: selectSetupSheetOpen(s),
       introOpen: selectIntroTourOpen(s),
       selectedChatId: s.selectedChatId,
@@ -125,6 +130,9 @@ export function MobileShell() {
   const openSettings = useCallback(() => {
     setUI({ mobile: { drawerOpen: false }, showSettings: true });
   }, [setUI]);
+  const openMemory = useCallback(() => {
+    setUI({ mobile: { drawerOpen: false }, memoryOpen: true });
+  }, [setUI]);
 
   return (
     <div className={styles.shell}>
@@ -158,6 +166,7 @@ export function MobileShell() {
         width={drawer.width}
         offset={drawer.offset}
         onOpenSettings={openSettings}
+        onOpenMemory={openMemory}
         onClose={closeDrawer}
         returnFocusRef={menuButtonRef}
       />
@@ -172,6 +181,7 @@ export function MobileShell() {
       </BottomSheet>
 
       {settingsOpen && <SettingsDrawer />}
+      {memoryOpen && <MemoryPage />}
 
       {/* Never both: setup comes first, the tour once it is settled. */}
       {setupOpen && <SetupSheet />}

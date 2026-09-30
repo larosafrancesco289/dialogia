@@ -7,3 +7,4 @@ export * from '@/lib/types/message';
 export * from '@/lib/types/metrics';
 export * from '@/lib/types/models';
 export * from '@/lib/types/tutor';
+export * from '@/lib/types/memory';

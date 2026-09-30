@@ -1,4 +1,4 @@
-import { Cog6ToothIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { BookOpenIcon, Cog6ToothIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { ModuleSlot } from '@/components/ModuleSlot';
 import { SidebarIcon } from '@/components/ui/icons';
 import { HeaderDivider } from '@/components/top-header/HeaderDivider';
@@ -8,10 +8,12 @@ import type { TopHeaderState } from '@/components/top-header/useTopHeaderState';
 export function TopHeaderView({
   collapsed,
   isSettingsOpen,
+  isMemoryOpen,
   tutorActive,
   tutorModelLabel,
   onToggleSidebar,
   onToggleSettings,
+  onToggleMemory,
   onNewChat,
 }: TopHeaderState) {
   const headerClass = 'app-header top-header';
@@ -56,6 +58,21 @@ export function TopHeaderView({
               <PlusIcon className="h-5 w-5" />
             </button>
           )}
+          <button
+            className="icon-button icon-button--lg hide-on-mobile"
+            aria-label="Open memory"
+            title="Memory"
+            aria-pressed={isMemoryOpen}
+            onClick={onToggleMemory}
+            onMouseEnter={() => {
+              import('@/components/memory/MemoryPage').catch(() => undefined);
+            }}
+            onFocus={() => {
+              import('@/components/memory/MemoryPage').catch(() => undefined);
+            }}
+          >
+            <BookOpenIcon className="h-5 w-5" />
+          </button>
           <button
             className="icon-button icon-button--lg hide-on-mobile"
             aria-label="Open settings"
