@@ -1,12 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { repository } from '@/lib/db';
+import { db, repository } from '@/lib/db';
 import {
   applyOperations,
   consolidationRequest,
   notesSince,
   readOperations,
-  restoreSnapshot,
+  undoPass,
 } from '@/lib/memory/consolidate';
 import { noteHandle } from '@/lib/memory/writes';
 import { deleteKey, setKey } from '@/lib/keys/store';
@@ -74,9 +74,12 @@ test('an answer is read for its operations, whatever surrounds the JSON', () => 
     readOperations('Sure!\n```json\n{"operations":[{"op":"forget","note":"x"}]}\n```'),
     [{ op: 'forget', note: 'x' }],
   );
-  assert.deepEqual(readOperations('no json here'), []);
-  assert.deepEqual(readOperations('{"operations": "nope"}'), []);
+  assert.deepEqual(readOperations('{"operations": []}'), []);
   assert.deepEqual(readOperations('{"operations": [1, null, {"op":"move"}]}'), [{ op: 'move' }]);
+  // An answer that cannot be read is a failure, not a plan with nothing in it.
+  assert.equal(readOperations('no json here'), undefined);
+  assert.equal(readOperations('{"operations": "nope"}'), undefined);
+  assert.equal(readOperations('{"operations": [{"op": "forget", "note": "x"}'), undefined);
 });
 
 test('operations apply in order within the rules, and only what was done is said', () => {
@@ -113,6 +116,7 @@ test('operations apply in order within the rules, and only what was done is said
         text: 'Vegetarian on weekdays',
         say: 'No change',
       },
+      { op: 'rewrite', note: noteHandle('thesis-01'), text: 'Unsaid' },
     ],
   });
   assert.deepEqual(lines, [
@@ -134,20 +138,84 @@ test('operations apply in order within the rules, and only what was done is said
   assert.equal(made?.parentId, 'projects');
   assert.equal(byId.get('thesis-01')?.folderId, made?.id);
   assert.deepEqual(change.deleteFolderIds, ['empty']);
+  assert.equal(
+    byId.get('thesis-01')?.text,
+    'Writing a PhD thesis on tutors',
+    'unsaid, so not done',
+  );
 });
 
-test('undo puts memory back exactly, removing what the pass made', () => {
+test('a merge whose note has no folder is skipped', () => {
+  const m = memory();
+  const stray = note('stray-001', 'gone', 'Likes tea');
+  const { change, lines } = applyOperations({
+    memory: { ...m, notes: [...m.notes, stray] },
+    now: 5,
+    newId,
+    operations: [
+      {
+        op: 'merge',
+        notes: [noteHandle('stray-001'), noteHandle('maths-001')],
+        text: 'x',
+        say: 'Merged',
+      },
+    ],
+  });
+  assert.deepEqual(lines, []);
+  assert.deepEqual(change.notes, []);
+});
+
+test('undo takes back only what the pass wrote, and only while it is as the pass left it', () => {
   const before = memory();
-  const { change } = applyOperations({
+  const { change, undo } = applyOperations({
     memory: before,
     now: 5,
     newId,
-    operations: [{ op: 'new_folder', folder: 'Kitchen', description: 'Food', say: 'x' }],
+    operations: [
+      { op: 'new_folder', folder: 'Diet', description: 'Food', say: 'New folder' },
+      { op: 'move', note: noteHandle('dietA-001'), folder: 'Diet', say: 'Moved' },
+      { op: 'rewrite', note: noteHandle('maths-001'), text: 'Learns by example', say: 'Clearer' },
+      { op: 'rewrite', note: noteHandle('thesis-01'), text: 'PhD on tutors', say: 'Shorter' },
+      { op: 'remove_folder', folder: 'Old stuff', say: 'Removed' },
+    ],
   });
-  const after = { folders: [...before.folders, ...change.folders!], notes: before.notes };
-  const back = restoreSnapshot(after, before);
-  assert.deepEqual(back.deleteFolderIds, [change.folders![0].id]);
-  assert.deepEqual(back.notes, before.notes);
+  const diet = change.folders![0];
+  const byId = new Map(change.notes!.map((n) => [n.id, n]));
+  // After the pass: the person edits one note it rewrote, and writes a new one.
+  const later = note('later-001', MEMORY_ABOUT_FOLDER_ID, 'Runs on Sundays');
+  const current = {
+    folders: [...before.folders.filter((f) => f.id !== 'empty'), diet],
+    notes: [
+      byId.get('dietA-001')!,
+      before.notes[1],
+      byId.get('maths-001')!,
+      { ...byId.get('thesis-01')!, text: 'PhD on AI tutors', author: 'user' as const },
+      later,
+    ],
+  };
+  const { change: back, skipped } = undoPass(current, undo);
+  assert.equal(skipped, 1);
+  assert.deepEqual(
+    back.notes!.map((n) => [n.id, n.text, n.folderId]),
+    [
+      ['dietA-001', 'Vegetarian', MEMORY_ABOUT_FOLDER_ID],
+      ['maths-001', 'Likes worked examples', MEMORY_ABOUT_FOLDER_ID],
+    ],
+    'the edited note and the later one are left alone',
+  );
+  assert.deepEqual(
+    back.folders!.map((f) => f.id),
+    ['empty'],
+    'the removed folder comes back',
+  );
+  assert.deepEqual(back.deleteFolderIds, [diet.id], 'the folder it made is empty again');
+
+  // A later note in the folder the pass made keeps it.
+  const kept = undoPass(
+    { ...current, notes: [...current.notes, note('later-002', diet.id, 'Likes lentils')] },
+    undo,
+  );
+  assert.deepEqual(kept.change.deleteFolderIds, []);
 });
 
 test('the nudge counts live notes written since the last pass', () => {
@@ -160,43 +228,111 @@ test('the nudge counts live notes written since the last pass', () => {
   assert.equal(notesSince(notes, undefined), 2);
 });
 
-test('a pass through the store: applied, reported, undone, and its record kept', async () => {
+type Answer = { content: string; finish_reason?: string };
+
+/** Runs `body` with a key saved and the model answering each request through `respond`. */
+async function withModel(
+  respond: (request: { messages: Array<{ content: string }> }) => Answer | Promise<Answer>,
+  body: () => Promise<void>,
+) {
   await setKey('openrouter', 'sk-or-test');
-  const answer = {
-    operations: [
-      { op: 'rewrite', note: '', text: 'Plays the cello well', say: 'Clarified your note' },
-    ],
-  };
-  let body: { messages?: Array<{ content: string }> } = {};
   const restore = mockFetch(async (_url, init) => {
-    body = JSON.parse(String(init?.body));
+    const { content, finish_reason } = await respond(JSON.parse(String(init?.body)));
     return new Response(
-      JSON.stringify({
-        choices: [{ message: { role: 'assistant', content: JSON.stringify(answer) } }],
-      }),
+      JSON.stringify({ choices: [{ message: { role: 'assistant', content }, finish_reason }] }),
       { status: 200, headers: { 'content-type': 'application/json' } },
     );
   });
   try {
-    const store = createTestStore();
-    await store.getState().loadMemory();
-    const added = await store.getState().addMemoryNote(MEMORY_ABOUT_FOLDER_ID, 'Plays cello');
-    answer.operations[0].note = noteHandle(added!.id);
-
-    await store.getState().consolidateMemory();
-    assert.match(body.messages?.[1]?.content ?? '', /Plays cello/);
-    const { pass, notes, consolidating } = store.getState().memory;
-    assert.equal(consolidating, false);
-    assert.deepEqual(pass?.lines, ['Clarified your note']);
-    assert.equal(pass?.shown, true);
-    assert.equal(notes.find((n) => n.id === added!.id)?.text, 'Plays the cello well');
-
-    await store.getState().undoConsolidation();
-    const stored = await repository.loadMemory();
-    assert.equal(stored.notes.find((n) => n.id === added!.id)?.text, 'Plays cello');
-    assert.equal(store.getState().memory.pass, undefined);
+    await body();
   } finally {
     restore();
     await deleteKey('openrouter');
   }
+}
+
+const rewrite = (id: string, text: string, say = 'Clarified your note') =>
+  JSON.stringify({ operations: [{ op: 'rewrite', note: noteHandle(id), text, say }] });
+
+test('a pass through the store: applied, reported, undone, and its record kept', async () => {
+  const store = createTestStore();
+  await store.getState().loadMemory();
+  const added = await store.getState().addMemoryNote(MEMORY_ABOUT_FOLDER_ID, 'Plays cello');
+  let asked = '';
+  await withModel(
+    ({ messages }) => {
+      asked = messages[1]?.content ?? '';
+      return { content: rewrite(added!.id, 'Plays the cello well') };
+    },
+    () => store.getState().consolidateMemory(),
+  );
+  assert.match(asked, /Plays cello/);
+  const { pass, notes, consolidating } = store.getState().memory;
+  assert.equal(consolidating, false);
+  assert.deepEqual(pass?.lines, ['Clarified your note']);
+  assert.equal(pass?.shown, true);
+  assert.equal(notes.find((n) => n.id === added!.id)?.text, 'Plays the cello well');
+  assert.deepEqual((await repository.loadMemory()).pass, pass, 'kept with memory');
+
+  await store.getState().undoConsolidation();
+  const stored = await repository.loadMemory();
+  assert.equal(stored.notes.find((n) => n.id === added!.id)?.text, 'Plays cello');
+  assert.equal(stored.pass, undefined);
+  assert.equal(store.getState().memory.pass, undefined);
+});
+
+test('a plan made before memory changed is not applied', async () => {
+  const store = createTestStore();
+  await store.getState().loadMemory();
+  await store.getState().changeMemory({ pass: null });
+  const added = await store.getState().addMemoryNote(MEMORY_ABOUT_FOLDER_ID, 'Plays viola');
+  await withModel(
+    async () => {
+      // The person writes a note while the model thinks.
+      await store.getState().addMemoryNote(MEMORY_ABOUT_FOLDER_ID, 'Sings in a choir');
+      return { content: rewrite(added!.id, 'Plays the viola') };
+    },
+    () => store.getState().consolidateMemory(),
+  );
+  const { memory, ui } = store.getState();
+  assert.equal(memory.notes.find((n) => n.id === added!.id)?.text, 'Plays viola');
+  assert.equal(memory.pass, undefined);
+  assert.match(ui.notice ?? '', /changed while it was being consolidated/);
+});
+
+test('an answer that cannot be read, or was cut off, is a failed pass', async () => {
+  const store = createTestStore();
+  await store.getState().loadMemory();
+  await store.getState().changeMemory({ pass: null });
+  const added = await store.getState().addMemoryNote(MEMORY_ABOUT_FOLDER_ID, 'Reads sci-fi');
+  const answers: Answer[] = [
+    { content: 'I would merge a few notes.' },
+    { content: rewrite(added!.id, 'Reads science fiction'), finish_reason: 'length' },
+  ];
+  for (const answer of answers) {
+    store.getState().setNotice(undefined);
+    await withModel(
+      () => answer,
+      () => store.getState().consolidateMemory(),
+    );
+    const { memory, ui } = store.getState();
+    assert.equal(memory.notes.find((n) => n.id === added!.id)?.text, 'Reads sci-fi');
+    assert.equal(memory.pass, undefined, 'not reported as tidy');
+    assert.match(ui.notice ?? '', /could not be consolidated/);
+  }
+});
+
+test('a pass kept before Undo recorded what it wrote shows its report, without Undo', async () => {
+  const old = { at: 9, lines: ['Merged two notes'], before: memory(), shown: true };
+  await db.kv.put({ key: 'memory:lastConsolidation', value: old });
+  const store = createTestStore();
+  await store.getState().loadMemory();
+  assert.deepEqual(store.getState().memory.pass, {
+    at: 9,
+    lines: ['Merged two notes'],
+    shown: true,
+  });
+  await store.getState().undoConsolidation();
+  assert.equal(store.getState().memory.pass?.at, 9, 'nothing to undo, nothing done');
+  await store.getState().changeMemory({ pass: null });
 });

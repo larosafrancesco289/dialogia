@@ -16,23 +16,12 @@ import {
 import {
   MEMORY_ABOUT_FOLDER_ID,
   MEMORY_LEARNING_FOLDER_ID,
+  type ConsolidationPass,
   type MemoryFolder,
   type MemoryNote,
 } from '@/lib/types';
 
-/**
- * A finished consolidation: when it ran, what it did in the person's words,
- * memory as it was (while it can still be undone), and when the pass before
- * it ran, which an undo returns to.
- */
-export type ConsolidationPass = {
-  at: number;
-  lines: string[];
-  before?: MemorySnapshot;
-  previousAt?: number;
-  /** The report is on the page until the person puts it away. */
-  shown?: boolean;
-};
+type PassUndo = NonNullable<ConsolidationPass['undo']>;
 
 export const CONSOLIDATION_SYSTEM_PROMPT = `You tidy a person's long-term memory: short notes about them that an assistant keeps across chats, in folders. The person can read and edit every note.
 
@@ -89,20 +78,23 @@ export function consolidationRequest(memory: MemorySnapshot): string {
 
 type Operation = Record<string, unknown>;
 
-/** The operations in a model's answer; anything that is not a list of objects is none. */
-export function readOperations(content: string): Operation[] {
+/**
+ * The operations in a model's answer, or undefined when it cannot be read as
+ * a list of them: a failed pass, never one that found nothing to change.
+ */
+export function readOperations(content: string): Operation[] | undefined {
   const start = content.indexOf('{');
   const end = content.lastIndexOf('}');
-  if (start === -1 || end <= start) return [];
+  if (start === -1 || end <= start) return undefined;
   try {
     const parsed = JSON.parse(content.slice(start, end + 1)) as { operations?: unknown };
     return Array.isArray(parsed.operations)
       ? parsed.operations.filter(
           (op): op is Operation => !!op && typeof op === 'object' && !Array.isArray(op),
         )
-      : [];
+      : undefined;
   } catch {
-    return [];
+    return undefined;
   }
 }
 
@@ -111,15 +103,16 @@ const BUILT_IN = new Set([MEMORY_ABOUT_FOLDER_ID, MEMORY_LEARNING_FOLDER_ID]);
 
 /**
  * The operations applied in order to a working copy of memory. One that names
- * a note or folder that is not there, or breaks a rule, is skipped, and its
- * line is not said. Returns the change and the lines of what was done.
+ * a note or folder that is not there, breaks a rule, or has no line to say, is
+ * skipped, so the report names every change. Returns the change, the lines of
+ * what was done, and what Undo needs.
  */
 export function applyOperations(args: {
   memory: MemorySnapshot;
   operations: Operation[];
   now: number;
   newId: () => string;
-}): { change: MemoryChange; lines: string[] } {
+}): { change: MemoryChange; lines: string[]; undo: PassUndo } {
   const { now } = args;
   const folders = new Map(args.memory.folders.map((f) => [f.id, f]));
   const notes = new Map(args.memory.notes.map((n) => [n.id, n]));
@@ -162,6 +155,7 @@ export function applyOperations(args: {
 
   for (const op of args.operations) {
     const say = str(op.say);
+    if (!say) continue;
     let done = false;
     switch (op.op) {
       case 'rewrite': {
@@ -197,9 +191,10 @@ export function applyOperations(args: {
           .filter((n, i, all): n is MemoryNote => !!n && all.indexOf(n) === i);
         const text = str(op.text);
         if (merged.length < 2 || !text) break;
-        const folder = str(op.folder) ? folderAt(str(op.folder)) : undefined;
         const [keep, ...rest] = merged;
-        putNote(edited(keep, { text, folderId: (folder ?? folders.get(keep.folderId))!.id }));
+        const folder = (str(op.folder) && folderAt(str(op.folder))) || folders.get(keep.folderId);
+        if (!folder) break;
+        putNote(edited(keep, { text, folderId: folder.id }));
         for (const note of rest) putNote({ ...note, forgottenAt: now });
         done = true;
         break;
@@ -233,31 +228,92 @@ export function applyOperations(args: {
         break;
       }
     }
-    if (done && say) lines.push(say);
+    if (done) lines.push(say);
   }
 
-  return {
-    change: {
-      folders: [...touchedFolders].filter((id) => folders.has(id)).map((id) => folders.get(id)!),
-      notes: [...touchedNotes].map((id) => notes.get(id)!),
-      deleteFolderIds: [...removedFolders].filter((id) =>
-        args.memory.folders.some((f) => f.id === id),
-      ),
-    },
-    lines,
+  const after = {
+    folders: [...touchedFolders].filter((id) => folders.has(id)).map((id) => folders.get(id)!),
+    notes: [...touchedNotes].map((id) => notes.get(id)!),
+    deleteFolderIds: [...removedFolders].filter((id) =>
+      args.memory.folders.some((f) => f.id === id),
+    ),
   };
+  const before = {
+    folders: args.memory.folders.filter(
+      (f) => touchedFolders.has(f.id) || removedFolders.has(f.id),
+    ),
+    notes: args.memory.notes.filter((n) => touchedNotes.has(n.id)),
+  };
+  return { change: after, lines, undo: { before, after } };
 }
 
-/** The change that puts memory back as the snapshot had it. */
-export function restoreSnapshot(current: MemorySnapshot, before: MemorySnapshot): MemoryChange {
-  const hadFolder = new Set(before.folders.map((f) => f.id));
-  const hadNote = new Set(before.notes.map((n) => n.id));
-  return {
-    folders: before.folders,
-    notes: before.notes,
-    deleteFolderIds: current.folders.filter((f) => !hadFolder.has(f.id)).map((f) => f.id),
-    deleteNoteIds: current.notes.filter((n) => !hadNote.has(n.id)).map((n) => n.id),
+/** Rows alike field by field, since one read back from the database is a new object. */
+function sameRow(a: object, b: object): boolean {
+  const fields = (row: object) => Object.entries(row).filter(([, value]) => value !== undefined);
+  const other = new Map(fields(b));
+  const own = fields(a);
+  return own.length === other.size && own.every(([key, value]) => other.get(key) === value);
+}
+
+const byId = <T extends { id: string }>(rows: T[]) => new Map(rows.map((row) => [row.id, row]));
+
+/** Whether two copies of memory hold the same rows. */
+export function sameMemory(a: MemorySnapshot, b: MemorySnapshot): boolean {
+  const same = <T extends { id: string }>(mine: T[], theirs: T[]) => {
+    const other = byId(theirs);
+    return (
+      mine.length === theirs.length &&
+      mine.every((row) => other.has(row.id) && sameRow(row, other.get(row.id)!))
+    );
   };
+  return same(a.folders, b.folders) && same(a.notes, b.notes);
+}
+
+/**
+ * The change that takes a pass back without losing anything newer: a row goes
+ * back only while it is exactly as the pass left it, and one changed since is
+ * left alone and counted as skipped. Notes written after the pass are never
+ * touched. Folders the pass removed come back; folders it made go only when
+ * nothing is left in them.
+ */
+export function undoPass(
+  current: MemorySnapshot,
+  undo: PassUndo,
+): { change: MemoryChange; skipped: number } {
+  const nowFolders = byId(current.folders);
+  const nowNotes = byId(current.notes);
+  const wasFolders = byId(undo.before.folders);
+  const wasNotes = byId(undo.before.notes);
+  let skipped = 0;
+  const asLeft = <T extends { id: string }>(row: T, rows: Map<string, T>) => {
+    const now = rows.get(row.id);
+    if (now && sameRow(now, row)) return true;
+    skipped += 1;
+    return false;
+  };
+
+  const notes = undo.after.notes
+    .filter((note) => wasNotes.has(note.id) && asLeft(note, nowNotes))
+    .map((note) => wasNotes.get(note.id)!);
+  const left = undo.after.folders.filter((folder) => asLeft(folder, nowFolders));
+  const folders = [
+    ...left.filter((folder) => wasFolders.has(folder.id)).map((f) => wasFolders.get(f.id)!),
+    ...undo.after.deleteFolderIds
+      .filter((id) => wasFolders.has(id) && !nowFolders.has(id))
+      .map((id) => wasFolders.get(id)!),
+  ];
+
+  // The newest first, so a folder the pass made inside another goes before it.
+  const returning = byId(notes);
+  const liveNotes = current.notes.map((note) => returning.get(note.id) ?? note);
+  const deleteFolderIds: string[] = [];
+  for (const made of left.filter((folder) => !wasFolders.has(folder.id)).reverse()) {
+    const inUse =
+      liveNotes.some((note) => note.folderId === made.id) ||
+      current.folders.some((f) => f.parentId === made.id && !deleteFolderIds.includes(f.id));
+    if (!inUse) deleteFolderIds.push(made.id);
+  }
+  return { change: { folders, notes, deleteFolderIds }, skipped };
 }
 
 /** Notes written or changed since the last pass: what the nudge counts. */
