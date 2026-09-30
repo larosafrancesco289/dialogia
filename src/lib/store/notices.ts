@@ -21,6 +21,10 @@ export const NOTICE_CATALOG = {
     'The reply could not be saved to this browser. It is on screen now, but may be cut short after a reload.',
   consolidationFailed:
     'Memory could not be consolidated. Nothing was changed; try again in a moment.',
+  consolidationStale:
+    'Memory changed while it was being consolidated, so nothing was changed. Consolidate again.',
+  consolidationPartlyUndone:
+    'Consolidation was undone, apart from what has changed since, which was left as it is.',
   memoryChangedSince: 'This note has changed since. Edit it on the Memory page.',
 } as const;
 
@@ -179,4 +183,6 @@ export const NOTICE_PLAN_APPLY_FAILED = NOTICE_CATALOG.planApplyFailed;
 export const NOTICE_REPLY_IN_OTHER_TAB = NOTICE_CATALOG.replyInOtherTab;
 export const NOTICE_SAVE_FAILED = NOTICE_CATALOG.saveFailed;
 export const NOTICE_CONSOLIDATION_FAILED = NOTICE_CATALOG.consolidationFailed;
+export const NOTICE_CONSOLIDATION_STALE = NOTICE_CATALOG.consolidationStale;
+export const NOTICE_CONSOLIDATION_PARTLY_UNDONE = NOTICE_CATALOG.consolidationPartlyUndone;
 export const NOTICE_MEMORY_CHANGED_SINCE = NOTICE_CATALOG.memoryChangedSince;

@@ -55,6 +55,24 @@ export type LearningTopic = {
 };
 
 /**
+ * A finished consolidation: when it ran, what it did in the person's words,
+ * what Undo needs (while it can still be undone), and when the pass before it
+ * ran, which an undo returns to.
+ */
+export type ConsolidationPass = {
+  at: number;
+  lines: string[];
+  /** The rows the pass wrote, as it wrote them, and the same rows as they were before. */
+  undo?: {
+    before: { folders: MemoryFolder[]; notes: MemoryNote[] };
+    after: { folders: MemoryFolder[]; notes: MemoryNote[]; deleteFolderIds: string[] };
+  };
+  previousAt?: number;
+  /** The report is on the page until the person puts it away. */
+  shown?: boolean;
+};
+
+/**
  * One change a reply made to memory, kept on the reply so the person sees it
  * and can take it back. `before` is the note as it was, absent for a new one.
  */

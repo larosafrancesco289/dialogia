@@ -1,4 +1,5 @@
 import type {
+  ConsolidationPass,
   MemoryFolder,
   MemoryNote,
   MemoryWrite,
@@ -316,5 +317,31 @@ function sanitizeMemoryWrite(value: unknown): MemoryWrite | undefined {
     ...(was ? { before: was } : {}),
     ...(isString(createdFolderId) && createdFolderId ? { createdFolderId } : {}),
     ...(undone === true ? { undone } : {}),
+  };
+}
+
+/**
+ * The last consolidation, or undefined when it cannot be read. Its Undo is
+ * kept only in the shape that records what the pass wrote; a pass stored
+ * before that shows its report without one.
+ */
+export function sanitizeConsolidationPass(value: unknown): ConsolidationPass | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const { at, lines, undo, previousAt, shown } = value as Record<string, unknown>;
+  if (!isTime(at) || !Array.isArray(lines)) return undefined;
+  const record = undo as { before?: Record<string, unknown>; after?: Record<string, unknown> };
+  const lists = [
+    record?.before?.folders,
+    record?.before?.notes,
+    record?.after?.folders,
+    record?.after?.notes,
+    record?.after?.deleteFolderIds,
+  ];
+  return {
+    at,
+    lines: lines.filter(isString),
+    ...(lists.every(Array.isArray) ? { undo: undo as ConsolidationPass['undo'] } : {}),
+    ...(isTime(previousAt) ? { previousAt } : {}),
+    ...(shown === true ? { shown } : {}),
   };
 }

@@ -137,7 +137,8 @@ follows through a `BroadcastChannel` (`src/lib/sync/tabChannel.ts`, a no-op wher
   non-empty, and lazy hydration loads it later. A deleted chat goes the way a local delete goes. A
   module re-reads its log through `onEventsChangedElsewhere`.
 - **Memory says only that it changed.** Every memory write announces `memory`, and the receiver
-  reads all of memory again (`refreshMemory`), which is small, and writes nothing back.
+  reads all of memory again (`refreshMemory`), which is small, and writes nothing back. The last
+  consolidation is saved in the same write as the rows it changed, so it arrives with them.
 - **Keys say only that they changed.** `src/lib/keys/store.ts` announces `keys` after saving or
   removing one, naming neither the key nor its provider. The receiver reads its key cache again
   from `dialogia-keys` and reloads the models, as saving a key in the same tab does.
@@ -388,11 +389,14 @@ so nothing written since is lost, and takes a new note back by forgetting it.
 Consolidate (the Memory page's header) sends all of memory to the model new chats start with and
 asks for a plan of operations as JSON: merge, rewrite, move, forget, new_folder, describe,
 remove_folder, each with a sentence for the person. The app applies the plan itself
-(`src/lib/memory/consolidate.ts`): an operation naming a note or folder that is not there, or
-breaking a rule (a built-in folder removed, a non-empty folder removed), is skipped and not
-reported. The pass keeps a snapshot of memory as it was, stored under KV `memory:lastConsolidation`
-with its report, so one Undo restores all of it, even after a reload, until the report is put
-away.
+(`src/lib/memory/consolidate.ts`): an operation naming a note or folder that is not there,
+breaking a rule (a built-in folder removed, a non-empty folder removed), or without its sentence,
+is skipped and not reported. The plan is applied only if memory has not changed while the model
+answered, and an answer that cannot be read, or was cut off, is a failed pass. The request passes
+the zero-data-retention guard a turn does. The pass keeps the rows it wrote and the same rows as
+they were, under KV `memory:lastConsolidation` with its report, so Undo works even after a reload,
+until the report is put away. Undo puts back only rows still exactly as the pass left them, and
+says so when it left some alone.
 
 Numbers about learning are never copied into memory. The Learning folder lists a module's records
 (`AppModule.learningRecords`), read fresh each time the page opens: the tutor turns each tutor

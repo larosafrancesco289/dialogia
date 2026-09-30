@@ -1,11 +1,11 @@
 // Module: services/memoryConsolidation
 // Responsibility: One consolidation pass: ask the model new chats start with for a
 // plan, apply it within the rules (`memory/consolidate`), and hand back the change
-// with memory as it was, so the whole pass can be taken back. Loaded on demand.
+// with what Undo needs and the memory it planned from. Loaded on demand.
 
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
 import { requireModelAuth } from '@/lib/auth/require';
-import type { MemoryChange, MemorySnapshot } from '@/lib/db/repository';
+import type { MemorySnapshot } from '@/lib/db/repository';
 import {
   applyOperations,
   CONSOLIDATION_SYSTEM_PROMPT,
@@ -13,18 +13,24 @@ import {
   readOperations,
 } from '@/lib/memory/consolidate';
 import { stripThinkBlock } from '@/lib/openrouter/thinkTags';
+import { guardZdrOrNotifyCached } from '@/lib/policy/zdr/cache';
+import { enforceZdrGate } from '@/lib/policy/runtime';
 import { ChatService } from '@/lib/services/chatService';
-import type { StoreGetter } from '@/lib/store/types';
+import type { StoreGetter, StoreSetter } from '@/lib/store/types';
 import { v4 as uuidv4 } from 'uuid';
 
 const CONSOLIDATION_MAX_TOKENS = 8000;
 const CONSOLIDATION_TIMEOUT_MS = 120_000;
 
-export async function planConsolidation(get: StoreGetter): Promise<{
-  change: MemoryChange;
-  lines: string[];
-  before: MemorySnapshot;
-}> {
+/**
+ * The plan for one pass, or undefined when zero data retention will not let
+ * the model see memory (the guard has said why). Throws when there is no
+ * answer to read, including one cut off before its end.
+ */
+export async function planConsolidation(
+  set: StoreSetter,
+  get: StoreGetter,
+): Promise<(ReturnType<typeof applyOperations> & { before: MemorySnapshot }) | undefined> {
   const state = get();
   const before: MemorySnapshot = { folders: state.memory.folders, notes: state.memory.notes };
   const { modelId } = ChatService.buildSettingsForNewChat({
@@ -34,6 +40,10 @@ export async function planConsolidation(get: StoreGetter): Promise<{
     models: state.models,
   });
   const auth = requireModelAuth(modelId, state.modelIndex);
+  const allowed = await enforceZdrGate(state.ui, [modelId], (id) =>
+    guardZdrOrNotifyCached(id, set, get),
+  );
+  if (!allowed) return undefined;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), CONSOLIDATION_TIMEOUT_MS);
@@ -49,15 +59,15 @@ export async function planConsolidation(get: StoreGetter): Promise<{
       zdrOnly: state.ui.zdrOnly,
       signal: controller.signal,
     });
-    const content = response?.choices?.[0]?.message?.content;
-    const operations = readOperations(stripThinkBlock(typeof content === 'string' ? content : ''));
-    const { change, lines } = applyOperations({
-      memory: before,
-      operations,
-      now: Date.now(),
-      newId: uuidv4,
-    });
-    return { change, lines, before };
+    const choice = response?.choices?.[0];
+    const content = choice?.message?.content;
+    const operations =
+      choice?.finish_reason === 'length'
+        ? undefined
+        : readOperations(stripThinkBlock(typeof content === 'string' ? content : ''));
+    if (!operations) throw new Error('The consolidation plan could not be read.');
+    const plan = applyOperations({ memory: before, operations, now: Date.now(), newId: uuidv4 });
+    return { ...plan, before };
   } finally {
     clearTimeout(timeout);
   }

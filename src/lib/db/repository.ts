@@ -1,12 +1,15 @@
 import type {
   Chat,
+  ConsolidationPass,
   Folder,
+  KVRecord,
   MemoryFolder,
   MemoryNote,
   Message,
   TutorEventRecord,
 } from '@/lib/types';
 import {
+  sanitizeConsolidationPass,
   sanitizeMemoryFolder,
   sanitizeMemoryNote,
   sanitizeMessageRecord,
@@ -61,18 +64,27 @@ export type DialogiaDbLike = {
   tutorEvents: DbTable<TutorEventRecord>;
   memoryFolders: DbTable<MemoryFolder>;
   memoryNotes: DbTable<MemoryNote>;
+  kv: DbTable<KVRecord>;
 };
 
 /** Everything in long-term memory, forgotten notes included. */
 export type MemorySnapshot = { folders: MemoryFolder[]; notes: MemoryNote[] };
 
-/** Rows to write and rows to delete, applied together. */
+/**
+ * Rows to write and rows to delete, applied together. The last consolidation
+ * travels with memory, so every tab hears of it with the rows it changed;
+ * null puts it away.
+ */
 export type MemoryChange = {
   folders?: MemoryFolder[];
   notes?: MemoryNote[];
   deleteNoteIds?: string[];
   deleteFolderIds?: string[];
+  pass?: ConsolidationPass | null;
 };
+
+/** Where the last consolidation is kept, so its Undo survives a reload. */
+const PASS_KEY = 'memory:lastConsolidation';
 
 export type RepositorySnapshot = {
   chats: Chat[];
@@ -194,7 +206,8 @@ type TransactionTable =
   | DbTable<Folder>
   | DbTable<TutorEventRecord>
   | DbTable<MemoryFolder>
-  | DbTable<MemoryNote>;
+  | DbTable<MemoryNote>
+  | DbTable<KVRecord>;
 type DbTransaction = (mode: 'r' | 'rw', ...args: unknown[]) => PromiseLike<unknown>;
 
 async function runTransaction(
@@ -482,27 +495,31 @@ export function createRepository(db: DialogiaDbLike) {
     await db.folders.delete(folderId);
   };
 
-  /** All of memory; rows whose shape cannot be trusted are skipped. */
-  const loadMemory = async (): Promise<MemorySnapshot> => {
-    const [folders, notes] = await Promise.all([
+  /** All of memory and the last consolidation; rows whose shape cannot be trusted are skipped. */
+  const loadMemory = async (): Promise<MemorySnapshot & { pass?: ConsolidationPass }> => {
+    const [folders, notes, pass] = await Promise.all([
       db.memoryFolders.toArray(),
       db.memoryNotes.toArray(),
+      db.kv.get(PASS_KEY),
     ]);
     return {
       folders: folders
         .map(sanitizeMemoryFolder)
         .filter((folder): folder is MemoryFolder => !!folder),
       notes: notes.map(sanitizeMemoryNote).filter((note): note is MemoryNote => !!note),
+      pass: sanitizeConsolidationPass(pass?.value),
     };
   };
 
-  /** Writes memory rows, and deletes rows by id, in one transaction. */
+  /** Writes memory rows, deletes rows by id, and keeps the last consolidation, in one transaction. */
   const writeMemory = async (change: MemoryChange) => {
-    await runTransaction(db, [db.memoryFolders, db.memoryNotes], async () => {
+    await runTransaction(db, [db.memoryFolders, db.memoryNotes, db.kv], async () => {
       for (const folder of change.folders ?? []) await db.memoryFolders.put(folder);
       for (const note of change.notes ?? []) await db.memoryNotes.put(note);
       for (const id of change.deleteNoteIds ?? []) await db.memoryNotes.delete(id);
       for (const id of change.deleteFolderIds ?? []) await db.memoryFolders.delete(id);
+      if (change.pass) await db.kv.put({ key: PASS_KEY, value: change.pass });
+      else if (change.pass === null) await db.kv.delete(PASS_KEY);
     });
   };
 
