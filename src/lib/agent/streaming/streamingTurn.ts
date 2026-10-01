@@ -19,7 +19,6 @@ import { followUpPrompt } from '@/lib/agent/prompts/followUp';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
 import { applyCacheBreakpoints, buildSystemMessage } from '@/lib/agent/cache';
 import { sumUsage } from '@/lib/api/normalizers';
-import { isAbortLike } from '@/lib/store/notices';
 import { MEMORY_FORGET_TOOL, MEMORY_SAVE_TOOL } from '@/lib/tools/definitions/memory';
 import type { ModelMessage, ToolCall } from '@/lib/agent/types';
 import { looksIncomplete } from '@/lib/agent/streaming/draft';
@@ -63,42 +62,53 @@ export async function executeStreamingTurn(
     return capture;
   };
 
-  let round = await stream(0, 'auto');
-  if (!roundWantsTools(round) && shouldRetryFirstRound(session, round)) {
-    clearVisibleDraft(session, ui);
-    round = await stream(0, 'auto');
-  }
-
   const timestamps = opts.turn.get().ui?.messageTimestamps === true;
   const textOf = (capture: RoundCapture) =>
     cleanStreamedText(capture.full || capture.content, timestamps);
   // The reply's text so far while rounds that only wrote memory keep it on screen.
   let kept = '';
   let reply: string | undefined;
+  let round: RoundCapture;
+  try {
+    round = await stream(0, 'auto');
+    if (!roundWantsTools(round) && shouldRetryFirstRound(session, round)) {
+      clearVisibleDraft(session, ui);
+      round = await stream(0, 'auto');
+    }
 
-  for (let toolRounds = 1; roundWantsTools(round); toolRounds += 1) {
-    const scheduled = scheduleTools(session, round.toolCalls);
-    const text = joinRounds(kept, textOf(round));
-    const keep = keepsText(session, round, scheduled, text);
-    // Once kept, an answer stays: a later round's own words may go, the kept ones never,
-    // and every later round is asked to add to them rather than write them again.
-    if (keep) kept = text;
-    else clearVisibleDraft(session, ui, kept);
-    if (scheduled.length > 0) {
-      await runToolRound(session, toolRounds, round, scheduled, kept !== '');
+    for (let toolRounds = 1; roundWantsTools(round); toolRounds += 1) {
+      const scheduled = scheduleTools(session, round.toolCalls);
+      const text = joinRounds(kept, textOf(round));
+      const keep = keepsText(session, round, scheduled, text);
+      // Once kept, an answer stays: a later round's own words may go, the kept ones never,
+      // and every later round is asked to add to them rather than write them again.
+      if (keep) kept = text;
+      else clearVisibleDraft(session, ui, kept);
+      if (scheduled.length > 0) {
+        await runToolRound(session, toolRounds, round, scheduled, kept !== '');
+      }
+      // Pre-logged entries for calls the scheduler dropped would stay "pending"
+      // in the ledger forever; executed calls have resolved by now.
+      removeOrphanPendingToolCalls({ set: opts.turn.set, chatId: opts.chatId, messageId });
+      if (keep && scheduled.length === 0) {
+        reply = kept;
+        break;
+      }
+      const closing = scheduled.length === 0 || toolRounds >= MAX_PLANNING_ROUNDS;
+      ui.beginRound();
+      // Only an answer that reads as whole may end on a Stop before the next round adds to it.
+      round = await stream(toolRounds, closing ? 'none' : 'auto', keep && !looksIncomplete(kept));
+      if (closing) break;
     }
-    // Pre-logged entries for calls the scheduler dropped would stay "pending"
-    // in the ledger forever; executed calls have resolved by now.
+  } catch (error) {
+    // A stopped or failed stream saved the reply before this; a call it had
+    // begun must not read "Running" for good, there or after a reload.
     removeOrphanPendingToolCalls({ set: opts.turn.set, chatId: opts.chatId, messageId });
-    if (keep && scheduled.length === 0) {
-      reply = kept;
-      break;
-    }
-    const closing = scheduled.length === 0 || toolRounds >= MAX_PLANNING_ROUNDS;
-    ui.beginRound();
-    round = await stream(toolRounds, closing ? 'none' : 'auto', kept !== '');
-    if (closing) break;
+    const current = opts.turn.get().messagesById[messageId];
+    if (current) await opts.turn.persistMessage(current).catch(() => undefined);
+    throw error;
   }
+  removeOrphanPendingToolCalls({ set: opts.turn.set, chatId: opts.chatId, messageId });
 
   const finalSystem = finalSystemFor(session);
   emitPlanResult(session, finalSystem);
@@ -131,8 +141,8 @@ async function streamWithoutTools(session: TurnSession): Promise<StreamingTurnRe
  * One round, painted as it streams. The first round sends the turn's own
  * system prompt; a round after tools sends it with the sources found so far,
  * so the answer can cite them by number. A round `continuing` a kept answer
- * that is stopped before it adds a word ends the reply as it stood: the answer
- * was already whole, so nothing was cut off.
+ * that reads as whole, stopped before it adds a word, ends the reply as it
+ * stood: nothing was cut off.
  */
 async function streamRound(
   session: TurnSession,
@@ -148,10 +158,11 @@ async function streamRound(
     onToolCallDelta:
       toolChoice === 'auto' ? (deltas) => preLogToolCalls(session, deltas) : undefined,
   });
-  const stoppedWhole = (error: unknown) =>
-    continuing && isAbortLike(error) && capture.content === '';
+  // The person pressed Stop (not a provider error that mentions an abort).
+  const stoppedWhole = () =>
+    continuing && session.opts.controller.signal.aborted && capture.content === '';
   callbacks.onError = (error) => {
-    if (!stoppedWhole(error)) ui.onError?.(error);
+    if (!stoppedWhole()) ui.onError?.(error);
   };
   try {
     await executeStreamCall(session.call, {
@@ -164,7 +175,7 @@ async function streamRound(
       round,
     });
   } catch (error) {
-    if (!stoppedWhole(error)) throw error;
+    if (!stoppedWhole()) throw error;
     capture.finishReason = 'stop';
   }
   return capture;
