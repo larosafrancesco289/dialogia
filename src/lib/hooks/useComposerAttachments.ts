@@ -43,10 +43,7 @@ export function useComposerAttachments({
       const converted: DraftAttachment[] = [];
       for (const file of pick.pdfs) converted.push(await toPdfAttachment(file));
       for (const file of pick.images) converted.push(await toImageAttachment(file));
-      for (const file of pick.audio) {
-        const att = await toAudioAttachment(file);
-        if (att) converted.push(att);
-      }
+      for (const file of pick.audio) converted.push(await toAudioAttachment(file));
       if (converted.length) setAttachments([...attachmentsRef.current, ...converted]);
     },
     [canAudio, canVision, onSkipped, setAttachments],

@@ -222,7 +222,7 @@ test('a server that answers with no models is named in the notice', async () => 
   } finally {
     restore();
   }
-  assert.equal(store.getState().ui.notice, 'Could not load the model list from Ollama.');
+  assert.equal(store.getState().ui.notice, 'Ollama offered no models.');
 });
 
 test('a keyless server has a model to offer only once it has a model id', async () => {

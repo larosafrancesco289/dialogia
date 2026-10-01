@@ -120,7 +120,6 @@ test('composeTurn merges tutor and search context with plugins and tools', async
     assert.equal(result.settings.tutorEnabled, true);
     assert.equal(result.settings.searchProvider, 'tavily');
     assert.equal(result.settings.searchEnabled, true);
-    assert.equal(result.hasPdf, true);
     assert.equal(result.shouldPlan, true);
     assert.equal(result.loop, 'agent');
     assert.equal(result.settings.generation.providerSort, undefined);

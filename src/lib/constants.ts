@@ -16,5 +16,8 @@ export const TOOL_CALL_STOPPED = 'Stopped';
 
 // Attachments limits
 export const MAX_IMAGES_PER_MESSAGE = 4;
+export const MAX_PDFS_PER_MESSAGE = 2;
+export const MAX_AUDIO_PER_MESSAGE = 1;
+export const MAX_IMAGE_SIZE_MB = 5;
 export const MAX_PDF_SIZE_MB = 15;
 export const MAX_AUDIO_SIZE_MB = 15;

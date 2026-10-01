@@ -3,7 +3,8 @@ import type { LearningPlan, LearningPlanNode, TopicMastery } from '@/lib/types';
 import { isMeasured, nextReadyNode, type TopicExplanation } from '@/modules/tutor/engine';
 import type { TutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 import { readableNote } from '@/modules/tutor/ui/messageViews';
-import { listNames, PathStep, stepState, waitingOn, type StepState } from './PlanPath';
+import { listInProse } from '@/lib/utils/text';
+import { PathStep, stepState, waitingOn, type StepState } from './PlanPath';
 import { pct, statusWords } from '@/modules/tutor/lib/topicStatus';
 import { Markdown } from '@/components/Markdown';
 import { CarriedOverWords } from '@/modules/tutor/components/message/CarriedOverWords';
@@ -248,7 +249,7 @@ function ContentsItem({
 
           {state === 'locked' && waiting.length > 0 && (
             <p className="hub-topic__note">
-              <Markdown inline content={`Starts once you’ve finished ${listNames(waiting)}.`} />
+              <Markdown inline content={`Starts once you’ve finished ${listInProse(waiting)}.`} />
             </p>
           )}
         </div>

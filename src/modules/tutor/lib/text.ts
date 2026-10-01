@@ -50,9 +50,3 @@ const NUMBER_WORDS = [
 /** A count in words, as prose sets small numbers: "four", then digits past twenty. */
 export const countWord = (n: number) =>
   n >= 1 && n <= NUMBER_WORDS.length ? NUMBER_WORDS[n - 1] : String(n);
-
-/** "a", "a and b", "a, b and c". */
-export function listInProse(items: string[]): string {
-  if (items.length <= 1) return items[0] ?? '';
-  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
-}

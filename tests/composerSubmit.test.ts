@@ -85,7 +85,7 @@ test('a send zero data retention refuses keeps the draft, and names the model in
   assert.deepEqual(calls, [], 'the draft stays in the composer');
   assert.equal(
     store.getState().ui.notice,
-    "Mock Think doesn't promise zero data retention. Pick another model, or turn off Zero data retention only in Settings › Models.",
+    'Mock Think does not promise zero data retention. Pick another model, or turn off Zero data retention only in Settings › Models.',
   );
 
   store.setState((s) => ({ ui: { ...s.ui, zdrOnly: false } }));

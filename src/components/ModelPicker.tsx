@@ -22,7 +22,7 @@ import {
 import { useReturnFocus } from '@/lib/hooks/useModalFocus';
 import { tabbableIn, trapTarget } from '@/lib/ui/focus';
 import { useChatStore } from '@/lib/store';
-import { useAnyProviderConnected } from '@/lib/hooks/useProviderKeys';
+import { useAnyModelOffered } from '@/lib/hooks/useProviderKeys';
 
 export type ModelPickerVariant = 'auto' | 'sheet';
 
@@ -254,8 +254,8 @@ export function ModelPicker({
 
   // With no provider that has a model to offer, there is no model to name yet,
   // only one to connect.
-  const connected = useAnyProviderConnected();
-  const label = !connected
+  const modelOffered = useAnyModelOffered();
+  const label = !modelOffered
     ? 'Connect a model'
     : current
       ? formatModelLabel({
@@ -270,7 +270,7 @@ export function ModelPicker({
     label,
     tooltip: currentUnavailable ? `${label}: not available while zero data retention is on` : label,
     isOpen: open,
-    onClick: () => (!connected ? connect() : open ? close() : setOpen(true)),
+    onClick: () => (!modelOffered ? connect() : open ? close() : setOpen(true)),
   };
 
   let index = -1;

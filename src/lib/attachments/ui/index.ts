@@ -2,15 +2,20 @@
 // Responsibility: UI-side utilities for reading files and mapping them to DraftAttachment.
 
 import type { DraftAttachment } from '@/lib/types';
-import { MAX_AUDIO_SIZE_MB, MAX_IMAGES_PER_MESSAGE, MAX_PDF_SIZE_MB } from '@/lib/constants';
+import {
+  MAX_AUDIO_PER_MESSAGE,
+  MAX_AUDIO_SIZE_MB,
+  MAX_IMAGE_SIZE_MB,
+  MAX_IMAGES_PER_MESSAGE,
+  MAX_PDF_SIZE_MB,
+  MAX_PDFS_PER_MESSAGE,
+} from '@/lib/constants';
 import { fileToDataUrl } from '@/lib/attachments/readers';
 import { detectAudioFormatFromFile } from '@/lib/attachments/audio';
 import { extractTextFromPdf } from '@/lib/attachments/pdf';
+import { listInProse } from '@/lib/utils/text';
 
 const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
-const MAX_IMAGE_SIZE_MB = 5;
-const MAX_PDFS_PER_MESSAGE = 2;
-const MAX_AUDIO_PER_MESSAGE = 1;
 const MB = 1024 * 1024;
 
 const isPdf = (file: File) => file.type === 'application/pdf';
@@ -93,14 +98,10 @@ export function sortAttachmentPick(
   }
 
   if (skipped.size > 0) {
-    const parts = [...skipped].map(([reason, names]) => `${listNames(names)} (${reason})`);
+    const parts = [...skipped].map(([reason, names]) => `${listInProse(names)} (${reason})`);
     pick.notice = `Not attached: ${parts.join('; ')}.`;
   }
   return pick;
-}
-
-function listNames(names: string[]): string {
-  return names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0]!;
 }
 
 export async function toImageAttachment(file: File): Promise<DraftAttachment> {
@@ -159,9 +160,9 @@ export async function toPdfAttachment(file: File): Promise<DraftAttachment> {
   };
 }
 
-export async function toAudioAttachment(file: File): Promise<DraftAttachment | null> {
-  const fmt = detectAudioFormatFromFile(file);
-  if (!fmt) return null;
+/** For a file sortAttachmentPick took, which it does only as mp3 or wav. */
+export async function toAudioAttachment(file: File): Promise<DraftAttachment> {
+  const fmt = detectAudioFormatFromFile(file) ?? 'mp3';
   const dataURL = await fileToDataUrl(file);
   return {
     id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,

@@ -117,7 +117,7 @@ const executeWebSearchTool: PlanningToolHandler = async ({
   // Unlike an empty result list, a failure tells the model nothing about the web.
   const failure = {
     ...output,
-    error: reason.startsWith('The search') ? reason : `The search failed: ${reason}`,
+    error: reason,
     hint: 'Tell the person the search failed. Do not say that nothing was found.',
   };
   log.error(

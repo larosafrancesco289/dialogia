@@ -6,7 +6,6 @@ import {
   type ZdrLists,
 } from './index';
 import type { StoreSetter as ContractStoreSetter } from '@/lib/contracts/store';
-import { deriveNameFromId } from '@/lib/models/labels';
 
 // Minimal state type for ZDR enforcement
 type ZdrEnforceState = {
@@ -23,7 +22,7 @@ export function guardModelOrNotice<S extends ZdrEnforceState>(
   set: StoreSetter<S>,
   lists: ZdrLists,
   setNotice: (notice?: string) => void,
-  modelName?: string,
+  modelName: string,
 ): boolean {
   const trimmed = typeof modelId === 'string' ? modelId.trim() : '';
   if (!trimmed) {
@@ -37,9 +36,7 @@ export function guardModelOrNotice<S extends ZdrEnforceState>(
     return true;
   }
   const notice =
-    verdict.status === 'unknown'
-      ? ZDR_UNAVAILABLE_NOTICE
-      : getZdrBlockNotice(modelName || deriveNameFromId(trimmed));
+    verdict.status === 'unknown' ? ZDR_UNAVAILABLE_NOTICE : getZdrBlockNotice(modelName);
   set((state) => ({ ...toZdrState(lists), ui: { ...state.ui } }) as Partial<S>);
   setNotice(notice);
   return false;

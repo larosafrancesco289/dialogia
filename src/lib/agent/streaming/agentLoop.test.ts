@@ -214,7 +214,6 @@ async function runAgentTurn(
           system: 'You are an agent.',
           messages,
           tools,
-          hasPdf: false,
           shouldPlan: false,
           loop: 'agent',
           ...(refreshTools ? { refreshTools } : {}),

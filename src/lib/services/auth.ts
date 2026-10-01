@@ -9,7 +9,7 @@ import type { TransportAuth } from '@/lib/auth/transport';
 import { isUnknownEndpointError } from '@/lib/transport/endpointRegistry';
 import { NOTICE_UNKNOWN_ENDPOINT } from '@/lib/store/notices';
 import { notify } from '@/lib/store/notify';
-import { guardZdrOrNotify } from '@/lib/policy/zdr/cache';
+import { guardZdrOrNotifyCached } from '@/lib/policy/zdr/cache';
 
 export type ModelAuth = TransportAuth;
 
@@ -117,5 +117,5 @@ export const canSendWithModel = (
 ): boolean => {
   if (!modelId) return true;
   if (!resolveSingleModelAuth({ modelId, modelIndex: get().modelIndex, set, get })) return false;
-  return get().ui.zdrOnly !== true || guardZdrOrNotify(modelId, set, get);
+  return get().ui.zdrOnly !== true || guardZdrOrNotifyCached(modelId, set, get);
 };

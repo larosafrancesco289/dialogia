@@ -424,7 +424,7 @@ test('an answer that cannot be read, or was cut off, is a failed pass that names
     const { memory, ui } = store.getState();
     assert.equal(memory.notes.find((n) => n.id === added!.id)?.text, 'Reads sci-fi');
     assert.equal(memory.pass, undefined, 'not reported as tidy');
-    assert.match(ui.notice ?? '', /This model couldn't make a plan\. Nothing was changed/);
+    assert.match(ui.notice ?? '', /This model could not make a plan\. Nothing was changed/);
   }
   // No answer at all is not the model's doing: that one is worth trying again.
   await setKey('openrouter', 'sk-or-test');

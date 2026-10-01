@@ -21,7 +21,7 @@ import { applyCacheBreakpoints, buildSystemMessage } from '@/lib/agent/cache';
 import { sumUsage } from '@/lib/api/normalizers';
 import { MEMORY_FORGET_TOOL, MEMORY_SAVE_TOOL } from '@/lib/tools/definitions/memory';
 import type { ModelMessage, ToolCall } from '@/lib/agent/types';
-import { looksIncomplete } from '@/lib/agent/streaming/draft';
+import { endsMidSentence, looksIncomplete } from '@/lib/agent/streaming/draft';
 import {
   captureRound,
   executeStreamCall,
@@ -99,7 +99,11 @@ export async function executeStreamingTurn(
       const closing = scheduled.length === 0 || toolRounds >= MAX_PLANNING_ROUNDS;
       ui.beginRound();
       // Only an answer that reads as whole may end on a Stop before the next round adds to it.
-      round = await stream(toolRounds, closing ? 'none' : 'auto', keep && !looksIncomplete(kept));
+      round = await stream(
+        toolRounds,
+        closing ? 'none' : 'auto',
+        keep && !looksIncomplete(kept) && !endsMidSentence(kept),
+      );
       if (closing) break;
     }
   } catch (error) {

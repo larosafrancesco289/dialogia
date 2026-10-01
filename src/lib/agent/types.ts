@@ -84,7 +84,6 @@ export type TurnComposition = {
    */
   refreshTools?: () => ToolDefinition[];
   plugins?: PluginConfig[];
-  hasPdf: boolean;
   /** Tool-based search is on: the turn drafts, runs the search tools, then answers. */
   shouldPlan: boolean;
   /** Set when an enabled module asked for the agent loop. */

@@ -230,5 +230,7 @@ test('a failed rerun of an empty placeholder says it failed', async () => {
   await assert.rejects(s.run(throwsBeforeStreaming()));
   await flush();
   assert.equal(s.store.getState().messagesById[s.original.id]?.cutOff, 'failed');
-  assert.equal(s.persisted.filter((m) => m.id === s.original.id).at(-1)?.cutOff, 'failed');
+  const saved = s.persisted.filter((m) => m.id === s.original.id).at(-1);
+  assert.equal(saved?.cutOff, 'failed');
+  assert.ok(saved?.cutOffReason, 'it says why, as a first send would');
 });

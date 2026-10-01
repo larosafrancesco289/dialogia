@@ -36,10 +36,6 @@ export async function composeTurn({
 
   const priorMessages = prior ?? [];
   const preparedAttachments = attachments ?? newUser?.attachments ?? [];
-  const hadPdfEarlier = priorMessages.some(
-    (m) => Array.isArray(m.attachments) && m.attachments.some((att) => att.kind === 'pdf'),
-  );
-  const hasPdf = preparedAttachments.some((att) => att.kind === 'pdf') || hadPdfEarlier;
 
   // Collect preambles split into stable (cacheable) and dynamic (per-turn) groups.
   // Stable: tool preamble plus whatever the modules contribute.
@@ -148,7 +144,6 @@ export async function composeTurn({
     messages,
     tools: tools.length > 0 ? tools : undefined,
     plugins: Array.isArray(plugins) && plugins.length > 0 ? plugins : undefined,
-    hasPdf,
     shouldPlan: toolSearch || memoryTools.length > 0,
     ...(modulesRequestAgentLoop ? { loop: 'agent' as const } : {}),
     ...(refreshTools ? { refreshTools } : {}),
