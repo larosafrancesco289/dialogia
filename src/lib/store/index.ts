@@ -16,6 +16,27 @@ import { chatPresence } from '@/lib/sync/chatPresence';
 
 export const PERSISTED_STORE_KEY = 'dialogia-ui';
 
+// Every tab saves its open chat into the one shared blob, so a reload would
+// open whichever tab saved last; each tab also keeps its own, for itself.
+const TAB_CHAT_KEY = 'dialogia-tab-chat';
+
+function readTabChat(): string | undefined {
+  try {
+    return sessionStorage.getItem(TAB_CHAT_KEY) ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function keepTabChat(chatId: string | undefined): void {
+  try {
+    if (chatId) sessionStorage.setItem(TAB_CHAT_KEY, chatId);
+    else sessionStorage.removeItem(TAB_CHAT_KEY);
+  } catch {
+    // Storage blocked: a reload falls back to the shared blob's chat.
+  }
+}
+
 // Set while this tab takes in another tab's write, so it does not write the
 // result straight back: two tabs would otherwise echo each other forever.
 let adoptingAnotherTab = false;
@@ -32,8 +53,14 @@ export const useChatStore = createWithEqualityFn<StoreState>()(
       },
       removeItem: (name) => localStorage.removeItem(name),
     })),
-    merge: (persistedState, currentState) =>
-      mergePersistedState(currentState, (persistedState ?? {}) as PersistedStoreState),
+    merge: (persistedState, currentState) => {
+      const merged = mergePersistedState(
+        currentState,
+        (persistedState ?? {}) as PersistedStoreState,
+      );
+      const tabChat = typeof window !== 'undefined' ? readTabChat() : undefined;
+      return tabChat ? { ...merged, selectedChatId: tabChat } : merged;
+    },
     // Persist only durable preferences; session-scoped flags (next*) are intentionally omitted.
     partialize: buildPersistedState,
   }),
@@ -59,5 +86,8 @@ if (typeof window !== 'undefined') {
 
   // The chat open here is one the other tabs must not tidy away.
   chatPresence.hold(useChatStore.getState().selectedChatId);
-  useChatStore.subscribe((state) => chatPresence.hold(state.selectedChatId));
+  useChatStore.subscribe((state) => {
+    chatPresence.hold(state.selectedChatId);
+    keepTabChat(state.selectedChatId);
+  });
 }
