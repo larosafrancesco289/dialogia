@@ -208,6 +208,12 @@ export function marginReason(notes: string[], unfolded: boolean): { text: string
   return { text: joinSentences(...shown), more: reasons.length - shown.length };
 }
 
+/**
+ * A learner's "Too high" or "Too low", told back to them in one wording
+ * wherever it shows: the margin note it answered, and the Hub's "Why".
+ */
+export const saidEstimateFelt = (felt: 'high' | 'low') => `You said the estimate felt too ${felt}`;
+
 /** A topic the message's events completed, and what the learner made of it at that seam. */
 export type Completion = {
   nodeId: string;
@@ -312,6 +318,22 @@ export function effectsByMessage(events: readonly TutorEvent[]): Map<string, Mes
   if (awaitingNext) awaitingNext.mastery = state.mastery[awaitingNext.nodeId];
   effectsCache.set(events, out);
   return out;
+}
+
+/**
+ * Whether the message's chapter break is still the learner's to answer:
+ * nothing started or taken up again since, and the plan between topics.
+ * The break is live only while it is also the newest message.
+ */
+export function seamOpenAt(session: TutorSession, messageId: string): boolean {
+  const completed = effectsByMessage(session.events).get(messageId)?.completed;
+  const { phase } = session.state;
+  return (
+    !!completed &&
+    !completed.reopened &&
+    !completed.nextNodeId &&
+    (phase === 'interlude' || phase === 'complete')
+  );
 }
 
 // Legacy entries carry no source; these types were the learner's own work.

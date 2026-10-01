@@ -177,8 +177,6 @@
   }
 
   .collapsible-section-trigger:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--focus-ring);
     border-radius: var(--radius-editorial);
   }
 
@@ -229,10 +227,6 @@
   .settings-sidebar-item:hover {
     background: color-mix(in oklab, var(--color-fg) 4%, transparent);
     color: var(--color-fg);
-  }
-  .settings-sidebar-item:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--focus-ring);
   }
   /* The same rubric tick that marks the chat you are reading. */
   .settings-sidebar-item.is-active {

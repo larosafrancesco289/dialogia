@@ -15,6 +15,7 @@ import {
   marginChanges,
   marginReason,
   readableNote,
+  seamOpenAt,
 } from '@/modules/tutor/ui/messageViews';
 
 const session = (h: ReturnType<typeof harness>) => ({
@@ -238,6 +239,22 @@ test('a correction at an open chapter break moves its estimate, and the settled 
   // Later changes to the topic belong to later exchanges, not to this seam.
   h.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.4 });
   assert.equal(breakOf().mastery?.confidence, 0.65);
+});
+
+test('a chapter break stays open through a correction at the seam, until something starts', () => {
+  const h = teaching();
+  master(h);
+  h.tutor({ type: 'complete_topic', how: 'mastered' }, 'reply-1');
+  const open = () => seamOpenAt({ ...session(h), events: [...h.events] }, 'reply-1');
+  assert.equal(open(), true);
+  assert.equal(seamOpenAt(session(h), 'reply-0'), false, 'a message without a break');
+
+  // "Too high" on the margin note: a correction is no choice at the seam.
+  h.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.65 });
+  assert.equal(open(), true, 'the learner still chooses what comes next');
+
+  h.learner({ type: 'start_topic', nodeId: 'derivatives' });
+  assert.equal(open(), false);
 });
 
 test('a margin note keeps the correction that answered it, from the log alone', () => {

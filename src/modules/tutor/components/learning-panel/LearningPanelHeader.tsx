@@ -2,11 +2,13 @@ import { PencilSquareIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 export function LearningPanelHeader({
   revising,
+  previewing,
   canRevise,
   onToggleRevise,
   onClose,
 }: {
   revising: boolean;
+  previewing: boolean;
   canRevise: boolean;
   onToggleRevise: () => void;
   onClose: () => void;
@@ -15,7 +17,7 @@ export function LearningPanelHeader({
     <div className="learning-panel__header">
       <div className="learning-panel__title-row">
         <span className="learning-panel__title">
-          {revising ? 'Editing the plan' : 'Learning Hub'}
+          {revising ? 'Editing the plan' : previewing ? 'Proposed plan' : 'Learning Hub'}
         </span>
         {/* Always visible while the plan can change: the option to edit is
             worth more than its use, so it must never be hard to find. */}

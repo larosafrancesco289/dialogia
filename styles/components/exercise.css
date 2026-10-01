@@ -147,10 +147,6 @@
     border-color: color-mix(in oklab, var(--color-fg) 28%, transparent);
     background: color-mix(in oklab, var(--color-fg) 4%, transparent);
   }
-  .choice:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--focus-ring);
-  }
   .choice:disabled {
     cursor: default;
   }

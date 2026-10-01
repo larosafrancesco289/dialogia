@@ -4,7 +4,7 @@
 // (preambles, tools, loop), so a retried answer can search, and a card comes back as a card.
 // Unless told to replace it, the old reply stays as an earlier version of the new one.
 
-import type { Chat } from '@/lib/types';
+import type { Chat, Message } from '@/lib/types';
 import type { RegenerateOptions } from '@/lib/agent/types';
 import { resolveRegenerationSettings } from '@/lib/agent/regenerateSettings';
 import { streamFinal } from '@/lib/agent/streaming';
@@ -18,6 +18,7 @@ import { runTurn } from '@/lib/agent/orchestrator/turn';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
 import { addVersion, hasOutput } from '@/lib/messages/versions';
 import { withoutSearchEntry } from '@/lib/ui/messageSources';
+import { isAbortLike } from '@/lib/store/notices';
 
 export async function regenerate(opts: RegenerateOptions): Promise<void> {
   const {
@@ -62,10 +63,11 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
   });
   const replacement = keepVersions ? addVersion(original, attempt) : attempt;
 
-  // Until the new reply shows something, the old one stays on disk: a failed
-  // or stopped attempt must not save its empty cut-off copy over the original.
+  // Until the new reply shows something or finishes, the old one stays on
+  // disk: no copy of an attempt that failed or stopped before its first word,
+  // marked or not, is saved over the original.
   const persistMessage: typeof turn.persistMessage = (message) =>
-    message.id === original.id && message.cutOff && !hasOutput(message)
+    message.id === original.id && !message.metrics && !hasOutput(message)
       ? Promise.resolve()
       : turn.persistMessage(message);
   const regenTurn = { ...turn, persistMessage };
@@ -141,12 +143,17 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
       pipeline,
     });
   } catch (error) {
-    // Nothing of the new reply arrived, so the original comes back on screen.
-    set((state) => {
-      const current = state.messagesById[original.id];
-      if (!current || hasOutput(current)) return {};
-      return { messagesById: { ...state.messagesById, [original.id]: original } };
-    });
+    // Nothing of the new reply arrived. An original with something to show
+    // comes back on screen; one without (a reply that had failed too) gives
+    // way to this attempt, marked as a first send's would be, there and on disk.
+    const current = turn.get().messagesById[original.id];
+    if (current && !hasOutput(current)) {
+      const shown: Message = hasOutput(original)
+        ? original
+        : { ...current, cutOff: current.cutOff ?? (isAbortLike(error) ? 'stopped' : 'failed') };
+      set((state) => ({ messagesById: { ...state.messagesById, [original.id]: shown } }));
+      if (shown !== original) await turn.persistMessage(shown).catch(() => undefined);
+    }
     throw error;
   } finally {
     set((state) => ({

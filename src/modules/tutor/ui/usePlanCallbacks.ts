@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
+import { selectMessagesForCurrentChat } from '@/lib/store/selectors';
 import type { LearningPlan, TopicMastery } from '@/lib/types';
 import {
   confidenceOf,
@@ -11,6 +12,7 @@ import {
 import type { TutorDispatchResult } from '@/modules/tutor/store/tutorSlice';
 import { LEDGER } from '@/modules/tutor/lib/ledger';
 import { useLedger } from '@/modules/tutor/ui/ledger';
+import { saidEstimateFelt, seamOpenAt } from '@/modules/tutor/ui/messageViews';
 import { useTutorSession } from '@/modules/tutor/ui/useTutorSession';
 
 type PlanProgress = { completed: number; total: number; percentComplete: number };
@@ -170,6 +172,16 @@ export function usePlanCallbacks(): PlanCallbacks {
     [act],
   );
 
+  // A correction made while a chapter break is open shows on the break at once
+  // and waits for the learner's choice there: a tutor turn would close it. The
+  // next turn's state block reports the correction.
+  const atOpenSeam = useCallback(() => {
+    const store = useChatStore.getState();
+    const latest = selectMessagesForCurrentChat(store).at(-1);
+    const current = chatId ? store.tutorSessions[chatId] : undefined;
+    return !!latest && !!current && seamOpenAt(current, latest.id);
+  }, [chatId]);
+
   const onContestMastery = useCallback(
     async (nodeId: string, direction: 'up' | 'down') => {
       // From the store at click time, not this render's state: a second click
@@ -180,14 +192,15 @@ export function usePlanCallbacks(): PlanCallbacks {
         type: 'adjust_mastery',
         nodeId,
         setTo: contestTarget(confidenceOf(latest ?? state, nodeId), direction),
-        note: `You said the estimate felt too ${felt}.`,
+        // Stored as the evidence's note, which the Hub's "Why" shows as it is.
+        note: `${saidEstimateFelt(felt)}.`,
       });
       if (!result?.ok) return undefined;
       // The change stands at once; the line asks the tutor to answer it.
-      await ledger(LEDGER.contested(felt, nameOf(nodeId)));
+      if (!atOpenSeam()) await ledger(LEDGER.contested(felt, nameOf(nodeId)));
       return confidenceOf(result.state, nodeId);
     },
-    [chatId, dispatch, ledger, nameOf, state],
+    [atOpenSeam, chatId, dispatch, ledger, nameOf, state],
   );
 
   const onClearMisconception = useCallback(
@@ -196,9 +209,9 @@ export function usePlanCallbacks(): PlanCallbacks {
         (m) => m.id === misconceptionId,
       )?.description;
       const result = await dispatch({ type: 'resolve_misconception', nodeId, misconceptionId });
-      if (result?.ok && description) await ledger(LEDGER.clearedUp(description));
+      if (result?.ok && description && !atOpenSeam()) await ledger(LEDGER.clearedUp(description));
     },
-    [dispatch, ledger, state],
+    [atOpenSeam, dispatch, ledger, state],
   );
 
   const onToggleRightPanel = useCallback(() => {

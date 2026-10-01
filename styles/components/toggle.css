@@ -19,13 +19,6 @@
       opacity var(--duration-fast) var(--ease-standard);
   }
 
-  .toggle-switch:focus-visible {
-    outline: none;
-    box-shadow:
-      inset 0 0 0 1.5px var(--toggle-rule),
-      0 0 0 2px var(--focus-ring);
-  }
-
   /* On is a setting, not something live: ink, not gold. */
   .toggle-switch[data-checked='true'] {
     --toggle-track-bg: var(--color-fg);

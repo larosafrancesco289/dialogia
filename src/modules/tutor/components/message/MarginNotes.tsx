@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { percent } from '@/modules/tutor/engine';
 import {
   marginReason,
+  saidEstimateFelt,
   type MasteryChange,
   type NotedMisconception,
 } from '@/modules/tutor/ui/messageViews';
@@ -102,7 +103,7 @@ export function MarginNotes({
             <ToClearUp items={misconceptions.filter((m) => m.nodeId === change.nodeId)} />
             {corrected != null ? (
               <p className="margin-note__answer">
-                You told the tutor this felt too {corrected < change.to ? 'high' : 'low'}
+                {saidEstimateFelt(corrected < change.to ? 'high' : 'low')}
                 {current(change.nodeId) === corrected
                   ? `. Now ${percent(corrected)}%.`
                   : ` (${percent(corrected)}%).`}

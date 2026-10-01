@@ -39,9 +39,16 @@ export function PlanProposalCard({
   const nodesCount = proposal.plan.nodes.length;
   const estimatedHours = proposal.plan.metadata?.estimatedHours;
 
+  // An approved proposal is the plan the Hub already shows; one still open is
+  // previewed there, read-only. A replaced one is not offered: the revision
+  // below is the plan to read.
   const handleOpenFullPlan = () => {
     setUI({
-      plan: { rightPanelOpen: true, rightPanelTab: 'plan', sheetPlanOverride: proposal.plan },
+      plan: {
+        rightPanelOpen: true,
+        rightPanelTab: 'plan',
+        sheetPlanOverride: proposal.status === 'approved' ? null : proposal.plan,
+      },
     });
   };
 
@@ -142,9 +149,11 @@ export function PlanProposalCard({
               {declining ? 'Recording…' : 'Suggest changes'}
             </button>
           )}
-          <button className="btn-ghost btn-sm" onClick={handleOpenFullPlan}>
-            View full plan
-          </button>
+          {proposal.status !== 'replaced' && (
+            <button className="btn-ghost btn-sm" onClick={handleOpenFullPlan}>
+              View full plan
+            </button>
+          )}
           {resolvedLabel && <span className="exercise__kicker ml-auto">{resolvedLabel}</span>}
         </div>
       </div>

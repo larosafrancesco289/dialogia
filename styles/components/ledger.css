@@ -48,10 +48,6 @@
     color: var(--color-fg-muted);
     border-radius: var(--radius-editorial);
   }
-  .response-ledger__toggle:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--focus-ring);
-  }
   .response-ledger__toggle:hover .response-ledger__title {
     color: color-mix(in oklab, var(--color-rubric) 70%, var(--color-fg));
   }
@@ -380,10 +376,6 @@
   }
   .response-ledger__sources-toggle:hover {
     color: var(--color-fg);
-  }
-  .response-ledger__sources-toggle:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--focus-ring);
   }
   .response-ledger__sources-toggle .response-ledger__chevron {
     align-self: center;
