@@ -153,6 +153,7 @@ export const MessageSchema = z
     finishReason: z.enum(['stop', 'tool_calls', 'length', 'content_filter']).optional(),
     stopPolicy: z.string().optional(),
     cutOff: z.enum(['stopped', 'failed', 'interrupted']).optional(),
+    cutOffReason: z.string().optional(),
     tokensIn: z.number().optional(),
     tokensOut: z.number().optional(),
     model: z.string().optional(),

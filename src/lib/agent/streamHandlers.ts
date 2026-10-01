@@ -340,6 +340,7 @@ export function createMessageStreamCallbacks(
         annotations: current?.annotations ?? extras?.annotations,
         finishReason: extras?.finishReason,
         cutOff: undefined,
+        cutOffReason: undefined,
         stopPolicy:
           extras?.finishReason === 'content_filter'
             ? extractStopPolicy(extras?.stopDetails)
@@ -365,10 +366,15 @@ export function createMessageStreamCallbacks(
       // Persist whatever partial content made it into the store so the user
       // does not lose it on reload after a failed stream, marked as cut off.
       const cutOff = isAbortLike(error) ? 'stopped' : 'failed';
-      applyMessageUpdate(set, chatId, assistantMessage.id, (msg) => ({ ...msg, cutOff }));
+      const noticeMessage = describeErrorNotice(error);
+      const cutOffReason = cutOff === 'failed' ? noticeMessage : undefined;
+      applyMessageUpdate(set, chatId, assistantMessage.id, (msg) => ({
+        ...msg,
+        cutOff,
+        cutOffReason,
+      }));
       persistCheckpoint(cutOff);
       turnFinished = true;
-      const noticeMessage = describeErrorNotice(error);
       if (noticeMessage) notify(get, noticeMessage);
       clearController?.();
     },

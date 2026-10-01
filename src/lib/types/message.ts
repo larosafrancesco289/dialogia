@@ -139,6 +139,9 @@ export type Message = {
   // request failed, or the page closed mid-stream (the checkpoint's mark,
   // cleared when the turn completes). Absent on a reply that finished.
   cutOff?: 'stopped' | 'failed' | 'interrupted';
+  // Why a failed reply failed, in the words its notice used, kept for after
+  // the notice is gone.
+  cutOffReason?: string;
   tokensIn?: number;
   tokensOut?: number;
   model?: string;
@@ -215,6 +218,7 @@ export type ReplyVersionKey =
   | 'finishReason'
   | 'stopPolicy'
   | 'cutOff'
+  | 'cutOffReason'
   | 'tokensIn'
   | 'tokensOut'
   | 'model'

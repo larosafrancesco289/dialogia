@@ -22,13 +22,17 @@ const NOTHING_WRITTEN_NOTES: Record<NonNullable<Message['cutOff']>, string> = {
  * `hasModuleContent` is a card standing in for words: that reply did begin.
  */
 export function replyEndingNote(
-  message: Pick<Message, 'content' | 'cutOff' | 'finishReason'>,
+  message: Pick<Message, 'content' | 'cutOff' | 'cutOffReason' | 'finishReason'>,
   hasModuleContent = false,
 ): string | undefined {
+  const withReason = (note: string) =>
+    message.cutOffReason ? `${note} ${message.cutOffReason}` : note;
   if (!message.content.trim()) {
-    return message.cutOff && !hasModuleContent ? NOTHING_WRITTEN_NOTES[message.cutOff] : undefined;
+    return message.cutOff && !hasModuleContent
+      ? withReason(NOTHING_WRITTEN_NOTES[message.cutOff])
+      : undefined;
   }
-  if (message.cutOff) return CUT_OFF_NOTES[message.cutOff];
+  if (message.cutOff) return withReason(CUT_OFF_NOTES[message.cutOff]);
   if (message.finishReason === 'length') return 'Stopped at the length limit.';
   return undefined;
 }
