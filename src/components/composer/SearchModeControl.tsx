@@ -4,25 +4,30 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { motionTransition } from '@/lib/ui/motion';
 import { searchModeLabel } from '@/lib/search/ui/labels';
 import { listSearchModeOptions } from '@/lib/search/ui/modes';
-import type { SearchMode } from '@/lib/search/providers/types';
+import { isNativeSearchMode, type SearchMode } from '@/lib/search/providers/types';
+import type { ProviderEndpoint } from '@/lib/transport/endpoints';
 import { useProviderKeys } from '@/lib/hooks/useProviderKeys';
 import { useDismissOnOutside } from '@/lib/hooks/useDismissOnOutside';
 import { ComposerToolLabel } from '@/components/composer/ComposerToolLabel';
 
 /**
  * The composer's web search button: a plain on/off toggle, or a menu of
- * search mechanisms when there is more than one to choose between.
+ * search mechanisms when there is more than one to choose between. Absent when
+ * the chosen model's endpoint can search in no way at all.
  */
 export function SearchModeControl({
   searchEnabled,
   searchProvider,
   toggleSearch,
   selectSearchMode,
+  endpoint,
 }: {
   searchEnabled: boolean;
   searchProvider: SearchMode;
   toggleSearch: () => void;
   selectSearchMode: (mode: SearchMode) => void;
+  /** Where the chosen model's requests go; undefined offers every mode. */
+  endpoint?: ProviderEndpoint;
 }) {
   const [searchMenuOpen, setSearchMenuOpen] = useState(false);
   const searchButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -46,8 +51,11 @@ export function SearchModeControl({
   const providerLabel = searchModeLabel(searchProvider);
   // With only provider-native search available there is nothing to choose
   // between, so the button stays a plain on/off toggle.
-  const searchModes = listSearchModeOptions();
-  const hasSearchChoice = searchModes.length > 1;
+  const searchModes = listSearchModeOptions(endpoint);
+  const hasSearchChoice = !(searchModes.length === 1 && isNativeSearchMode(searchModes[0].mode));
+
+  if (searchModes.length === 0) return null;
+  const stateLabel = `Web search: ${searchEnabled ? 'on' : 'off'} (${providerLabel})`;
 
   return (
     <div>
@@ -57,10 +65,8 @@ export function SearchModeControl({
         aria-pressed={hasSearchChoice ? undefined : searchEnabled}
         aria-haspopup={hasSearchChoice ? 'menu' : undefined}
         aria-expanded={hasSearchChoice ? searchMenuOpen : undefined}
-        aria-label="Web search"
-        title={
-          searchEnabled ? `Web search: on (${providerLabel})` : `Web search: off (${providerLabel})`
-        }
+        aria-label={stateLabel}
+        title={stateLabel}
         onClick={() => (hasSearchChoice ? setSearchMenuOpen((open) => !open) : toggleSearch())}
       >
         <GlobeAltIcon className="h-4 w-4" aria-hidden="true" />

@@ -28,3 +28,18 @@ test('formatModelLabel prefers a real name and only humanizes id-shaped ones', (
   // An Ollama tag is part of the name, not a provider prefix.
   assert.equal(formatModelLabel({ fallbackName: 'qwen3:32b' }), 'qwen3:32b');
 });
+
+test('a model id two servers both serve names its server', () => {
+  const local = {
+    id: 'endpoint:ollama/qwen3:8b',
+    name: 'qwen3:8b',
+    endpointId: 'ollama',
+    transportModelId: 'qwen3:8b',
+    providerDisplay: 'Ollama',
+  };
+  const lab = { ...local, id: 'endpoint:lab/qwen3:8b', endpointId: 'lab', providerDisplay: 'Lab' };
+  const other = { ...local, id: 'endpoint:lab/llama3', transportModelId: 'llama3' };
+  assert.equal(formatModelLabel({ model: local, among: [local, lab] }), 'qwen3:8b · Ollama');
+  assert.equal(formatModelLabel({ model: local, among: [local, other] }), 'qwen3:8b');
+  assert.equal(formatModelLabel({ model: local }), 'qwen3:8b');
+});

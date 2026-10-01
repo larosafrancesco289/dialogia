@@ -43,9 +43,9 @@ export function useMessageListController(args: {
 
   const saveEdit = useCallback(
     (messageId: string, content: string) => {
-      const text = content.trim();
-      if (!text) return;
-      const payload = content;
+      if (!content.trim()) return;
+      // Leading space can be meaning (an indented block); a trailing newline never is.
+      const payload = content.trimEnd();
       setEditingId(null);
       const role = messages.find((mm) => mm.id === messageId)?.role;
       if (role === 'assistant') {

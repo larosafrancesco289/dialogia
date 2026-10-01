@@ -113,6 +113,14 @@ export function endpointCapabilities(endpoint: ProviderEndpoint): Required<Endpo
   };
 }
 
+/**
+ * Provider-specific request fields (search plugins, routing, modalities) go to
+ * the built-ins only: a user's server is sent the plain OpenAI body.
+ */
+export function allowsProviderExtensions(endpoint: ProviderEndpoint): boolean {
+  return endpoint.kind !== 'openai-compatible';
+}
+
 /** A local OpenAI-compatible server (Ollama, LM Studio, llama.cpp) usually has no key. */
 export function allowsKeylessCalls(endpoint: ProviderEndpoint): boolean {
   return endpoint.kind === 'openai-compatible' && !!endpoint.baseUrl;
@@ -172,3 +180,16 @@ export function parseEndpointModelId(
 export function normalizeBaseUrl(value: string): string {
   return value.trim().replace(/\/+$/, '');
 }
+
+/** Anything but an absolute http(s) address would resolve against this page instead. */
+export function isValidBaseUrl(value: string): boolean {
+  try {
+    const { protocol } = new URL(value.trim());
+    return protocol === 'http:' || protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+export const INVALID_BASE_URL_MESSAGE =
+  'Enter the full address, starting with http:// or https://, e.g. http://localhost:11434/v1.';

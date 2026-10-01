@@ -25,6 +25,20 @@ export function isEndpointConnected(endpoint: ProviderEndpoint): boolean {
   return !!getKey(endpoint.apiKeyRef) || allowsKeylessCalls(endpoint);
 }
 
+/**
+ * The endpoint has a model to offer: a key, or a keyless server with at least
+ * one model, typed or listed. A server that answers with none can be called
+ * but offers nothing to chat with.
+ */
+export function isEndpointUsable(
+  endpoint: ProviderEndpoint,
+  models: readonly { endpointId?: string }[],
+): boolean {
+  if (getKey(endpoint.apiKeyRef)) return true;
+  if (!allowsKeylessCalls(endpoint)) return false;
+  return !!endpoint.modelIds?.length || models.some((model) => model.endpointId === endpoint.id);
+}
+
 export function requireEndpointAuth(endpoint: ProviderEndpoint): TransportAuth {
   if (!isEndpointConnected(endpoint)) throw missingProviderKey(endpoint);
   return buildTransportAuth({ endpoint, apiKey: getKey(endpoint.apiKeyRef) });

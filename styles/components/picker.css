@@ -128,8 +128,8 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  /* One line, always: what does not fit ends in an ellipsis rather than
-     wrapping the row onto a second line. Inline runs, not flex items, so the
+  /* One line (two on a phone, below): what does not fit ends in an ellipsis
+     rather than wrapping the row onto another line. Inline runs, not flex items, so the
      ellipsis falls on the text itself. */
   .model-row__meta {
     display: block;
@@ -148,6 +148,20 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  /* A phone is too narrow for one line to hold a note ("fast", "priciest"):
+     there it may take two before the ellipsis. */
+  @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
+    .model-row__meta {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      white-space: normal;
+    }
+    .model-row__note {
+      white-space: normal;
+    }
   }
   .model-row__match {
     background: transparent;
