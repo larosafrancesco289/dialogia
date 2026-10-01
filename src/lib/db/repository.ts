@@ -81,7 +81,29 @@ export type MemoryChange = {
   deleteNoteIds?: string[];
   deleteFolderIds?: string[];
   pass?: ConsolidationPass | null;
+  /**
+   * Rows that must still be stored exactly so (an Undo's view of them), read in
+   * the same transaction; otherwise nothing is written and it fails with
+   * `MemoryChangedError`.
+   */
+  expect?: Partial<MemorySnapshot>;
 };
+
+/** A memory change refused because a row it expected had changed since (another tab, say). */
+export class MemoryChangedError extends Error {
+  constructor() {
+    super('Memory changed since this change was planned.');
+    this.name = 'MemoryChangedError';
+  }
+}
+
+/** Rows alike field by field, since one read back from the database is a new object. */
+export function sameRow(a: object, b: object): boolean {
+  const fields = (row: object) => Object.entries(row).filter(([, value]) => value !== undefined);
+  const other = new Map(fields(b));
+  const own = fields(a);
+  return own.length === other.size && own.every(([key, value]) => other.get(key) === value);
+}
 
 /** Where the last consolidation is kept, so its Undo survives a reload. */
 const PASS_KEY = 'memory:lastConsolidation';
@@ -511,9 +533,20 @@ export function createRepository(db: DialogiaDbLike) {
     };
   };
 
-  /** Writes memory rows, deletes rows by id, and keeps the last consolidation, in one transaction. */
+  /**
+   * Writes memory rows, deletes rows by id, and keeps the last consolidation, in
+   * one transaction, after checking the rows the change expects.
+   */
   const writeMemory = async (change: MemoryChange) => {
     await runTransaction(db, [db.memoryFolders, db.memoryNotes, db.kv], async () => {
+      for (const row of change.expect?.folders ?? []) {
+        const stored = sanitizeMemoryFolder(await db.memoryFolders.get(row.id));
+        if (!stored || !sameRow(stored, row)) throw new MemoryChangedError();
+      }
+      for (const row of change.expect?.notes ?? []) {
+        const stored = sanitizeMemoryNote(await db.memoryNotes.get(row.id));
+        if (!stored || !sameRow(stored, row)) throw new MemoryChangedError();
+      }
       for (const folder of change.folders ?? []) await db.memoryFolders.put(folder);
       for (const note of change.notes ?? []) await db.memoryNotes.put(note);
       for (const id of change.deleteNoteIds ?? []) await db.memoryNotes.delete(id);

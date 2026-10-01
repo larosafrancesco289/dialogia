@@ -147,6 +147,40 @@ test('operations apply in order within the rules, and only what was done is said
   );
 });
 
+test('a rewrite, merge or description is kept to one short line, or skipped', () => {
+  const { change, lines } = applyOperations({
+    memory: memory(),
+    now: 50,
+    newId,
+    operations: [
+      {
+        op: 'rewrite',
+        note: noteHandle('maths-001'),
+        text: 'Likes worked\n\n## examples',
+        say: 'Tidied',
+      },
+      { op: 'rewrite', note: noteHandle('thesis-01'), text: 'x'.repeat(401), say: 'Too long' },
+      {
+        op: 'merge',
+        notes: [noteHandle('dietA-001'), noteHandle('dietB-002')],
+        text: 'y'.repeat(401),
+        say: 'Too long to merge',
+      },
+      { op: 'describe', folder: 'Projects', description: 'd'.repeat(161), say: 'Too long too' },
+      { op: 'new_folder', folder: 'Kitchen', description: 'Diet\nand cooking', say: 'Made' },
+    ],
+  });
+  assert.deepEqual(lines, ['Tidied', 'Made']);
+  assert.deepEqual(
+    change.notes!.map((n) => n.text),
+    ['Likes worked ## examples'],
+  );
+  assert.deepEqual(
+    change.folders!.map((f) => f.description),
+    ['Diet and cooking'],
+  );
+});
+
 test('a merge whose note has no folder is skipped', () => {
   const m = memory();
   const stray = note('stray-001', 'gone', 'Likes tea');

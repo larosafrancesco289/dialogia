@@ -5,7 +5,13 @@ import { SettingsDrawerShell } from '@/components/settings/SettingsDrawerShell';
 import { useChatStore } from '@/lib/store';
 import { useBackToClose } from '@/lib/hooks/useBackToClose';
 import { loadLearningRecords } from '@/lib/modules';
-import { FORGOTTEN_PAGE, forgottenNotes, notesIn, orderedFolders } from '@/lib/memory/notebook';
+import {
+  FORGOTTEN_PAGE,
+  forgottenNotes,
+  notesIn,
+  orderedFolders,
+  subfoldersOf,
+} from '@/lib/memory/notebook';
 import {
   MEMORY_ABOUT_FOLDER_ID,
   MEMORY_LEARNING_FOLDER_ID,
@@ -29,7 +35,7 @@ function FolderPage({
   records: LearningRecord[];
 }) {
   const own = notesIn(notes, folder.id);
-  const children = orderedFolders(folders).filter(({ folder: f }) => f.parentId === folder.id);
+  const children = subfoldersOf(folders, folder.id);
   const isLearning = folder.id === MEMORY_LEARNING_FOLDER_ID;
   const empty = !own.length && !children.length && !(isLearning && records.length);
   return (
@@ -45,7 +51,7 @@ function FolderPage({
         </p>
       )}
       <AddNote folderId={folder.id} />
-      {children.map(({ folder: child }) => (
+      {children.map((child) => (
         <section key={child.id} className="memory-child">
           <FolderHead folder={child} level={2} />
           <NoteList notes={notesIn(notes, child.id)} />
@@ -115,6 +121,8 @@ export function MemoryPage() {
   const chats = useChatStore((s) => s.chats);
   // Changes as a reply starts or ends here, which is when a tutor chat's progress moves.
   const turns = useChatStore((s) => s.ui.activeTurnByChatId);
+  // Changes when another tab moves it without a reply (a correction in the Hub, say).
+  const sessions = useChatStore((s) => s.tutorSessions);
   const [closing, setClosing] = useState(false);
   const [page, setPage] = useState(
     () => useChatStore.getState().ui.memoryFolderId ?? MEMORY_ABOUT_FOLDER_ID,
@@ -137,8 +145,9 @@ export function MemoryPage() {
   }, []);
 
   const onLearning = page === MEMORY_LEARNING_FOLDER_ID;
-  // Read again whenever the chats change, a reply ends or Learning is opened, so
-  // a tutor chat studied here or in another tab, renamed or deleted shows as it is now.
+  // Read again whenever the chats change, a reply ends, tutor progress moves or
+  // Learning is opened, so a tutor chat studied here or in another tab, renamed
+  // or deleted shows as it is now.
   useEffect(() => {
     let live = true;
     loadLearningRecords({ get: useChatStore.getState })
@@ -147,7 +156,7 @@ export function MemoryPage() {
     return () => {
       live = false;
     };
-  }, [chats, turns, onLearning]);
+  }, [chats, turns, sessions, onLearning]);
 
   const ordered = orderedFolders(folders);
   // A folder that has gone (another tab, a backup) leaves its page for the first one.
