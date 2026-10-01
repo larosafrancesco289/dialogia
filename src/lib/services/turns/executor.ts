@@ -145,7 +145,7 @@ export const executeModelTurn = async ({
       hooks: lifecycle.hooks,
     });
   } catch (error: unknown) {
-    handleTurnApiError(error, get);
+    handleTurnApiError(error, get, runtime.modelContexts.get(modelId)?.auth);
     controller.abort();
     await markUnfinished(error);
   } finally {

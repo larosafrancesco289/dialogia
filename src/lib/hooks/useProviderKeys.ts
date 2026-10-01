@@ -1,25 +1,37 @@
 import { useSyncExternalStore } from 'react';
 import { shallow } from 'zustand/shallow';
-import { describeKey, hasKey, keysRead, listKeyRefs, subscribeToKeys } from '@/lib/keys/store';
+import {
+  describeKey,
+  hasKey,
+  isKeyRejected,
+  keysRead,
+  listKeyRefs,
+  subscribeToKeys,
+} from '@/lib/keys/store';
 import { isEndpointUsable } from '@/lib/auth/require';
 import { useChatStore } from '@/lib/store';
 import { BUILT_IN_ENDPOINTS } from '@/lib/transport/endpoints';
 
 /**
- * Re-renders when a key is added or removed. The snapshot is the set of refs
+ * Re-renders when a key is added, removed or refused. The snapshot is the set of refs
  * that hold a key, never the key values — nothing in the React tree should be
  * able to read one by accident.
  */
 export function useProviderKeys(): {
   hasKey: (ref?: string) => boolean;
   describeKey: (ref?: string) => string | undefined;
+  isKeyRejected: (ref?: string) => boolean;
 } {
   useSyncExternalStore(
     subscribeToKeys,
-    () => listKeyRefs().sort().join('|'),
+    () =>
+      listKeyRefs()
+        .sort()
+        .map((ref) => (isKeyRejected(ref) ? `${ref}!` : ref))
+        .join('|'),
     () => '',
   );
-  return { hasKey, describeKey };
+  return { hasKey, describeKey, isKeyRejected };
 }
 
 /**

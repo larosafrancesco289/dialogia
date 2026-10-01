@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { loadLearningRecords } from '@/lib/modules';
 import { notesIn, subfoldersOf } from '@/lib/memory/notebook';
 import { noteLine } from '@/lib/memory/prompt';
+import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 import {
   alreadySaved,
   folderPath,
@@ -93,7 +94,8 @@ async function apply(plan: WritePlan, context: ToolExecutionContext) {
 }
 
 const saveMemory: PlanningToolHandler = async ({ parsedArgs, context }) => {
-  const { memory } = context.get();
+  const { memory, ui, chats } = context.get();
+  const chat = chats.find((c) => c.id === context.chatId);
   const replaces = text(parsedArgs.replaces) || undefined;
   // Saved already, in an earlier reply say: the model is told where, and nothing is copied.
   const saved = replaces ? undefined : alreadySaved(memory.notes, text(parsedArgs.note));
@@ -113,6 +115,7 @@ const saveMemory: PlanningToolHandler = async ({ parsedArgs, context }) => {
     replaces,
     newFolderDescription: text(parsedArgs.new_folder_description) || undefined,
     chatId: context.chatId,
+    tutorChat: !!chat && isTutorRuntimeEnabled(ui, chat),
     now: Date.now(),
     newId: uuidv4,
   });

@@ -23,7 +23,14 @@ import type { RenderSection } from '@/components/settings/types';
 import { refocusIfDropped } from '@/lib/ui/focus';
 
 function EndpointStatus({ endpoint }: { endpoint: ProviderEndpoint }) {
-  const { hasKey } = useProviderKeys();
+  const { hasKey, isKeyRejected } = useProviderKeys();
+  if (isKeyRejected(endpoint.apiKeyRef)) {
+    return (
+      <span className="text-xs" style={{ color: 'var(--color-danger)' }}>
+        The provider rejected this key. Paste a new one.
+      </span>
+    );
+  }
   if (hasKey(endpoint.apiKeyRef)) {
     return <span className="text-xs text-fg-muted">Using your key</span>;
   }

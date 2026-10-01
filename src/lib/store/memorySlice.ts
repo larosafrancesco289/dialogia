@@ -14,12 +14,14 @@ import {
   returningFolder,
 } from '@/lib/memory/notebook';
 import { swapWrite, undoChange } from '@/lib/memory/writes';
-import { sameMemory, undoPass } from '@/lib/memory/consolidate';
+import { sameMemory, undoPass, UNREADABLE_PLAN } from '@/lib/memory/consolidate';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
 import {
   NOTICE_CONSOLIDATION_FAILED,
   NOTICE_CONSOLIDATION_PARTLY_UNDONE,
   NOTICE_CONSOLIDATION_STALE,
+  NOTICE_CONSOLIDATION_UNDONE,
+  NOTICE_CONSOLIDATION_UNREADABLE,
   NOTICE_MEMORY_ALREADY_FORGOTTEN,
   NOTICE_MEMORY_CHANGED_SINCE,
   NOTICE_CONSOLIDATION_NO_MODEL,
@@ -284,16 +286,26 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
             get().setNotice(NOTICE_CONSOLIDATION_STALE);
             return;
           }
-          const { change, lines, undo } = plan;
+          const { change, lines, skipped, undo } = plan;
           const at = Date.now();
           const previous = get().memory.pass;
-          const pass: ConsolidationPass = lines.length
-            ? { at, lines, undo, ...(previous ? { previousAt: previous.at } : {}), shown: true }
-            : { at, lines, shown: true };
+          const pass: ConsolidationPass = {
+            at,
+            lines,
+            ...(skipped ? { skipped } : {}),
+            ...(lines.length ? { undo, ...(previous ? { previousAt: previous.at } : {}) } : {}),
+            shown: true,
+          };
           await changeMemory({ ...change, pass });
         } catch (error) {
-          const noModel = (error as { code?: unknown } | null)?.code === MISSING_PROVIDER_KEY;
-          get().setNotice(noModel ? NOTICE_CONSOLIDATION_NO_MODEL : NOTICE_CONSOLIDATION_FAILED);
+          const code = (error as { code?: unknown } | null)?.code;
+          get().setNotice(
+            code === MISSING_PROVIDER_KEY
+              ? NOTICE_CONSOLIDATION_NO_MODEL
+              : code === UNREADABLE_PLAN
+                ? NOTICE_CONSOLIDATION_UNREADABLE
+                : NOTICE_CONSOLIDATION_FAILED,
+          );
         } finally {
           set((s) => ({ memory: { ...s.memory, consolidating: false } }));
         }
@@ -309,7 +321,10 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
           // As if it never ran: the nudge counts from the pass before it.
           const back = pass.previousAt !== undefined ? { at: pass.previousAt, lines: [] } : null;
           if (await changeMemory({ ...change, pass: back })) {
-            if (skipped) get().setNotice(NOTICE_CONSOLIDATION_PARTLY_UNDONE, 'info');
+            get().setNotice(
+              skipped ? NOTICE_CONSOLIDATION_PARTLY_UNDONE : NOTICE_CONSOLIDATION_UNDONE,
+              'info',
+            );
             return;
           }
         }

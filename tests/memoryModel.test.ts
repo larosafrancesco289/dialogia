@@ -748,3 +748,48 @@ test('Undo marks the version clicked, even when another is shown before it finis
   assert.equal(saved.messages[0]?.content, 'First try', 'the reply as it is now is saved');
   assert.equal(saved.messages[0]?.versions?.[0]?.memoryWrites?.[0]?.undone, true);
 });
+
+test('memory_save into Learning, or a folder inside it, is refused outside a tutor chat', async () => {
+  const store = createTestStore();
+  await store.getState().loadMemory();
+  const reply = { id: 'reply-l', chatId: 'chat-l', role: 'assistant', content: '' } as Message;
+  store.setState((s) => ({
+    chats: [makeChat({ id: 'chat-l' })],
+    messagesById: { [reply.id]: reply },
+    messageIdsByChatId: { 'chat-l': [reply.id] },
+    ui: { ...s.ui, flags: { ...s.ui.flags, experimentalTutor: true } },
+  }));
+  const context = {
+    chatId: 'chat-l',
+    assistantMessage: reply,
+    set: store.setState,
+    get: store.getState,
+    logger: { start: () => ({ success: () => undefined, error: () => undefined }) },
+  } as unknown as ToolExecutionContext;
+  const save = (args: Record<string, unknown>) =>
+    getToolHandler('memory_save')!({
+      toolCall: { id: 's', type: 'function', function: { name: 'memory_save', arguments: '{}' } },
+      parsedArgs: args,
+      aggregatedResults: [],
+      context,
+    });
+
+  for (const folder of ['Learning', 'Learning/Scales']) {
+    const refused = await save({
+      folder,
+      note: 'Practises scales daily',
+      new_folder_description: 'Scales',
+    });
+    assert.equal(refused.result?.ok, false, folder);
+    assert.match(String(refused.result?.hint), /About you/);
+  }
+  assert.equal(store.getState().messagesById[reply.id].memoryWrites, undefined);
+
+  store.setState({
+    chats: [makeChat({ id: 'chat-l', settings: { features: { tutor: { enabled: true } } } })],
+  });
+  const kept = await save({ folder: 'Learning', note: 'Practises scales daily' });
+  assert.equal(kept.result?.ok, true);
+  const [write] = store.getState().messagesById[reply.id].memoryWrites!;
+  await store.getState().changeMemory({ deleteNoteIds: [write.noteId] });
+});
