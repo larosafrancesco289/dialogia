@@ -59,11 +59,6 @@
   color: var(--color-fg);
 }
 
-.close:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--focus-ring);
-}
-
 /* All pages share one cell, so the tallest sets the height for every page. */
 .pages {
   display: grid;
@@ -149,8 +144,6 @@
 }
 
 .link:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--focus-ring);
   border-radius: 2px;
 }
 
@@ -203,11 +196,6 @@
   transform: scale(1.25);
 }
 
-.dot:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--focus-ring);
-}
-
 .actions {
   display: flex;
   align-items: center;
@@ -216,7 +204,7 @@
 }
 
 @media (min-width: 768px) and (not ((pointer: coarse) and (max-height: 499px) and (max-width: 1023px))) {
-  /* The height desktop has always had, which every page fits. */
+  /* Desktop gives the card more room than the tallest page needs. */
   .page {
     min-height: 336px;
   }

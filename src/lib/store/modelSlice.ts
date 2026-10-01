@@ -10,7 +10,7 @@ import { createStoreSlice } from '@/lib/store/createSlice';
 import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
 import { getTransportClient } from '@/lib/transport/registry';
 import { listEndpoints } from '@/lib/transport/endpointRegistry';
-import { describeModelsUnavailable, NOTICE_INVALID_KEY } from '@/lib/store/notices';
+import { describeNoModelsOffered, NOTICE_INVALID_KEY } from '@/lib/store/notices';
 import { notify } from '@/lib/store/notify';
 import type { ModelDescriptor } from '@/lib/types';
 
@@ -133,7 +133,9 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
                 if (isApiError(error) && error.code === API_ERROR_CODES.UNAUTHORIZED) {
                   hadUnauthorizedFailure = true;
                   markKeyRejected(endpoint.apiKeyRef, auth.apiKey);
-                  noticeSegments.push(`${endpoint.label} models unavailable: invalid API key.`);
+                  noticeSegments.push(
+                    `${endpoint.label} models unavailable: the API key was rejected.`,
+                  );
                   return;
                 }
 
@@ -186,10 +188,7 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
             if (quietedRepeat) return;
             // Every endpoint answered, with no models and nothing to say why.
             if (!get().ui.notice) {
-              notify(
-                get,
-                describeModelsUnavailable(authEntries.map(([endpoint]) => endpoint.label)),
-              );
+              notify(get, describeNoModelsOffered(authEntries.map(([endpoint]) => endpoint.label)));
             }
             return;
           }

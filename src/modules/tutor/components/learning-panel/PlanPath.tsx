@@ -16,13 +16,6 @@ export function waitingOn(plan: LearningPlan, node: LearningPlanNode): string[] 
   return unmetPrerequisites(plan, node).map((p) => p.name);
 }
 
-/** "A", "A and B", "A, B and C". */
-export function listNames(names: string[]): string {
-  return names.length < 2
-    ? (names[0] ?? '')
-    : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-}
-
 /**
  * One step on the plan's path: a numbered stop on a line, a check once done,
  * a ring where the learner is. The line runs on to the next step in ink once

@@ -16,9 +16,9 @@ import { composeTurn } from '@/lib/agent/compose';
 import { createTurnLifecycle } from '@/lib/agent/orchestrator/lifecycle';
 import { runTurn } from '@/lib/agent/orchestrator/turn';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
-import { addVersion, hasOutput } from '@/lib/messages/versions';
+import { addVersion, hasOutput, isFinished } from '@/lib/messages/versions';
 import { withoutSearchEntry } from '@/lib/ui/messageSources';
-import { isAbortLike } from '@/lib/store/notices';
+import { cutOffFor } from '@/lib/store/notices';
 
 export async function regenerate(opts: RegenerateOptions): Promise<void> {
   const {
@@ -67,7 +67,7 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
   // disk: no copy of an attempt that failed or stopped before its first word,
   // marked or not, is saved over the original.
   const persistMessage: typeof turn.persistMessage = (message) =>
-    message.id === original.id && !message.metrics && !hasOutput(message)
+    message.id === original.id && !isFinished(message) && !hasOutput(message)
       ? Promise.resolve()
       : turn.persistMessage(message);
   const regenTurn = { ...turn, persistMessage };
@@ -150,7 +150,9 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
     if (current && !hasOutput(current)) {
       const shown: Message = hasOutput(original)
         ? original
-        : { ...current, cutOff: current.cutOff ?? (isAbortLike(error) ? 'stopped' : 'failed') };
+        : current.cutOff
+          ? current
+          : { ...current, ...cutOffFor(error) };
       set((state) => ({ messagesById: { ...state.messagesById, [original.id]: shown } }));
       if (shown !== original) await turn.persistMessage(shown).catch(() => undefined);
     }

@@ -38,6 +38,9 @@ export const hasOutput = (message: Pick<Message, ReplyVersionKey>): boolean =>
   !!message.toolCalls?.length ||
   !!message.attachments?.length;
 
+/** Whether the stream finished the reply: only a finished one carries metrics. */
+export const isFinished = (message: Pick<Message, 'metrics'>): boolean => !!message.metrics;
+
 /** The fields of a message that belong to its shown version. */
 export function versionOf(message: Message): ReplyVersion {
   const version: Record<string, unknown> = {};

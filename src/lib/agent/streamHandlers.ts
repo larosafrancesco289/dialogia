@@ -9,7 +9,7 @@ import { computeMetrics } from '@/lib/turns/runtime';
 import type { StreamCallbacks, StreamDoneExtras } from '@/lib/transport/types';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
 import { notify } from '@/lib/store/notify';
-import { NOTICE_SAVE_FAILED, describeErrorNotice, isAbortLike } from '@/lib/store/notices';
+import { NOTICE_SAVE_FAILED, cutOffFor } from '@/lib/store/notices';
 import { isRecord } from '@/lib/utils/guards';
 import { mergeAnnotations } from '@/lib/api/annotations';
 
@@ -365,17 +365,11 @@ export function createMessageStreamCallbacks(
       clearCheckpointTimer();
       // Persist whatever partial content made it into the store so the user
       // does not lose it on reload after a failed stream, marked as cut off.
-      const cutOff = isAbortLike(error) ? 'stopped' : 'failed';
-      const noticeMessage = describeErrorNotice(error);
-      const cutOffReason = cutOff === 'failed' ? noticeMessage : undefined;
-      applyMessageUpdate(set, chatId, assistantMessage.id, (msg) => ({
-        ...msg,
-        cutOff,
-        cutOffReason,
-      }));
-      persistCheckpoint(cutOff);
+      const marks = cutOffFor(error);
+      applyMessageUpdate(set, chatId, assistantMessage.id, (msg) => ({ ...msg, ...marks }));
+      persistCheckpoint(marks.cutOff);
       turnFinished = true;
-      if (noticeMessage) notify(get, noticeMessage);
+      if (marks.cutOffReason) notify(get, marks.cutOffReason);
       clearController?.();
     },
     discardPendingText: () => {

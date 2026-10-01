@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   refreshZdrListsIfNeeded,
   computeZdrFilterCached,
-  guardZdrOrNotifyCached,
+  guardZdrOrNotify,
   isZdrAllowedCached,
 } from '@/lib/policy/zdr/cache';
 import type { StoreGetter, StoreSetter } from '@/lib/agent/types';
@@ -64,7 +64,7 @@ test('refreshZdrListsIfNeeded refreshes when cache stale', async () => {
   assert.ok((state.zdrFetchedAt ?? 0) >= before && (state.zdrFetchedAt ?? 0) <= after);
 });
 
-test('guardZdrOrNotifyCached refreshes stale cache and posts notice when blocked', async () => {
+test('guardZdrOrNotify refreshes stale cache and posts notice when blocked', async () => {
   const { state, set, get } = createStore();
   state.zdrModelIds = [];
   state.zdrProviderIds = [];
@@ -72,7 +72,7 @@ test('guardZdrOrNotifyCached refreshes stale cache and posts notice when blocked
   state.ui = {} as any;
 
   const fetchers = createFetchers([], []);
-  const allowed = await guardZdrOrNotifyCached('provider/model', set, get, fetchers.fetchers);
+  const allowed = await guardZdrOrNotify('provider/model', set, get, fetchers.fetchers);
 
   assert.equal(allowed, false);
   assert.equal(fetchers.calls.lists, 1);

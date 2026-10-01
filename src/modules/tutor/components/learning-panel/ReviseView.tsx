@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { LearningPlan, LearningPlanNode } from '@/lib/types';
-import { listNames, PathStep, stepState, waitingOn, type StepState } from './PlanPath';
+import { listInProse } from '@/lib/utils/text';
+import { PathStep, stepState, waitingOn, type StepState } from './PlanPath';
 import { Markdown } from '@/components/Markdown';
 
 export type PlanRevisions = {
@@ -93,7 +94,7 @@ function ReviseItem({
       : state === 'current'
         ? 'In progress'
         : state === 'locked'
-          ? `Starts after ${listNames(waiting)}`
+          ? `Starts after ${listInProse(waiting)}`
           : 'Not started';
 
   return (

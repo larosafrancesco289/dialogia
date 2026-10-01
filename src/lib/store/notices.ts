@@ -2,7 +2,9 @@
 // Responsibility: Centralize user-facing notice messages used across slices and services.
 
 import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
+import type { Message } from '@/lib/types';
 import { isRecord } from '@/lib/utils/guards';
+import { listInProse } from '@/lib/utils/text';
 
 export const NOTICE_CATALOG = {
   invalidKey: 'That API key was rejected. Check it in Settings › Connections.',
@@ -10,9 +12,8 @@ export const NOTICE_CATALOG = {
   rateLimited: 'The provider is limiting requests. Wait a moment, then try again.',
   missingSearchKey: 'Add a web search key in Settings › Connections to use tool-based search.',
   searchUnavailable: 'Web search is unavailable for this chat; answering without it.',
-  modelsUnavailable: 'Could not load the model list.',
   unknownEndpoint:
-    'This chat uses a provider endpoint that no longer exists. Re-add it in Settings › Connections, or pick another model.',
+    'This chat uses a server that no longer exists. Add it again in Settings › Connections, or pick another model.',
   exportedChats: 'Exported chats to JSON',
   planApplyFailed: 'The plan could not be applied. Try again.',
   copyFailed: 'Could not copy: the browser blocked clipboard access.',
@@ -23,7 +24,7 @@ export const NOTICE_CATALOG = {
   consolidationFailed:
     'Memory could not be consolidated. Nothing was changed; try again in a moment.',
   consolidationUnreadable:
-    "This model couldn't make a plan. Nothing was changed. Try Consolidate with another model.",
+    'This model could not make a plan. Nothing was changed. Try Consolidate with another model.',
   consolidationUndone: 'Consolidation undone.',
   consolidationStale:
     'Memory changed while it was being consolidated, so nothing was changed. Consolidate again.',
@@ -46,19 +47,15 @@ const ATTACHMENT_KIND_LABELS: Record<string, string> = {
 /** Attachments the chosen model cannot read are removed; say so rather than silently sending less. */
 export function describeDroppedAttachments(kinds: string[]): string {
   const labels = kinds.map((kind) => ATTACHMENT_KIND_LABELS[kind] ?? kind);
-  const list =
-    labels.length > 1
-      ? `${labels.slice(0, -1).join(', ')} and ${labels.at(-1)}`
-      : (labels[0] ?? '');
+  const list = listInProse(labels);
   // Audio alone is one thing; every other kind, and any list, is several.
   const verb = labels.length === 1 && kinds[0] === 'audio' ? 'was' : 'were';
   return `${list.charAt(0).toUpperCase()}${list.slice(1)} ${verb} left out: this model does not accept them.`;
 }
 
 /** An empty model list names where it was asked for, so the person knows which server to check. */
-export function describeModelsUnavailable(labels: string[]): string {
-  const base = NOTICE_CATALOG.modelsUnavailable;
-  return labels.length ? `${base.slice(0, -1)} from ${labels.join(', ')}.` : base;
+export function describeNoModelsOffered(labels: string[]): string {
+  return `${listInProse(labels)} offered no models.`;
 }
 
 export function resolveNotice(notice?: NoticeId | string): string | undefined {
@@ -77,6 +74,12 @@ export function isAbortLike(error: unknown): boolean {
     if (cause && cause !== error) return isAbortLike(cause);
   }
   return false;
+}
+
+/** How a reply that ended on `error` is marked: stopped by the person, or failed and why. */
+export function cutOffFor(error: unknown): Pick<Message, 'cutOff' | 'cutOffReason'> {
+  if (isAbortLike(error)) return { cutOff: 'stopped', cutOffReason: undefined };
+  return { cutOff: 'failed', cutOffReason: describeErrorNotice(error) };
 }
 
 /**

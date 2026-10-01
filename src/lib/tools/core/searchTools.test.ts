@@ -133,7 +133,7 @@ async function searchWith(searchProvider: string): Promise<string> {
 test('a failed search reaches the model as a failure, not as an empty result', async () => {
   const failed = JSON.parse(await searchWith('refused-search'));
   assert.equal(failed.ok, false);
-  assert.equal(failed.error, 'The search failed: The provider did not accept the key.');
+  assert.equal(failed.error, 'The provider did not accept the key.');
   assert.ok(failed.hint);
   assert.deepEqual(JSON.parse(await searchWith('empty-search')), []);
 });

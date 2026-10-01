@@ -103,44 +103,41 @@ export async function computeZdrFilterCached<T extends { id?: string }, S extend
   get: StoreGetter<S>,
   fetchers?: ZdrFetchers,
 ): Promise<EnsureListsResult<T>> {
-  const snapshot = getZdrCacheSnapshot(get);
-  const lists = fetchers
-    ? await refreshZdrListsIfNeeded(set, get, fetchers)
-    : {
-        modelIds: toSet(snapshot.modelIds),
-        providerIds: toSet(snapshot.providerIds),
-      };
+  const lists = fetchers ? await refreshZdrListsIfNeeded(set, get, fetchers) : cachedLists(get);
   const filter = filterZdrModels(models, lists);
   const filtered = mode === 'enforce' ? filter.models : models;
   return { lists, filter, filtered };
 }
 
-export async function guardZdrOrNotifyCached<S extends ZdrCacheState>(
+function cachedLists<S extends ZdrCacheState>(get: StoreGetter<S>): ZdrLists {
+  const snapshot = getZdrCacheSnapshot(get);
+  return { modelIds: toSet(snapshot.modelIds), providerIds: toSet(snapshot.providerIds) };
+}
+
+/** Refreshes the lists first when given fetchers; otherwise reads the cached ones. */
+export async function guardZdrOrNotify<S extends ZdrCacheState>(
   modelId: string,
   set: StoreSetter<S>,
   get: StoreGetter<S>,
   fetchers?: ZdrFetchers,
 ): Promise<boolean> {
-  if (!fetchers) return guardZdrOrNotify(modelId, set, get);
-  const result = await computeZdrFilterCached([{ id: modelId }], 'enforce', set, get, fetchers);
-  return guardModelOrNotice(
-    modelId,
-    set,
-    result.lists,
-    get().setNotice,
-    zdrModelName(modelId, get),
-  );
+  const lists = fetchers ? await refreshZdrListsIfNeeded(set, get, fetchers) : cachedLists(get);
+  return guardModelOrNotice(modelId, set, lists, get().setNotice, zdrModelName(modelId, get));
 }
 
 /** The cached lists only, so it answers before the composer lets go of the draft. */
-export function guardZdrOrNotify<S extends ZdrCacheState>(
+export function guardZdrOrNotifyCached<S extends ZdrCacheState>(
   modelId: string,
   set: StoreSetter<S>,
   get: StoreGetter<S>,
 ): boolean {
-  const snapshot = getZdrCacheSnapshot(get);
-  const lists = { modelIds: toSet(snapshot.modelIds), providerIds: toSet(snapshot.providerIds) };
-  return guardModelOrNotice(modelId, set, lists, get().setNotice, zdrModelName(modelId, get));
+  return guardModelOrNotice(
+    modelId,
+    set,
+    cachedLists(get),
+    get().setNotice,
+    zdrModelName(modelId, get),
+  );
 }
 
 function zdrModelName<S extends ZdrCacheState>(modelId: string, get: StoreGetter<S>): string {
@@ -155,7 +152,5 @@ export function isZdrAllowedCached<S extends ZdrCacheState>(
   modelId: string,
   get: StoreGetter<S>,
 ): boolean {
-  const snapshot = getZdrCacheSnapshot(get);
-  const lists = { modelIds: toSet(snapshot.modelIds), providerIds: toSet(snapshot.providerIds) };
-  return evaluateZdrModel(modelId, lists).status === 'allowed';
+  return evaluateZdrModel(modelId, cachedLists(get)).status === 'allowed';
 }

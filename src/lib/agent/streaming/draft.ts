@@ -24,7 +24,7 @@ export function looksIncomplete(
   if (fences && fences.length % 2 === 1) return true;
   if (/[([{]$/.test(trimmed)) return true;
   if (/[,:;-]$/.test(trimmed)) return true;
-  return endsMidSentence(trimmed);
+  return false;
 }
 
 // A list item, heading, quote, table row or indented code: lines that end on a
@@ -34,12 +34,12 @@ const NOT_PROSE_RE = /^(?: {4}|\t|\s*(?:[-*+>#|]|\d+[.)](?:\s|$)))|\|/;
 /**
  * A last paragraph of one line of prose, several words long, that stops on a
  * plain word: the sentence was never finished. Kept narrow, since a false
- * positive costs a retry: a short answer ("Paris"), verse (lines inside one
+ * positive keeps a Stop from ending the reply: a short answer ("Paris"), verse (lines inside one
  * paragraph), and a line ending in a link, a version, a mark or a symbol all
  * read as whole.
  */
-function endsMidSentence(text: string): boolean {
-  const lines = text.split('\n');
+export function endsMidSentence(text: string): boolean {
+  const lines = text.trim().split('\n');
   const last = lines[lines.length - 1] ?? '';
   if (lines.length > 1 && lines[lines.length - 2]?.trim()) return false;
   if (NOT_PROSE_RE.test(last)) return false;

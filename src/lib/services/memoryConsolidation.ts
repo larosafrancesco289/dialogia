@@ -15,7 +15,7 @@ import {
   UNREADABLE_PLAN,
 } from '@/lib/memory/consolidate';
 import { stripThinkBlock } from '@/lib/openrouter/thinkTags';
-import { guardZdrOrNotifyCached } from '@/lib/policy/zdr/cache';
+import { guardZdrOrNotify } from '@/lib/policy/zdr/cache';
 import { enforceZdrGate } from '@/lib/policy/runtime';
 import type { StoreGetter, StoreSetter } from '@/lib/store/types';
 import { v4 as uuidv4 } from 'uuid';
@@ -37,9 +37,7 @@ export async function planConsolidation(
   const before: MemorySnapshot = { folders: state.memory.folders, notes: state.memory.notes };
   const modelId = consolidationModelId(state);
   const auth = requireModelAuth(modelId, state.modelIndex);
-  const allowed = await enforceZdrGate(state.ui, [modelId], (id) =>
-    guardZdrOrNotifyCached(id, set, get),
-  );
+  const allowed = await enforceZdrGate(state.ui, [modelId], (id) => guardZdrOrNotify(id, set, get));
   if (!allowed) return undefined;
 
   const controller = new AbortController();

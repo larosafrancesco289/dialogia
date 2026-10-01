@@ -15,7 +15,7 @@ import {
   marginChanges,
   marginReason,
   readableNote,
-  seamOpenAt,
+  seamOpen,
 } from '@/modules/tutor/ui/messageViews';
 
 const session = (h: ReturnType<typeof harness>) => ({
@@ -245,9 +245,10 @@ test('a chapter break stays open through a correction at the seam, until somethi
   const h = teaching();
   master(h);
   h.tutor({ type: 'complete_topic', how: 'mastered' }, 'reply-1');
-  const open = () => seamOpenAt({ ...session(h), events: [...h.events] }, 'reply-1');
+  const open = (messageId = 'reply-1') =>
+    seamOpen(effectsByMessage([...h.events]).get(messageId)?.completed, h.state.phase);
   assert.equal(open(), true);
-  assert.equal(seamOpenAt(session(h), 'reply-0'), false, 'a message without a break');
+  assert.equal(open('reply-0'), false, 'a message without a break');
 
   // "Too high" on the margin note: a correction is no choice at the seam.
   h.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.65 });

@@ -108,7 +108,7 @@ export function toZdrState(
 }
 
 export function getZdrBlockNotice(modelName: string): string {
-  return `${modelName} doesn't promise zero data retention. Pick another model, or turn off Zero data retention only in Settings › Models.`;
+  return `${modelName} does not promise zero data retention. Pick another model, or turn off Zero data retention only in Settings › Models.`;
 }
 
 export const ZDR_UNAVAILABLE_NOTICE =

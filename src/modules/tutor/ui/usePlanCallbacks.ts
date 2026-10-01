@@ -12,7 +12,7 @@ import {
 import type { TutorDispatchResult } from '@/modules/tutor/store/tutorSlice';
 import { LEDGER } from '@/modules/tutor/lib/ledger';
 import { useLedger } from '@/modules/tutor/ui/ledger';
-import { saidEstimateFelt, seamOpenAt } from '@/modules/tutor/ui/messageViews';
+import { effectsByMessage, saidEstimateFelt, seamOpen } from '@/modules/tutor/ui/messageViews';
 import { useTutorSession } from '@/modules/tutor/ui/useTutorSession';
 
 type PlanProgress = { completed: number; total: number; percentComplete: number };
@@ -179,7 +179,11 @@ export function usePlanCallbacks(): PlanCallbacks {
     const store = useChatStore.getState();
     const latest = selectMessagesForCurrentChat(store).at(-1);
     const current = chatId ? store.tutorSessions[chatId] : undefined;
-    return !!latest && !!current && seamOpenAt(current, latest.id);
+    if (!latest || !current) return false;
+    return seamOpen(
+      effectsByMessage(current.events).get(latest.id)?.completed,
+      current.state.phase,
+    );
   }, [chatId]);
 
   const onContestMastery = useCallback(

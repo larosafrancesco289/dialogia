@@ -35,11 +35,11 @@ export function useProviderKeys(): {
 }
 
 /**
- * Whether any provider has a model to offer: one holds a key, or is a keyless
- * server with a model. True until the keys have been read, so an app that is
- * connected never flashes its setup state while it starts.
+ * Whether any provider or server has a model to offer: one holds a key, or is
+ * a keyless server with a model. True until the keys have been read, so an app
+ * that is connected never flashes its setup state while it starts.
  */
-export function useAnyProviderConnected(): boolean {
+export function useAnyModelOffered(): boolean {
   const { customEndpoints, models } = useChatStore(
     (s) => ({ customEndpoints: s.customEndpoints, models: s.models }),
     shallow,

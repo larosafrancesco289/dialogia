@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { looksIncomplete } from '@/lib/agent/streaming/draft';
+import { endsMidSentence, looksIncomplete } from '@/lib/agent/streaming/draft';
 
 test('looksIncomplete treats empty and length-capped replies as unfinished', () => {
   assert.equal(looksIncomplete(''), true);
@@ -23,16 +23,18 @@ test('looksIncomplete spots dangling fences, brackets and narrated tool calls', 
 test('looksIncomplete accepts a finished reply', () => {
   assert.equal(looksIncomplete('Solve x + 2 = 5. What is x?'), false);
   assert.equal(looksIncomplete('```ts\nconst x = 1;\n```\nDone.'), false);
+  // Ending on a word costs no retry: that judgement is only for a Stop.
+  assert.equal(looksIncomplete('It was released in the spring of 2024'), false);
 });
 
-test('looksIncomplete spots prose that stops mid-sentence', () => {
-  assert.equal(looksIncomplete('The answer is 42, and the reason it matters is that'), true);
-  assert.equal(looksIncomplete('First, a summary.\n\nThe key point here is that the'), true);
-  assert.equal(looksIncomplete('It was released in the spring of 2024'), true);
-  assert.equal(looksIncomplete('Il motivo principale è che la'), true);
+test('endsMidSentence spots prose that stops mid-sentence', () => {
+  assert.equal(endsMidSentence('The answer is 42, and the reason it matters is that'), true);
+  assert.equal(endsMidSentence('First, a summary.\n\nThe key point here is that the'), true);
+  assert.equal(endsMidSentence('It was released in the spring of 2024'), true);
+  assert.equal(endsMidSentence('Il motivo principale è che la'), true);
 });
 
-test('looksIncomplete reads lines that end on a word by design as whole', () => {
+test('endsMidSentence reads lines that end on a word by design as whole', () => {
   const whole = [
     // Short answers.
     'Paris',
@@ -65,5 +67,5 @@ test('looksIncomplete reads lines that end on a word by design as whole', () => 
     // No spaces between words: too little to judge.
     '这是一个完整的回答没有标点',
   ];
-  for (const text of whole) assert.equal(looksIncomplete(text), false, text);
+  for (const text of whole) assert.equal(endsMidSentence(text), false, text);
 });

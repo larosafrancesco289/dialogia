@@ -18,7 +18,8 @@ import {
   type TutorEvent,
 } from '@/modules/tutor/engine';
 import type { TutorSession } from '@/modules/tutor/store/tutorSlice';
-import { countWord, joinSentences, listInProse } from '@/modules/tutor/lib/text';
+import { listInProse } from '@/lib/utils/text';
+import { countWord, joinSentences } from '@/modules/tutor/lib/text';
 
 export type ProposalView = {
   proposalId: string;
@@ -321,13 +322,14 @@ export function effectsByMessage(events: readonly TutorEvent[]): Map<string, Mes
 }
 
 /**
- * Whether the message's chapter break is still the learner's to answer:
- * nothing started or taken up again since, and the plan between topics.
- * The break is live only while it is also the newest message.
+ * Whether a chapter break is still the learner's to answer: nothing started
+ * or taken up again since, and the plan between topics. The break is live
+ * only while it is also the newest message.
  */
-export function seamOpenAt(session: TutorSession, messageId: string): boolean {
-  const completed = effectsByMessage(session.events).get(messageId)?.completed;
-  const { phase } = session.state;
+export function seamOpen(
+  completed: Completion | undefined,
+  phase: TutorSession['state']['phase'],
+): boolean {
   return (
     !!completed &&
     !completed.reopened &&

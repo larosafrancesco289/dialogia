@@ -30,11 +30,17 @@ test('evaluateZdrModel prefers the model list, then the provider list', () => {
 
 test('guardModelOrNotice blocks a disallowed provider with a notice and caches the lists', () => {
   const { state, set } = createTestStoreState();
-  const allowed = guardModelOrNotice('other/model', set, lists([], ['provider']), state.setNotice);
+  const allowed = guardModelOrNotice(
+    'other/model',
+    set,
+    lists([], ['provider']),
+    state.setNotice,
+    'Other Model',
+  );
   assert.equal(allowed, false);
   assert.equal(
     state.ui.notice,
-    "Model doesn't promise zero data retention. Pick another model, or turn off Zero data retention only in Settings › Models.",
+    'Other Model does not promise zero data retention. Pick another model, or turn off Zero data retention only in Settings › Models.',
   );
   assert.deepEqual(state.zdrProviderIds, ['provider']);
 });
@@ -46,6 +52,7 @@ test('guardModelOrNotice passes allowed models through without a notice', () => 
     set,
     lists(['provider/model'], []),
     state.setNotice,
+    'Model',
   );
   assert.equal(allowed, true);
   assert.deepEqual(state.zdrModelIds, ['provider/model']);
@@ -54,7 +61,7 @@ test('guardModelOrNotice passes allowed models through without a notice', () => 
 
 test('guardModelOrNotice refuses a missing model id', () => {
   const { state, set } = createTestStoreState();
-  const allowed = guardModelOrNotice(' ', set, lists(['provider/model'], []), state.setNotice);
+  const allowed = guardModelOrNotice(' ', set, lists(['provider/model'], []), state.setNotice, '');
   assert.equal(allowed, false);
   assert.equal(state.ui.notice, ZDR_UNAVAILABLE_NOTICE);
 });

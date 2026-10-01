@@ -9,7 +9,7 @@ import type { StoreGetter as StoreStateGetter } from '@/lib/store/stateTypes';
 import { applyModuleSettingsDefaults } from '@/lib/settings/moduleDefaults';
 import { regenerate } from '@/lib/agent/regenerate';
 import { isUntitledChat } from '@/lib/services/chatService';
-import { guardZdrOrNotifyCached, isZdrAllowedCached } from '@/lib/policy/zdr/cache';
+import { guardZdrOrNotify, isZdrAllowedCached } from '@/lib/policy/zdr/cache';
 import { clearTurnController, setTurnController } from '@/lib/turns/runtime';
 import { prepareSendRuntime } from '@/lib/turns/runtime';
 import { spawnTurnMessages } from '@/lib/services/turns/spawn';
@@ -104,7 +104,7 @@ export async function sendUserTurn({
   if (!activeModelIds.length || !primaryModelId) return;
 
   const zdrAllowed = await enforceZdrGate(ui, modelContexts.keys(), (modelId) =>
-    guardZdrOrNotifyCached(modelId, set, get),
+    guardZdrOrNotify(modelId, set, get),
   );
   if (!zdrAllowed) return;
   if (mayStart && !mayStart()) return;
@@ -250,7 +250,7 @@ export async function regenerateTurn({
   });
   if (!targetAuth) return;
   const canUseModel = await enforceZdrGate(get().ui, [targetModel], (modelId) =>
-    guardZdrOrNotifyCached(modelId, set, get),
+    guardZdrOrNotify(modelId, set, get),
   );
   if (!canUseModel) return;
 
