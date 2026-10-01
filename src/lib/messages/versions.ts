@@ -17,6 +17,7 @@ const VERSION_KEYS = Object.keys({
   finishReason: true,
   stopPolicy: true,
   cutOff: true,
+  cutOffReason: true,
   tokensIn: true,
   tokensOut: true,
   model: true,

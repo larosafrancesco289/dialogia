@@ -49,3 +49,16 @@ test('the end of a reply is announced by how it ended', () => {
   );
   assert.equal(replyOutcomeAnnouncement(undefined), 'Response complete');
 });
+
+test('a failed reply keeps saying why once its notice is gone', () => {
+  const reason = 'That API key has expired. Add a new one in Settings › Connections.';
+  assert.equal(
+    replyEndingNote({ content: '', cutOff: 'failed', cutOffReason: reason }),
+    `This reply failed before it started. ${reason}`,
+  );
+  assert.equal(
+    replyEndingNote({ content: 'Half an answer', cutOff: 'failed', cutOffReason: reason }),
+    `Cut off by an error before the end. ${reason}`,
+  );
+  assert.equal(replyEndingNote({ content: 'Half', cutOff: 'stopped' }), 'Stopped before the end.');
+});

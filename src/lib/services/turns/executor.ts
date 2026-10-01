@@ -13,7 +13,7 @@ import type { Chat, Message, PersistedAttachment } from '@/lib/types';
 import type { StoreGetter, StoreSetter } from '@/lib/agent/types';
 import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { resolveTurnSettings } from '@/lib/settings/resolve';
-import { isAbortLike } from '@/lib/store/notices';
+import { describeErrorNotice, isAbortLike } from '@/lib/store/notices';
 
 export type ExecuteModelTurnArgs = {
   modelId: string;
@@ -74,7 +74,11 @@ export const executeModelTurn = async ({
   const markUnfinished = async (error: unknown) => {
     const current = get().messagesById[assistantMessage.id];
     if (!current || current.cutOff || current.metrics) return;
-    updateMessage(assistantMessage.id, { cutOff: isAbortLike(error) ? 'stopped' : 'failed' });
+    const cutOff = isAbortLike(error) ? 'stopped' : 'failed';
+    updateMessage(assistantMessage.id, {
+      cutOff,
+      cutOffReason: cutOff === 'failed' ? describeErrorNotice(error) : undefined,
+    });
     const marked = get().messagesById[assistantMessage.id];
     if (marked) await persistMessage(marked).catch(() => undefined);
   };
