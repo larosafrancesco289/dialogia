@@ -13,6 +13,7 @@ import type { StreamCallbacks } from '@/lib/transport/types';
 import { missingBuiltInFolders } from '@/lib/memory/notebook';
 import { registerMemoryTools } from '@/lib/tools/core/memoryTools';
 import { MEMORY_TOOLS } from '@/lib/tools/definitions/memory';
+import { registerTool } from '@/lib/tools/registry';
 import { createTestStoreState } from '../../../../tests/helpers/createTestStoreState';
 import { makeChat } from '../../../../tests/helpers/makeChat';
 
@@ -24,6 +25,23 @@ const TOOLS: ToolDefinition[] = ['advance_topic', 'quiz'].map((name) => ({
 }));
 
 registerMemoryTools();
+
+// A tool whose handler throws, as a failing database write would.
+const BROKEN: ToolDefinition = {
+  type: 'function',
+  function: {
+    name: 'broken',
+    description: 'broken',
+    parameters: { type: 'object', properties: {} },
+  },
+};
+registerTool('broken', {
+  definition: BROKEN,
+  metadata: { module: 'core', kind: 'action' },
+  handler: async () => {
+    throw new Error('The database is full');
+  },
+});
 
 const OPENROUTER_MODEL: ModelDescriptor = {
   id: 'provider/model',
@@ -471,4 +489,18 @@ test('executeStreamingTurn closes with tools withheld when an unoffered call fol
   assert.deepEqual(run.toolChoices, ['auto', 'none']);
   assert.equal(run.visibleAtStart[1], '');
   assert.equal(run.lastPersisted?.content, ANSWER);
+});
+
+test('executeStreamingTurn ends the reply as failed when a tool throws', async () => {
+  const run = await runTurn({
+    tools: [...TOOLS, BROKEN],
+    rounds: [draftThenTool('Checking.', 'broken'), finish(ANSWER)],
+    settle: true,
+  });
+
+  assert.equal((run.error as Error | undefined)?.message, 'The database is full');
+  assert.equal(run.calls, 1);
+  // The UI callbacks heard of it: the reply is marked, saved, and its stream state settled.
+  assert.equal(run.lastPersisted?.cutOff, 'failed');
+  assert.ok(!run.lastPersisted?.toolCalls?.some((entry) => entry.status === 'pending'));
 });

@@ -33,10 +33,12 @@ import {
   createUiCallbacks,
   emitPlanResult,
   finalSystemFor,
+  markStreamErrors,
   offeredToolNames,
   openSession,
   preLogToolCalls,
   scheduleTools,
+  settleFailedTurn,
   type StreamingTurnOptions,
   type StreamingTurnResult,
   type TurnSession,
@@ -101,11 +103,7 @@ export async function executeStreamingTurn(
       if (closing) break;
     }
   } catch (error) {
-    // A stopped or failed stream saved the reply before this; a call it had
-    // begun must not read "Running" for good, there or after a reload.
-    removeOrphanPendingToolCalls({ set: opts.turn.set, chatId: opts.chatId, messageId });
-    const current = opts.turn.get().messagesById[messageId];
-    if (current) await opts.turn.persistMessage(current).catch(() => undefined);
+    await settleFailedTurn(session, ui, error);
     throw error;
   }
   removeOrphanPendingToolCalls({ set: opts.turn.set, chatId: opts.chatId, messageId });
@@ -164,6 +162,7 @@ async function streamRound(
   callbacks.onError = (error) => {
     if (!stoppedWhole()) ui.onError?.(error);
   };
+  const streamError = markStreamErrors(callbacks);
   try {
     await executeStreamCall(session.call, {
       messages: applyCacheBreakpoints(
@@ -175,7 +174,7 @@ async function streamRound(
       round,
     });
   } catch (error) {
-    if (!stoppedWhole()) throw error;
+    if (!stoppedWhole()) throw streamError(error);
     capture.finishReason = 'stop';
   }
   return capture;

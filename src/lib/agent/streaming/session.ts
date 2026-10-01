@@ -2,7 +2,8 @@
 // Responsibility: The state a streaming turn carries between rounds, and the
 // helpers both turn loops (the default loop, which clears a round's text when
 // it calls tools, and the visible agent loop) share: opening the session,
-// scheduling tools, pre-logging calls, the UI callbacks, and the turn's result.
+// scheduling tools, pre-logging calls, the UI callbacks, a failed turn's
+// cleanup, and the turn's result.
 
 import {
   createMessageStreamCallbacks,
@@ -10,7 +11,13 @@ import {
 } from '@/lib/agent/streamHandlers';
 import { isToolCallingSupported } from '@/lib/models';
 import { logger } from '@/lib/logger';
-import { clearTurnController, startToolCallLogEntry } from '@/lib/turns/runtime';
+import {
+  clearTurnController,
+  removeOrphanPendingToolCalls,
+  settlePendingToolCalls,
+  startToolCallLogEntry,
+} from '@/lib/turns/runtime';
+import { TOOL_CALL_STOPPED } from '@/lib/constants';
 import { getToolLogCategory } from '@/lib/tools';
 import { formatSourcesBlock } from '@/lib/search';
 import { combineSystem } from '@/lib/agent/system';
@@ -231,4 +238,76 @@ export function emitPlanResult(session: TurnSession, finalSystem: string): PlanT
 
 export function buildResult(session: TurnSession, finalSystem: string): StreamingTurnResult {
   return buildPlanResult(session, finalSystem);
+}
+
+// ── Errors ──────────────────────────────────────────────────────────────────
+
+const STREAM_ERROR = Symbol('streamError');
+
+/**
+ * Tags errors a stream already reported through its onError, so the loop does
+ * not report a stop twice (the UI callbacks persist and notify on onError).
+ */
+export function markStreamErrors(callbacks: { onError?: (error: Error) => void }) {
+  let reported = false;
+  const forward = callbacks.onError;
+  callbacks.onError = (error) => {
+    reported = true;
+    forward?.(error);
+  };
+  return (error: unknown) => {
+    if (reported && error && typeof error === 'object') {
+      (error as Record<symbol, unknown>)[STREAM_ERROR] = true;
+    }
+    return error;
+  };
+}
+
+function isStreamError(error: unknown): boolean {
+  return (
+    !!error &&
+    typeof error === 'object' &&
+    (error as Record<symbol, unknown>)[STREAM_ERROR] === true
+  );
+}
+
+export function abortError(): Error {
+  const error = new Error('The turn was stopped.');
+  error.name = 'AbortError';
+  return error;
+}
+
+/**
+ * A stream that fails or is stopped has already told the UI callbacks, which
+ * persist what streamed; anything else (a stop between rounds, a tool that
+ * threw) is reported to them here, so the reply flushes and its checkpoint
+ * timer stops. Either way the ledger must not keep spinning.
+ */
+export async function settleFailedTurn(
+  session: TurnSession,
+  ui: MessageStreamCallbacks,
+  error: unknown,
+): Promise<void> {
+  const { turn, chatId, assistantMessage, controller } = session.opts;
+  const messageId = assistantMessage.id;
+  removeOrphanPendingToolCalls({ set: turn.set, chatId, messageId });
+  settlePendingToolCalls({
+    set: turn.set,
+    chatId,
+    messageId,
+    error: controller.signal.aborted ? TOOL_CALL_STOPPED : 'The turn failed before this call ran',
+  });
+  if (!isStreamError(error)) {
+    ui.onError?.(
+      controller.signal.aborted
+        ? abortError()
+        : error instanceof Error
+          ? error
+          : new Error(String(error)),
+    );
+    return;
+  }
+  // The stream's own onError saved the message before the ledger settled.
+  const current = turn.get().messagesById[messageId];
+  if (current) await turn.persistMessage(current).catch(() => undefined);
 }
