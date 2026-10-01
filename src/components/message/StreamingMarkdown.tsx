@@ -21,7 +21,7 @@ export function StreamingMarkdown({
   /** True while the reply is still arriving. */
   streaming: boolean;
 }) {
-  const blocks = useMemo(() => markdownRenderBlocks(content), [content]);
+  const blocks = useMemo(() => markdownRenderBlocks(content, streaming), [content, streaming]);
   if (!content) return null;
   return (
     <>

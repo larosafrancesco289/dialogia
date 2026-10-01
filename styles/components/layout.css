@@ -10,6 +10,9 @@
 
   .message-list {
     --chat-measure: min(100%, 46rem);
+    /* A classic scrollbar appearing would shift the column sideways mid-reply;
+       reserving it on both edges also centres the column under the composer. */
+    scrollbar-gutter: stable both-edges;
     background: transparent;
     padding: var(--space-4);
     /* Keep the last turn readable behind the overlaid desktop composer. */
