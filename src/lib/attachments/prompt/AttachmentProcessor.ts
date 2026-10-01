@@ -18,7 +18,9 @@ export class AttachmentProcessor {
         // Fall back to file_data only for small PDFs without extracted text.
         if (a.text && a.text.trim()) {
           const header = a.name ? `[Document: ${a.name}]` : '[Document]';
-          const pageInfo = a.pageCount ? ` (${a.pageCount} pages)` : '';
+          const pageInfo = a.pageCount
+            ? ` (${a.pageCount} ${a.pageCount === 1 ? 'page' : 'pages'})`
+            : '';
           blocks.push({
             type: 'text',
             text: `${header}${pageInfo}\n\n${a.text}`,

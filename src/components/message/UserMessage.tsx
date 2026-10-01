@@ -108,7 +108,7 @@ export function UserMessage({
         </MessageActions>
       )}
 
-      <MessageAttachments attachments={attachments} onOpenLightbox={setLightbox} />
+      <MessageAttachments attachments={attachments} onOpenLightbox={setLightbox} variant="user" />
 
       <div
         ref={clamp.bodyRef}

@@ -235,8 +235,14 @@ test('a failed search does not hold the head while the model carries on', () => 
   );
   assert.equal(
     summarizeActivity({ orderedActivity, toolCalls: [], reasoning, sources, isLive: false }),
-    'The search took too long.',
+    'Search failed',
   );
+  // Why is said once, on the search's own entry.
+  const entry = buildOrderedResponseActivity({ reasoning: '', sources }).find(
+    (item): item is ToolActivityItem => item.type === 'tool_call',
+  );
+  assert.ok(entry);
+  assert.equal(toolAnnotation(entry).detail, 'The search took too long.');
 });
 
 test('a wait for the first word is said only once it has gone on a while, counting up', () => {

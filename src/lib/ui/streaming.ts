@@ -56,3 +56,31 @@ export function replyInProgress(
 export function toolCallInFlight(message: Pick<Message, 'toolCalls'>): boolean {
   return !!message.toolCalls?.some((call) => call.status === 'pending');
 }
+
+/**
+ * The model's latest step is a line of thought still being written. A tool
+ * call made after the thought began is the later step.
+ */
+export function thinkingNow(message: Pick<Message, 'activity' | 'toolCalls'>): boolean {
+  const thought = message.activity
+    ?.filter((item) => item.type === 'reasoning' && item.status !== 'done')
+    .at(-1);
+  if (!thought) return false;
+  const steps = [...(message.activity ?? []), ...(message.toolCalls ?? [])];
+  return !steps.some((step) => step !== thought && step.timestamp > thought.timestamp);
+}
+
+/**
+ * Whether the pen after a running reply's words is the turn's one live mark.
+ * Before the first word the reasoning line's mark (or the waiting mark) has
+ * that job, and again while the model thinks; the pen takes it while a tool
+ * call is written or run, or while no word arrives (`quiet`), as when the
+ * model works on the round after an answer it kept. Never while words come.
+ */
+export function penIsLive(
+  message: Pick<Message, 'content' | 'activity' | 'toolCalls'>,
+  quiet: boolean,
+): boolean {
+  if (!message.content?.trim() || thinkingNow(message)) return false;
+  return quiet || toolCallInFlight(message);
+}

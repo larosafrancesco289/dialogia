@@ -192,11 +192,14 @@ const COMPONENTS: Components = {
   // becomes node="[object Object]".
   a: ({ href, children, node: _node, ...props }) => {
     const isExternal = href && /^https?:\/\//.test(href);
+    // A citation shows only its number; its title says which source it is.
+    const isCitation = typeof children === 'string' && /^\d+$/.test(children);
     return (
       <a
         href={href}
         target={isExternal ? '_blank' : undefined}
         rel={isExternal ? 'noopener noreferrer' : undefined}
+        aria-label={isCitation ? props.title : undefined}
         {...props}
       >
         {children}

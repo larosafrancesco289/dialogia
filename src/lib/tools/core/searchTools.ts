@@ -113,9 +113,16 @@ const executeWebSearchTool: PlanningToolHandler = async ({
   if (searchResult.error === NOTICE_MISSING_SEARCH_KEY) {
     notify(get, NOTICE_MISSING_SEARCH_KEY, 'info');
   }
+  const reason = searchResult.error || 'The search failed.';
+  // Unlike an empty result list, a failure tells the model nothing about the web.
+  const failure = {
+    ...output,
+    error: reason.startsWith('The search') ? reason : `The search failed: ${reason}`,
+    hint: 'Tell the person the search failed. Do not say that nothing was found.',
+  };
   log.error(
     output,
-    searchResult.error || 'Search returned no results',
+    reason,
     metadataBase
       ? { ...metadataBase, ...(requestedMeta || {}) }
       : requestedMeta
@@ -128,7 +135,7 @@ const executeWebSearchTool: PlanningToolHandler = async ({
         role: 'tool',
         name: 'web_search',
         tool_call_id: toolCall.id,
-        content: 'No results',
+        content: JSON.stringify(failure),
       },
     ],
     aggregatedResults,
