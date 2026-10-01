@@ -35,10 +35,6 @@
     border-color: color-mix(in oklab, var(--color-fg) 28%, transparent);
     background: color-mix(in oklab, var(--color-fg) 5%, transparent);
   }
-  .learning-panel__revise:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--focus-ring);
-  }
   .learning-panel__revise[aria-pressed='true'] {
     background: color-mix(in oklab, var(--color-fg) 7%, transparent);
   }
@@ -158,9 +154,7 @@
     padding-bottom: var(--space-2);
   }
   .hub-path__row:focus-visible {
-    outline: none;
     border-radius: var(--radius-inner);
-    box-shadow: 0 0 0 2px var(--focus-ring);
   }
   .hub-path__name {
     font-size: 0.9375rem;

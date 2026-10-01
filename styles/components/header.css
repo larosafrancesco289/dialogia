@@ -89,10 +89,6 @@
     background: color-mix(in oklab, var(--color-fg) 5%, transparent);
   }
 
-  .model-picker-trigger:focus-visible {
-    box-shadow: 0 0 0 2px var(--focus-ring);
-  }
-
   .model-picker-trigger__name {
     flex: 1;
     min-width: 0;
@@ -163,11 +159,6 @@
   .plan-button:hover {
     background: color-mix(in oklab, var(--color-fg) 5%, transparent);
     color: var(--color-fg);
-  }
-  .tutor-toggle:focus-visible,
-  .plan-button:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--focus-ring);
   }
   .tutor-toggle:disabled {
     opacity: 0.5;

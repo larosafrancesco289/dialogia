@@ -20,6 +20,11 @@
     margin-right: -2px;
     color: var(--color-fg-muted);
   }
+  .chat-item__branch {
+    flex: none;
+    margin-left: 0.3em;
+    color: var(--color-fg-muted);
+  }
   .chat-item__title--new {
     animation: fade-in var(--duration-med) var(--ease-standard) both;
   }

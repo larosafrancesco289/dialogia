@@ -76,10 +76,6 @@
     border-color: color-mix(in oklab, var(--color-fg) 22%, transparent);
     background: color-mix(in oklab, var(--color-fg) 4%, transparent);
   }
-  .chapter-break__action:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--focus-ring);
-  }
   .chapter-break__action:disabled {
     opacity: 0.5;
     cursor: progress;
@@ -160,9 +156,7 @@
     text-decoration-color: currentColor;
   }
   .margin-note__more:focus-visible {
-    outline: none;
     border-radius: 2px;
-    box-shadow: 0 0 0 2px var(--focus-ring);
   }
   .margin-note__reason {
     margin: 0.15em 0 0;
