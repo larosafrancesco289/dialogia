@@ -124,15 +124,15 @@ test('a carried-over start says where it came from, in the note under the approv
   };
   assert.equal(
     carriedOverWords(at, 0.75, 'Limits', 'Learning limits'),
-    'Carried over from Learning limits (84%, 27 Sep), capped at 75% until you answer two questions here.',
+    'Carried over from Learning limits (84%, 27\u00a0Sep), capped at 75% until you answer two questions here.',
   );
   assert.equal(
     carriedOverWords({ ...at, estimate: 0.6 }, 0.6, 'Limits of functions', undefined),
-    'Carried over from Limits in another tutor chat (60%, 27 Sep).',
+    'Carried over from Limits in another tutor chat (60%, 27\u00a0Sep).',
   );
   assert.equal(
     carriedOverWords({ ...at, estimate: 0.6 }, 0.6, 'Limits of functions', 'Calculus I'),
-    'Carried over from Limits in Calculus I (60%, 27 Sep).',
+    'Carried over from Limits in Calculus I (60%, 27\u00a0Sep).',
   );
 });
 

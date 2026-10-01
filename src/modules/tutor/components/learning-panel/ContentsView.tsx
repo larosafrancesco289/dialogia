@@ -199,7 +199,8 @@ function ContentsItem({
           {showMastery && <Why mastery={mastery!} explanation={explanation} />}
 
           {showMastery && affordances.correctMastery && saidFelt && (
-            <p className="hub-topic__note">You told the tutor this felt too {saidFelt}.</p>
+            // The list above already says what they told the tutor; this says what comes next.
+            <p className="hub-topic__note">Noted. Your next answers will settle it.</p>
           )}
           {showMastery && affordances.correctMastery && !saidFelt && (
             <div className="hub-topic__correct">

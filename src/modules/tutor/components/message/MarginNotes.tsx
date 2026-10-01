@@ -61,12 +61,17 @@ export function MarginNotes({
           <div key={change.nodeId} className="margin-note">
             <p className="margin-note__head">
               <span className="margin-note__topic">{nameOf(change.nodeId)}</span>
-              <span
-                className="margin-note__delta"
-                aria-label={`${percent(change.from)} to ${percent(change.to)} percent`}
-              >
-                {percent(change.from)}% <span aria-hidden="true">→</span> {percent(change.to)}%
-              </span>
+              {change.carriedOver ? (
+                // A carried estimate is where the topic starts here, not a gain: the words below say why.
+                <span className="margin-note__delta">{percent(change.to)}%</span>
+              ) : (
+                <span
+                  className="margin-note__delta"
+                  aria-label={`${percent(change.from)} to ${percent(change.to)} percent`}
+                >
+                  {percent(change.from)}% <span aria-hidden="true">→</span> {percent(change.to)}%
+                </span>
+              )}
             </p>
             {change.carriedOver && (
               <p className="margin-note__reason">
