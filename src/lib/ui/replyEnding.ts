@@ -32,3 +32,13 @@ export function replyEndingNote(
   if (message.finishReason === 'length') return 'Stopped at the length limit.';
   return undefined;
 }
+
+/** What a screen reader hears as a reply stops streaming: how it ended, not only that it did. */
+export function replyOutcomeAnnouncement(
+  message?: Pick<Message, 'cutOff' | 'finishReason'>,
+): string {
+  if (message?.cutOff === 'stopped') return 'Response stopped';
+  if (message?.cutOff) return 'Response failed';
+  if (message?.finishReason === 'length') return 'Response stopped at the length limit';
+  return 'Response complete';
+}

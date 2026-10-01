@@ -68,6 +68,40 @@ test('an unreachable server stops the probe at the first step', async () => {
   assert.deepEqual(steps, ['models']);
 });
 
+test('a page answered with a 200 is not a model server, and nothing more is sent', async () => {
+  const result = await probeEndpoint(
+    { endpoint },
+    {
+      transport: transportWith(
+        () => {
+          throw new Error('chat should not be attempted');
+        },
+        () =>
+          new Response('<!doctype html><html></html>', {
+            status: 200,
+            headers: { 'content-type': 'text/html' },
+          }),
+      ),
+    },
+  );
+  assert.deepEqual(result.models, { verdict: 'not-api' });
+  assert.equal(result.chat.verdict, 'skipped');
+  assert.equal(result.capabilities.tools.verdict, 'skipped');
+});
+
+test('JSON without a model list is not a model server either', async () => {
+  const result = await probeEndpoint(
+    { endpoint },
+    {
+      transport: transportWith(
+        () => sse([streamChunk]),
+        () => json({ models: [] }),
+      ),
+    },
+  );
+  assert.deepEqual(result.models, { verdict: 'not-api' });
+});
+
 test('a missing /models route is not a failure, and the typed id is still tried', async () => {
   const seen: string[] = [];
   const result = await probeEndpoint(

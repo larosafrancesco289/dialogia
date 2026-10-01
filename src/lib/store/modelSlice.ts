@@ -10,7 +10,7 @@ import { createStoreSlice } from '@/lib/store/createSlice';
 import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
 import { getTransportClient } from '@/lib/transport/registry';
 import { listEndpoints } from '@/lib/transport/endpointRegistry';
-import { NOTICE_INVALID_KEY, NOTICE_MODELS_UNAVAILABLE } from '@/lib/store/notices';
+import { describeModelsUnavailable, NOTICE_INVALID_KEY } from '@/lib/store/notices';
 import { notify } from '@/lib/store/notify';
 import type { ModelDescriptor } from '@/lib/types';
 
@@ -183,8 +183,12 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
               return;
             }
             if (quietedRepeat) return;
+            // Every endpoint answered, with no models and nothing to say why.
             if (!get().ui.notice) {
-              notify(get, NOTICE_MODELS_UNAVAILABLE);
+              notify(
+                get,
+                describeModelsUnavailable(authEntries.map(([endpoint]) => endpoint.label)),
+              );
             }
             return;
           }

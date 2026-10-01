@@ -1,5 +1,5 @@
 import { motionTransition } from '@/lib/ui/motion';
-import { useRef, useState, type ReactNode } from 'react';
+import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { shallow } from 'zustand/shallow';
 import { DialogOverlay, DialogPortal } from '@/components/ui/Dialog';
@@ -10,9 +10,11 @@ import { useBackToClose } from '@/lib/hooks/useBackToClose';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { useModalFocus } from '@/lib/hooks/useModalFocus';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
-import { COMPOSER_FIELD_SELECTOR } from '@/lib/ui/focus';
+import { COMPOSER_FIELD_SELECTOR, indexForKey } from '@/lib/ui/focus';
 import {
   ANTHROPIC_ENDPOINT,
+  INVALID_BASE_URL_MESSAGE,
+  isValidBaseUrl,
   OPENROUTER_ENDPOINT,
   type ProviderEndpoint,
 } from '@/lib/transport/endpoints';
@@ -23,6 +25,12 @@ import {
 // the user about the developer's build rather than about anything they could do.
 
 type Choice = 'openrouter' | 'anthropic' | 'local';
+
+const CHOICES: { id: Choice; label: string }[] = [
+  { id: 'openrouter', label: 'OpenRouter' },
+  { id: 'anthropic', label: 'Anthropic' },
+  { id: 'local', label: 'Local' },
+];
 
 function KeysLink({ href, children }: { href: string; children: ReactNode }) {
   return (
@@ -68,6 +76,7 @@ export function SetupSheet() {
   const [value, setValue] = useState('');
   const [label, setLabel] = useState('');
   const [busy, setBusy] = useState(false);
+  const [urlInvalid, setUrlInvalid] = useState(false);
 
   const surfaceRef = useRef<HTMLDivElement>(null);
   const valueRef = useRef<HTMLInputElement>(null);
@@ -91,8 +100,20 @@ export function SetupSheet() {
 
   const canSubmit = value.trim().length > 0;
 
+  const choose = (next: Choice) => {
+    setChoice(next);
+    setValue('');
+    setUrlInvalid(false);
+  };
+
   const submit = async () => {
     if (!canSubmit || busy) return;
+    // An unreachable server is still saved (it may simply not be running
+    // yet); an address that is not one would only ever reach this page.
+    if (choice === 'local' && !isValidBaseUrl(value)) {
+      setUrlInvalid(true);
+      return;
+    }
     setBusy(true);
     try {
       if (choice === 'local') {
@@ -110,6 +131,14 @@ export function SetupSheet() {
     } finally {
       setBusy(false);
     }
+  };
+
+  // Closing hands focus back to the opener while the key is still down, and
+  // the key's default would then press whatever took it.
+  const submitOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    void submit();
   };
 
   return (
@@ -134,93 +163,104 @@ export function SetupSheet() {
               Connect a model
             </h2>
             <p className="dialog__lead">
-              Dialogia talks to providers straight from this browser. Your key is stored here and
-              nowhere else.
+              {choice === 'local'
+                ? 'Dialogia talks to a model server you run, on this computer or your network, straight from this browser. Most local servers need no key.'
+                : 'Dialogia talks to providers straight from this browser. A key is like a password from a provider: it lets Dialogia use their models, and you pay them for what you use. Your key is stored here and nowhere else.'}
             </p>
 
             <div className="segmented mt-5" role="tablist" aria-label="Provider">
-              {(['openrouter', 'anthropic', 'local'] as Choice[]).map((option) => (
+              {CHOICES.map((option, index) => (
                 <button
-                  key={option}
+                  key={option.id}
+                  id={`setup-tab-${option.id}`}
+                  type="button"
                   role="tab"
-                  aria-selected={choice === option}
-                  className={`segment${choice === option ? ' is-active' : ''}`}
-                  onClick={() => {
-                    setChoice(option);
-                    setValue('');
+                  aria-selected={choice === option.id}
+                  aria-controls="setup-panel"
+                  tabIndex={choice === option.id ? 0 : -1}
+                  className={`segment${choice === option.id ? ' is-active' : ''}`}
+                  onClick={() => choose(option.id)}
+                  onKeyDown={(event) => {
+                    const next = indexForKey(event.key, index, CHOICES.length, 'both');
+                    if (next === null) return;
+                    event.preventDefault();
+                    choose(CHOICES[next].id);
+                    document.getElementById(`setup-tab-${CHOICES[next].id}`)?.focus();
                   }}
                 >
-                  {option === 'openrouter'
-                    ? 'OpenRouter'
-                    : option === 'anthropic'
-                      ? 'Anthropic'
-                      : 'Local'}
+                  {option.label}
                 </button>
               ))}
             </div>
 
-            {choice === 'local' ? (
-              <div className="mt-4 space-y-3">
-                <div className="field">
-                  <label className="field__label" htmlFor="setup-label">
-                    Name
-                  </label>
-                  <input
-                    id="setup-label"
-                    className="input w-full text-base sm:text-sm"
-                    value={label}
-                    // "e.g.", so an example never reads as a value already filled in.
-                    placeholder="e.g. Ollama"
-                    onChange={(event) => setLabel(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') void submit();
-                    }}
-                  />
+            <div id="setup-panel" role="tabpanel" aria-labelledby={`setup-tab-${choice}`}>
+              {choice === 'local' ? (
+                <div className="mt-4 space-y-3">
+                  <div className="field">
+                    <label className="field__label" htmlFor="setup-label">
+                      Name
+                    </label>
+                    <input
+                      id="setup-label"
+                      className="input w-full text-base sm:text-sm"
+                      value={label}
+                      // "e.g.", so an example never reads as a value already filled in.
+                      placeholder="e.g. Ollama"
+                      onChange={(event) => setLabel(event.target.value)}
+                      onKeyDown={submitOnEnter}
+                    />
+                  </div>
+                  <div className="field">
+                    <label className="field__label" htmlFor="setup-value">
+                      Base URL
+                    </label>
+                    <input
+                      ref={valueRef}
+                      id="setup-value"
+                      className="input w-full text-base sm:text-sm"
+                      placeholder="e.g. http://localhost:11434/v1"
+                      spellCheck={false}
+                      value={value}
+                      aria-invalid={urlInvalid || undefined}
+                      aria-describedby="setup-value-hint"
+                      onChange={(event) => {
+                        setValue(event.target.value);
+                        setUrlInvalid(false);
+                      }}
+                      onKeyDown={submitOnEnter}
+                    />
+                    <p
+                      id="setup-value-hint"
+                      className="field__hint"
+                      role={urlInvalid ? 'alert' : undefined}
+                    >
+                      {urlInvalid
+                        ? INVALID_BASE_URL_MESSAGE
+                        : 'Any OpenAI-compatible server: Ollama, LM Studio, llama.cpp, vLLM. Tools and search stay off until you turn them on in Settings › Connections.'}
+                    </p>
+                  </div>
                 </div>
-                <div className="field">
+              ) : (
+                <div className="field mt-4">
                   <label className="field__label" htmlFor="setup-value">
-                    Base URL
+                    API key
                   </label>
                   <input
                     ref={valueRef}
                     id="setup-value"
-                    className="input w-full text-base sm:text-sm"
-                    placeholder="e.g. http://localhost:11434/v1"
+                    type="password"
+                    autoComplete="off"
                     spellCheck={false}
+                    className="input w-full text-base sm:text-sm"
+                    placeholder={choice === 'anthropic' ? 'sk-ant-…' : 'sk-or-…'}
                     value={value}
                     onChange={(event) => setValue(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') void submit();
-                    }}
+                    onKeyDown={submitOnEnter}
                   />
-                  <p className="field__hint">
-                    Any OpenAI-compatible server: Ollama, LM Studio, llama.cpp, vLLM. Tools and
-                    search stay off until you turn them on in Settings › Connections.
-                  </p>
+                  <p className="field__hint">{KEY_HINTS[choice].hint}</p>
                 </div>
-              </div>
-            ) : (
-              <div className="field mt-4">
-                <label className="field__label" htmlFor="setup-value">
-                  API key
-                </label>
-                <input
-                  ref={valueRef}
-                  id="setup-value"
-                  type="password"
-                  autoComplete="off"
-                  spellCheck={false}
-                  className="input w-full text-base sm:text-sm"
-                  placeholder={choice === 'anthropic' ? 'sk-ant-…' : 'sk-or-…'}
-                  value={value}
-                  onChange={(event) => setValue(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') void submit();
-                  }}
-                />
-                <p className="field__hint">{KEY_HINTS[choice].hint}</p>
-              </div>
-            )}
+              )}
+            </div>
 
             <div className="dialog__actions">
               <button className="btn-ghost btn-sm" onClick={close}>
@@ -231,7 +271,7 @@ export function SetupSheet() {
                 disabled={!canSubmit || busy}
                 onClick={() => void submit()}
               >
-                {choice === 'local' ? 'Add endpoint' : 'Save key'}
+                {choice === 'local' ? 'Add server' : 'Save key'}
               </button>
             </div>
           </motion.div>

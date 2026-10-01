@@ -33,6 +33,8 @@ export type ProbeCheck = { verdict: ProbeVerdict; detail?: string };
 
 export type ModelsProbe =
   | { verdict: 'ok'; ids: string[] }
+  /** Something answered, but not with a model list: a web page, most often the wrong address. */
+  | { verdict: 'not-api' }
   | { verdict: 'no-route' }
   | { verdict: 'unauthorized'; detail: string }
   | { verdict: 'unreachable'; detail: string }
@@ -173,8 +175,12 @@ export function parseSseChunks(text: string): unknown[] {
   return chunks;
 }
 
+function isModelList(payload: unknown): payload is { data: unknown[] } {
+  return isRecord(payload) && Array.isArray(payload.data);
+}
+
 function readModelIds(payload: unknown): string[] {
-  const entries = isRecord(payload) && Array.isArray(payload.data) ? payload.data : [];
+  const entries = isModelList(payload) ? payload.data : [];
   const ids: string[] = [];
   for (const entry of entries) {
     if (typeof entry === 'string') ids.push(entry);
@@ -236,8 +242,15 @@ export async function probeEndpoint(
   try {
     const res = await send(TIMEOUTS.models, (signal) => transport.models(auth, signal));
     if (res.ok) {
-      discovered.push(...readModelIds(await res.json().catch(() => null)));
-      models = { verdict: 'ok', ids: discovered };
+      // A web app answers any path with its page and a 200, so only a model
+      // list says an OpenAI-compatible server is there.
+      const payload: unknown = await res.json().catch(() => null);
+      if (isModelList(payload)) {
+        discovered.push(...readModelIds(payload));
+        models = { verdict: 'ok', ids: discovered };
+      } else {
+        models = { verdict: 'not-api' };
+      }
     } else if (res.status === 404) {
       models = { verdict: 'no-route' };
     } else if (res.status === 401 || res.status === 403) {
@@ -253,12 +266,12 @@ export async function probeEndpoint(
     models = { verdict: 'unreachable', detail };
   }
 
-  if (models.verdict === 'unreachable') {
-    return {
-      models,
-      chat: { verdict: 'skipped', detail: 'The server could not be reached.' },
-      capabilities: skipped('The server could not be reached.'),
-    };
+  if (models.verdict === 'unreachable' || models.verdict === 'not-api') {
+    const detail =
+      models.verdict === 'unreachable'
+        ? 'The server could not be reached.'
+        : 'No OpenAI-compatible server answered at this address.';
+    return { models, chat: { verdict: 'skipped', detail }, capabilities: skipped(detail) };
   }
 
   const modelId = options.modelId ?? auth.endpoint.modelIds?.[0] ?? discovered[0];

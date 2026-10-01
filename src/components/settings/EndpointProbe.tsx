@@ -83,6 +83,16 @@ function ServerLine({ result, baseUrl }: { result: EndpointProbeResult; baseUrl:
         </Line>
       );
     }
+    case 'not-api':
+      return (
+        <Line verdict="no">
+          Something answered at {baseUrl}, but not as an OpenAI-compatible server.
+          <Detail>
+            Check the address. It is usually the server&apos;s root followed by /v1, e.g.
+            http://localhost:11434/v1 for Ollama.
+          </Detail>
+        </Line>
+      );
     case 'no-route':
       return (
         <Line verdict="ok">
@@ -159,8 +169,11 @@ function ProbeReport({
   return (
     <div role="status" aria-live="polite" className="endpoint-probe__report">
       <ServerLine result={result} baseUrl={endpoint.baseUrl ?? ''} />
-      {/* A server that could not be reached was sent nothing; the line above says so. */}
-      {result.models.verdict !== 'unreachable' && <ChatLine result={result} />}
+      {/* A server that could not be reached, or is not one, was sent nothing;
+          the line above says so. */}
+      {result.models.verdict !== 'unreachable' && result.models.verdict !== 'not-api' && (
+        <ChatLine result={result} />
+      )}
       {checked ? (
         <ul className="endpoint-probe__checks">
           {CAPABILITY_LABELS.map(({ key, label }) => {

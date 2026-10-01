@@ -15,7 +15,10 @@ import {
 import { PortalDropdown } from '@/components/PortalDropdown';
 import { ModelRowContent } from '@/components/model-picker/ModelRow';
 import { BottomSheet } from '@/components/ui/BottomSheet';
-import { useModelPickerController } from '@/components/model-picker/useModelPickerController';
+import {
+  unlistedModelName,
+  useModelPickerController,
+} from '@/components/model-picker/useModelPickerController';
 import { useReturnFocus } from '@/lib/hooks/useModalFocus';
 import { tabbableIn, trapTarget } from '@/lib/ui/focus';
 import { useChatStore } from '@/lib/store';
@@ -43,11 +46,14 @@ type PickerSection = { title: string; rows: PickerRow[] };
 
 const POPOVER_WIDTH = 440;
 
+const optionId = (index: number) => `model-picker-option-${index}`;
+
 /**
  * The model picker: a popover under the model's name (a sheet on phones).
  * Recommended picks and favorites sit as quiet rows; typing searches the
  * whole catalogue in place. Choosing a model the list does not hold yet also
- * adds it to the favorites, so it is there next time.
+ * adds it to the favorites, so it is there next time; a model on the user's
+ * own server is always listed already, under its server.
  */
 export function ModelPicker({
   className = '',
@@ -67,6 +73,7 @@ export function ModelPicker({
     modelMap,
     zdrModelIds,
     zdrProviderIds,
+    currentUnavailable,
   } = useModelPickerController();
   const curatedModels = useCuratedModels();
   const availableModels = useAvailableModels();
@@ -89,7 +96,11 @@ export function ModelPicker({
       const meta = modelMap.get(id);
       return {
         id,
-        name: formatModelLabel({ model: meta, fallbackId: id, fallbackName: name }),
+        name: formatModelLabel({
+          model: meta,
+          fallbackId: id,
+          fallbackName: name ?? unlistedModelName(id),
+        }),
         result: meta ? buildModelSearchResult(meta, zdrOpts) : undefined,
       };
     },
@@ -162,12 +173,17 @@ export function ModelPicker({
 
   const choose = useCallback(
     (row: PickerRow) => {
-      const known = favoriteModelIds.includes(row.id) || curatedModels.some((m) => m.id === row.id);
+      const endpointId = modelMap.get(row.id)?.endpointId;
+      const ownServer = !!endpointId && !isBuiltInEndpointId(endpointId);
+      const known =
+        ownServer ||
+        favoriteModelIds.includes(row.id) ||
+        curatedModels.some((m) => m.id === row.id);
       if (!known) toggleFavoriteModel(row.id);
       setModels([row.id]);
       close();
     },
-    [favoriteModelIds, curatedModels, toggleFavoriteModel, setModels, close],
+    [modelMap, favoriteModelIds, curatedModels, toggleFavoriteModel, setModels, close],
   );
 
   // Anchor the popover under the trigger; phones get a bottom sheet instead.
@@ -236,7 +252,8 @@ export function ModelPicker({
     }
   };
 
-  // With no provider connected there is no model to name yet, only one to connect.
+  // With no provider that has a model to offer, there is no model to name yet,
+  // only one to connect.
   const connected = useAnyProviderConnected();
   const label = !connected
     ? 'Connect a model'
@@ -245,12 +262,13 @@ export function ModelPicker({
           model: modelMap.get(current.id),
           fallbackId: current.id,
           fallbackName: current.name,
+          among: availableModels,
         })
       : 'Pick model';
 
   const triggerProps: ModelPickerTriggerProps = {
     label,
-    tooltip: label,
+    tooltip: currentUnavailable ? `${label}: not available while zero data retention is on` : label,
     isOpen: open,
     onClick: () => (!connected ? connect() : open ? close() : setOpen(true)),
   };
@@ -273,8 +291,12 @@ export function ModelPicker({
           placeholder="Search models"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
+          role="combobox"
           aria-label="Search models"
+          aria-expanded="true"
           aria-controls="model-picker-list"
+          aria-autocomplete="list"
+          aria-activedescendant={flatRows[activeIndex] ? optionId(activeIndex) : undefined}
           autoComplete="off"
           spellCheck={false}
         />
@@ -304,9 +326,10 @@ export function ModelPicker({
                 return (
                   <div
                     key={row.id}
+                    id={optionId(rowIndex)}
                     data-index={rowIndex}
                     role="option"
-                    aria-selected={isSelected}
+                    aria-selected={rowIndex === activeIndex}
                     className={`model-row${rowIndex === activeIndex ? ' is-active' : ''}${isSelected ? ' is-selected' : ''}`}
                     onClick={() => choose(row)}
                     onMouseMove={() => setActiveIndex(rowIndex)}
@@ -317,6 +340,7 @@ export function ModelPicker({
                       note={row.note}
                       result={row.result}
                     />
+                    {isSelected && <span className="sr-only">, in use</span>}
                     {/* The rubric tick marks the model in use; the removable
                         favourite keeps its button while it is not in use. */}
                     {!isSelected && row.removable ? (
@@ -357,7 +381,7 @@ export function ModelPicker({
           className="model-picker-trigger"
           aria-haspopup="dialog"
           aria-expanded={open}
-          title={label}
+          title={triggerProps.tooltip}
           onClick={triggerProps.onClick}
         >
           <span className="model-picker-trigger__name truncate">{label}</span>
