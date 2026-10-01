@@ -8,7 +8,7 @@ import {
   recordDebugIfEnabled,
 } from './debug';
 import { ProviderSort } from '@/lib/models/providerSort';
-import type { StoreAccess } from '@/lib/agent/types';
+import type { ModelMessage, StoreAccess } from '@/lib/agent/types';
 import { createTestStoreState } from '../../../tests/helpers/createTestStoreState';
 
 const createTestStore = (initialUi: any): StoreAccess & { state: { ui: any } } => {
@@ -16,22 +16,35 @@ const createTestStore = (initialUi: any): StoreAccess & { state: { ui: any } } =
   return { state, set, get } as StoreAccess & { state: { ui: any } };
 };
 
-test('pdfPlugins emits parser plugin only when PDFs are present', () => {
-  assert.deepEqual(pdfPlugins(false), undefined);
-  assert.deepEqual(pdfPlugins(true), [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }]);
+const PDF_AS_TEXT: ModelMessage[] = [
+  { role: 'user', content: [{ type: 'text', text: '[Document: a.pdf] (1 page)\n\nHello' }] },
+];
+const PDF_AS_FILE: ModelMessage[] = [
+  {
+    role: 'user',
+    content: [
+      { type: 'file', file: { filename: 'a.pdf', file_data: 'data:application/pdf;base64,AA' } },
+    ],
+  },
+];
+
+test('pdfPlugins emits the parser only for a request that sends a PDF file part', () => {
+  assert.deepEqual(pdfPlugins([{ role: 'user', content: 'hi' }]), undefined);
+  assert.deepEqual(pdfPlugins(PDF_AS_TEXT), undefined);
+  assert.deepEqual(pdfPlugins(PDF_AS_FILE), [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }]);
 });
 
 test('composePlugins merges pdf parser and OpenRouter web plugin', () => {
-  assert.deepEqual(composePlugins({ hasPdf: false, searchEnabled: false }), undefined);
-  assert.deepEqual(composePlugins({ hasPdf: true, searchEnabled: false }), [
+  assert.deepEqual(composePlugins({ messages: PDF_AS_TEXT, searchEnabled: false }), undefined);
+  assert.deepEqual(composePlugins({ messages: PDF_AS_FILE, searchEnabled: false }), [
     { id: 'file-parser', pdf: { engine: 'pdf-text' } },
   ]);
   assert.deepEqual(
-    composePlugins({ hasPdf: false, searchEnabled: true, searchProvider: 'openrouter' }),
+    composePlugins({ messages: PDF_AS_TEXT, searchEnabled: true, searchProvider: 'openrouter' }),
     [{ id: 'web' }],
   );
   assert.deepEqual(
-    composePlugins({ hasPdf: true, searchEnabled: true, searchProvider: 'openrouter' }),
+    composePlugins({ messages: PDF_AS_FILE, searchEnabled: true, searchProvider: 'openrouter' }),
     [{ id: 'file-parser', pdf: { engine: 'pdf-text' } }, { id: 'web' }],
   );
 });

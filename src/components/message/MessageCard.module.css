@@ -236,6 +236,13 @@
   color: var(--color-fg-muted);
 }
 
+/* After the words, the wait is said in the pen's own line, beside it. */
+.silentWaitAfterPen {
+  position: static;
+  translate: none;
+  margin-left: var(--space-2);
+}
+
 /* Older replies keep their footer out of the way until hovered. */
 .footOnHover {
   opacity: 0;

@@ -6,6 +6,7 @@ import { isRecord } from '@/lib/utils/guards';
 
 export const NOTICE_CATALOG = {
   invalidKey: 'That API key was rejected. Check it in Settings › Connections.',
+  expiredKey: 'That API key has expired. Add a new one in Settings › Connections.',
   rateLimited: 'The provider is limiting requests. Wait a moment, then try again.',
   missingSearchKey: 'Add a web search key in Settings › Connections to use tool-based search.',
   searchUnavailable: 'Web search is unavailable for this chat; answering without it.',
@@ -80,7 +81,9 @@ export function describeErrorNotice(error: unknown): string | undefined {
   // A refused key or a rate limit reads the same wherever it surfaced: before
   // the stream, in its first response, or in one of its chunks.
   if (isApiError(error) && error.code === API_ERROR_CODES.UNAUTHORIZED) {
-    return NOTICE_INVALID_KEY;
+    return /expired/i.test(providerErrorText(error.detail) ?? '')
+      ? NOTICE_EXPIRED_KEY
+      : NOTICE_INVALID_KEY;
   }
   if (isApiError(error) && error.code === API_ERROR_CODES.RATE_LIMITED) {
     return NOTICE_RATE_LIMITED;
@@ -177,6 +180,7 @@ function readable(message: string): string {
 }
 
 export const NOTICE_INVALID_KEY = NOTICE_CATALOG.invalidKey;
+export const NOTICE_EXPIRED_KEY = NOTICE_CATALOG.expiredKey;
 export const NOTICE_RATE_LIMITED = NOTICE_CATALOG.rateLimited;
 export const NOTICE_MISSING_SEARCH_KEY = NOTICE_CATALOG.missingSearchKey;
 export const NOTICE_MODELS_UNAVAILABLE = NOTICE_CATALOG.modelsUnavailable;

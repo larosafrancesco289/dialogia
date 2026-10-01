@@ -143,6 +143,9 @@ export function createMessageStreamCallbacks(
 
   const flushDelta = (delta: string) => {
     if (!delta) return;
+    // Thinking still waiting for a frame is shown first, so it settles at the
+    // first word rather than staying open until the reply ends.
+    reasoningAccumulator.flush();
     settleReasoning();
     applyMessageUpdate(set, chatId, assistantMessage.id, (msg) => ({
       ...msg,

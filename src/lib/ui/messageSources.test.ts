@@ -82,7 +82,7 @@ test('native citations resolve to a finished search the ledger reports as consul
   // And the reply's [n] markers link to the same numbered list.
   assert.equal(
     linkCitationMarkers('See [2] and [1].', sources?.results),
-    'See [2](<https://example.org/b>) and [1](<https://example.com/a>).',
+    'See [2](<https://example.org/b> "Source 2: Page B") and [1](<https://example.com/a> "Source 1: Page A").',
   );
 });
 
@@ -114,7 +114,10 @@ test("a tool-based search's kept list wins over annotations, in order and with i
     { url: 'https://four.test' },
   ]);
   // After a reload, [4] still points at the fourth thing the search found.
-  assert.equal(linkCitationMarkers('Yes [4].', sources?.results), 'Yes [4](<https://four.test>).');
+  assert.equal(
+    linkCitationMarkers('Yes [4].', sources?.results),
+    'Yes [4](<https://four.test> "Source 4: four.test").',
+  );
 });
 
 test('no search, no sources', () => {

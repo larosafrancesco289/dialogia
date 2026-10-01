@@ -3,11 +3,13 @@ import {
   ChevronDownIcon,
   GlobeAltIcon,
 } from '@heroicons/react/24/outline';
-import { hostname, titleForSource, type SearchSourcesData } from '@/lib/ui/responseActivity';
+import { hostname, titleForSource } from '@/lib/markdown/citations';
+import type { SearchSourcesData } from '@/lib/ui/responseActivity';
 
 /**
  * The ledger's search sources: a line saying what the search is doing or
  * found, which opens onto the numbered list of sources once there are some.
+ * A failed search says why on its own entry, not here.
  */
 export function SourcesEntry({
   sources,
@@ -21,7 +23,6 @@ export function SourcesEntry({
   const sourceItems = sources?.results ?? [];
   const hasSources = sourceItems.length > 0;
   const isSearching = sources?.status === 'loading';
-  const hasSearchError = sources?.status === 'error';
   return (
     <div className="response-ledger__entry">
       <span className="response-ledger__entry-glyph" aria-hidden="true">
@@ -35,9 +36,7 @@ export function SourcesEntry({
       >
         {isSearching
           ? `Looking for sources${sources?.query ? `: ${sources.query}` : ''}…`
-          : hasSearchError
-            ? sources?.error || 'Search could not return sources.'
-            : `Consulted ${sourceItems.length} source${sourceItems.length === 1 ? '' : 's'}`}
+          : `Consulted ${sourceItems.length} source${sourceItems.length === 1 ? '' : 's'}`}
         {hasSources && (
           <ChevronDownIcon className={`response-ledger__chevron${open ? ' is-open' : ''}`} />
         )}

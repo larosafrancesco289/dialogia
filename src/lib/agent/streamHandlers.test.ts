@@ -121,3 +121,30 @@ test('thinking is timed from the request, so a model that thinks silently first 
     Date.now = realNow;
   }
 });
+
+test('thinking settles at the first word even when animation frames stall', async () => {
+  const realNow = Date.now;
+  const realFrame = globalThis.requestAnimationFrame;
+  const realCancel = globalThis.cancelAnimationFrame;
+  let now = 1_000;
+  Date.now = () => now;
+  // A frame that never comes: a background tab, or a busy main thread.
+  globalThis.requestAnimationFrame = () => 1;
+  globalThis.cancelAnimationFrame = () => undefined;
+  try {
+    const { callbacks, stored } = harness();
+    callbacks.onReasoningToken?.('Half a second of thought');
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    now = 1_500;
+    callbacks.onToken?.('The answer.\n');
+    now = 35_000;
+    await callbacks.onDone?.('The answer.', { finishReason: 'stop' });
+    const thought = stored()?.activity?.find((item) => item.type === 'reasoning');
+    assert.equal(thought?.type === 'reasoning' ? thought.duration : undefined, 500);
+    assert.equal(stored()?.reasoning, 'Half a second of thought');
+  } finally {
+    Date.now = realNow;
+    globalThis.requestAnimationFrame = realFrame;
+    globalThis.cancelAnimationFrame = realCancel;
+  }
+});

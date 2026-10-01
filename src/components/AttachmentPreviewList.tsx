@@ -63,14 +63,19 @@ function renderPreview(attachment: DraftAttachment) {
     );
   }
 
+  return <PdfChip name={attachment.name} detail="Attached (parsed locally)" />;
+}
+
+/** A PDF as a chip: the document glyph, its name, and a line under it. */
+export function PdfChip({ name, detail }: { name?: string; detail: string }) {
   return (
     <div className="h-16 min-w-40 max-w-64 px-3 py-2 attachment-chip flex items-center gap-2">
-      <DocumentTextIcon className="h-5 w-5" />
+      <DocumentTextIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
       <div className="min-w-0">
-        <div className="text-xs font-medium truncate" title={attachment.name || 'PDF'}>
-          {attachment.name || 'PDF'}
+        <div className="text-xs font-medium truncate" title={name || 'PDF'}>
+          {name || 'PDF'}
         </div>
-        <div className="text-[11px] text-fg-muted">Attached (parsed locally)</div>
+        <div className="text-[11px] text-fg-muted">{detail}</div>
       </div>
     </div>
   );

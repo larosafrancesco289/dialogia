@@ -4,6 +4,7 @@
 // sources), the one-line summary in its head, and each tool call's labels.
 
 import { TOOL_CALL_STOPPED } from '@/lib/constants';
+import { hostname } from '@/lib/markdown/citations';
 import { markdownToPlainText, withoutSplitSurrogate } from '@/lib/markdown/plainText';
 import type { MessageActivityItem, ToolCallLogEntry } from '@/lib/types';
 
@@ -106,19 +107,6 @@ function thinkingMeasure(activity: MessageActivityItem[], reasoning: string): st
   const text = thoughts.length > 0 ? thoughts.map((item) => item.text).join(' ') : reasoning;
   const words = text.trim() ? text.trim().split(/\s+/).length : 0;
   return words ? `${words} word${words === 1 ? '' : 's'}` : '';
-}
-
-export function hostname(url?: string) {
-  if (!url) return '';
-  try {
-    return new URL(url).hostname.replace(/^www\./, '');
-  } catch {
-    return url;
-  }
-}
-
-export function titleForSource(source: { title?: string; url?: string }) {
-  return source.title || hostname(source.url) || source.url || 'Untitled source';
 }
 
 function labelForTool(call: ToolCallLogEntry) {
@@ -313,7 +301,8 @@ export function summarizeActivity({
     // With no line of thought yet, the head's "Thinking" speaks alone.
     return currentThoughtLine(thought);
   }
-  if (hasSearchError) return sources?.error || 'Search failed';
+  // Why it failed is the search entry's own line; the head only says that it did.
+  if (hasSearchError) return 'Search failed';
   if (orderedActivity.length > 0) {
     const searchCount = toolItems.filter((item) => item.name === 'web_search').length;
     const toolNoun =
