@@ -12,6 +12,7 @@ import {
   consolidationModelId,
   consolidationRequest,
   readOperations,
+  UNREADABLE_PLAN,
 } from '@/lib/memory/consolidate';
 import { stripThinkBlock } from '@/lib/openrouter/thinkTags';
 import { guardZdrOrNotifyCached } from '@/lib/policy/zdr/cache';
@@ -25,7 +26,8 @@ const CONSOLIDATION_TIMEOUT_MS = 120_000;
 /**
  * The plan for one pass, or undefined when zero data retention will not let
  * the model see memory (the guard has said why). Throws when there is no
- * answer to read, including one cut off before its end.
+ * answer, and with `UNREADABLE_PLAN` when the answer is no plan, including
+ * one cut off before its end.
  */
 export async function planConsolidation(
   set: StoreSetter,
@@ -60,7 +62,11 @@ export async function planConsolidation(
       choice?.finish_reason === 'length'
         ? undefined
         : readOperations(stripThinkBlock(typeof content === 'string' ? content : ''));
-    if (!operations) throw new Error('The consolidation plan could not be read.');
+    if (!operations) {
+      throw Object.assign(new Error('The consolidation plan could not be read.'), {
+        code: UNREADABLE_PLAN,
+      });
+    }
     const plan = applyOperations({ memory: before, operations, now: Date.now(), newId: uuidv4 });
     return { ...plan, before };
   } finally {

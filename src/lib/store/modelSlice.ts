@@ -1,6 +1,6 @@
 import type { PersistFragment, StoreState } from '@/lib/store/types';
 import { requireEndpointAuth } from '@/lib/auth/require';
-import { loadKeys } from '@/lib/keys/store';
+import { loadKeys, markKeyRejected } from '@/lib/keys/store';
 import { ZDR_UNAVAILABLE_NOTICE } from '@/lib/policy/zdr';
 import { computeZdrFilterCached } from '@/lib/policy/zdr/cache';
 import type { ModelIndex } from '@/lib/models';
@@ -132,6 +132,7 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
                 modelsByEndpoint.set(endpoint.id, []);
                 if (isApiError(error) && error.code === API_ERROR_CODES.UNAUTHORIZED) {
                   hadUnauthorizedFailure = true;
+                  markKeyRejected(endpoint.apiKeyRef, auth.apiKey);
                   noticeSegments.push(`${endpoint.label} models unavailable: invalid API key.`);
                   return;
                 }

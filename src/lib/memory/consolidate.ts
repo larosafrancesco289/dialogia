@@ -21,6 +21,7 @@ import {
 import {
   MEMORY_ABOUT_FOLDER_ID,
   MEMORY_LEARNING_FOLDER_ID,
+  type ConsolidationLine,
   type ConsolidationPass,
   type MemoryFolder,
   type MemoryNote,
@@ -89,6 +90,9 @@ export function consolidationRequest(memory: MemorySnapshot): string {
 
 type Operation = Record<string, unknown>;
 
+/** The code a pass fails with when the model's answer is no plan the app can read. */
+export const UNREADABLE_PLAN = 'unreadable_plan';
+
 /**
  * The operations in a model's answer, or undefined when it cannot be read as
  * a list of them: a failed pass, never one that found nothing to change.
@@ -120,22 +124,22 @@ const BUILT_IN = new Set([MEMORY_ABOUT_FOLDER_ID, MEMORY_LEARNING_FOLDER_ID]);
 /**
  * The operations applied in order to a working copy of memory. One that names
  * a note or folder that is not there, breaks a rule, or has no line to say, is
- * skipped, so the report names every change. Returns the change, the lines of
- * what was done, and what Undo needs.
+ * skipped and counted, so the report names every change. Returns the change,
+ * the lines of what was done, how many were skipped, and what Undo needs.
  */
 export function applyOperations(args: {
   memory: MemorySnapshot;
   operations: Operation[];
   now: number;
   newId: () => string;
-}): { change: MemoryChange; lines: string[]; undo: PassUndo } {
+}): { change: MemoryChange; lines: ConsolidationLine[]; skipped: number; undo: PassUndo } {
   const { now } = args;
   const folders = new Map(args.memory.folders.map((f) => [f.id, f]));
   const notes = new Map(args.memory.notes.map((n) => [n.id, n]));
   const touchedFolders = new Set<string>();
   const touchedNotes = new Set<string>();
   const removedFolders = new Set<string>();
-  const lines: string[] = [];
+  const lines: ConsolidationLine[] = [];
 
   const live = () => ({ folders: [...folders.values()], notes: [...notes.values()] });
   const folderAt = (ref: string) => resolveFolder(live().folders, ref);
@@ -172,14 +176,15 @@ export function applyOperations(args: {
   for (const op of args.operations) {
     const say = str(op.say);
     if (!say) continue;
-    let done = false;
+    // What the line opens on the Memory page; a removed folder leaves nothing to open.
+    let done: Omit<ConsolidationLine, 'say'> | undefined;
     switch (op.op) {
       case 'rewrite': {
         const note = noteAt(str(op.note));
         const text = words(op.text, NOTE_MAX_LENGTH);
         if (note && text && text !== note.text) {
           putNote(edited(note, { text }));
-          done = true;
+          done = { noteId: note.id };
         }
         break;
       }
@@ -188,7 +193,7 @@ export function applyOperations(args: {
         const folder = folderAt(str(op.folder));
         if (note && folder && folder.id !== note.folderId) {
           putNote({ ...note, folderId: folder.id, updatedAt: now });
-          done = true;
+          done = { noteId: note.id };
         }
         break;
       }
@@ -196,7 +201,7 @@ export function applyOperations(args: {
         const note = noteAt(str(op.note));
         if (note) {
           putNote({ ...note, forgottenAt: now });
-          done = true;
+          done = { noteId: note.id };
         }
         break;
       }
@@ -212,15 +217,16 @@ export function applyOperations(args: {
         if (!folder) break;
         putNote(edited(keep, { text, folderId: folder.id }));
         for (const note of rest) putNote({ ...note, forgottenAt: now });
-        done = true;
+        done = { noteId: keep.id };
         break;
       }
       case 'new_folder': {
         const ref = str(op.folder);
-        done =
-          !!ref &&
-          !folderAt(ref) &&
-          !!makeFolder(ref, words(op.description, DESCRIPTION_MAX_LENGTH));
+        const made =
+          ref && !folderAt(ref)
+            ? makeFolder(ref, words(op.description, DESCRIPTION_MAX_LENGTH))
+            : undefined;
+        if (made) done = { folderId: made.id };
         break;
       }
       case 'describe': {
@@ -228,26 +234,29 @@ export function applyOperations(args: {
         const description = words(op.description, DESCRIPTION_MAX_LENGTH);
         if (folder && description && description !== folder.description) {
           putFolder({ ...folder, description, updatedAt: now });
-          done = true;
+          done = { folderId: folder.id };
         }
         break;
       }
       case 'remove_folder': {
+        // Forgotten notes do not keep a folder: they go back to About you on Restore.
         const folder = folderAt(str(op.folder));
         const empty =
           folder &&
           !BUILT_IN.has(folder.id) &&
-          ![...notes.values()].some((n) => n.folderId === folder.id) &&
+          ![...notes.values()].some(
+            (n) => n.folderId === folder.id && n.forgottenAt === undefined,
+          ) &&
           ![...folders.values()].some((f) => f.parentId === folder.id);
         if (folder && empty) {
           folders.delete(folder.id);
           removedFolders.add(folder.id);
-          done = true;
+          done = {};
         }
         break;
       }
     }
-    if (done) lines.push(say);
+    if (done) lines.push({ say, ...done });
   }
 
   const after = {
@@ -263,7 +272,12 @@ export function applyOperations(args: {
     ),
     notes: args.memory.notes.filter((n) => touchedNotes.has(n.id)),
   };
-  return { change: after, lines, undo: { before, after } };
+  return {
+    change: after,
+    lines,
+    skipped: args.operations.length - lines.length,
+    undo: { before, after },
+  };
 }
 
 const byId = <T extends { id: string }>(rows: T[]) => new Map(rows.map((row) => [row.id, row]));

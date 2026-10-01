@@ -87,6 +87,7 @@
     list-style: disc;
     font-size: 0.875rem;
     line-height: 1.5;
+    overflow-wrap: anywhere;
   }
   .memory-report__changes li::marker {
     color: var(--color-rubric);
@@ -459,6 +460,7 @@
     font-size: 0.8125rem;
     line-height: 1.45;
     color: var(--color-fg-muted);
+    overflow-wrap: anywhere;
   }
   .memory-writes__glyph {
     flex-shrink: 0;

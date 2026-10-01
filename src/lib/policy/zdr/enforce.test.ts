@@ -32,7 +32,10 @@ test('guardModelOrNotice blocks a disallowed provider with a notice and caches t
   const { state, set } = createTestStoreState();
   const allowed = guardModelOrNotice('other/model', set, lists([], ['provider']), state.setNotice);
   assert.equal(allowed, false);
-  assert.ok(state.ui.notice?.includes('not from a ZDR provider'));
+  assert.equal(
+    state.ui.notice,
+    "Model doesn't promise zero data retention. Pick another model, or turn off Zero data retention only in Settings › Models.",
+  );
   assert.deepEqual(state.zdrProviderIds, ['provider']);
 });
 

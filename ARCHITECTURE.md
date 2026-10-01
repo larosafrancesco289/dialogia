@@ -160,7 +160,8 @@ follows through a `BroadcastChannel` (`src/lib/sync/tabChannel.ts`, a no-op wher
 
 ## A turn, end to end
 
-1. The composer dispatches a store action. `messageSlice` loads `@/lib/services/turns` through a
+1. The composer first asks `canSendWithModel` (a key, and the cached ZDR verdict) so a refused
+   send keeps its draft, then dispatches a store action. `messageSlice` loads `@/lib/services/turns` through a
    dynamic import at the call site, because the turn pipeline must not be in the boot bundle.
 2. `src/lib/services/turns.ts` spawns the user and assistant messages, resolves auth, checks the
    Zero-Data-Retention (ZDR) gate, and hands off to `src/lib/agent/orchestrator/turn.ts`.
@@ -399,9 +400,11 @@ Consolidate (the Memory page's header) sends all of memory to the model new chat
 asks for a plan of operations as JSON: merge, rewrite, move, forget, new_folder, describe,
 remove_folder, each with a sentence for the person. The app applies the plan itself
 (`src/lib/memory/consolidate.ts`): an operation naming a note or folder that is not there,
-breaking a rule (a built-in folder removed, a non-empty folder removed), or without its sentence,
-is skipped and not reported. The plan is applied only if memory has not changed while the model
-answered, and an answer that cannot be read, or was cut off, is a failed pass. The request passes
+breaking a rule (a built-in folder removed, a folder removed that still holds live notes or
+subfolders), or without its sentence, is skipped and counted: the report says how many, and never
+calls memory tidy when something was proposed. Each line of the report opens the note or folder it
+changed. The plan is applied only if memory has not changed while the model answered, and an
+answer that cannot be read, or was cut off, is a failed pass that names the model as the cause. The request passes
 the zero-data-retention guard a turn does. The pass keeps the rows it wrote and the same rows as
 they were, under KV `memory:lastConsolidation` with its report, so Undo works even after a reload,
 until the report is put away. Undo puts back only rows still exactly as the pass left them, and

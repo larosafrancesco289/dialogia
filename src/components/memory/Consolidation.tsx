@@ -4,9 +4,11 @@ import { shallow } from 'zustand/shallow';
 import { IconButton } from '@/components/ui/IconButton';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { consolidationModelId, notesSince } from '@/lib/memory/consolidate';
+import { pageOfNote } from '@/lib/memory/notebook';
 import { formatModelLabel } from '@/lib/models';
 import { useChatStore } from '@/lib/store';
 import { refocusIfDropped } from '@/lib/ui/focus';
+import type { ConsolidationLine } from '@/lib/types';
 
 /** The Memory page holding a control, looked up on the click, before the control goes. */
 const pageOf = (control: unknown) =>
@@ -73,20 +75,43 @@ export function ConsolidateAction() {
   );
 }
 
+/** What became of proposed changes the rules would not let the pass make. */
+const skippedLine = (skipped: number, made: number) =>
+  made
+    ? `Skipped ${skipped === 1 ? 'a proposed change' : `${skipped} proposed changes`} that could not be made.`
+    : skipped === 1
+      ? 'The model proposed a change, but it could not be made.'
+      : `The model proposed ${skipped} changes, but none could be made.`;
+
 /**
  * What the last pass did, in the person's words, above every folder since it
- * may have touched any of them, with one Undo for the whole of it.
+ * may have touched any of them, with one Undo for the whole of it. Each line
+ * opens the note or folder it changed, where it is now.
  */
-export function ConsolidationReport() {
-  const pass = useChatStore((s) => s.memory.pass);
+export function ConsolidationReport({ onOpen }: { onOpen: (page: string) => void }) {
+  const { pass, folders, notes } = useChatStore(
+    (s) => ({ pass: s.memory.pass, folders: s.memory.folders, notes: s.memory.notes }),
+    shallow,
+  );
   const undoConsolidation = useChatStore((s) => s.undoConsolidation);
   const dismissConsolidation = useChatStore((s) => s.dismissConsolidation);
   if (!pass?.shown) return null;
+  const skipped = pass.skipped ?? 0;
+  const openedPage = ({ noteId, folderId }: ConsolidationLine) =>
+    noteId
+      ? pageOfNote(notes, noteId)
+      : folders.some((f) => f.id === folderId)
+        ? folderId
+        : undefined;
   return (
     <section className="memory-report motion-drop" aria-label="What consolidation changed">
       <div className="memory-report__head">
         <span className="memory-report__title">
-          {pass.lines.length ? `Consolidated ${shortDate(pass.at)}` : 'Already tidy'}
+          {pass.lines.length
+            ? `Consolidated ${shortDate(pass.at)}`
+            : skipped
+              ? 'Nothing changed'
+              : 'Already tidy'}
         </span>
         {pass.undo && (
           <button
@@ -111,14 +136,33 @@ export function ConsolidationReport() {
           <XMarkIcon className="h-4 w-4" />
         </IconButton>
       </div>
-      {pass.lines.length ? (
+      {pass.lines.length > 0 && (
         <ul className="memory-report__changes">
-          {pass.lines.map((line, index) => (
-            <li key={index}>{line}</li>
-          ))}
+          {pass.lines.map((line, index) => {
+            const page = openedPage(line);
+            return (
+              <li key={index}>
+                {page ? (
+                  <button
+                    type="button"
+                    className="memory-link"
+                    title="Open in Memory"
+                    onClick={() => onOpen(page)}
+                  >
+                    {line.say}
+                  </button>
+                ) : (
+                  line.say
+                )}
+              </li>
+            );
+          })}
         </ul>
+      )}
+      {skipped > 0 ? (
+        <p className="memory-report__quiet">{skippedLine(skipped, pass.lines.length)}</p>
       ) : (
-        <p className="memory-report__quiet">Nothing needed changing.</p>
+        !pass.lines.length && <p className="memory-report__quiet">Nothing needed changing.</p>
       )}
     </section>
   );

@@ -5,7 +5,9 @@ import { parseCustomEndpoints } from '@/lib/store/endpointSlice';
 import { listEndpoints, resetEndpointRegistryForTest } from '@/lib/transport/endpointRegistry';
 import { isValidBaseUrl, OPENROUTER_ENDPOINT } from '@/lib/transport/endpoints';
 import { isEndpointConnected, isEndpointUsable, requireEndpointAuth } from '@/lib/auth/require';
-import { deleteKey, getKey, setKey } from '@/lib/keys/store';
+import { deleteKey, getKey, isKeyRejected, setKey } from '@/lib/keys/store';
+import { API_ERROR_CODES, ApiError } from '@/lib/api/errors';
+import { handleTurnApiError } from '@/lib/services/turns/errors';
 import { resolveDefaultModelId } from '@/lib/models';
 import {
   selectIntroTourOpen,
@@ -328,4 +330,50 @@ test('a built-in provider is connected once it holds a key, and not before', asy
     await deleteKey(OPENROUTER_ENDPOINT.apiKeyRef!);
   }
   assert.equal(isEndpointConnected(OPENROUTER_ENDPOINT), false);
+});
+
+test('removing an endpoint drops its models from favourites and from what new chats start with', () => {
+  resetEndpointRegistryForTest();
+  const store = createTestStore();
+  const endpoint = store.getState().addEndpoint({
+    kind: 'openai-compatible',
+    label: 'Mock',
+    baseUrl: 'http://localhost:9999/v1',
+    modelIds: ['mock-think'],
+  });
+  const dead = 'endpoint:mock/mock-think';
+  const chat = makeChat({ settings: { modelId: dead } });
+  store.setState((s) => ({
+    chats: [chat],
+    favoriteModelIds: [dead, 'openai/gpt-4o', 'endpoint:mockery/other'],
+    ui: { ...s.ui, chatDefaults: { modelId: dead, system: 'Be brief' } },
+  }));
+
+  store.getState().removeEndpoint(endpoint.id);
+  const state = store.getState();
+  assert.deepEqual(state.favoriteModelIds, ['openai/gpt-4o', 'endpoint:mockery/other']);
+  assert.equal(state.ui.chatDefaults?.modelId, undefined, 'new chats fall back to the default');
+  assert.equal(state.ui.chatDefaults?.system, 'Be brief');
+  assert.equal(
+    state.chats[0].settings.modelId,
+    dead,
+    'a chat keeps its model, and is told on send',
+  );
+  resetEndpointRegistryForTest();
+});
+
+test('a key the provider refused is marked until a new one is saved', async () => {
+  const store = createTestStore();
+  const ref = OPENROUTER_ENDPOINT.apiKeyRef!;
+  await setKey(ref, 'sk-expired');
+  try {
+    const refused = new ApiError({ code: API_ERROR_CODES.UNAUTHORIZED, status: 401 });
+    handleTurnApiError(refused, store.getState, requireEndpointAuth(OPENROUTER_ENDPOINT));
+    assert.equal(isKeyRejected(ref), true);
+    assert.match(store.getState().ui.notice ?? '', /key was rejected/);
+    await setKey(ref, 'sk-fresh');
+    assert.equal(isKeyRejected(ref), false, 'the new key is not the one refused');
+  } finally {
+    await deleteKey(ref);
+  }
 });

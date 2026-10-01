@@ -85,7 +85,7 @@ test('an answer is read for its operations, whatever surrounds the JSON', () => 
 });
 
 test('operations apply in order within the rules, and only what was done is said', () => {
-  const { change, lines } = applyOperations({
+  const { change, lines, skipped } = applyOperations({
     memory: memory(),
     now: 50,
     newId,
@@ -121,13 +121,15 @@ test('operations apply in order within the rules, and only what was done is said
       { op: 'rewrite', note: noteHandle('thesis-01'), text: 'Unsaid' },
     ],
   });
+  const made = change.folders!.find((f) => f.name === 'PhD thesis');
   assert.deepEqual(lines, [
-    'Merged two notes about your diet',
-    'Moved how you learn',
-    'New folder',
-    'Filed the thesis',
-    'Removed an empty folder',
+    { say: 'Merged two notes about your diet', noteId: 'dietA-001' },
+    { say: 'Moved how you learn', noteId: 'maths-001' },
+    { say: 'New folder', folderId: made?.id },
+    { say: 'Filed the thesis', noteId: 'thesis-01' },
+    { say: 'Removed an empty folder' },
   ]);
+  assert.equal(skipped, 4, 'what was proposed and not done is counted');
   const byId = new Map(change.notes!.map((n) => [n.id, n]));
   assert.equal(byId.get('dietA-001')?.text, 'Vegetarian on weekdays');
   assert.equal(
@@ -136,7 +138,6 @@ test('operations apply in order within the rules, and only what was done is said
     'the merged-away note waits in Recently forgotten',
   );
   assert.equal(byId.get('maths-001')?.folderId, MEMORY_LEARNING_FOLDER_ID);
-  const made = change.folders!.find((f) => f.name === 'PhD thesis');
   assert.equal(made?.parentId, 'projects');
   assert.equal(byId.get('thesis-01')?.folderId, made?.id);
   assert.deepEqual(change.deleteFolderIds, ['empty']);
@@ -170,7 +171,10 @@ test('a rewrite, merge or description is kept to one short line, or skipped', ()
       { op: 'new_folder', folder: 'Kitchen', description: 'Diet\nand cooking', say: 'Made' },
     ],
   });
-  assert.deepEqual(lines, ['Tidied', 'Made']);
+  assert.deepEqual(
+    lines.map((line) => line.say),
+    ['Tidied', 'Made'],
+  );
   assert.deepEqual(
     change.notes!.map((n) => n.text),
     ['Likes worked ## examples'],
@@ -370,12 +374,13 @@ test('a pass through the store: applied, reported, undone, and its record kept',
   assert.match(asked, /Plays cello/);
   const { pass, notes, consolidating } = store.getState().memory;
   assert.equal(consolidating, false);
-  assert.deepEqual(pass?.lines, ['Clarified your note']);
+  assert.deepEqual(pass?.lines, [{ say: 'Clarified your note', noteId: added!.id }]);
   assert.equal(pass?.shown, true);
   assert.equal(notes.find((n) => n.id === added!.id)?.text, 'Plays the cello well');
   assert.deepEqual((await repository.loadMemory()).pass, pass, 'kept with memory');
 
   await store.getState().undoConsolidation();
+  assert.equal(store.getState().ui.notice, 'Consolidation undone.', 'the band goes, and says so');
   const stored = await repository.loadMemory();
   assert.equal(stored.notes.find((n) => n.id === added!.id)?.text, 'Plays cello');
   assert.equal(stored.pass, undefined);
@@ -401,7 +406,7 @@ test('a plan made before memory changed is not applied', async () => {
   assert.match(ui.notice ?? '', /changed while it was being consolidated/);
 });
 
-test('an answer that cannot be read, or was cut off, is a failed pass', async () => {
+test('an answer that cannot be read, or was cut off, is a failed pass that names the model', async () => {
   const store = createTestStore();
   await store.getState().loadMemory();
   await store.getState().changeMemory({ pass: null });
@@ -419,8 +424,75 @@ test('an answer that cannot be read, or was cut off, is a failed pass', async ()
     const { memory, ui } = store.getState();
     assert.equal(memory.notes.find((n) => n.id === added!.id)?.text, 'Reads sci-fi');
     assert.equal(memory.pass, undefined, 'not reported as tidy');
-    assert.match(ui.notice ?? '', /could not be consolidated/);
+    assert.match(ui.notice ?? '', /This model couldn't make a plan\. Nothing was changed/);
   }
+  // No answer at all is not the model's doing: that one is worth trying again.
+  await setKey('openrouter', 'sk-or-test');
+  const restore = mockFetch(async () => {
+    throw new TypeError('Failed to fetch');
+  });
+  try {
+    await store.getState().consolidateMemory();
+  } finally {
+    restore();
+    await deleteKey('openrouter');
+  }
+  assert.match(store.getState().ui.notice ?? '', /could not be consolidated.*try again/);
+});
+
+test('a pass that proposed only what could not be made is reported, not called tidy', async () => {
+  const store = createTestStore();
+  await store.getState().loadMemory();
+  await store.getState().changeMemory({ pass: null });
+  await store.getState().addMemoryNote(MEMORY_ABOUT_FOLDER_ID, 'Grows tomatoes');
+  await withModel(
+    () => ({
+      content: JSON.stringify({
+        operations: [{ op: 'remove_folder', folder: 'About you', say: 'Removed About you' }],
+      }),
+    }),
+    () => store.getState().consolidateMemory(),
+  );
+  const { pass } = store.getState().memory;
+  assert.deepEqual(pass?.lines, []);
+  assert.equal(pass?.skipped, 1);
+  assert.equal(pass?.undo, undefined);
+  assert.equal((await repository.loadMemory()).pass?.skipped, 1, 'kept with memory');
+  await store.getState().changeMemory({ pass: null });
+});
+
+test('a folder holding only forgotten notes can be removed, and Undo brings it back', async () => {
+  const store = createTestStore();
+  await store.getState().loadMemory();
+  await store.getState().changeMemory({ pass: null });
+  const garden = folder('garden-01', 'Garden');
+  await store.getState().changeMemory({ folders: [garden] });
+  const kept = await store.getState().addMemoryNote(garden.id, 'Grows basil');
+  await store.getState().forgetMemoryNote(kept!.id);
+  await withModel(
+    () => ({
+      content: JSON.stringify({
+        operations: [{ op: 'remove_folder', folder: 'Garden', say: 'Removed an empty folder' }],
+      }),
+    }),
+    () => store.getState().consolidateMemory(),
+  );
+  assert.equal(
+    store.getState().memory.folders.some((f) => f.id === garden.id),
+    false,
+  );
+  assert.deepEqual(store.getState().memory.pass?.lines, [{ say: 'Removed an empty folder' }]);
+
+  await store.getState().undoConsolidation();
+  assert.ok(store.getState().memory.folders.some((f) => f.id === garden.id));
+
+  // Removed again: the forgotten note still restores, into About you.
+  await store.getState().changeMemory({ deleteFolderIds: [garden.id] });
+  await store.getState().restoreMemoryNote(kept!.id);
+  const restored = store.getState().memory.notes.find((n) => n.id === kept!.id);
+  assert.equal(restored?.forgottenAt, undefined);
+  assert.equal(restored?.folderId, MEMORY_ABOUT_FOLDER_ID);
+  await store.getState().changeMemory({ deleteNoteIds: [kept!.id], pass: null });
 });
 
 test('a pass zero data retention forbids asks nothing, changes nothing, and is no failure', async () => {
@@ -462,9 +534,10 @@ test('a pass kept before Undo recorded what it wrote shows its report, without U
   await db.kv.put({ key: 'memory:lastConsolidation', value: old });
   const store = createTestStore();
   await store.getState().loadMemory();
+  // A pass kept its lines as plain sentences before they opened what they changed.
   assert.deepEqual(store.getState().memory.pass, {
     at: 9,
-    lines: ['Merged two notes'],
+    lines: [{ say: 'Merged two notes' }],
     shown: true,
   });
   await store.getState().undoConsolidation();

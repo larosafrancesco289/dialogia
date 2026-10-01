@@ -285,7 +285,7 @@ export async function regenerateTurn({
       keepVersions,
     });
   } catch (error: unknown) {
-    handleTurnApiError(error, get);
+    handleTurnApiError(error, get, targetAuth);
     clearTurnController(chatId, controller);
   }
 }
