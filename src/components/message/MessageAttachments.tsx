@@ -1,4 +1,5 @@
 import type { PersistedAttachment } from '@/lib/types';
+import { PdfChip } from '@/components/AttachmentPreviewList';
 
 export type MessageAttachmentsProps = {
   attachments: PersistedAttachment[];
@@ -8,27 +9,13 @@ export type MessageAttachmentsProps = {
       index: number;
     } | null,
   ) => void;
-  variant?: 'default' | 'compact';
+  /** `user`: inside the person's own bubble, set to its edge above their words. */
+  variant?: 'default' | 'user';
 };
 
-const containerByVariant: Record<'default' | 'compact', string> = {
-  default: 'px-4 pt-2 flex flex-wrap gap-2',
-  compact: 'px-3 pt-1.5 flex flex-wrap gap-1.5',
-};
-
-const imageSizeByVariant: Record<'default' | 'compact', string> = {
-  default: 'h-28 w-28 sm:h-36 sm:w-36',
-  compact: 'h-24 w-24 sm:h-32 sm:w-32',
-};
-
-const imageDimsByVariant: Record<'default' | 'compact', { width: number; height: number }> = {
-  default: { width: 144, height: 144 },
-  compact: { width: 128, height: 128 },
-};
-
-const audioSizeByVariant: Record<'default' | 'compact', string> = {
-  default: 'h-16 min-w-40 sm:min-w-48 max-w-72 px-3 py-2',
-  compact: 'h-14 min-w-36 sm:min-w-40 max-w-64 px-2.5 py-1.5',
+const CONTAINER = {
+  default: 'px-4 pt-2 flex flex-wrap items-start gap-2',
+  user: 'message-attachments--user flex flex-wrap items-start',
 };
 
 export function MessageAttachments({
@@ -56,7 +43,7 @@ export function MessageAttachments({
   };
 
   return (
-    <div className={containerByVariant[variant]}>
+    <div className={CONTAINER[variant]}>
       {imageAttachments.map((attachment, index, array) => (
         <button
           key={attachment.id}
@@ -68,18 +55,18 @@ export function MessageAttachments({
           <img
             src={attachment.dataURL}
             alt={attachment.name || 'image'}
-            width={imageDimsByVariant[variant].width}
-            height={imageDimsByVariant[variant].height}
+            width={144}
+            height={144}
             loading="lazy"
             decoding="async"
-            className={`${imageSizeByVariant[variant]} object-cover attachment-thumb`}
+            className="block h-28 w-28 sm:h-36 sm:w-36 object-cover attachment-thumb"
           />
         </button>
       ))}
       {audioAttachments.map((attachment) => (
         <div
           key={attachment.id}
-          className={`${audioSizeByVariant[variant]} attachment-chip flex items-center gap-2`}
+          className="h-16 min-w-40 sm:min-w-48 max-w-72 px-3 py-2 attachment-chip flex items-center gap-2"
         >
           {attachment.dataURL ? (
             <audio controls preload="none" src={attachment.dataURL} className="h-10" />
@@ -94,14 +81,15 @@ export function MessageAttachments({
         </div>
       ))}
       {pdfAttachments.map((attachment) => (
-        <span
+        <PdfChip
           key={attachment.id}
-          className="badge"
-          title={`${attachment.name || 'PDF'}${attachment.pageCount ? ` · ${attachment.pageCount} ${attachment.pageCount === 1 ? 'page' : 'pages'}` : ''}`}
-        >
-          {attachment.name || 'PDF'}
-          {attachment.pageCount ? ` (${attachment.pageCount}p)` : ''}
-        </span>
+          name={attachment.name}
+          detail={
+            attachment.pageCount
+              ? `${attachment.pageCount} ${attachment.pageCount === 1 ? 'page' : 'pages'}`
+              : 'PDF'
+          }
+        />
       ))}
     </div>
   );

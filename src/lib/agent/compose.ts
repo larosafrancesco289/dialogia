@@ -41,8 +41,6 @@ export async function composeTurn({
   );
   const hasPdf = preparedAttachments.some((att) => att.kind === 'pdf') || hadPdfEarlier;
 
-  const plugins = composePlugins({ hasPdf, searchEnabled, searchProvider });
-
   // Collect preambles split into stable (cacheable) and dynamic (per-turn) groups.
   // Stable: tool preamble plus whatever the modules contribute.
   // Dynamic: per-turn module context (e.g. mastery scores that change each turn).
@@ -141,6 +139,7 @@ export async function composeTurn({
     timestamps: settings.timestampsEnabled,
     ...(memoryTools.length > 0 ? { replayMemoryWrites: memory! } : {}),
   });
+  const plugins = composePlugins({ messages, searchEnabled, searchProvider });
 
   return {
     system,

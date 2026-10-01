@@ -1,6 +1,7 @@
 // Module: agent/streaming/draft
-// Responsibility: Judge whether a streamed reply reads as finished, so a
-// tool-capable model that called no tool and stopped mid-thought gets one retry.
+// Responsibility: Judge whether a streamed reply reads as finished: a
+// tool-capable model that called no tool and stopped mid-thought gets one
+// retry, and a kept answer that does not read as whole is not ended by a Stop.
 
 import type { StreamDoneExtras } from '@/lib/transport/types';
 
@@ -23,5 +24,26 @@ export function looksIncomplete(
   if (fences && fences.length % 2 === 1) return true;
   if (/[([{]$/.test(trimmed)) return true;
   if (/[,:;-]$/.test(trimmed)) return true;
-  return false;
+  return endsMidSentence(trimmed);
+}
+
+// A list item, heading, quote, table row or indented code: lines that end on a
+// word by design.
+const NOT_PROSE_RE = /^(?: {4}|\t|\s*(?:[-*+>#|]|\d+[.)](?:\s|$)))|\|/;
+
+/**
+ * A last paragraph of one line of prose, several words long, that stops on a
+ * plain word: the sentence was never finished. Kept narrow, since a false
+ * positive costs a retry: a short answer ("Paris"), verse (lines inside one
+ * paragraph), and a line ending in a link, a version, a mark or a symbol all
+ * read as whole.
+ */
+function endsMidSentence(text: string): boolean {
+  const lines = text.split('\n');
+  const last = lines[lines.length - 1] ?? '';
+  if (lines.length > 1 && lines[lines.length - 2]?.trim()) return false;
+  if (NOT_PROSE_RE.test(last)) return false;
+  const words = last.trim().split(/\s+/);
+  if (words.length < 4) return false;
+  return /^[\p{L}\p{N}'’-]*[\p{L}\p{N}]$/u.test(words[words.length - 1] ?? '');
 }

@@ -1,6 +1,7 @@
 // Module: markdown/citations
-// Responsibility: Pure text transforms applied before markdown parsing. Kept out
-// of the renderer module so callers can use them without pulling react-markdown.
+// Responsibility: Pure text transforms applied before markdown parsing, and the
+// name a cited source goes by. Kept out of the renderer module so callers can
+// use them without pulling react-markdown.
 
 export type MarkdownCitationSource = {
   title?: string;
@@ -55,8 +56,26 @@ function isEscaped(text: string, index: number): boolean {
   return slashes % 2 === 1;
 }
 
+export function hostname(url?: string) {
+  if (!url) return '';
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
+export function titleForSource(source: { title?: string; url?: string }) {
+  return source.title || hostname(source.url) || source.url || 'Untitled source';
+}
+
 function markdownUrl(url: string) {
   return `<${url.replace(/>/g, '%3E')}>`;
+}
+
+/** A link title in markdown's quoted form: one line, its quotes and backslashes escaped. */
+function markdownTitle(text: string) {
+  return `"${text.replace(/\s+/g, ' ').trim().replace(/[\\"]/g, '\\$&')}"`;
 }
 
 // One [n] marker, or several side by side ("[2][4]", "[2] [4]"), not a link's text.
@@ -64,9 +83,10 @@ function markdownUrl(url: string) {
 const CITATION_RUN = /\[\d+\](?:[ \t]*\[\d+\])*(?!\()/g;
 
 /**
- * Turns [n] markers into links to the nth source. Markers side by side are
- * joined by a comma: as links they show only their numbers, and "[2][4]"
- * would read as 24.
+ * Turns [n] markers into links to the nth source, titled with what the source
+ * is ("Source 2: Page B"), which the renderer also gives as the link's name.
+ * Markers side by side are joined by a comma: as links they show only their
+ * numbers, and "[2][4]" would read as 24.
  */
 export function linkCitationMarkers(content: string, sources?: MarkdownCitationSource[]) {
   if (!sources?.length) return content;
@@ -74,7 +94,9 @@ export function linkCitationMarkers(content: string, sources?: MarkdownCitationS
     const markers = run.match(/\d+/g) ?? [];
     const linked = markers.map((rawIndex) => {
       const source = sources[Number(rawIndex) - 1];
-      return source?.url ? `[${rawIndex}](${markdownUrl(source.url)})` : undefined;
+      if (!source?.url) return undefined;
+      const title = markdownTitle(`Source ${rawIndex}: ${titleForSource(source)}`);
+      return `[${rawIndex}](${markdownUrl(source.url)} ${title})`;
     });
     if (linked.every((link) => link === undefined)) return run;
     return linked.map((link, i) => link ?? `[${markers[i]}]`).join(', ');

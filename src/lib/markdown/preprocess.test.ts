@@ -94,7 +94,7 @@ test('fenced code and inline code pass through untouched', () => {
   assert.equal(
     preprocessMarkdown(content, sources),
     [
-      'Costs \\$5 per run [1](<https://example.com/a>), see `arr[1]` and `$1`.',
+      'Costs \\$5 per run [1](<https://example.com/a> "Source 1: example.com"), see `arr[1]` and `$1`.',
       '',
       '```bash',
       'echo $1 \\(x\\) [1]',

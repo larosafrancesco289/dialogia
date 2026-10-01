@@ -22,7 +22,7 @@ import { messageHasModuleContent } from '@/lib/modules';
 import { versionCount } from '@/lib/messages/versions';
 import type { Chat, Message, ModelDescriptor, PersistedAttachment } from '@/lib/types';
 import { LogoMark } from '@/components/ui/LogoMark';
-import { toolCallInFlight } from '@/lib/ui/streaming';
+import { penIsLive, toolCallInFlight } from '@/lib/ui/streaming';
 import { replyEndingNote } from '@/lib/ui/replyEnding';
 import { silentWaitLine } from '@/lib/ui/responseActivity';
 import styles from './MessageCard.module.css';
@@ -73,13 +73,14 @@ export type AssistantMessageProps = {
 };
 
 /**
- * A long wait for the first word, said quietly beside the mark and counted up.
- * It stands out of the flow, so neither its arrival nor its leaving (the
- * moment anything arrives) moves the reply. Hidden from screen readers, which
- * would otherwise hear it every second; the status already says a reply is coming.
+ * A long wait for the first word, said quietly beside the mark and counted up
+ * (from `since`, when the wait began before the mark). It stands out of the
+ * flow, so neither its arrival nor its leaving (the moment anything arrives)
+ * moves the reply. Hidden from screen readers, which would otherwise hear it
+ * every second; the status already says a reply is coming.
  */
-function SilentWait() {
-  const [startedAt] = useState(Date.now);
+function SilentWait({ since, className = '' }: { since?: number; className?: string }) {
+  const [startedAt] = useState(() => since ?? Date.now());
   const [now, setNow] = useState(startedAt);
   useEffect(() => {
     const tick = window.setInterval(() => setNow(Date.now()), 1000);
@@ -88,10 +89,26 @@ function SilentWait() {
   const line = silentWaitLine(now - startedAt);
   if (!line) return null;
   return (
-    <span className={`${styles.silentWait} motion-fade`} aria-hidden="true">
+    <span className={`${styles.silentWait} ${className} motion-fade`} aria-hidden="true">
       {line}
     </span>
   );
+}
+
+/** How long the words may pause before the pen says the model is still at work. */
+const QUIET_MS = 1000;
+
+/** When the reply's words last changed, once they have rested QUIET_MS while `active`. */
+function useQuietSince(content: string, active: boolean): number | undefined {
+  const [quietSince, setQuietSince] = useState<number>();
+  useEffect(() => {
+    setQuietSince(undefined);
+    if (!active) return;
+    const changedAt = Date.now();
+    const timer = window.setTimeout(() => setQuietSince(changedAt), QUIET_MS);
+    return () => window.clearTimeout(timer);
+  }, [content, active]);
+  return quietSince;
 }
 
 export function AssistantMessage({
@@ -138,6 +155,9 @@ export function AssistantMessage({
   const endingNote = replyEndingNote(message, hasModuleContent);
   // An empty version still has a footer: the way back to the others is in it.
   const hasVersions = versionCount(message) > 1;
+  const writing = isStreaming && isLatestAssistant;
+  const quietSince = useQuietSince(displayContent, writing);
+  const penLive = writing && penIsLive(message, quietSince !== undefined);
 
   let messageBody: ReactNode = null;
   if (isEditing) {
@@ -193,12 +213,16 @@ export function AssistantMessage({
           sources={resolvedCitationSources}
           streaming={isStreaming && isLatestAssistant}
         />
-        {/* The words are out but a tool call is still being written or run
-            (a card, a search): the mark keeps answering where its result lands. */}
-        {isStreaming && isLatestAssistant && toolCallInFlight(message) && (
+        {/* The words are out but the turn goes on: a tool call is being
+            written or run (a card, a search), or the model works on its next
+            round. The mark answers where what comes next lands. */}
+        {penLive && (
           <div className="markdown" role="status" aria-label="Still working">
             <p>
               <LogoMark className={styles.pen} live />
+              {quietSince !== undefined && !toolCallInFlight(message) && (
+                <SilentWait since={quietSince} className={styles.silentWaitAfterPen} />
+              )}
             </p>
           </div>
         )}

@@ -11,6 +11,7 @@ import {
 import { ActivityEntry } from '@/components/message/ActivityEntry';
 import { SourcesEntry } from '@/components/message/SourcesEntry';
 import { LogoMark } from '@/components/ui/LogoMark';
+import { thinkingNow } from '@/lib/ui/streaming';
 import { useRevealOnOpen } from '@/lib/hooks/useRevealOnOpen';
 
 type ResponseContextPanelProps = {
@@ -61,15 +62,12 @@ export function ResponseContextPanel({
   const hasToolCalls = visibleToolCount > 0;
   const hasActivity = orderedActivity.length > 0;
 
-  const latestActivity = orderedActivity[orderedActivity.length - 1];
   // Before the reply's first word, the line is the one mark answering for
   // the whole turn: thinking, writing or running a tool, or waiting on the
-  // model's next round. Once the words begin below it comes to rest (a tool
-  // run after them is marked where they end), unless the model goes back to
-  // thinking. One live mark at a time, never hopping between two.
-  const isLive =
-    isStreaming &&
-    (!answering || (latestActivity?.type === 'reasoning' && latestActivity.status !== 'done'));
+  // model's next round. Once the words begin below it comes to rest (the pen
+  // where they end answers instead, `penIsLive`), unless the model goes back
+  // to thinking. One live mark at a time, never hopping between two.
+  const isLive = isStreaming && (!answering || thinkingNow({ activity, toolCalls }));
 
   // Opened while the model is at work: the mark is already where the reply
   // waited, and the words fade in beside it (once; later phases do not replay).
@@ -101,7 +99,7 @@ export function ResponseContextPanel({
     window.setTimeout(() => setCopied(false), 1400);
   };
 
-  const showSourcesEntry = hasSources || isSearching || hasSearchError;
+  const showSourcesEntry = hasSources || isSearching;
   // One word pair names the work: "Thinking" for as long as the model is at
   // it, whatever it is doing ("Thinking · Memory read"), then "Thought for 8
   // seconds". A reply that never thought has a summary that speaks alone

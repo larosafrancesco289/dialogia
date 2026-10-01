@@ -1,8 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { describeDroppedAttachments, describeErrorNotice } from '@/lib/store/notices';
+import {
+  NOTICE_CATALOG,
+  describeDroppedAttachments,
+  describeErrorNotice,
+} from '@/lib/store/notices';
 import { API_ERROR_CODES } from '@/lib/api/errors';
-import { buildOpenRouterError } from '@/lib/openrouter/errors';
+import { buildOpenRouterError, buildOpenRouterStreamError } from '@/lib/openrouter/errors';
 import { createTestStore } from '../../../tests/helpers/createTestStoreState';
 
 test('a transport error code reads as words, keeping the status and the detail', () => {
@@ -47,6 +51,25 @@ test('an HTML error page becomes a plain sentence', async () => {
     await failed(502, '<html><head><title>502 Bad Gateway</title></head><body>nginx</body></html>'),
   );
   assert.equal(notice, 'The model provider returned an error (502). Try again in a moment.');
+});
+
+test('an expired key says so; any other refused key reads as rejected', async () => {
+  const refused = (message: string) =>
+    buildOpenRouterError(
+      new Response(JSON.stringify({ error: { message, code: 401 } }), { status: 401 }),
+      API_ERROR_CODES.UNAUTHORIZED,
+      'Invalid API key',
+    );
+  assert.equal(describeErrorNotice(await refused('API key expired.')), NOTICE_CATALOG.expiredKey);
+  assert.equal(
+    describeErrorNotice(await refused('No auth credentials found')),
+    NOTICE_CATALOG.invalidKey,
+  );
+  // Raised mid-stream, the same body arrives as a chunk.
+  assert.equal(
+    describeErrorNotice(buildOpenRouterStreamError({ message: 'Key EXPIRED', code: 401 })),
+    NOTICE_CATALOG.expiredKey,
+  );
 });
 
 test('a stop is not an error', () => {
