@@ -9,6 +9,7 @@ import type { MemoryChange } from '@/lib/db/repository';
 import { returningFolder } from '@/lib/memory/notebook';
 import {
   MEMORY_ABOUT_FOLDER_ID,
+  MEMORY_LEARNING_FOLDER_ID,
   type MemoryFolder,
   type MemoryNote,
   type MemoryWrite,
@@ -99,6 +100,17 @@ export function alreadySaved(notes: MemoryNote[], text: string): MemoryNote | un
   );
 }
 
+/** Whether a folder is Learning or sits inside it. */
+function insideLearning(folders: MemoryFolder[], folder: MemoryFolder): boolean {
+  let at: MemoryFolder | undefined = folder;
+  for (let steps = 0; at && steps <= folders.length; steps += 1) {
+    if (at.id === MEMORY_LEARNING_FOLDER_ID) return true;
+    const parentId: string | undefined = at.parentId;
+    at = parentId ? folders.find((f) => f.id === parentId) : undefined;
+  }
+  return false;
+}
+
 export function planSave(args: {
   memory: Memory;
   folder: string;
@@ -106,6 +118,8 @@ export function planSave(args: {
   replaces?: string;
   newFolderDescription?: string;
   chatId: string;
+  /** Learning takes notes only in a tutor chat. */
+  tutorChat?: boolean;
   now: number;
   newId: () => string;
 }): WritePlan {
@@ -161,6 +175,15 @@ export function planSave(args: {
       ...(parent ? { parentId: parent.id } : {}),
     };
     folder = created;
+  }
+
+  if (!args.tutorChat && insideLearning(memory.folders, folder)) {
+    return {
+      ok: false,
+      error:
+        'Learning holds only what the person studies with the tutor, and this is not a tutor chat.',
+      hint: "Save it in About you, or in its subject's own folder.",
+    };
   }
 
   if (args.replaces) {

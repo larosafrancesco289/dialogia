@@ -15,11 +15,15 @@ import {
   type ZdrFetchers,
 } from './index';
 import { guardModelOrNotice } from './enforce';
+import type { ModelDescriptor } from '@/lib/types';
+import { findModelById } from '@/lib/models';
+import { formatModelLabel } from '@/lib/models/labels';
 import { ZDR_CACHE_TTL_MS } from './constants';
 import type { EnsureListsResult, ZdrFilterMode, ZdrSnapshot } from './types';
 
 // Minimal state type for ZDR cache operations
 type ZdrCacheState = {
+  models?: ModelDescriptor[];
   zdrModelIds?: string[];
   zdrProviderIds?: string[];
   zdrFetchedAt?: number;
@@ -117,9 +121,30 @@ export async function guardZdrOrNotifyCached<S extends ZdrCacheState>(
   get: StoreGetter<S>,
   fetchers?: ZdrFetchers,
 ): Promise<boolean> {
+  if (!fetchers) return guardZdrOrNotify(modelId, set, get);
   const result = await computeZdrFilterCached([{ id: modelId }], 'enforce', set, get, fetchers);
-  const setNotice = get().setNotice;
-  return guardModelOrNotice(modelId, set, result.lists, setNotice);
+  return guardModelOrNotice(
+    modelId,
+    set,
+    result.lists,
+    get().setNotice,
+    zdrModelName(modelId, get),
+  );
+}
+
+/** The cached lists only, so it answers before the composer lets go of the draft. */
+export function guardZdrOrNotify<S extends ZdrCacheState>(
+  modelId: string,
+  set: StoreSetter<S>,
+  get: StoreGetter<S>,
+): boolean {
+  const snapshot = getZdrCacheSnapshot(get);
+  const lists = { modelIds: toSet(snapshot.modelIds), providerIds: toSet(snapshot.providerIds) };
+  return guardModelOrNotice(modelId, set, lists, get().setNotice, zdrModelName(modelId, get));
+}
+
+function zdrModelName<S extends ZdrCacheState>(modelId: string, get: StoreGetter<S>): string {
+  return formatModelLabel({ model: findModelById(get().models, modelId), fallbackId: modelId });
 }
 
 /**

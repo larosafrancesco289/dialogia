@@ -1,6 +1,6 @@
 import { BookmarkIcon } from '@heroicons/react/24/outline';
 import { useChatStore } from '@/lib/store';
-import { FORGOTTEN_PAGE } from '@/lib/memory/notebook';
+import { pageOfNote } from '@/lib/memory/notebook';
 import { refocusIfDropped } from '@/lib/ui/focus';
 import type { Message, MemoryWrite } from '@/lib/types';
 
@@ -36,26 +36,16 @@ export function MemoryWrites({ message }: { message: Message }) {
                 <button
                   type="button"
                   className="memory-link memory-writes__text"
-                  title={
-                    write.action === 'updated' && write.before
-                      ? `Was: ${write.before.text}`
-                      : 'Open in Memory'
-                  }
+                  title="Open in Memory"
                   onClick={() => {
-                    // Where the note is now: it may have moved, or been forgotten, since this reply.
-                    const note = useChatStore
-                      .getState()
-                      .memory.notes.find((n) => n.id === write.noteId);
-                    const page = !note
-                      ? write.folderId
-                      : note.forgottenAt !== undefined
-                        ? FORGOTTEN_PAGE
-                        : note.folderId;
+                    const { notes } = useChatStore.getState().memory;
+                    const page = pageOfNote(notes, write.noteId, write.folderId);
                     setUI({ memoryOpen: true, memoryFolderId: page });
                   }}
                 >
                   {write.text}
                 </button>
+                {write.action === 'updated' && write.before && ` (was ${write.before.text})`}
               </span>
               <button
                 type="button"

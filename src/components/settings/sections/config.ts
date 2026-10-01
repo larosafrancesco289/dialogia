@@ -45,7 +45,7 @@ export const SECTION_KEYWORDS: Record<SectionId, string> = {
   favorites: 'favorite favourite star models add remove hidden picker',
   privacy: 'zdr zero data retention privacy providers store',
   general: 'system prompt preset instructions timestamps date time',
-  memory: 'memory remember forget notes about you learning',
+  memory: 'memory remember forget notes about you learning sensitive topics private health',
   reasoning: 'reasoning effort thinking tokens budget',
   tutor: 'tutor learning plan learner model teaching',
   theme: 'theme dark light auto color colour scheme',

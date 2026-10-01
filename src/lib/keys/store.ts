@@ -164,6 +164,22 @@ export async function deleteKey(ref: string): Promise<void> {
   announceKeysChanged();
 }
 
+/**
+ * Keys a provider refused this session, by the value refused: a key saved since,
+ * here or in another tab, is no longer the one refused. Never persisted.
+ */
+const rejected = new Map<string, string>();
+
+export function markKeyRejected(ref: string | undefined, value: string | undefined) {
+  if (!ref || !value || rejected.get(ref) === value) return;
+  rejected.set(ref, value);
+  emit();
+}
+
+export function isKeyRejected(ref?: string): boolean {
+  return !!ref && rejected.has(ref) && rejected.get(ref) === getKey(ref);
+}
+
 /** Last four characters, for confirming *which* key is stored without showing it. */
 export function describeKey(ref?: string): string | undefined {
   const value = getKey(ref);
@@ -176,6 +192,7 @@ export function resetKeyStoreForTest(next?: KeyTable, announce?: () => void) {
   table = next ?? createMemoryKeyTable();
   announceKeysChanged = announce ?? (() => tabChannel.post({ kind: 'keys' }));
   cache = new Map();
+  rejected.clear();
   inFlightWrites = new Set();
   loaded = null;
   read = false;

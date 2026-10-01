@@ -177,7 +177,7 @@ export function MemoryPage() {
       closeLabel="Close memory"
       actions={<ConsolidateAction />}
     >
-      <ConsolidationReport />
+      <ConsolidationReport onOpen={setPage} />
       <div className="memory-body">
         <nav className="memory-nav" aria-label="Memory folders">
           {ordered.map(({ folder: f, depth }) => (
