@@ -107,12 +107,9 @@ export function toZdrState(
   };
 }
 
-export function getZdrBlockNotice(modelId: string, reason: 'model' | 'provider'): string {
-  if (reason === 'provider') {
-    return `ZDR-only is enabled. The selected model (\n${modelId}\n) is not from a ZDR provider. Choose a ZDR model in Settings.`;
-  }
-  return `ZDR-only is enabled. The selected model (\n${modelId}\n) is not ZDR. Choose a ZDR model in Settings.`;
+export function getZdrBlockNotice(modelName: string): string {
+  return `${modelName} doesn't promise zero data retention. Pick another model, or turn off Zero data retention only in Settings › Models.`;
 }
 
 export const ZDR_UNAVAILABLE_NOTICE =
-  'Could not fetch the zero-data-retention list. Check your connection, or turn off ZDR-only in Settings.';
+  'Could not fetch the zero data retention list. Check your connection, or turn off Zero data retention only in Settings › Models.';

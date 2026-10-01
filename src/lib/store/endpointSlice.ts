@@ -10,6 +10,7 @@ import {
   endpointKeyRef,
   isBuiltInEndpointId,
   normalizeBaseUrl,
+  parseEndpointModelId,
   slugifyEndpointId,
   type ProviderEndpoint,
 } from '@/lib/transport/endpoints';
@@ -124,6 +125,20 @@ export const createEndpointSlice = createStoreSlice<EndpointSliceState & Endpoin
       removeEndpoint(id) {
         if (isBuiltInEndpointId(id)) return;
         publish(get().customEndpoints.filter((endpoint) => endpoint.id !== id));
+        // Its models go from favourites and from what new chats start with, which
+        // falls back to the usual default. Chats that used them keep their model
+        // and are told the endpoint is gone when they send.
+        const fromEndpoint = (modelId?: string) =>
+          !!modelId && parseEndpointModelId(modelId)?.endpointId === id;
+        set((s) => {
+          const chatDefaults = s.ui.chatDefaults;
+          return {
+            favoriteModelIds: s.favoriteModelIds.filter((modelId) => !fromEndpoint(modelId)),
+            ui: fromEndpoint(chatDefaults?.modelId)
+              ? { ...s.ui, chatDefaults: { ...chatDefaults, modelId: undefined } }
+              : s.ui,
+          };
+        });
         // The ref is derived from the id, so an orphaned key would be re-bound
         // to whatever host the next endpoint slugged the same way points at.
         void deleteKey(endpointKeyRef(id));

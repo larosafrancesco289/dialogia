@@ -1,4 +1,5 @@
 import type {
+  ConsolidationLine,
   ConsolidationPass,
   MemoryFolder,
   MemoryNote,
@@ -321,6 +322,21 @@ function sanitizeMemoryWrite(value: unknown): MemoryWrite | undefined {
   };
 }
 
+/** A line as written now, or a plain sentence, as passes kept them before links. */
+function sanitizeConsolidationLine(value: unknown): ConsolidationLine[] {
+  if (isString(value)) return [{ say: value }];
+  if (!value || typeof value !== 'object') return [];
+  const { say, noteId, folderId } = value as Record<string, unknown>;
+  if (!isString(say)) return [];
+  return [
+    {
+      say,
+      ...(isString(noteId) ? { noteId } : {}),
+      ...(isString(folderId) ? { folderId } : {}),
+    },
+  ];
+}
+
 /**
  * The last consolidation, or undefined when it cannot be read. Its Undo is
  * kept only in the shape that records what the pass wrote; a pass stored
@@ -328,7 +344,7 @@ function sanitizeMemoryWrite(value: unknown): MemoryWrite | undefined {
  */
 export function sanitizeConsolidationPass(value: unknown): ConsolidationPass | undefined {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
-  const { at, lines, undo, previousAt, shown } = value as Record<string, unknown>;
+  const { at, lines, skipped, undo, previousAt, shown } = value as Record<string, unknown>;
   if (!isTime(at) || !Array.isArray(lines)) return undefined;
   const record = undo as { before?: Record<string, unknown>; after?: Record<string, unknown> };
   const lists = [
@@ -340,7 +356,8 @@ export function sanitizeConsolidationPass(value: unknown): ConsolidationPass | u
   ];
   return {
     at,
-    lines: lines.filter(isString),
+    lines: lines.flatMap(sanitizeConsolidationLine),
+    ...(typeof skipped === 'number' && skipped > 0 ? { skipped } : {}),
     ...(lists.every(Array.isArray) ? { undo: undo as ConsolidationPass['undo'] } : {}),
     ...(isTime(previousAt) ? { previousAt } : {}),
     ...(shown === true ? { shown } : {}),

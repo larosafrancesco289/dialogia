@@ -9,6 +9,7 @@ import type { TransportAuth } from '@/lib/auth/transport';
 import { isUnknownEndpointError } from '@/lib/transport/endpointRegistry';
 import { NOTICE_UNKNOWN_ENDPOINT } from '@/lib/store/notices';
 import { notify } from '@/lib/store/notify';
+import { guardZdrOrNotify } from '@/lib/policy/zdr/cache';
 
 export type ModelAuth = TransportAuth;
 
@@ -103,4 +104,18 @@ export const resolveSingleModelAuth = ({
     reportAuthFailure(error, set, getState);
     return null;
   }
+};
+
+/**
+ * Whether a message for this model could go out now. Asked before the composer
+ * lets go of the draft, since a refusal after that would take the text with it.
+ */
+export const canSendWithModel = (
+  modelId: string | undefined,
+  set: StoreSetter,
+  get: StoreGetter,
+): boolean => {
+  if (!modelId) return true;
+  if (!resolveSingleModelAuth({ modelId, modelIndex: get().modelIndex, set, get })) return false;
+  return get().ui.zdrOnly !== true || guardZdrOrNotify(modelId, set, get);
 };

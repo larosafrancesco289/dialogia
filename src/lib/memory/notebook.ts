@@ -86,6 +86,20 @@ export function repairs(
 export const returningFolder = (folders: MemoryFolder[], folderId: string) =>
   folders.some((folder) => folder.id === folderId) ? folderId : MEMORY_ABOUT_FOLDER_ID;
 
+/**
+ * The Memory page a note is on now, since it may have moved or been forgotten:
+ * its folder, Recently forgotten, or `fallback` once the note is gone.
+ */
+export function pageOfNote(
+  notes: MemoryNote[],
+  noteId: string,
+  fallback?: string,
+): string | undefined {
+  const note = notes.find((n) => n.id === noteId);
+  if (!note) return fallback;
+  return note.forgottenAt !== undefined ? FORGOTTEN_PAGE : note.folderId;
+}
+
 /** Forgotten notes whose wait is over. */
 export function expiredNotes(notes: MemoryNote[], now: number): MemoryNote[] {
   return notes.filter(

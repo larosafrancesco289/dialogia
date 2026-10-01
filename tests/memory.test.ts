@@ -320,13 +320,15 @@ test('another tab’s memory change is read in, and never written back', async (
   assert.deepEqual(heardByWriter, [], 'the reading tab announced nothing back');
 
   // The last consolidation travels with memory, and putting it away does too.
-  await writer
-    .getState()
-    .changeMemory({ pass: { at: 5, lines: ['Merged two notes'], shown: true } });
+  await writer.getState().changeMemory({
+    pass: { at: 5, lines: [{ say: 'Merged two notes', noteId: 'n-1' }], shown: true },
+  });
   writerChannel.post({ kind: 'memory' });
   await bus.settle();
   await readerSync.idle();
-  assert.deepEqual(reader.getState().memory.pass?.lines, ['Merged two notes']);
+  assert.deepEqual(reader.getState().memory.pass?.lines, [
+    { say: 'Merged two notes', noteId: 'n-1' },
+  ]);
   await writer.getState().dismissConsolidation();
   writerChannel.post({ kind: 'memory' });
   await bus.settle();

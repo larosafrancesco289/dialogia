@@ -60,6 +60,12 @@ test('Settings opens on the first tab listed, then on the last one used', () => 
   rememberSettingsTab(TAB_LIST[0].id);
 });
 
+test('search finds Memory by its switch for sensitive topics', () => {
+  for (const query of ['sensitive', 'health', 'private']) {
+    assert.ok(sectionMatches('memory', query), query);
+  }
+});
+
 test('search finds Your servers by what a local server is for', () => {
   for (const query of ['key', 'model', 'server', 'ollama', 'local', 'api key', 'your servers']) {
     assert.ok(sectionMatches('endpoints', query), query);

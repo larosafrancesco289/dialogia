@@ -54,6 +54,9 @@ export type LearningTopic = {
   status: string;
 };
 
+/** One thing a pass did, in the model's words, with the note or folder it opens on. */
+export type ConsolidationLine = { say: string; noteId?: string; folderId?: string };
+
 /**
  * A finished consolidation: when it ran, what it did in the person's words,
  * what Undo needs (while it can still be undone), and when the pass before it
@@ -61,7 +64,9 @@ export type LearningTopic = {
  */
 export type ConsolidationPass = {
   at: number;
-  lines: string[];
+  lines: ConsolidationLine[];
+  /** Operations the model proposed that broke the rules or named nothing there. */
+  skipped?: number;
   /** The rows the pass wrote, as it wrote them, and the same rows as they were before. */
   undo?: {
     before: { folders: MemoryFolder[]; notes: MemoryNote[] };

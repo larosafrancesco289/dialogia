@@ -24,7 +24,7 @@ import { ComposerActions } from '@/components/composer/ComposerActions';
 import { useComposerAttachments } from '@/lib/hooks/useComposerAttachments';
 import { DEFAULT_REASONING_EFFORT } from '@/lib/settings/generation';
 import { useComposerShortcuts } from '@/lib/hooks/useComposerShortcuts';
-import { resolveSingleModelAuth } from '@/lib/services/auth';
+import { canSendWithModel } from '@/lib/services/auth';
 import { isModalOpen } from '@/lib/hooks/useModalFocus';
 import { readDraft, writeDraft } from '@/lib/ui/composerDrafts';
 import { ComposerLayout } from '@/components/composer/ComposerLayout';
@@ -162,16 +162,7 @@ export function Composer({
     setNotice,
     newChat,
     sendMessage: (value, options) => send(value, options),
-    // No key opens the setup sheet and leaves the draft here; the send would
-    // stop at the same check after the composer had already let go of it.
-    canSend: () =>
-      !modelId ||
-      resolveSingleModelAuth({
-        modelId,
-        modelIndex: useChatStore.getState().modelIndex,
-        set: useChatStore.setState,
-        get: useChatStore.getState,
-      }) !== null,
+    canSend: () => canSendWithModel(modelId, useChatStore.setState, useChatStore.getState),
     defaultModelId: defaultModelId,
   });
 
