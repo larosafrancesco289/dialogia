@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { buildPersistedState, mergePersistedState } from '@/lib/store/persistence';
 import { parseCustomEndpoints } from '@/lib/store/endpointSlice';
 import { listEndpoints, resetEndpointRegistryForTest } from '@/lib/transport/endpointRegistry';
-import { OPENROUTER_ENDPOINT } from '@/lib/transport/endpoints';
-import { isEndpointConnected, requireEndpointAuth } from '@/lib/auth/require';
+import { isValidBaseUrl, OPENROUTER_ENDPOINT } from '@/lib/transport/endpoints';
+import { isEndpointConnected, isEndpointUsable, requireEndpointAuth } from '@/lib/auth/require';
 import { deleteKey, getKey, setKey } from '@/lib/keys/store';
 import { resolveDefaultModelId } from '@/lib/models';
 import {
@@ -201,6 +201,60 @@ test('a server that is down is named once a session, and again on an explicit re
   } finally {
     restore();
   }
+});
+
+test('a server that answers with no models is named in the notice', async () => {
+  resetEndpointRegistryForTest();
+  const store = createTestStore();
+  store.getState().addEndpoint({
+    kind: 'openai-compatible',
+    label: 'Ollama',
+    baseUrl: 'http://localhost:3000',
+  });
+  // A web app's fallback page: a 200, and no model list in it.
+  const restore = mockFetch(
+    (async () => new Response('<!doctype html>', { status: 200 })) as never,
+  );
+  try {
+    await store.getState().loadModels();
+  } finally {
+    restore();
+  }
+  assert.equal(store.getState().ui.notice, 'Could not load the model list from Ollama.');
+});
+
+test('a keyless server has a model to offer only once it has a model id', async () => {
+  resetEndpointRegistryForTest();
+  const store = createTestStore();
+  const endpoint = store.getState().addEndpoint({
+    kind: 'openai-compatible',
+    label: 'Ollama',
+    baseUrl: 'http://localhost:11434/v1',
+  });
+  assert.equal(isEndpointConnected(endpoint), true);
+  assert.equal(isEndpointUsable(endpoint, []), false);
+  assert.equal(isEndpointUsable(endpoint, [{ endpointId: 'openrouter' }]), false);
+  assert.equal(isEndpointUsable(endpoint, [{ endpointId: endpoint.id }]), true);
+  assert.equal(isEndpointUsable({ ...endpoint, modelIds: ['qwen3:8b'] }, []), true);
+
+  assert.equal(isEndpointUsable(OPENROUTER_ENDPOINT, []), false);
+  await setKey(OPENROUTER_ENDPOINT.apiKeyRef!, 'sk-test');
+  try {
+    // A key is enough: its list may still be loading.
+    assert.equal(isEndpointUsable(OPENROUTER_ENDPOINT, []), true);
+  } finally {
+    await deleteKey(OPENROUTER_ENDPOINT.apiKeyRef!);
+  }
+});
+
+test('only an absolute http(s) address is a base URL', () => {
+  assert.equal(isValidBaseUrl('http://localhost:11434/v1'), true);
+  assert.equal(isValidBaseUrl('  https://example.com/v1/  '), true);
+  assert.equal(isValidBaseUrl('not a url'), false);
+  assert.equal(isValidBaseUrl('localhost:11434/v1'), false);
+  assert.equal(isValidBaseUrl('/v1'), false);
+  assert.equal(isValidBaseUrl('ftp://example.com'), false);
+  assert.equal(isValidBaseUrl(''), false);
 });
 
 test('with nothing configured, loading models opens the setup sheet, but not over Settings', async () => {

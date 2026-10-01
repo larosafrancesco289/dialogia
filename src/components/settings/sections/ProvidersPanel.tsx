@@ -13,7 +13,9 @@ import {
   allowsKeylessCalls,
   endpointCapabilities,
   endpointKeyRef,
+  INVALID_BASE_URL_MESSAGE,
   isBuiltInEndpointId,
+  isValidBaseUrl,
   type ProviderEndpoint,
 } from '@/lib/transport/endpoints';
 import { listEndpoints } from '@/lib/transport/endpointRegistry';
@@ -48,6 +50,7 @@ function CustomEndpointEditor({
   );
   const caps = endpointCapabilities(endpoint);
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [urlInvalid, setUrlInvalid] = useState(false);
 
   return (
     <div className="space-y-3">
@@ -72,6 +75,9 @@ function CustomEndpointEditor({
           className="input w-full text-base sm:text-sm"
           defaultValue={endpoint.baseUrl ?? ''}
           spellCheck={false}
+          aria-invalid={urlInvalid || undefined}
+          aria-describedby={`base-${endpoint.id}-hint`}
+          onChange={() => setUrlInvalid(false)}
           onBlur={(event) => {
             // A server needs an address: an emptied field goes back to the one
             // it has, rather than showing blank over a URL still in use.
@@ -79,12 +85,22 @@ function CustomEndpointEditor({
               event.target.value = endpoint.baseUrl ?? '';
               return;
             }
+            if (!isValidBaseUrl(event.target.value)) {
+              setUrlInvalid(true);
+              return;
+            }
             updateEndpoint(endpoint.id, { baseUrl: event.target.value.trim() });
             onChanged();
           }}
         />
-        <p className="field__hint">
-          The OpenAI-compatible root, e.g. http://localhost:11434/v1 for Ollama.
+        <p
+          id={`base-${endpoint.id}-hint`}
+          className="field__hint"
+          role={urlInvalid ? 'alert' : undefined}
+        >
+          {urlInvalid
+            ? `${INVALID_BASE_URL_MESSAGE} Not saved.`
+            : 'The OpenAI-compatible root, e.g. http://localhost:11434/v1 for Ollama.'}
         </p>
       </div>
 
@@ -187,6 +203,7 @@ function AddEndpointForm({ onAdded }: { onAdded: () => void }) {
   const addEndpoint = useChatStore((s) => s.addEndpoint);
   const [label, setLabel] = useState('');
   const [baseUrl, setBaseUrl] = useState('');
+  const [urlInvalid, setUrlInvalid] = useState(false);
 
   const nameRef = useRef<HTMLInputElement>(null);
 
@@ -194,6 +211,11 @@ function AddEndpointForm({ onAdded }: { onAdded: () => void }) {
 
   const add = () => {
     if (!canAdd) return;
+    // Saved even when nothing answers there yet; only a non-address is refused.
+    if (!isValidBaseUrl(baseUrl)) {
+      setUrlInvalid(true);
+      return;
+    }
     const endpoint = addEndpoint({
       kind: 'openai-compatible',
       label: label.trim(),
@@ -222,16 +244,23 @@ function AddEndpointForm({ onAdded }: { onAdded: () => void }) {
           placeholder="Name, e.g. Ollama"
           value={label}
           onChange={(event) => setLabel(event.target.value)}
-          aria-label="Endpoint name"
+          aria-label="Server name"
         />
         <input
           className="input flex-1 basis-full sm:basis-0 min-w-0 text-base sm:text-sm"
           placeholder="e.g. http://localhost:11434/v1"
           value={baseUrl}
           spellCheck={false}
-          onChange={(event) => setBaseUrl(event.target.value)}
+          aria-invalid={urlInvalid || undefined}
+          aria-describedby="add-endpoint-hint"
+          onChange={(event) => {
+            setBaseUrl(event.target.value);
+            setUrlInvalid(false);
+          }}
           onKeyDown={(event) => {
-            if (event.key === 'Enter') add();
+            if (event.key !== 'Enter') return;
+            event.preventDefault();
+            add();
           }}
           aria-label="Base URL"
         />
@@ -239,9 +268,10 @@ function AddEndpointForm({ onAdded }: { onAdded: () => void }) {
           Add
         </button>
       </div>
-      <p className="field__hint">
-        Works with Ollama, LM Studio, llama.cpp and vLLM. Capabilities start off and are yours to
-        turn on.
+      <p id="add-endpoint-hint" className="field__hint" role={urlInvalid ? 'alert' : undefined}>
+        {urlInvalid
+          ? INVALID_BASE_URL_MESSAGE
+          : 'Works with Ollama, LM Studio, llama.cpp and vLLM. Capabilities start off and are yours to turn on.'}
       </p>
     </div>
   );

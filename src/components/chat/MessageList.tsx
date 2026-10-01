@@ -20,6 +20,7 @@ import {
   selectRepliesInOtherTab,
 } from '@/lib/store/selectors';
 import { replyInProgress } from '@/lib/ui/streaming';
+import { replyOutcomeAnnouncement } from '@/lib/ui/replyEnding';
 import { focusComposer, refocusIfDropped } from '@/lib/ui/focus';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
@@ -208,16 +209,22 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
   } | null>(null);
 
   // Announce stream completion to screen readers; the typing indicator covers
-  // the start, but nothing else signals that the response has finished.
+  // the start, but nothing else signals that the response has finished, or how.
   const [completionAnnouncement, setCompletionAnnouncement] = useState('');
   const prevStreamingRef = useRef(isStreaming);
+  const lastMessage = messages[messages.length - 1];
+  const outcome = replyOutcomeAnnouncement(
+    lastMessage?.role === 'assistant' ? lastMessage : undefined,
+  );
   useEffect(() => {
     const wasStreaming = prevStreamingRef.current;
     prevStreamingRef.current = isStreaming;
     if (!wasStreaming || isStreaming) return;
-    setCompletionAnnouncement('Response complete');
+    setCompletionAnnouncement(outcome);
     const tid = setTimeout(() => setCompletionAnnouncement(''), 2000);
     return () => clearTimeout(tid);
+    // The reply as the stream ended is the news; a later change to it is not.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isStreaming]);
 
   // What was already here when the chat opened (or finished loading) is

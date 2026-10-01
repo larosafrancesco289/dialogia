@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { replyEndingNote } from '@/lib/ui/replyEnding';
+import { replyEndingNote, replyOutcomeAnnouncement } from '@/lib/ui/replyEnding';
 
 test('a reply that hit the length limit says so', () => {
   assert.equal(
@@ -36,4 +36,16 @@ test('a cut-off reply says how it ended', () => {
     replyEndingNote({ content: 'Partial', cutOff: 'failed' }),
     'Cut off by an error before the end.',
   );
+});
+
+test('the end of a reply is announced by how it ended', () => {
+  assert.equal(replyOutcomeAnnouncement({ finishReason: 'stop' }), 'Response complete');
+  assert.equal(replyOutcomeAnnouncement({ cutOff: 'stopped' }), 'Response stopped');
+  assert.equal(replyOutcomeAnnouncement({ cutOff: 'failed' }), 'Response failed');
+  assert.equal(replyOutcomeAnnouncement({ cutOff: 'interrupted' }), 'Response failed');
+  assert.equal(
+    replyOutcomeAnnouncement({ finishReason: 'length' }),
+    'Response stopped at the length limit',
+  );
+  assert.equal(replyOutcomeAnnouncement(undefined), 'Response complete');
 });

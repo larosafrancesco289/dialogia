@@ -72,6 +72,13 @@ export function RegenerateMenu({
     acc.push(m);
     return acc;
   }, []);
+  const labelOf = (o: ModelOption) =>
+    formatModelLabel({
+      model: modelMap.get(o.id),
+      fallbackId: o.id,
+      fallbackName: o.name,
+      among: models,
+    });
   // Escape is the menu keyboard's, which also hands focus back. A phone's
   // sheet closes itself (scrim, Back, pulled down).
   useDismissOnOutside({
@@ -191,13 +198,7 @@ export function RegenerateMenu({
               }}
             >
               <span className="flex items-baseline justify-between gap-3">
-                <span className="truncate">
-                  {formatModelLabel({
-                    model: modelMap.get(o.id),
-                    fallbackId: o.id,
-                    fallbackName: o.name,
-                  })}
-                </span>
+                <span className="truncate">{labelOf(o)}</span>
                 {o.id === currentId && <span className="text-xs text-fg-muted">same model</span>}
               </span>
             </SheetItem>
@@ -222,11 +223,7 @@ export function RegenerateMenu({
           >
             <div className="menu-heading">Try again with</div>
             {options.map((o) => {
-              const label = formatModelLabel({
-                model: modelMap.get(o.id),
-                fallbackId: o.id,
-                fallbackName: o.name,
-              });
+              const label = labelOf(o);
               return (
                 <button
                   key={o.id}

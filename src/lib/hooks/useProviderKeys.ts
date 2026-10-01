@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
+import { shallow } from 'zustand/shallow';
 import { describeKey, hasKey, keysRead, listKeyRefs, subscribeToKeys } from '@/lib/keys/store';
-import { isEndpointConnected } from '@/lib/auth/require';
+import { isEndpointUsable } from '@/lib/auth/require';
 import { useChatStore } from '@/lib/store';
 import { BUILT_IN_ENDPOINTS } from '@/lib/transport/endpoints';
 
@@ -22,15 +23,22 @@ export function useProviderKeys(): {
 }
 
 /**
- * Whether any provider can be called: one holds a key, or is a server that
- * takes none. True until the keys have been read, so an app that is connected
- * never flashes its setup state while it starts.
+ * Whether any provider has a model to offer: one holds a key, or is a keyless
+ * server with a model. True until the keys have been read, so an app that is
+ * connected never flashes its setup state while it starts.
  */
 export function useAnyProviderConnected(): boolean {
-  const customEndpoints = useChatStore((s) => s.customEndpoints);
+  const { customEndpoints, models } = useChatStore(
+    (s) => ({ customEndpoints: s.customEndpoints, models: s.models }),
+    shallow,
+  );
   return useSyncExternalStore(
     subscribeToKeys,
-    () => !keysRead() || [...BUILT_IN_ENDPOINTS, ...customEndpoints].some(isEndpointConnected),
+    () =>
+      !keysRead() ||
+      [...BUILT_IN_ENDPOINTS, ...customEndpoints].some((endpoint) =>
+        isEndpointUsable(endpoint, models),
+      ),
     () => true,
   );
 }

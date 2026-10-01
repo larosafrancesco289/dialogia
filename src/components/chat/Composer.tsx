@@ -21,6 +21,7 @@ import type { DraftAttachment, ReasoningEffort } from '@/lib/types';
 import { AttachmentPreviewList } from '@/components/AttachmentPreviewList';
 import { ComposerInput } from '@/components/composer/ComposerInput';
 import { ComposerActions } from '@/components/composer/ComposerActions';
+import { findModelEndpoint } from '@/lib/transport/endpointRegistry';
 import { useComposerAttachments } from '@/lib/hooks/useComposerAttachments';
 import { DEFAULT_REASONING_EFFORT } from '@/lib/settings/generation';
 import { useComposerShortcuts } from '@/lib/hooks/useComposerShortcuts';
@@ -103,6 +104,10 @@ export function Composer({
     useMemo(() => selectResolvedModelId(defaultModelId), [defaultModelId]),
   );
   const modelMeta = findModelById(models, modelId);
+  // The registry lives outside React: subscribing to the endpoint list
+  // re-reads it after the user changes a server's capabilities.
+  useChatStore((s) => s.customEndpoints);
+  const modelEndpoint = findModelEndpoint(modelId, modelMeta);
   const canVision = isVisionSupported(modelMeta);
   const canAudio = isAudioInputSupported(modelMeta);
   const supportsReasoning = isReasoningSupported(modelMeta);
@@ -352,6 +357,7 @@ export function Composer({
           searchProvider={searchProvider}
           toggleSearch={toggleSearch}
           selectSearchMode={selectSearchMode}
+          modelEndpoint={modelEndpoint}
           showReasoningMenu={showReasoningMenu}
           availableEfforts={availableEfforts}
           defaultEffort={defaultEffort}
