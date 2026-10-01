@@ -34,6 +34,8 @@ export const NOTICE_CATALOG = {
   memoryAlreadyForgotten:
     'This note is already forgotten. It waits in Recently forgotten on the Memory page.',
   consolidationNoModel: 'Connect a model in Settings › Connections to consolidate memory.',
+  replacedReplyChangedMemory:
+    'The reply you replaced had changed your memory. Those notes stay as they are; review them on the Memory page.',
 } as const;
 
 export type NoticeId = keyof typeof NOTICE_CATALOG;
@@ -208,3 +210,4 @@ export const NOTICE_CONSOLIDATION_PARTLY_UNDONE = NOTICE_CATALOG.consolidationPa
 export const NOTICE_MEMORY_CHANGED_SINCE = NOTICE_CATALOG.memoryChangedSince;
 export const NOTICE_MEMORY_ALREADY_FORGOTTEN = NOTICE_CATALOG.memoryAlreadyForgotten;
 export const NOTICE_CONSOLIDATION_NO_MODEL = NOTICE_CATALOG.consolidationNoModel;
+export const NOTICE_REPLACED_REPLY_CHANGED_MEMORY = NOTICE_CATALOG.replacedReplyChangedMemory;
