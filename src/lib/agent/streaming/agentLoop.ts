@@ -13,13 +13,12 @@
 
 import { cleanStreamedText, type MessageStreamCallbacks } from '@/lib/agent/streamHandlers';
 import { sumUsage } from '@/lib/api/normalizers';
-import { TOOL_CALL_STOPPED } from '@/lib/constants';
 import { applyCacheBreakpoints } from '@/lib/agent/cache';
 import { applyToolExecutions, type ToolCallOutcome } from '@/lib/agent/planning/apply';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
 import { isReplayTool } from '@/lib/tools';
 import type { ToolResult } from '@/lib/tools/execution';
-import { removeOrphanPendingToolCalls, settlePendingToolCalls } from '@/lib/turns/runtime';
+import { removeOrphanPendingToolCalls } from '@/lib/turns/runtime';
 import type { MessageToolRound, MessageToolRoundCall } from '@/lib/types';
 import type { ModelMessage, ToolCall } from '@/lib/agent/types';
 import type { StreamDoneExtras } from '@/lib/transport/types';
@@ -29,12 +28,15 @@ import {
   type RoundCapture,
 } from '@/lib/agent/streaming/streamCall';
 import {
+  abortError,
   buildResult,
   createUiCallbacks,
   emitPlanResult,
   finalSystemFor,
+  markStreamErrors,
   preLogToolCalls,
   refreshSessionTools,
+  settleFailedTurn,
   scheduleTools,
   type StreamingTurnResult,
   type TurnSession,
@@ -89,30 +91,7 @@ export async function runAgentLoop(session: TurnSession): Promise<StreamingTurnR
       refreshSessionTools(session);
     }
   } catch (error) {
-    // A stream that fails or is stopped has already told the UI callbacks,
-    // which persist what streamed; anything else (a stop between rounds, a
-    // failure outside the stream) is reported to them here. Either way the
-    // ledger must not keep spinning.
-    removeOrphanPendingToolCalls({ set: turn.set, chatId, messageId: assistantMessage.id });
-    settlePendingToolCalls({
-      set: turn.set,
-      chatId,
-      messageId: assistantMessage.id,
-      error: controller.signal.aborted ? TOOL_CALL_STOPPED : 'The turn failed before this call ran',
-    });
-    if (!isStreamError(error)) {
-      ui.onError?.(
-        controller.signal.aborted
-          ? abortError()
-          : error instanceof Error
-            ? error
-            : new Error(String(error)),
-      );
-    } else {
-      // The stream's own onError saved the message before the ledger settled.
-      const current = turn.get().messagesById[assistantMessage.id];
-      if (current) await turn.persistMessage(current).catch(() => undefined);
-    }
+    await settleFailedTurn(session, ui, error);
     throw error;
   }
 
@@ -351,41 +330,4 @@ function storeToolRounds(session: TurnSession, rounds: MessageToolRound[]): void
     }));
     return result ?? {};
   });
-}
-
-// ── Errors ──────────────────────────────────────────────────────────────────
-
-const STREAM_ERROR = Symbol('agentLoopStreamError');
-
-/**
- * Tags errors a stream already reported through its onError, so the loop does
- * not report a stop twice (the UI callbacks persist and notify on onError).
- */
-function markStreamErrors(callbacks: { onError?: (error: Error) => void }) {
-  let reported = false;
-  const forward = callbacks.onError;
-  callbacks.onError = (error) => {
-    reported = true;
-    forward?.(error);
-  };
-  return (error: unknown) => {
-    if (reported && error && typeof error === 'object') {
-      (error as Record<symbol, unknown>)[STREAM_ERROR] = true;
-    }
-    return error;
-  };
-}
-
-function isStreamError(error: unknown): boolean {
-  return (
-    !!error &&
-    typeof error === 'object' &&
-    (error as Record<symbol, unknown>)[STREAM_ERROR] === true
-  );
-}
-
-function abortError(): Error {
-  const error = new Error('The turn was stopped.');
-  error.name = 'AbortError';
-  return error;
 }
