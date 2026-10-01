@@ -261,6 +261,7 @@ test('a backup’s record of a reply’s memory writes keeps only entries Undo c
     action: 'updated',
     text: 'Lives in Rome',
     folderId: 'about',
+    at: 3,
     before: note('n2', 'about', { text: 'Lives in Milan' }),
   };
   const writes = [

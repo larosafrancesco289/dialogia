@@ -82,6 +82,12 @@ export type MemoryWrite = {
   /** The note's words after the change (before it, for a forgotten note). */
   text: string;
   folderId: string;
+  /**
+   * When it was written: the note's `updatedAt` after a save, its `forgottenAt`
+   * after a forget. Undo goes ahead only while the note still says so. Absent
+   * on writes kept before it was recorded.
+   */
+  at?: number;
   before?: MemoryNote;
   /** A folder the write created, removed again on undo if nothing else is in it. */
   createdFolderId?: string;

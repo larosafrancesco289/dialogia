@@ -9,13 +9,13 @@ import type { MemorySnapshot } from '@/lib/db/repository';
 import {
   applyOperations,
   CONSOLIDATION_SYSTEM_PROMPT,
+  consolidationModelId,
   consolidationRequest,
   readOperations,
 } from '@/lib/memory/consolidate';
 import { stripThinkBlock } from '@/lib/openrouter/thinkTags';
 import { guardZdrOrNotifyCached } from '@/lib/policy/zdr/cache';
 import { enforceZdrGate } from '@/lib/policy/runtime';
-import { ChatService } from '@/lib/services/chatService';
 import type { StoreGetter, StoreSetter } from '@/lib/store/types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -33,12 +33,7 @@ export async function planConsolidation(
 ): Promise<(ReturnType<typeof applyOperations> & { before: MemorySnapshot }) | undefined> {
   const state = get();
   const before: MemorySnapshot = { folders: state.memory.folders, notes: state.memory.notes };
-  const { modelId } = ChatService.buildSettingsForNewChat({
-    ui: state.ui,
-    chats: state.chats,
-    selectedChatId: state.selectedChatId,
-    models: state.models,
-  });
+  const modelId = consolidationModelId(state);
   const auth = requireModelAuth(modelId, state.modelIndex);
   const allowed = await enforceZdrGate(state.ui, [modelId], (id) =>
     guardZdrOrNotifyCached(id, set, get),
