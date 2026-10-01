@@ -25,13 +25,18 @@ before(async () => {
   await loadModuleRuntimes();
 });
 
-function setup(endpoint: ProviderEndpoint, modelId: string) {
+// `tools` offers the model memory's tools, so the turn runs the tool loop as most chats do.
+function setup(
+  endpoint: ProviderEndpoint,
+  modelId: string,
+  { original: shown = {}, tools = false }: { original?: Partial<Message>; tools?: boolean } = {},
+) {
   const model: ModelDescriptor = {
     id: modelId,
     name: 'Model',
     context_length: 32000,
     pricing: undefined,
-    raw: {},
+    raw: tools ? { supported_parameters: ['tools'] } : {},
   };
   const chatId = `chat-regen-${Math.random().toString(36).slice(2)}`;
   const chat: Chat = {
@@ -56,18 +61,22 @@ function setup(endpoint: ProviderEndpoint, modelId: string) {
     buildStoreInitializer() as unknown as StateCreator<StoreState>,
   );
   const user = createUserMessage({ chatId, content: 'Question?', createdAt: 10 });
-  const original = createAssistantMessage({
-    chatId,
-    content: 'Original answer',
-    createdAt: 11,
-    model: modelId,
-  });
+  const original: Message = {
+    ...createAssistantMessage({
+      chatId,
+      content: 'Original answer',
+      createdAt: 11,
+      model: modelId,
+    }),
+    ...shown,
+  };
   store.setState((s) => ({
     chats: [chat],
     selectedChatId: chatId,
     models: [model],
     modelIndex: createModelIndex([model]),
     ...appendMessagesToChat(s, chatId, [user, original]),
+    ...(tools ? { memory: { ...s.memory, loaded: true } } : {}),
   }));
   const persisted: Message[] = [];
   const run = (pipeline?: PipelineClient, controller = new AbortController()) =>
@@ -177,4 +186,49 @@ test('a regenerate that fails after streaming keeps what streamed, marked failed
   const writes = s.persisted.filter((m) => m.id === s.original.id);
   assert.equal(writes.at(-1)?.content, 'Partial new answer');
   assert.equal(writes.at(-1)?.cutOff, 'failed');
+});
+
+const throwsBeforeStreaming = () =>
+  createPipelineClient({
+    streamChatCompletion: async () => {
+      throw new Error('refused');
+    },
+  });
+
+test('a regenerate refused in the tool loop saves no empty copy over the original', async () => {
+  const s = setup(ANTHROPIC_ENDPOINT, 'claude-sonnet-4-6', { tools: true });
+  await assert.rejects(s.run(throwsBeforeStreaming()));
+  await flush();
+  assert.equal(s.store.getState().messagesById[s.original.id]?.content, 'Original answer');
+  assert.deepEqual(
+    s.persisted.filter((m) => m.id === s.original.id),
+    [],
+  );
+});
+
+for (const tools of [false, true]) {
+  test(`a failed Try again of a failed reply stays marked failed (tool loop: ${tools})`, async () => {
+    const s = setup(ANTHROPIC_ENDPOINT, 'claude-sonnet-4-6', {
+      original: { content: '', cutOff: 'failed' },
+      tools,
+    });
+    await assert.rejects(s.run(throwsBeforeStreaming()));
+    await flush();
+    assert.equal(s.store.getState().messagesById[s.original.id]?.cutOff, 'failed');
+    const writes = s.persisted.filter((m) => m.id === s.original.id);
+    assert.ok(writes.length > 0, 'the attempt replaces the failed reply on disk');
+    assert.ok(
+      writes.every((m) => m.cutOff),
+      'no unmarked empty copy is ever written',
+    );
+    assert.equal(writes.at(-1)?.cutOff, 'failed');
+  });
+}
+
+test('a failed rerun of an empty placeholder says it failed', async () => {
+  const s = setup(ANTHROPIC_ENDPOINT, 'claude-sonnet-4-6', { original: { content: '' } });
+  await assert.rejects(s.run(throwsBeforeStreaming()));
+  await flush();
+  assert.equal(s.store.getState().messagesById[s.original.id]?.cutOff, 'failed');
+  assert.equal(s.persisted.filter((m) => m.id === s.original.id).at(-1)?.cutOff, 'failed');
 });

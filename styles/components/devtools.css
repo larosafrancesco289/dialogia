@@ -37,10 +37,6 @@
     color: var(--color-fg-muted);
     border-radius: var(--radius-editorial);
   }
-  .devtools__toggle:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--focus-ring);
-  }
   .devtools__toggle:hover .devtools__title {
     color: color-mix(in oklab, var(--color-rubric) 70%, var(--color-fg));
   }
@@ -205,10 +201,6 @@
   button.tool-log__head {
     cursor: pointer;
   }
-  button.tool-log__head:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--focus-ring);
-  }
 
   .tool-log__calls {
     display: flex;
@@ -241,10 +233,6 @@
     color: var(--color-fg);
     cursor: pointer;
     border-radius: var(--radius-editorial);
-  }
-  .tool-log__row:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--focus-ring);
   }
   .tool-log__row:hover .tool-log__name {
     color: color-mix(in oklab, var(--color-rubric) 70%, var(--color-fg));

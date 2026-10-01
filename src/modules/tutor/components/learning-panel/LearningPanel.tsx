@@ -43,8 +43,9 @@ export function LearningPanel() {
 
   const [feedbackContext, setFeedbackContext] = useState<PlanFeedbackContext | null>(null);
   const plan = planSheetOverride ?? learningPlan;
-  // A proposal is previewed, not lived in: nothing on it can be changed yet.
-  const isPreviewingProposal = !!planSheetOverride && !learningPlan;
+  // The override is only ever a proposal, previewed rather than lived in:
+  // nothing on it can be changed, even beside a plan that already stands.
+  const isPreviewingProposal = !!planSheetOverride;
 
   if (!plan) return null;
 
@@ -56,6 +57,7 @@ export function LearningPanel() {
     <div className="learning-panel">
       <LearningPanelHeader
         revising={revising}
+        previewing={isPreviewingProposal}
         canRevise={canRevise}
         onToggleRevise={() => setRevising(!revising)}
         onClose={onCloseRightPanel}

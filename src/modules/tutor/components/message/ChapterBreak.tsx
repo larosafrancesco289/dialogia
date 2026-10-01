@@ -3,8 +3,9 @@ import { useChatStore } from '@/lib/store';
 import { selectMessagesForCurrentChat } from '@/lib/store/selectors';
 import type { Message } from '@/lib/types';
 import { nextReadyNode, percent as toPercent } from '@/modules/tutor/engine';
-import { evidenceBehind, type Completion } from '@/modules/tutor/ui/messageViews';
+import { evidenceBehind, seamOpenAt, type Completion } from '@/modules/tutor/ui/messageViews';
 import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
+import { useTutorSession } from '@/modules/tutor/ui/useTutorSession';
 import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 import { seamChoices } from '@/modules/tutor/ui/tutorFlags';
 import { Markdown } from '@/components/Markdown';
@@ -34,6 +35,7 @@ export function ChapterBreak({
   });
   const setUI = useChatStore((s) => s.setUI);
   const { state, learningPlan, onRequestMorePractice, onGoOn } = usePlanCallbacks();
+  const { session } = useTutorSession();
   const affordances = useTutorAffordances();
 
   const index = learningPlan?.nodes.findIndex((n) => n.id === completion.nodeId) ?? -1;
@@ -49,11 +51,7 @@ export function ChapterBreak({
   const behind = mastery ? evidenceBehind(mastery.evidence) : undefined;
   const reopened = !!completion.reopened;
   // The seam is open until the learner (or the tutor) starts what comes next.
-  const atSeam =
-    isLatest &&
-    !reopened &&
-    !started &&
-    (state.phase === 'interlude' || state.phase === 'complete');
+  const atSeam = isLatest && seamOpenAt(session, message.id);
   // Going on follows the plan, so it is always offered; the other two change
   // it, so a read-only plan leaves them out.
   const { goOn: canGoOn, negotiate: canNegotiate } = seamChoices(affordances, {

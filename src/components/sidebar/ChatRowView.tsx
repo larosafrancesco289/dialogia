@@ -7,6 +7,7 @@ import {
   FolderArrowDownIcon,
 } from '@heroicons/react/24/outline';
 import { InlineTitleEdit } from '@/components/sidebar/InlineTitleEdit';
+import { BRANCH_TITLE_SUFFIX } from '@/lib/services/chatService';
 
 export type ChatRowViewProps = {
   chatId: string;
@@ -34,6 +35,7 @@ export type ChatRowViewProps = {
   onPointerMove: (event: PointerEvent) => void;
   onPointerUp: (event: PointerEvent) => void;
   onPointerCancel: () => void;
+  onContextMenu: (event: React.MouseEvent) => void;
 };
 
 /** Rows inside a folder start where the folder's name starts. */
@@ -64,12 +66,17 @@ export function ChatRowView({
   onPointerMove,
   onPointerUp,
   onPointerCancel,
+  onContextMenu,
 }: ChatRowViewProps) {
   // The title it was drawn with. A later one (the generated title arriving,
   // a rename) fades in; the list's first paint does not.
   const firstTitle = useRef(title);
   const retitled = title !== firstTitle.current;
   const showTitle = !collapsed || isEditing;
+  // A branch shares its chat's title: the marker that tells them apart is kept
+  // out of the truncation, which would otherwise cut it first.
+  const branch = title.endsWith(BRANCH_TITLE_SUFFIX);
+  const name = branch ? title.slice(0, -BRANCH_TITLE_SUFFIX.length) : title;
   const allowActions = !collapsed && !isEditing;
 
   return (
@@ -109,6 +116,7 @@ export function ChatRowView({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
+      onContextMenu={onContextMenu}
     >
       {isEditing ? (
         <InlineTitleEdit
@@ -122,10 +130,11 @@ export function ChatRowView({
           {isTutor && <AcademicCapIcon className="chat-item__kind" aria-hidden="true" />}
           <div
             key={title}
-            className={`flex-1 text-sm truncate${retitled ? ' chat-item__title--new' : ''}`}
+            className={`flex flex-1 min-w-0 text-sm${retitled ? ' chat-item__title--new' : ''}`}
           >
             {isTutor && <span className="sr-only">Tutoring: </span>}
-            {title}
+            <span className="truncate">{name}</span>
+            {branch && <span className="chat-item__branch">{BRANCH_TITLE_SUFFIX.trim()}</span>}
           </div>
         </>
       ) : null}

@@ -4,7 +4,10 @@ import { motionTransition } from '@/lib/ui/motion';
 import type { ReasoningEffort } from '@/lib/types';
 import { useBackToClose } from '@/lib/hooks/useBackToClose';
 import { useDismissOnOutside } from '@/lib/hooks/useDismissOnOutside';
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
+import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import { EffortMeterIcon } from '@/components/ui/icons';
+import { BottomSheet, SheetItem } from '@/components/ui/BottomSheet';
 import { ComposerToolLabel } from '@/components/composer/ComposerToolLabel';
 
 const effortLabel = (e: ReasoningEffort) =>
@@ -30,6 +33,9 @@ const EFFORT_HINT: Record<ReasoningEffort, string> = {
   xhigh: 'Think very hard',
   max: 'Take all the time it needs',
 };
+
+/** The levels drawn top-down, from the most thought to none, each with its place in `efforts`. */
+const topDown = (efforts: ReasoningEffort[]) => efforts.map((e, index) => ({ e, index })).reverse();
 
 /** How far up this model's levels an effort sits: 0 for Off, n for the top. */
 function effortRank(levels: ReasoningEffort[], effort: ReasoningEffort): number {
@@ -81,8 +87,7 @@ function ReasoningMenu({
     rowsRef.current[next]?.focus();
   };
 
-  // Drawn top-down, so the list runs from the most thought to none.
-  const rows = efforts.map((e, index) => ({ e, index })).reverse();
+  const rows = topDown(efforts);
 
   return (
     <motion.div
@@ -157,6 +162,50 @@ function ReasoningMenu({
   );
 }
 
+/** On a phone the same list is the one bottom sheet, its hint saying what the chosen level does. */
+function ReasoningSheet({
+  open,
+  efforts,
+  defaultEffort,
+  currentEffort,
+  onSelect,
+  onClose,
+  returnFocus,
+}: Omit<ReasoningMenuProps, 'menuRef' | 'currentEffort'> & {
+  open: boolean;
+  currentEffort: ReasoningEffort;
+  returnFocus: () => HTMLElement | null;
+}) {
+  return (
+    <BottomSheet
+      open={open}
+      label="Reasoning effort"
+      title="Reasoning effort"
+      onClose={onClose}
+      returnFocus={returnFocus}
+    >
+      <p className="effort-menu__hint">{EFFORT_HINT[currentEffort]}</p>
+      {topDown(efforts).map(({ e }) => (
+        <Fragment key={e}>
+          {e === 'none' && efforts.length > 1 && <div className="sheet-rule" aria-hidden="true" />}
+          <SheetItem
+            selected={e === currentEffort}
+            onClick={() => {
+              onSelect(e);
+              onClose();
+            }}
+          >
+            <span className="flex items-baseline justify-between gap-3">
+              <span>{effortLabel(e)}</span>
+              {defaultEffort === e && <span className="effort-menu__default">default</span>}
+            </span>
+          </SheetItem>
+        </Fragment>
+      ))}
+    </BottomSheet>
+  );
+}
+
 /** The composer's reasoning effort button and the list it opens. */
 export function ReasoningEffortControl({
   availableEfforts,
@@ -172,9 +221,11 @@ export function ReasoningEffortControl({
   const [reasoningOpen, setReasoningOpen] = useState(false);
   const reasoningButtonRef = useRef<HTMLButtonElement | null>(null);
   const reasoningMenuRef = useRef<HTMLDivElement | null>(null);
+  // A phone's menus are all the one bottom sheet, which closes itself.
+  const isMobile = useMediaQuery(MEDIA_QUERIES.mobile);
 
   useDismissOnOutside({
-    open: reasoningOpen,
+    open: reasoningOpen && !isMobile,
     insideRefs: [reasoningMenuRef, reasoningButtonRef],
     onOutsidePress: () => setReasoningOpen(false),
     onEscape: () => {
@@ -210,21 +261,33 @@ export function ReasoningEffortControl({
         />
         <ComposerToolLabel text={reasoningActive ? effortLabel(effort) : null} />
       </button>
-      <AnimatePresence>
-        {reasoningOpen && (
-          <ReasoningMenu
-            efforts={efforts}
-            defaultEffort={defaultEffort}
-            currentEffort={effort}
-            onSelect={(e) => void onSelectEffort(e)}
-            onClose={() => {
-              setReasoningOpen(false);
-              reasoningButtonRef.current?.focus();
-            }}
-            menuRef={reasoningMenuRef}
-          />
-        )}
-      </AnimatePresence>
+      {isMobile ? (
+        <ReasoningSheet
+          open={reasoningOpen}
+          efforts={efforts}
+          defaultEffort={defaultEffort}
+          currentEffort={effort}
+          onSelect={(e) => void onSelectEffort(e)}
+          onClose={() => setReasoningOpen(false)}
+          returnFocus={() => reasoningButtonRef.current}
+        />
+      ) : (
+        <AnimatePresence>
+          {reasoningOpen && (
+            <ReasoningMenu
+              efforts={efforts}
+              defaultEffort={defaultEffort}
+              currentEffort={effort}
+              onSelect={(e) => void onSelectEffort(e)}
+              onClose={() => {
+                setReasoningOpen(false);
+                reasoningButtonRef.current?.focus();
+              }}
+              menuRef={reasoningMenuRef}
+            />
+          )}
+        </AnimatePresence>
+      )}
     </div>
   );
 }

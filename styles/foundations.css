@@ -139,15 +139,13 @@ html {
 .btn-ghost:hover {
   background: color-mix(in oklab, var(--color-fg) 5%, transparent);
 }
-.btn:focus-visible,
-.btn-outline:focus-visible,
-.btn-ghost:focus-visible,
 /* A label dressed as a button round a hidden file input (Import): the input
-   takes the focus, so the label shows it. */
+   takes the focus, so the label wears the ring every control has. */
 .btn:has(> input:focus-visible),
 .btn-outline:has(> input:focus-visible),
 .btn-ghost:has(> input:focus-visible) {
-  box-shadow: 0 0 0 2px var(--focus-ring);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 .btn[disabled],
 .btn-outline[disabled],
