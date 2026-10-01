@@ -13,6 +13,9 @@ import { onlyShownVersion } from '@/lib/messages/versions';
 
 export const DEFAULT_CHAT_TITLE = 'New chat';
 
+/** What a branch's title adds to its chat's. */
+export const BRANCH_TITLE_SUFFIX = ' (branch)';
+
 /** Still wearing the default title (chats made before it was sentence case too). */
 export const isUntitledChat = (title: string | undefined) =>
   title === DEFAULT_CHAT_TITLE || title === 'New Chat';
@@ -113,7 +116,7 @@ export class ChatService {
 
     const newChat: Chat = {
       id: newChatId,
-      title: `${sourceChat.title || 'Chat'} (branch)`,
+      title: `${sourceChat.title || 'Chat'}${BRANCH_TITLE_SUFFIX}`,
       createdAt: now,
       updatedAt: now,
       settings: { ...sourceChat.settings },

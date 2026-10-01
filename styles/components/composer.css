@@ -188,11 +188,9 @@
     line-height: 1.3;
     color: var(--color-fg-muted);
   }
-  /* Phones give every button a touch-sized floor. */
-  @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
-    .effort-menu__row {
-      height: var(--touch-target-min);
-    }
+  /* In the phone's sheet the hint lines up with the rows under it. */
+  .bottom-sheet .effort-menu__hint {
+    padding-inline: var(--space-4);
   }
 
   /* The tools and the Stop row trade places in one quiet fade, without
@@ -243,10 +241,6 @@
   .composer-btn-send > svg,
   .composer-btn-stop > svg {
     position: relative;
-  }
-  .composer-btn-send:focus-visible,
-  .composer-btn-stop:focus-visible {
-    box-shadow: 0 0 0 2px var(--focus-ring);
   }
 
   .composer-btn-send {

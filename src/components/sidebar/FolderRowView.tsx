@@ -36,6 +36,7 @@ export type FolderRowViewProps = {
   onPointerMove: (event: ReactPointerEvent) => void;
   onPointerUp: (event: ReactPointerEvent) => void;
   onPointerCancel: () => void;
+  onContextMenu: (event: React.MouseEvent) => void;
 };
 
 /**
@@ -68,6 +69,7 @@ export function FolderRowView({
   onPointerMove,
   onPointerUp,
   onPointerCancel,
+  onContextMenu,
 }: FolderRowViewProps) {
   // A double click renames; folding waits to be sure it was a single click,
   // so the folder does not open and shut again before the name field shows.
@@ -131,6 +133,7 @@ export function FolderRowView({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
+      onContextMenu={onContextMenu}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}

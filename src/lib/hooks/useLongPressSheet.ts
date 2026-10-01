@@ -22,12 +22,14 @@ export function useLongPressSheet(opts: UseLongPressSheetOptions) {
 
   const onPointerDown = (event: React.PointerEvent) => {
     if (!enabled) return;
+    clearTimer();
+    // A right or middle press is never a tap, and never a long press.
+    fired.current = event.button !== 0;
+    if (fired.current) return;
     // Every press is measured, so a mouse click in a narrow window still
     // counts as a tap; only a touch can become a long press.
     startX.current = event.clientX;
     startY.current = event.clientY;
-    fired.current = false;
-    clearTimer();
     if (event.pointerType === 'mouse') return;
     timerId.current = window.setTimeout(() => {
       fired.current = true;
@@ -58,10 +60,21 @@ export function useLongPressSheet(opts: UseLongPressSheetOptions) {
     clearTimer();
   };
 
+  // A right-click, Ctrl-click, the context-menu key or Shift+F10 opens the
+  // same sheet, so a mouse or a keyboard reaches it where no long press can.
+  const onContextMenu = (event: React.MouseEvent) => {
+    if (!enabled) return;
+    event.preventDefault();
+    clearTimer();
+    fired.current = true;
+    onLongPress();
+  };
+
   return {
     onPointerDown,
     onPointerMove,
     onPointerUp,
     onPointerCancel,
+    onContextMenu,
   };
 }

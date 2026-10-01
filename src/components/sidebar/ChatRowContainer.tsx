@@ -125,6 +125,7 @@ export function ChatRowContainer({
         onPointerMove={longPress.onPointerMove}
         onPointerUp={longPress.onPointerUp}
         onPointerCancel={longPress.onPointerCancel}
+        onContextMenu={longPress.onContextMenu}
       />
 
       <BottomSheet
