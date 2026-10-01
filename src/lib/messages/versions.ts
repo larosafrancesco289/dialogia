@@ -57,6 +57,15 @@ function allVersions(message: Message): ReplyVersion[] {
   return [...others.slice(0, at), versionOf(message), ...others.slice(at)];
 }
 
+/**
+ * Whether dropping the reply's versions (all, or only the shown one) drops
+ * memory changes with them: the notes stay, but their lines and Undo go.
+ */
+export function dropsMemoryWrites(message: Message, shownOnly = false): boolean {
+  const versions = shownOnly ? [versionOf(message)] : allVersions(message);
+  return versions.some((v) => v.memoryWrites?.some((write) => !write.undone));
+}
+
 /** The message showing `list[index]`, the rest kept as its other versions. */
 function withVersions(message: Message, list: ReplyVersion[], index: number): Message {
   const bare: Record<string, unknown> = { ...message };

@@ -5,13 +5,21 @@ import { abortAllTurns, abortTurn } from '@/lib/turns/runtime/abortControllers';
 import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { appendMessagesToChat, getMessagesForChat } from '@/lib/messages/indexing';
 import { inLatestExchange } from '@/lib/messages/latestExchange';
-import { removeShownVersion, showVersion, versionCount } from '@/lib/messages/versions';
+import {
+  dropsMemoryWrites,
+  removeShownVersion,
+  showVersion,
+  versionCount,
+} from '@/lib/messages/versions';
 import { withoutSearchEntry } from '@/lib/ui/messageSources';
 import { createAssistantMessage } from '@/lib/messages/createMessage';
 import { isChatStreaming } from '@/lib/ui/streaming';
 import { canRedoReply } from '@/lib/modules';
 import { notify } from '@/lib/store/notify';
-import { NOTICE_REPLY_IN_OTHER_TAB } from '@/lib/store/notices';
+import {
+  NOTICE_REPLACED_REPLY_CHANGED_MEMORY,
+  NOTICE_REPLY_IN_OTHER_TAB,
+} from '@/lib/store/notices';
 
 // telemetry removed for commit cleanliness
 
@@ -169,6 +177,9 @@ export function createMessageSlice(
       if (opts?.rerun) {
         if (isChatStreaming(get().ui, chatId)) get().stopStreaming();
         const nextAssistant = list.slice(idx + 1).find((m) => m.role === 'assistant');
+        if (nextAssistant && dropsMemoryWrites(nextAssistant)) {
+          get().setNotice(NOTICE_REPLACED_REPLY_CHANGED_MEMORY, 'info');
+        }
         let rerunTargetId = nextAssistant?.id;
         if (!rerunTargetId) {
           // No assistant reply exists after this message (e.g. the turn failed
@@ -229,7 +240,11 @@ export function createMessageSlice(
 
     async deleteReplyVersion(messageId) {
       const message = replyWithVersions(messageId);
-      if (message) await showReply(message, removeShownVersion(message));
+      if (!message) return;
+      if (dropsMemoryWrites(message, true)) {
+        get().setNotice(NOTICE_REPLACED_REPLY_CHANGED_MEMORY, 'info');
+      }
+      await showReply(message, removeShownVersion(message));
     },
   } satisfies Partial<StoreState>;
 }
