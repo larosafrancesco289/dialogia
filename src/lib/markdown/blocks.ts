@@ -112,9 +112,33 @@ export function splitMarkdownBlocks(content: string): MarkdownBlockSplit {
  * the tail turns into a completed block, and when the stream ends: React
  * reuses what it already rendered instead of rebuilding the reply.
  */
-export function markdownRenderBlocks(content: string): string[] {
+export function markdownRenderBlocks(content: string, streaming = false): string[] {
   const { stable, tail } = splitMarkdownBlocks(content);
-  return tail ? [...stable, tail] : stable;
+  const shown = streaming ? withoutPartialFenceClose(tail) : tail;
+  return shown ? [...stable, shown] : stable;
+}
+
+/**
+ * While a reply streams, the closing fence of a code block arrives a
+ * character or two at a time, and each partial run would show as one more
+ * code line until the fence completes, making the block grow and then
+ * shrink. A last line that could still become the open fence's close is
+ * held back.
+ */
+function withoutPartialFenceClose(tail: string): string {
+  const lastBreak = tail.lastIndexOf('\n');
+  const last = tail.slice(lastBreak + 1);
+  if (lastBreak < 0 || !/^ {0,3}(`+|~+)$/.test(last)) return tail;
+  let marker = '';
+  for (const line of tail.slice(0, lastBreak).split('\n')) {
+    if (!marker) {
+      marker = line.match(FENCE_OPEN_RE)?.[1] ?? '';
+      continue;
+    }
+    const close = line.match(FENCE_CLOSE_RE);
+    if (close && close[1][0] === marker[0] && close[1].length >= marker.length) marker = '';
+  }
+  return marker && last.trim()[0] === marker[0] ? tail.slice(0, lastBreak + 1) : tail;
 }
 
 // A link reference or footnote definition: `[id]: url`, `[^1]: text`.

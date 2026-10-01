@@ -142,3 +142,13 @@ test('rendersAsBlocks: a definition another block could use needs the whole docu
   assert.equal(rendersAsBlocks('See [the docs][d].\n\n[d]: https://docs.test'), false);
   assert.equal(rendersAsBlocks('Claim.[^1]\n\n[^1]: The source.'), false);
 });
+
+test('markdownRenderBlocks holds back a closing fence still arriving while streaming', () => {
+  const growing = 'Intro.\n\n```ts\nconst a = 1;\n``';
+  assert.deepEqual(markdownRenderBlocks(growing, true), ['Intro.\n\n', '```ts\nconst a = 1;\n']);
+  assert.deepEqual(markdownRenderBlocks(growing), ['Intro.\n\n', '```ts\nconst a = 1;\n``']);
+  // A backtick line outside an open fence, or a different fence character, is text.
+  assert.deepEqual(markdownRenderBlocks('Intro\n`', true), ['Intro\n`']);
+  assert.deepEqual(markdownRenderBlocks('~~~\nx\n`', true), ['~~~\nx\n`']);
+  assert.deepEqual(markdownRenderBlocks('```\nx\n```\n`', true), ['```\nx\n```\n`']);
+});

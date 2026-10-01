@@ -272,7 +272,13 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
       }
     };
 
+    // Scroll anchoring also moves the list, downward, when maths or a code
+    // block above settles mid-stream; only a move up is the person leaving.
+    let lastScrollTop = el.scrollTop;
+
     const handleScroll = () => {
+      const movedUp = el.scrollTop < lastScrollTop;
+      lastScrollTop = el.scrollTop;
       const snapshot = readSnapshot();
       if (!snapshot) return;
 
@@ -282,7 +288,8 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
       }
 
       if (!snapshot.atBottom) {
-        markUserScrolledAway();
+        if (movedUp) markUserScrolledAway();
+        else applySnapshot(snapshot);
         return;
       }
 
