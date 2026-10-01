@@ -65,6 +65,34 @@ const PAGES: IntroPage[] = [
   },
 ];
 
+function PageContent({ page, titleId }: { page: IntroPage; titleId?: string }) {
+  return (
+    <>
+      <div className={styles.art}>
+        <IntroArt plate={page.plate} />
+      </div>
+      <h2 id={titleId} className={styles.title}>
+        {page.title}
+      </h2>
+      <div className={styles.prose}>
+        {page.paragraphs.map((paragraph) => (
+          <p key={paragraph.slice(0, 24)}>{paragraph}</p>
+        ))}
+        {page.link && (
+          <a
+            className={styles.link}
+            href={page.link.href}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {page.link.label}
+          </a>
+        )}
+      </div>
+    </>
+  );
+}
+
 export function IntroTour() {
   const setUI = useChatStore((s) => s.setUI);
   const [index, setIndex] = useState(0);
@@ -159,38 +187,31 @@ export function IntroTour() {
             </button>
           </div>
 
-          {/* Keyed on the page, so React remounts and the entrance replays.
-              There is deliberately no exit animation: an exit that never
-              reports completion strands a paged dialog on the wrong page. */}
-          <motion.div
-            key={page.id}
-            className={styles.page}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={motionTransition.quick}
-          >
-            <div className={styles.art}>
-              <IntroArt plate={page.plate} />
-            </div>
-            <h2 id={titleId} className={styles.title}>
-              {page.title}
-            </h2>
-            <div className={styles.prose}>
-              {page.paragraphs.map((paragraph) => (
-                <p key={paragraph.slice(0, 24)}>{paragraph}</p>
-              ))}
-              {page.link && (
-                <a
-                  className={styles.link}
-                  href={page.link.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
+          {/* Every page is laid out in one grid cell, the others hidden, so
+              the card takes the tallest page's height at any width and the
+              art and title stay put from page to page. The page shown is
+              keyed, so React remounts it and the entrance replays. There is
+              deliberately no exit animation: an exit that never reports
+              completion strands a paged dialog on the wrong page. */}
+          <div className={styles.pages}>
+            {PAGES.map((entry) =>
+              entry.id === page.id ? (
+                <motion.div
+                  key={entry.id}
+                  className={styles.page}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={motionTransition.quick}
                 >
-                  {page.link.label}
-                </a>
-              )}
-            </div>
-          </motion.div>
+                  <PageContent page={entry} titleId={titleId} />
+                </motion.div>
+              ) : (
+                <div key={entry.id} className={`${styles.page} ${styles.pageHidden}`}>
+                  <PageContent page={entry} />
+                </div>
+              ),
+            )}
+          </div>
 
           <div className={styles.footer}>
             <nav className={styles.dots} aria-label="Tour pages">

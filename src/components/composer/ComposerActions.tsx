@@ -2,6 +2,7 @@ import { ArrowUpIcon, BookmarkIcon, StopIcon, PaperClipIcon } from '@heroicons/r
 import { ComposerToolLabel } from '@/components/composer/ComposerToolLabel';
 import type { SearchMode } from '@/lib/search/providers/types';
 import type { ReasoningEffort } from '@/lib/types';
+import type { ProviderEndpoint } from '@/lib/transport/endpoints';
 import { ReasoningEffortControl } from '@/components/composer/ReasoningEffortControl';
 import { SearchModeControl } from '@/components/composer/SearchModeControl';
 
@@ -21,6 +22,8 @@ export type ComposerActionsProps = {
   toggleSearch: () => void;
   /** Turns search on with a specific mechanism; only shown when there is a choice. */
   selectSearchMode: (mode: SearchMode) => void;
+  /** Where the chosen model's requests go, which decides what search it can do. */
+  modelEndpoint?: ProviderEndpoint;
   showReasoningMenu: boolean;
   availableEfforts?: ReasoningEffort[];
   defaultEffort?: ReasoningEffort;
@@ -43,6 +46,7 @@ export function ComposerActions({
   searchProvider,
   toggleSearch,
   selectSearchMode,
+  modelEndpoint,
   showReasoningMenu,
   availableEfforts,
   defaultEffort,
@@ -97,6 +101,7 @@ export function ComposerActions({
           searchProvider={searchProvider}
           toggleSearch={toggleSearch}
           selectSearchMode={selectSearchMode}
+          endpoint={modelEndpoint}
         />
 
         {/* On is the usual state and stays quiet; a chat kept out of memory says so. */}

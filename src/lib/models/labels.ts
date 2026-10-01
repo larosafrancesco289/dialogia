@@ -43,7 +43,26 @@ export function deriveNameFromId(id?: string): string {
 
 const looksLikeId = (value: string) => /^[~\w.:-]+\/[\w.:-]+$/.test(value);
 
+/**
+ * A model's display name. Given `among`, the list it is shown with, a model
+ * id two endpoints both serve (two local servers with the same model, say)
+ * names its endpoint too, so the two read apart.
+ */
 export function formatModelLabel(params: {
+  model?: ModelDescriptor | null;
+  fallbackId?: string;
+  fallbackName?: string;
+  among?: readonly ModelDescriptor[];
+}): string {
+  const { model, among } = params;
+  const label = baseModelLabel(params);
+  const wireId = model?.transportModelId;
+  if (!wireId || !model.providerDisplay || !among) return label;
+  const shared = among.some((other) => other.id !== model.id && other.transportModelId === wireId);
+  return shared ? `${label} · ${model.providerDisplay}` : label;
+}
+
+function baseModelLabel(params: {
   model?: ModelDescriptor | null;
   fallbackId?: string;
   fallbackName?: string;

@@ -43,6 +43,12 @@ export function describeDroppedAttachments(kinds: string[]): string {
   return `${list.charAt(0).toUpperCase()}${list.slice(1)} ${verb} left out: this model does not accept them.`;
 }
 
+/** An empty model list names where it was asked for, so the person knows which server to check. */
+export function describeModelsUnavailable(labels: string[]): string {
+  const base = NOTICE_CATALOG.modelsUnavailable;
+  return labels.length ? `${base.slice(0, -1)} from ${labels.join(', ')}.` : base;
+}
+
 export function resolveNotice(notice?: NoticeId | string): string | undefined {
   if (!notice) return undefined;
   return NOTICE_CATALOG[notice as NoticeId] ?? notice;
@@ -171,7 +177,6 @@ function readable(message: string): string {
 export const NOTICE_INVALID_KEY = NOTICE_CATALOG.invalidKey;
 export const NOTICE_RATE_LIMITED = NOTICE_CATALOG.rateLimited;
 export const NOTICE_MISSING_SEARCH_KEY = NOTICE_CATALOG.missingSearchKey;
-export const NOTICE_MODELS_UNAVAILABLE = NOTICE_CATALOG.modelsUnavailable;
 export const NOTICE_UNKNOWN_ENDPOINT = NOTICE_CATALOG.unknownEndpoint;
 export const NOTICE_EXPORTED_CHATS = NOTICE_CATALOG.exportedChats;
 export const NOTICE_PLAN_APPLY_FAILED = NOTICE_CATALOG.planApplyFailed;

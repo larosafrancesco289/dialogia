@@ -7,6 +7,8 @@ import type { StoreState } from '@/lib/store/types';
 import { useCuratedModels, useDefaultModelId } from '@/lib/hooks/useModelCatalog';
 import { isModelEndpointAvailable } from '@/lib/policy/providerAvailability';
 import { selectNextOverrides } from '@/lib/store/selectors';
+import { parseEndpointModelId } from '@/lib/transport/endpoints';
+import { getEndpoint } from '@/lib/transport/endpointRegistry';
 
 export type ModelPickerOption = {
   id: string;
@@ -31,7 +33,16 @@ export type ModelPickerController = {
   setUI: StoreState['setUI'];
   zdrHiddenCount: number;
   zdrRestricted: boolean;
+  /** The chat's model is one zero data retention keeps off the list. */
+  currentUnavailable: boolean;
 };
+
+/** A model the list does not carry: one on the user's server reads as typed, with its server. */
+export function unlistedModelName(id: string): string {
+  const scoped = parseEndpointModelId(id);
+  const label = scoped && getEndpoint(scoped.endpointId)?.label;
+  return scoped && label ? `${scoped.modelId} · ${label}` : id;
+}
 
 export function useModelPickerController(): ModelPickerController {
   const {
@@ -136,12 +147,13 @@ export function useModelPickerController(): ModelPickerController {
   }, [chat, nextOverrides.modelId, defaultModelId]);
 
   const selectedId = selectedIds[0];
-  const effectiveSelectedId =
-    ui?.zdrOnly === true && selectedId && !allowedIds.has(selectedId) ? undefined : selectedId;
+  // Always the model the chat uses, even one zero data retention keeps off
+  // the list: a stand-in here would name a model the turn never calls.
   const current =
-    allOptions.find((o) => o.id === effectiveSelectedId) ||
-    (effectiveSelectedId ? { id: effectiveSelectedId, name: effectiveSelectedId } : undefined) ||
+    allOptions.find((o) => o.id === selectedId) ||
+    (selectedId ? { id: selectedId, name: unlistedModelName(selectedId) } : undefined) ||
     options[0];
+  const currentUnavailable = ui?.zdrOnly === true && !!current && !allowedIds.has(current.id);
 
   const setModels = (modelIds: string[]) => {
     const cleaned = modelIds.filter((id): id is string => typeof id === 'string' && id.length > 0);
@@ -185,5 +197,6 @@ export function useModelPickerController(): ModelPickerController {
     setUI,
     zdrHiddenCount,
     zdrRestricted: ui?.zdrOnly === true,
+    currentUnavailable,
   };
 }

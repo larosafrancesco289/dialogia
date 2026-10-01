@@ -5,6 +5,7 @@
 
 import type { TransportAuth } from '@/lib/auth/transport';
 import {
+  allowsProviderExtensions,
   endpointCapabilities,
   parseEndpointModelId,
   type EndpointCapabilities,
@@ -15,7 +16,7 @@ export function endpointBodyOptions(auth?: TransportAuth): {
   allowProviderExtensions: boolean;
 } {
   const endpoint = auth?.endpoint;
-  if (!endpoint || endpoint.kind !== 'openai-compatible') {
+  if (!endpoint || allowsProviderExtensions(endpoint)) {
     return { allowProviderExtensions: true };
   }
   return { capabilities: endpointCapabilities(endpoint), allowProviderExtensions: false };
