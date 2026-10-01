@@ -5,7 +5,8 @@ const FOLLOW_UP_WITH_SEARCH = 'Write the final answer. Cite sources inline as [n
 
 // What the model wrote before calling tools is cleared from the reply, so the
 // round after them writes the whole answer.
-const FOLLOW_UP_DEFAULT = 'Write your reply using the tool results above.';
+const FOLLOW_UP_DEFAULT =
+  'Write your reply using the tool results above. If a tool result reports an error, correct the call first.';
 
 // A round that only wrote memory keeps its text on screen, so the round after
 // it adds to that text: writing the answer again would show it twice.

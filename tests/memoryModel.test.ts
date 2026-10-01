@@ -26,6 +26,7 @@ import {
   type MemoryNote,
   type Message,
 } from '@/lib/types';
+import { NOTICE_MEMORY_ALREADY_FORGOTTEN } from '@/lib/store/notices';
 import { createTestStore } from './helpers/createTestStoreState';
 import { makeChat } from './helpers/makeChat';
 
@@ -148,6 +149,8 @@ test('a new folder needs a description, and is made inside the one its path name
     newId,
   });
   assert.equal(lost.ok, false);
+  // The error names the folder that is missing, so the model can save at the top instead.
+  assert.match(lost.ok ? '' : lost.error, /no folder "Nowhere" to make "Nowhere\/Dialogia" in/);
 });
 
 test('a handle two notes share names neither; the whole id still does', () => {
@@ -317,7 +320,7 @@ async function compose(modelId: string, opts: { chatOff?: boolean; everywhereOff
 
 test('the prompt dates the day, so a note says when rather than "next month"', () => {
   const preamble = buildMemoryPreamble(memory(), { now: new Date('2026-09-30T12:00:00Z') });
-  assert.match(preamble, /Today is 30 September 2026\./);
+  assert.match(preamble, /Today is Wednesday, 30 September 2026\./);
   assert.match(preamble, /Learning holds only what they study with the tutor/);
 });
 
@@ -575,6 +578,29 @@ test('an Undo that cannot be written gives the line its Undo back and says so', 
     store.getState().memory.notes.find((n) => n.id === added!.id)?.forgottenAt,
     undefined,
   );
+});
+
+test('Undo of a save whose note was forgotten since says it is already forgotten', async () => {
+  const store = createTestStore();
+  await store.getState().loadMemory();
+  const added = await store.getState().addMemoryNote(MEMORY_ABOUT_FOLDER_ID, 'Has a dog');
+  const reply = {
+    id: 'reply-6',
+    chatId: 'chat-6',
+    role: 'assistant',
+    content: '',
+    memoryWrites: [
+      { noteId: added!.id, action: 'added', text: 'Has a dog', folderId: MEMORY_ABOUT_FOLDER_ID },
+    ],
+  } as Message;
+  store.setState({
+    messagesById: { [reply.id]: reply },
+    messageIdsByChatId: { 'chat-6': [reply.id] },
+  });
+  // Forgotten elsewhere: on the Memory page, or by Undo in a branch of this chat.
+  await store.getState().forgetMemoryNote(added!.id);
+  await store.getState().undoMemoryWrite(reply.id, 0);
+  assert.equal(store.getState().ui.notice, NOTICE_MEMORY_ALREADY_FORGOTTEN);
 });
 
 test('Undo marks the version clicked, even when another is shown before it finishes', async () => {

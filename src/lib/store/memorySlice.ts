@@ -3,6 +3,7 @@
 // to it, by the person or the model. Each change is set at once and then written,
 // and the repository tells the other tabs, the last consolidation included.
 
+import { MISSING_PROVIDER_KEY } from '@/lib/auth/require';
 import { repository } from '@/lib/db';
 import type { MemoryChange } from '@/lib/db/repository';
 import { createStoreSlice } from '@/lib/store/createSlice';
@@ -19,7 +20,9 @@ import {
   NOTICE_CONSOLIDATION_FAILED,
   NOTICE_CONSOLIDATION_PARTLY_UNDONE,
   NOTICE_CONSOLIDATION_STALE,
+  NOTICE_MEMORY_ALREADY_FORGOTTEN,
   NOTICE_MEMORY_CHANGED_SINCE,
+  NOTICE_CONSOLIDATION_NO_MODEL,
   NOTICE_SAVE_FAILED,
 } from '@/lib/store/notices';
 import { v4 as uuidv4 } from 'uuid';
@@ -198,7 +201,13 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
         if (!message || !write || write.undone) return;
         const change = undoChange(write, get().memory, Date.now());
         if (!change) {
-          get().setNotice(NOTICE_MEMORY_CHANGED_SINCE, 'info');
+          // Forgotten already (in a branch of this chat, say, or on the Memory page).
+          const note = get().memory.notes.find((n) => n.id === write.noteId);
+          const gone = write.action !== 'forgotten' && (!note || note.forgottenAt !== undefined);
+          get().setNotice(
+            gone ? NOTICE_MEMORY_ALREADY_FORGOTTEN : NOTICE_MEMORY_CHANGED_SINCE,
+            'info',
+          );
           return;
         }
         // Marked before the write is awaited, so a second click finds it taken back.
@@ -250,8 +259,9 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
             ? { at, lines, undo, ...(previous ? { previousAt: previous.at } : {}), shown: true }
             : { at, lines, shown: true };
           await changeMemory({ ...change, pass });
-        } catch {
-          get().setNotice(NOTICE_CONSOLIDATION_FAILED);
+        } catch (error) {
+          const noModel = (error as { code?: unknown } | null)?.code === MISSING_PROVIDER_KEY;
+          get().setNotice(noModel ? NOTICE_CONSOLIDATION_NO_MODEL : NOTICE_CONSOLIDATION_FAILED);
         } finally {
           set((s) => ({ memory: { ...s.memory, consolidating: false } }));
         }

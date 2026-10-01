@@ -182,6 +182,8 @@
     font-size: 1rem;
     line-height: 1.45;
     color: var(--color-fg-muted);
+    /* A pasted URL wraps rather than pushing the page sideways. */
+    overflow-wrap: anywhere;
   }
   .memory-head__line:not(.is-static) {
     cursor: text;
@@ -228,6 +230,7 @@
     line-height: 1.55;
     color: var(--color-fg);
     white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
   .memory-note__text {
     cursor: text;
@@ -274,6 +277,8 @@
     font-size: 1.0625rem;
     line-height: 1.55;
     color: var(--color-fg-muted);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
     text-decoration: line-through;
     text-decoration-color: color-mix(in oklab, var(--color-fg) 30%, transparent);
   }

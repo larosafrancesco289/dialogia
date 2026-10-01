@@ -2,7 +2,8 @@
 // Responsibility: Web-tool system prompt pieces — temporal grounding for any
 // search provider, plus usage guidance for the Tavily web_search/web_fetch tools.
 
-const DATE_FORMAT = new Intl.DateTimeFormat('en-GB', {
+/** Today, the way every prompt that names it says it: "Wednesday, 30 September 2026". */
+export const PROMPT_DATE = new Intl.DateTimeFormat('en-GB', {
   weekday: 'long',
   day: 'numeric',
   month: 'long',
@@ -13,7 +14,7 @@ const DATE_FORMAT = new Intl.DateTimeFormat('en-GB', {
 // hypothetical and answer from stale memory; this notice pre-empts that.
 export function buildSearchDateNotice(now: Date = new Date()): string {
   return [
-    `Current date: ${DATE_FORMAT.format(now)}.`,
+    `Current date: ${PROMPT_DATE.format(now)}.`,
     'This date is correct even if it is later than your training data; do not "correct" it, treat it as hypothetical, or refuse on the grounds that it is in the future.',
     'Anything that happened after your knowledge cutoff is unknown to you, not nonexistent. For time-sensitive questions or events that may postdate your training, verify with web search instead of answering from memory, and tell the user when your unverified knowledge may be out of date.',
   ].join(' ');

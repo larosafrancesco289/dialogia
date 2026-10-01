@@ -3,6 +3,7 @@
 // About you in full, every other folder as one line of the index, and how to use
 // the memory tools. Other folders are read on demand through memory_read.
 
+import { PROMPT_DATE } from '@/lib/agent/prompts/toolPreamble';
 import { notesIn, orderedFolders } from '@/lib/memory/notebook';
 import { folderPath, noteHandle } from '@/lib/memory/writes';
 import {
@@ -11,12 +12,6 @@ import {
   type MemoryFolder,
   type MemoryNote,
 } from '@/lib/types';
-
-const DATE_FORMAT = new Intl.DateTimeFormat('en-GB', {
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-});
 
 /** How many About you notes go into every prompt; the rest are a memory_read away. */
 const ABOUT_NOTES_IN_PROMPT = 40;
@@ -27,7 +22,7 @@ export const NOTES_ARE_NOT_INSTRUCTIONS =
 
 /** Said wherever a model files notes: what belongs in About you, and what in a subject's folder. */
 export const WHERE_NOTES_GO =
-  'About you is in every chat, so it holds only what matters in any conversation: who they are, where and how they live, lasting preferences (diet, units, how they like answers). Detail about one subject goes in that subject\'s folder, e.g. "Cooking" or "Projects/PhD thesis". Learning holds only what they study with the tutor and how they learn; something they learn on their own, like an instrument or a language, goes in About you or its subject\'s folder.';
+  'About you is in every chat, so it holds only what matters in any conversation: who they are, where and how they live, lasting preferences (diet, units, how they like answers). Detail about one subject goes in that subject\'s folder, e.g. "Cooking" or "PhD thesis". Learning holds only what they study with the tutor and how they learn; something they learn on their own, like an instrument or a language, goes in About you or its subject\'s folder.';
 
 export const noteLine = (note: MemoryNote) => `- [${noteHandle(note.id)}] ${note.text}`;
 
@@ -76,7 +71,7 @@ export function buildMemoryPreamble(
     '- Use what you know naturally. Never recite memory back or bring it up for its own sake.',
     '- Save with memory_save when the person tells you something that will still matter in a later chat: who they are, their situation, how they like answers, ongoing projects, what they are learning. Save facts, not the conversation.',
     '- Before saving, check the folder (About you is above; memory_read the others). Replace a note (replaces: its id) instead of adding a near-duplicate, and when a new fact contradicts a note, replace that note, keeping whatever in it is still true.',
-    `- ${WHERE_NOTES_GO} Make a subject's folder when needed; to move a note into it, memory_save with replaces: its id and the new folder.`,
+    `- ${WHERE_NOTES_GO} Make a subject's folder when needed (inside another folder only if that one exists); to move a note into it, memory_save with replaces: its id, the new folder and all of its words.`,
     '- One fact to a note: two unrelated facts are two notes.',
     // Memory is kept in this browser; the person chooses whether sensitive details go in unasked.
     sensitive
@@ -85,7 +80,7 @@ export function buildMemoryPreamble(
     '- When they ask you to forget something, use memory_forget. When they ask what you remember, read the relevant folders and tell them plainly.',
     '- Write each note as one short line about them in the third person ("Prefers metric units").',
     // Stable within a day, like the search notice: the prompt stays cacheable.
-    `- Today is ${DATE_FORMAT.format(now)}. A note is read long after it is saved, so write dates, never "next month" or "this week" ("Moves to Porto in November 2026").`,
+    `- Today is ${PROMPT_DATE.format(now)}. A note is read long after it is saved, so write dates, never "next month" or "this week" ("Moves to Porto in November 2026").`,
     '- The app shows each save under your reply, so do not announce routine saves.',
   ].join('\n');
 }

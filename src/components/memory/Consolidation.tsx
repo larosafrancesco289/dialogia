@@ -4,7 +4,21 @@ import { shallow } from 'zustand/shallow';
 import { IconButton } from '@/components/ui/IconButton';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { notesSince } from '@/lib/memory/consolidate';
+import { formatModelLabel } from '@/lib/models';
+import { ChatService } from '@/lib/services/chatService';
 import { useChatStore } from '@/lib/store';
+
+/** The model a pass runs on: the one new chats start with, read when the button is drawn. */
+function consolidationModelLabel(): string {
+  const s = useChatStore.getState();
+  const { modelId } = ChatService.buildSettingsForNewChat({
+    ui: s.ui,
+    chats: s.chats,
+    selectedChatId: s.selectedChatId,
+    models: s.models,
+  });
+  return formatModelLabel({ model: s.modelIndex.get(modelId), fallbackId: modelId });
+}
 
 /**
  * Consolidate, for the whole of memory: a quiet count of what is new since the
@@ -27,6 +41,7 @@ export function ConsolidateAction() {
         Consolidating…
       </span>
     );
+  const empty = !notes.some((n) => n.forgottenAt === undefined);
   // Beside the report nothing more needs saying; before any pass, nothing does.
   const fresh = notesSince(notes, pass?.at);
   const nudge =
@@ -37,7 +52,8 @@ export function ConsolidateAction() {
       <button
         type="button"
         className="btn-outline btn-sm"
-        disabled={!notes.some((n) => n.forgottenAt === undefined)}
+        disabled={empty}
+        title={empty ? 'Add a note first' : `Tidies memory with ${consolidationModelLabel()}`}
         onClick={() => void consolidateMemory()}
       >
         Consolidate

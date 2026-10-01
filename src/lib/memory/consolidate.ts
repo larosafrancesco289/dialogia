@@ -27,11 +27,11 @@ type PassUndo = NonNullable<ConsolidationPass['undo']>;
 export const CONSOLIDATION_SYSTEM_PROMPT = `You tidy a person's long-term memory: short notes about them that an assistant keeps across chats, in folders. The person can read and edit every note.
 
 Propose operations that make memory accurate, compact and well organised:
-- merge: notes that say the same thing, or belong together, become one note.
-- rewrite: a note that is unclear, wordy or out of date gets clearer words.
+- merge: notes that say the same thing, or one fact split across notes, become one note. Two different facts stay two notes, even on the same subject.
+- rewrite: a note that is unclear, wordy or out of date gets clearer words. A relative time ("next month", "last week") becomes a date, counted from the note's date.
 - move: a note in the wrong folder goes to the right one.
-- forget: a note that a newer note contradicts, or that no longer holds, goes.
-- new_folder: when notes share a subject that has no folder of its own. A path like "Projects/Dialogia" makes it inside Projects.
+- forget: a note that a newer note contradicts, or that no longer holds, goes. A short note is not a reason to forget one.
+- new_folder: when notes share a subject that has no folder of its own. A path like "Projects/Dialogia" makes it inside Projects, which must already exist.
 - describe: a folder's one-line description, when it no longer says what the folder holds.
 - remove_folder: a folder of your own that ends up empty.
 

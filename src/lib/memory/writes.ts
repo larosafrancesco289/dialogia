@@ -86,7 +86,7 @@ export function resolveNote(notes: MemoryNote[], ref: string): MemoryNote | unde
 
 /** A live note that already says this, word for word: saving it again would only copy it. */
 export function alreadySaved(notes: MemoryNote[], text: string): MemoryNote | undefined {
-  const words = (s: string) => s.replace(/[.\s]+$/, '');
+  const words = (s: string) => s.replace(/[.!?\s]+$/, '');
   return notes.find(
     (note) => note.forgottenAt === undefined && same(words(note.text), words(text)),
   );
@@ -113,10 +113,13 @@ export function planSave(args: {
   if (!folder) {
     const place = newFolderPlace(memory.folders, args.folder);
     if (!place) {
+      const parent = pathParts(args.folder).slice(0, -1).join('/');
       return {
         ok: false,
-        error: `There is no folder "${args.folder}".`,
-        hint: 'Use a folder from the memory index, or name a new one inside an existing folder.',
+        error: parent
+          ? `There is no folder "${parent}" to make "${args.folder}" in.`
+          : `There is no folder "${args.folder}".`,
+        hint: 'Use a folder from the memory index, or name a new top-level folder (only an existing folder can hold a new one).',
       };
     }
     const { name, parent } = place;
@@ -265,22 +268,34 @@ export function markWriteUndone(message: Message, write: MemoryWrite): Message {
   };
 }
 
+/** What became of a written note since: the person may have edited, forgotten or restored it. */
+function sinceWrite(write: MemoryWrite, notes: MemoryNote[]): string | undefined {
+  const note = notes.find((n) => n.id === write.noteId);
+  const live = !!note && note.forgottenAt === undefined;
+  if (write.action === 'forgotten') return live ? 'restored since' : undefined;
+  if (!live) return 'forgotten since';
+  return note.text === write.text ? undefined : `now reads: ${note.text}`;
+}
+
 /**
  * A reply's memory writes as the tool round that made them, replayed on later
  * turns: seen only as the reply's words, "save that I…" reads as never done,
- * and the model saves it again. Writes taken back are left out.
+ * and the model saves it again. Writes taken back are left out; a note changed
+ * since says so, so the model neither trusts the old words nor saves them again.
  */
 export function memoryWriteRound(
   writes: MemoryWrite[] | undefined,
-  folders: MemoryFolder[],
+  memory: Memory,
 ): MessageToolRound | undefined {
   const kept = (writes ?? []).filter((write) => !write.undone);
   if (!kept.length) return undefined;
+  const { folders, notes } = memory;
   return {
     text: '',
     calls: kept.map((write, index) => {
       const note = noteHandle(write.noteId);
       const forgot = write.action === 'forgotten';
+      const since = sinceWrite(write, notes);
       const folder = folders.find((f) => f.id === write.folderId);
       const save = {
         ...(folder ? { folder: folderPath(folders, folder) } : {}),
@@ -291,7 +306,12 @@ export function memoryWriteRound(
         id: `memory_${index}`,
         name: forgot ? 'memory_forget' : 'memory_save',
         arguments: JSON.stringify(forgot ? { note } : save),
-        result: JSON.stringify({ ok: true, id: note, action: write.action }),
+        result: JSON.stringify({
+          ok: true,
+          id: note,
+          action: write.action,
+          ...(since ? { since } : {}),
+        }),
       };
     }),
   };
