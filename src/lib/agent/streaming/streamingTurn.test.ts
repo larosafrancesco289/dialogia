@@ -33,7 +33,7 @@ const OPENROUTER_MODEL: ModelDescriptor = {
   raw: { supported_parameters: ['tools'] },
 };
 
-type Round = (ctx: { callbacks: StreamCallbacks | undefined }) => void;
+type Round = (ctx: { callbacks: StreamCallbacks | undefined; controller: AbortController }) => void;
 
 const USAGE = { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 };
 
@@ -68,11 +68,14 @@ async function runTurn({
   model = OPENROUTER_MODEL,
   endpoint = OPENROUTER_ENDPOINT,
   tools = TOOLS,
+  settle = false,
 }: {
   rounds: Round[];
   model?: ModelDescriptor;
   endpoint?: typeof OPENROUTER_ENDPOINT;
   tools?: ToolDefinition[];
+  /** Return what the turn left behind when it throws, with the error, instead of rejecting. */
+  settle?: boolean;
 }) {
   const chatId = `chat-streaming-${Math.random().toString(36).slice(2)}`;
   const chat = makeChat({
@@ -103,6 +106,7 @@ async function runTurn({
   });
 
   const persisted: Message[] = [];
+  const controller = new AbortController();
   const requests: ModelMessage[][] = [];
   const roles: string[][] = [];
   const toolChoices: unknown[] = [];
@@ -115,11 +119,12 @@ async function runTurn({
       toolChoices.push(toolChoice);
       visibleAtStart.push(get().messagesById[assistantMessage.id]?.content ?? '');
       const round = rounds[Math.min(roles.length, rounds.length) - 1];
-      round({ callbacks });
+      round({ callbacks, controller });
     },
   });
 
   const userContent = 'Teach me one-step equations.';
+  let error: unknown;
   const result = await executeStreamingTurn({
     chat,
     chatId,
@@ -128,7 +133,7 @@ async function runTurn({
       { role: 'system', content: 'You are a tutor.' },
       { role: 'user', content: userContent },
     ],
-    controller: new AbortController(),
+    controller,
     turn: {
       auth: buildTransportAuth({ endpoint, apiKey: 'test-key' }),
       set,
@@ -154,9 +159,14 @@ async function runTurn({
     userContent,
     combinedSystem: 'You are a tutor.',
     pipeline,
+  }).catch((caught: unknown) => {
+    if (!settle) throw caught;
+    error = caught;
+    return undefined;
   });
 
   return {
+    error,
     result,
     calls: roles.length,
     requests,
@@ -316,11 +326,13 @@ test('executeStreamingTurn never empties a kept answer when the model then reads
   assert.equal(run.lastPersisted?.content, ANSWER);
 });
 
-/** The person presses Stop during a round, after it streamed `text`. */
+/** The round ends in an abort error after streaming `text`: Stop, or (`byStop` false) a provider's. */
 const stopped =
-  (text = ''): Round =>
-  ({ callbacks }) => {
+  (text = '', byStop = true, toolName?: string): Round =>
+  ({ callbacks, controller }) => {
+    if (toolName) callbacks?.onToolCallDelta?.([{ index: 0, function: { name: toolName } }]);
     if (text) callbacks?.onToken?.(text);
+    if (byStop) controller.abort();
     const error = new Error('The operation was aborted.');
     error.name = 'AbortError';
     callbacks?.onError?.(error);
@@ -348,6 +360,44 @@ test('executeStreamingTurn marks a kept answer stopped when Stop lands after the
     }),
     { name: 'AbortError' },
   );
+});
+
+test('executeStreamingTurn marks a kept preamble stopped when Stop lands before its answer', async () => {
+  await assert.rejects(
+    runTurn({
+      tools: [...TOOLS, ...MEMORY_TOOLS],
+      rounds: [draftThenTool('Here are the steps:', 'memory_save', SAVE), stopped()],
+    }),
+    { name: 'AbortError' },
+  );
+});
+
+test('executeStreamingTurn reports a provider abort in the round after a save, not a clean end', async () => {
+  await assert.rejects(
+    runTurn({
+      tools: [...TOOLS, ...MEMORY_TOOLS],
+      rounds: [draftThenTool(ANSWER, 'memory_save', SAVE), stopped('', false)],
+    }),
+    { name: 'AbortError' },
+  );
+});
+
+test('executeStreamingTurn leaves no call "Running" after Stop lands while one streams', async () => {
+  const first = await runTurn({
+    tools: [...TOOLS, ...MEMORY_TOOLS],
+    rounds: [stopped('', true, 'memory_save')],
+    settle: true,
+  });
+  assert.equal((first.error as Error | undefined)?.name, 'AbortError');
+  assert.equal(first.lastPersisted?.cutOff, 'stopped');
+  assert.ok(!first.lastPersisted?.toolCalls?.some((entry) => entry.status === 'pending'));
+
+  const later = await runTurn({
+    tools: [...TOOLS, ...MEMORY_TOOLS],
+    rounds: [draftThenTool(ANSWER, 'memory_save', SAVE), stopped('', true, 'memory_save')],
+  });
+  assert.equal(later.lastPersisted?.cutOff, undefined);
+  assert.ok(!later.lastPersisted?.toolCalls?.some((entry) => entry.status === 'pending'));
 });
 
 test('executeStreamingTurn does not run a tool call cut off at the token limit', async () => {
