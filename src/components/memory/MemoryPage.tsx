@@ -5,7 +5,7 @@ import { SettingsDrawerShell } from '@/components/settings/SettingsDrawerShell';
 import { useChatStore } from '@/lib/store';
 import { useBackToClose } from '@/lib/hooks/useBackToClose';
 import { loadLearningRecords } from '@/lib/modules';
-import { forgottenNotes, notesIn, orderedFolders } from '@/lib/memory/notebook';
+import { FORGOTTEN_PAGE, forgottenNotes, notesIn, orderedFolders } from '@/lib/memory/notebook';
 import {
   MEMORY_ABOUT_FOLDER_ID,
   MEMORY_LEARNING_FOLDER_ID,
@@ -13,11 +13,9 @@ import {
   type MemoryFolder,
   type MemoryNote,
 } from '@/lib/types';
-import { AddNote, FolderHead, NoteList } from '@/components/memory/MemoryNotes';
+import { AddNote, FolderHead, NoteList, removeRow } from '@/components/memory/MemoryNotes';
 import { LearningRecords } from '@/components/memory/LearningRecords';
 import { ConsolidateAction, ConsolidationReport } from '@/components/memory/Consolidation';
-
-const FORGOTTEN_PAGE = 'forgotten';
 
 function FolderPage({
   folder,
@@ -63,12 +61,12 @@ function ForgottenPage({ notes, folders }: { notes: MemoryNote[]; folders: Memor
   const forgotten = forgottenNotes(notes);
   return (
     <>
-      <header className="memory-head memory-head--1">
+      <div className="memory-head memory-head--1">
         <h3 className="memory-head__title">Recently forgotten</h3>
         <p className="memory-head__line is-static">
           Notes you or the model let go of. Each waits here for 30 days, then is gone for good.
         </p>
-      </header>
+      </div>
       {forgotten.length ? (
         <ul className="memory-notes">
           {forgotten.map((note) => (
@@ -82,7 +80,14 @@ function ForgottenPage({ notes, folders }: { notes: MemoryNote[]; folders: Memor
                 <button
                   type="button"
                   className="memory-quiet memory-note__restore"
-                  onClick={() => void restoreMemoryNote(note.id)}
+                  aria-label={`Restore: ${note.text}`}
+                  onClick={(e) =>
+                    void removeRow(
+                      e.currentTarget,
+                      restoreMemoryNote(note.id),
+                      '.memory-nav__item[aria-current="page"]',
+                    )
+                  }
                 >
                   Restore
                 </button>
@@ -108,6 +113,8 @@ export function MemoryPage() {
   );
   const setUI = useChatStore((s) => s.setUI);
   const chats = useChatStore((s) => s.chats);
+  // Changes as a reply starts or ends here, which is when a tutor chat's progress moves.
+  const turns = useChatStore((s) => s.ui.activeTurnByChatId);
   const [closing, setClosing] = useState(false);
   const [page, setPage] = useState(
     () => useChatStore.getState().ui.memoryFolderId ?? MEMORY_ABOUT_FOLDER_ID,
@@ -129,8 +136,9 @@ export function MemoryPage() {
     };
   }, []);
 
-  // Read again whenever the chats change, so a tutor chat studied in another
-  // tab, renamed or deleted shows as it is now.
+  const onLearning = page === MEMORY_LEARNING_FOLDER_ID;
+  // Read again whenever the chats change, a reply ends or Learning is opened, so
+  // a tutor chat studied here or in another tab, renamed or deleted shows as it is now.
   useEffect(() => {
     let live = true;
     loadLearningRecords({ get: useChatStore.getState })
@@ -139,7 +147,7 @@ export function MemoryPage() {
     return () => {
       live = false;
     };
-  }, [chats]);
+  }, [chats, turns, onLearning]);
 
   const ordered = orderedFolders(folders);
   // A folder that has gone (another tab, a backup) leaves its page for the first one.

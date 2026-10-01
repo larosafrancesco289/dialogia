@@ -11,8 +11,7 @@ export const MEMORY_READ_TOOL: ToolDefinition = {
       properties: {
         folder: {
           type: 'string',
-          description:
-            'The folder as the memory index names it, e.g. "Learning" or "Projects/PhD thesis".',
+          description: 'The folder as the memory index names it, e.g. "Learning" or "PhD thesis".',
         },
       },
       required: ['folder'],
@@ -32,7 +31,7 @@ export const MEMORY_SAVE_TOOL: ToolDefinition = {
         folder: {
           type: 'string',
           description:
-            'Where the note belongs. "About you" only for what matters in any conversation: who they are, where and how they live, lasting preferences such as diet or units. Detail about one subject goes in that subject\'s folder, new or existing, e.g. "Cooking" or "Projects/PhD thesis". "Learning" is for what they study with the tutor.',
+            'Where the note belongs. "About you" only for what matters in any conversation: who they are, where and how they live, lasting preferences such as diet or units. Detail about one subject goes in that subject\'s folder, new or existing, e.g. "Cooking" or "PhD thesis"; a new folder goes inside another only if that one exists. "Learning" is for what they study with the tutor.',
         },
         note: { type: 'string', description: 'The fact, one short line.' },
         replaces: {

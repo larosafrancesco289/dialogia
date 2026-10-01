@@ -204,9 +204,12 @@ test('a reply that saved to memory replays its saves, so a later turn does not s
     priorMessages: prior,
     models: [model(16000)],
     newUserContent: 'Next.',
-    replayMemoryWrites: [
-      { id: 'cooking', name: 'Cooking', description: 'Kitchen', createdAt: 1, updatedAt: 1 },
-    ],
+    replayMemoryWrites: {
+      folders: [
+        { id: 'cooking', name: 'Cooking', description: 'Kitchen', createdAt: 1, updatedAt: 1 },
+      ],
+      notes: [],
+    },
   });
   assert.deepEqual(shape(withTools), [
     'user(Answer, then save that I sharpen on whetstones.)',
@@ -222,7 +225,30 @@ test('a reply that saved to memory replays its saves, so a later turn does not s
     folder: 'Cooking',
     note: 'Sharpens knives on whetstones',
   });
-  assert.match(String(withTools[2].content), /"id":"abcdef12"/);
+  // Forgotten on the Memory page since: the model hears so and neither trusts nor re-saves it.
+  assert.match(String(withTools[2].content), /"id":"abcdef12".*"since":"forgotten since"/);
+
+  // Edited on the Memory page since: the model reads the words it has now.
+  const edited = buildChatCompletionMessages({
+    chat,
+    priorMessages: prior,
+    models: [model(16000)],
+    newUserContent: 'Next.',
+    replayMemoryWrites: {
+      folders: [],
+      notes: [
+        {
+          id: noteId,
+          folderId: 'cooking',
+          text: 'Sharpens knives on a 1000-grit whetstone',
+          author: 'user',
+          createdAt: 1,
+          updatedAt: 2,
+        },
+      ],
+    },
+  });
+  assert.match(String(edited[2].content), /"since":"now reads: Sharpens knives on a 1000-grit/);
 
   // Without the memory tools on offer, the reply goes as its words alone.
   assert.deepEqual(shape(build(prior)), [

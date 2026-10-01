@@ -40,6 +40,35 @@ function Provenance({ note }: { note: MemoryNote }) {
   );
 }
 
+const focusDropped = () => !document.activeElement || document.activeElement === document.body;
+
+/**
+ * When a field closes and takes focus with it, focus goes to what stands in
+ * its place, so Tab carries on from there rather than from the top.
+ */
+function useFocusWhenClosed<T extends HTMLElement>(open: boolean) {
+  const ref = useRef<T>(null);
+  const wasOpen = useRef(open);
+  useEffect(() => {
+    if (wasOpen.current && !open && focusDropped()) ref.current?.focus();
+    wasOpen.current = open;
+  }, [open]);
+  return ref;
+}
+
+/**
+ * Takes a row away (Forget, Restore) and puts focus on the row that takes its
+ * place, or on `fallback` (a selector in the page) when it was the last.
+ */
+export async function removeRow(button: HTMLElement, remove: Promise<void>, fallback: string) {
+  const row = button.closest('li');
+  const page = button.closest('[role="dialog"]');
+  const next = (row?.nextElementSibling ?? row?.previousElementSibling)?.querySelector('button');
+  await remove;
+  const target = next?.isConnected ? next : page?.querySelector<HTMLElement>(fallback);
+  if (focusDropped()) target?.focus();
+}
+
 /**
  * A plain field in the note's own type: Enter saves, Shift+Enter breaks the
  * line, Escape and an emptied field leave the words as they were.
@@ -101,6 +130,7 @@ function NoteRow({ note }: { note: MemoryNote }) {
   const [editing, setEditing] = useState(false);
   const editMemoryNote = useChatStore((s) => s.editMemoryNote);
   const forgetMemoryNote = useChatStore((s) => s.forgetMemoryNote);
+  const textRef = useFocusWhenClosed<HTMLButtonElement>(editing);
   return (
     <li className={`memory-note${editing ? ' is-editing' : ''}`}>
       {editing ? (
@@ -115,7 +145,12 @@ function NoteRow({ note }: { note: MemoryNote }) {
           onCancel={() => setEditing(false)}
         />
       ) : (
-        <button type="button" className="memory-note__text" onClick={() => setEditing(true)}>
+        <button
+          ref={textRef}
+          type="button"
+          className="memory-note__text"
+          onClick={() => setEditing(true)}
+        >
           {note.text}
         </button>
       )}
@@ -128,7 +163,10 @@ function NoteRow({ note }: { note: MemoryNote }) {
             <button
               type="button"
               className="memory-quiet memory-note__forget"
-              onClick={() => void forgetMemoryNote(note.id)}
+              aria-label={`Forget: ${note.text}`}
+              onClick={(e) =>
+                void removeRow(e.currentTarget, forgetMemoryNote(note.id), '.memory-add')
+              }
             >
               Forget
             </button>
@@ -153,6 +191,7 @@ export function NoteList({ notes }: { notes: MemoryNote[] }) {
 export function AddNote({ folderId }: { folderId: string }) {
   const [open, setOpen] = useState(false);
   const addMemoryNote = useChatStore((s) => s.addMemoryNote);
+  const addRef = useFocusWhenClosed<HTMLButtonElement>(open);
   if (open)
     return (
       <div className="memory-note is-editing memory-add__field">
@@ -167,10 +206,13 @@ export function AddNote({ folderId }: { folderId: string }) {
           }}
           onCancel={() => setOpen(false)}
         />
+        <div className="memory-note__foot">
+          <span className="memory-note__meta">Enter to save · Esc to cancel</span>
+        </div>
       </div>
     );
   return (
-    <button type="button" className="memory-add" onClick={() => setOpen(true)}>
+    <button ref={addRef} type="button" className="memory-add" onClick={() => setOpen(true)}>
       <PlusIcon className="h-4 w-4" aria-hidden="true" />
       Add a note
     </button>
@@ -181,9 +223,10 @@ export function AddNote({ folderId }: { folderId: string }) {
 export function FolderHead({ folder, level = 1 }: { folder: MemoryFolder; level?: 1 | 2 }) {
   const [editing, setEditing] = useState(false);
   const editMemoryFolder = useChatStore((s) => s.editMemoryFolder);
+  const lineRef = useFocusWhenClosed<HTMLButtonElement>(editing);
   const Title = level === 1 ? 'h3' : 'h4';
   return (
-    <header className={`memory-head memory-head--${level}`}>
+    <div className={`memory-head memory-head--${level}`}>
       <Title className="memory-head__title">{folder.name}</Title>
       {editing ? (
         <>
@@ -202,10 +245,15 @@ export function FolderHead({ folder, level = 1 }: { folder: MemoryFolder; level?
           </span>
         </>
       ) : (
-        <button type="button" className="memory-head__line" onClick={() => setEditing(true)}>
+        <button
+          ref={lineRef}
+          type="button"
+          className="memory-head__line"
+          onClick={() => setEditing(true)}
+        >
           {folder.description || 'Say what this folder holds'}
         </button>
       )}
-    </header>
+    </div>
   );
 }

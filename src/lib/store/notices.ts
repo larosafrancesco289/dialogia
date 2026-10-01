@@ -26,6 +26,9 @@ export const NOTICE_CATALOG = {
   consolidationPartlyUndone:
     'Consolidation was undone, apart from what has changed since, which was left as it is.',
   memoryChangedSince: 'This note has changed since. Edit it on the Memory page.',
+  memoryAlreadyForgotten:
+    'This note is already forgotten. It waits in Recently forgotten on the Memory page.',
+  consolidationNoModel: 'Connect a model in Settings › Connections to consolidate memory.',
 } as const;
 
 export type NoticeId = keyof typeof NOTICE_CATALOG;
@@ -186,3 +189,5 @@ export const NOTICE_CONSOLIDATION_FAILED = NOTICE_CATALOG.consolidationFailed;
 export const NOTICE_CONSOLIDATION_STALE = NOTICE_CATALOG.consolidationStale;
 export const NOTICE_CONSOLIDATION_PARTLY_UNDONE = NOTICE_CATALOG.consolidationPartlyUndone;
 export const NOTICE_MEMORY_CHANGED_SINCE = NOTICE_CATALOG.memoryChangedSince;
+export const NOTICE_MEMORY_ALREADY_FORGOTTEN = NOTICE_CATALOG.memoryAlreadyForgotten;
+export const NOTICE_CONSOLIDATION_NO_MODEL = NOTICE_CATALOG.consolidationNoModel;

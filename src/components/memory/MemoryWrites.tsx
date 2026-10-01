@@ -1,5 +1,6 @@
 import { BookmarkIcon } from '@heroicons/react/24/outline';
 import { useChatStore } from '@/lib/store';
+import { FORGOTTEN_PAGE } from '@/lib/memory/notebook';
 import type { Message, MemoryWrite } from '@/lib/types';
 
 const VERB: Record<MemoryWrite['action'], string> = {
@@ -39,7 +40,18 @@ export function MemoryWrites({ message }: { message: Message }) {
                       ? `Was: ${write.before.text}`
                       : 'Open in Memory'
                   }
-                  onClick={() => setUI({ memoryOpen: true, memoryFolderId: write.folderId })}
+                  onClick={() => {
+                    // Where the note is now: it may have moved, or been forgotten, since this reply.
+                    const note = useChatStore
+                      .getState()
+                      .memory.notes.find((n) => n.id === write.noteId);
+                    const page = !note
+                      ? write.folderId
+                      : note.forgottenAt !== undefined
+                        ? FORGOTTEN_PAGE
+                        : note.folderId;
+                    setUI({ memoryOpen: true, memoryFolderId: page });
+                  }}
                 >
                   {write.text}
                 </button>

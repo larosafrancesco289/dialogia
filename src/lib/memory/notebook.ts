@@ -12,6 +12,9 @@ import {
   type MemoryNote,
 } from '@/lib/types';
 
+/** The Memory page's Recently forgotten, which is not a folder. */
+export const FORGOTTEN_PAGE = 'forgotten';
+
 /**
  * The chat's own switch, the bookmark in its composer. Off keeps the chat out of
  * memory altogether: the model has none there, and no other chat is shown it.

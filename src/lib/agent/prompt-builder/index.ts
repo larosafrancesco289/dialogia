@@ -1,6 +1,7 @@
 import type {
   Chat,
   MemoryFolder,
+  MemoryNote,
   Message,
   MessageToolRound,
   ModelDescriptor,
@@ -21,8 +22,8 @@ export function buildChatCompletionMessages(params: {
   newUserContent?: string;
   newUserAttachments?: PersistedAttachment[];
   timestamps?: boolean;
-  /** Memory's folders when this turn offers its tools: each reply's writes replay as its calls. */
-  replayMemoryWrites?: MemoryFolder[];
+  /** Memory, when this turn offers its tools: each reply's writes replay as its calls. */
+  replayMemoryWrites?: { folders: MemoryFolder[]; notes: MemoryNote[] };
 }): ModelMessage[] {
   const { chat, priorMessages, models, newUserContent, newUserAttachments, timestamps } = params;
   const modelInfo = models.find((m) => m.id === chat.settings.modelId);
