@@ -5,7 +5,7 @@ import { createRepository } from '@/lib/db/repository';
 import { announceWrites } from '@/lib/db/announce';
 import { tabChannel } from '@/lib/sync/tabChannel';
 
-export { TutorLogConflictError } from '@/lib/db/repository';
+export { MemoryChangedError, TutorLogConflictError } from '@/lib/db/repository';
 
 const hasIndexedDb =
   typeof globalThis !== 'undefined' && 'indexedDB' in globalThis && globalThis.indexedDB != null;

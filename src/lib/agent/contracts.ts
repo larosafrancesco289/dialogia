@@ -23,7 +23,7 @@ export type TurnStoreState = {
   setSearchStatus: (messageId: string, entry: UiSearchEntry) => void;
   setNotice: (notice?: string) => void;
   memory: { folders: MemoryFolder[]; notes: MemoryNote[]; loaded: boolean };
-  changeMemory: (change: MemoryChange) => Promise<void>;
+  changeMemory: (change: MemoryChange) => Promise<boolean>;
 };
 
 export type TurnStore = {

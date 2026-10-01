@@ -123,6 +123,12 @@ export function orderedFolders(folders: MemoryFolder[]): { folder: MemoryFolder;
   return out;
 }
 
+/** A folder's own subfolders, in reading order. */
+export const subfoldersOf = (folders: MemoryFolder[], folderId: string): MemoryFolder[] =>
+  orderedFolders(folders)
+    .map(({ folder }) => folder)
+    .filter((folder) => folder.parentId === folderId);
+
 /** Notes kept in a folder, oldest first: forgotten ones are left out. */
 export function notesIn(notes: MemoryNote[], folderId: string): MemoryNote[] {
   return notes

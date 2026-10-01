@@ -4,13 +4,17 @@
 // the operations change: applied by the app within the rules, so a confused
 // answer can only do less, never something the person could not take back.
 
-import type { MemoryChange, MemorySnapshot } from '@/lib/db/repository';
+import { sameRow, type MemoryChange, type MemorySnapshot } from '@/lib/db/repository';
 import { orderedFolders, returningFolder } from '@/lib/memory/notebook';
 import { NOTES_ARE_NOT_INSTRUCTIONS, WHERE_NOTES_GO } from '@/lib/memory/prompt';
+import { ChatService } from '@/lib/services/chatService';
 import {
+  DESCRIPTION_MAX_LENGTH,
   folderPath,
   newFolderPlace,
+  NOTE_MAX_LENGTH,
   noteHandle,
+  oneLine,
   resolveFolder,
   resolveNote,
 } from '@/lib/memory/writes';
@@ -23,6 +27,11 @@ import {
 } from '@/lib/types';
 
 type PassUndo = NonNullable<ConsolidationPass['undo']>;
+
+/** The model a pass runs on: the one new chats start with. */
+export const consolidationModelId = (
+  state: Parameters<typeof ChatService.buildSettingsForNewChat>[0],
+) => ChatService.buildSettingsForNewChat(state).modelId;
 
 export const CONSOLIDATION_SYSTEM_PROMPT = `You tidy a person's long-term memory: short notes about them that an assistant keeps across chats, in folders. The person can read and edit every note.
 
@@ -101,6 +110,11 @@ export function readOperations(content: string): Operation[] | undefined {
 }
 
 const str = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
+/** A note's or description's words on one line, or none when they run too long to keep. */
+const words = (value: unknown, max: number) => {
+  const line = oneLine(str(value));
+  return line.length > max ? '' : line;
+};
 const BUILT_IN = new Set([MEMORY_ABOUT_FOLDER_ID, MEMORY_LEARNING_FOLDER_ID]);
 
 /**
@@ -162,7 +176,7 @@ export function applyOperations(args: {
     switch (op.op) {
       case 'rewrite': {
         const note = noteAt(str(op.note));
-        const text = str(op.text);
+        const text = words(op.text, NOTE_MAX_LENGTH);
         if (note && text && text !== note.text) {
           putNote(edited(note, { text }));
           done = true;
@@ -191,7 +205,7 @@ export function applyOperations(args: {
         const merged = refs
           .map(noteAt)
           .filter((n, i, all): n is MemoryNote => !!n && all.indexOf(n) === i);
-        const text = str(op.text);
+        const text = words(op.text, NOTE_MAX_LENGTH);
         if (merged.length < 2 || !text) break;
         const [keep, ...rest] = merged;
         const folder = (str(op.folder) && folderAt(str(op.folder))) || folders.get(keep.folderId);
@@ -203,12 +217,15 @@ export function applyOperations(args: {
       }
       case 'new_folder': {
         const ref = str(op.folder);
-        done = !!ref && !folderAt(ref) && !!makeFolder(ref, str(op.description));
+        done =
+          !!ref &&
+          !folderAt(ref) &&
+          !!makeFolder(ref, words(op.description, DESCRIPTION_MAX_LENGTH));
         break;
       }
       case 'describe': {
         const folder = folderAt(str(op.folder));
-        const description = str(op.description);
+        const description = words(op.description, DESCRIPTION_MAX_LENGTH);
         if (folder && description && description !== folder.description) {
           putFolder({ ...folder, description, updatedAt: now });
           done = true;
@@ -247,14 +264,6 @@ export function applyOperations(args: {
     notes: args.memory.notes.filter((n) => touchedNotes.has(n.id)),
   };
   return { change: after, lines, undo: { before, after } };
-}
-
-/** Rows alike field by field, since one read back from the database is a new object. */
-function sameRow(a: object, b: object): boolean {
-  const fields = (row: object) => Object.entries(row).filter(([, value]) => value !== undefined);
-  const other = new Map(fields(b));
-  const own = fields(a);
-  return own.length === other.size && own.every(([key, value]) => other.get(key) === value);
 }
 
 const byId = <T extends { id: string }>(rows: T[]) => new Map(rows.map((row) => [row.id, row]));
@@ -303,8 +312,10 @@ export function undoPass(
   ];
   // A note goes back to its folder, or to About you when that folder has gone since.
   const standing = [...current.folders, ...folders];
-  const notes = undo.after.notes
-    .filter((note) => wasNotes.has(note.id) && asLeft(note, nowNotes))
+  const leftNotes = undo.after.notes.filter(
+    (note) => wasNotes.has(note.id) && asLeft(note, nowNotes),
+  );
+  const notes = leftNotes
     .map((note) => wasNotes.get(note.id)!)
     .map((note) => ({ ...note, folderId: returningFolder(standing, note.folderId) }));
 
@@ -318,7 +329,9 @@ export function undoPass(
       current.folders.some((f) => f.parentId === made.id && !deleteFolderIds.includes(f.id));
     if (!inUse) deleteFolderIds.push(made.id);
   }
-  return { change: { folders, notes, deleteFolderIds }, skipped };
+  // What was found as the pass left it is checked again as it is written.
+  const expect = { folders: left, notes: leftNotes };
+  return { change: { folders, notes, deleteFolderIds, expect }, skipped };
 }
 
 /** Notes written or changed since the last pass: what the nudge counts. */

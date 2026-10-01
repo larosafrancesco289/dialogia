@@ -1,6 +1,7 @@
 import { BookmarkIcon } from '@heroicons/react/24/outline';
 import { useChatStore } from '@/lib/store';
 import { FORGOTTEN_PAGE } from '@/lib/memory/notebook';
+import { refocusIfDropped } from '@/lib/ui/focus';
 import type { Message, MemoryWrite } from '@/lib/types';
 
 const VERB: Record<MemoryWrite['action'], string> = {
@@ -25,7 +26,7 @@ export function MemoryWrites({ message }: { message: Message }) {
         <li key={index} className="memory-writes__line">
           <BookmarkIcon className="memory-writes__glyph" aria-hidden="true" />
           {write.undone ? (
-            <span className="memory-writes__undone">
+            <span className="memory-writes__undone" tabIndex={-1}>
               Taken back: <span className="memory-writes__text">{write.text}</span>
             </span>
           ) : (
@@ -59,7 +60,16 @@ export function MemoryWrites({ message }: { message: Message }) {
               <button
                 type="button"
                 className="memory-quiet"
-                onClick={() => void undoMemoryWrite(message.id, index)}
+                aria-label={`Undo: ${write.text}`}
+                onClick={(e) => {
+                  // The line turns into "Taken back", or back into this one if it could not be.
+                  const line = e.currentTarget.closest('li');
+                  void undoMemoryWrite(message.id, index).then(() =>
+                    refocusIfDropped(() =>
+                      line?.querySelector('.memory-writes__undone, .memory-quiet'),
+                    ),
+                  );
+                }}
               >
                 Undo
               </button>

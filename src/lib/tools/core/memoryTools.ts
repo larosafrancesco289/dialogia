@@ -5,7 +5,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { loadLearningRecords } from '@/lib/modules';
-import { notesIn, orderedFolders } from '@/lib/memory/notebook';
+import { notesIn, subfoldersOf } from '@/lib/memory/notebook';
 import { noteLine } from '@/lib/memory/prompt';
 import {
   alreadySaved,
@@ -45,9 +45,9 @@ const readMemory: PlanningToolHandler = async ({ parsedArgs, context }) => {
       hint: 'Use a folder name from the memory index.',
     });
   }
-  const subfolders = orderedFolders(folders)
-    .filter(({ folder: f }) => f.parentId === folder.id)
-    .map(({ folder: f }) => `${folderPath(folders, f)}: ${f.description}`);
+  const subfolders = subfoldersOf(folders, folder.id).map(
+    (f) => `${folderPath(folders, f)}: ${f.description}`,
+  );
   const tutorChats =
     folder.id === MEMORY_LEARNING_FOLDER_ID
       ? // The turn's store is the whole store; its type names only core fields.
@@ -75,7 +75,13 @@ const readMemory: PlanningToolHandler = async ({ parsedArgs, context }) => {
 async function apply(plan: WritePlan, context: ToolExecutionContext) {
   if (!plan.ok) return done({ ok: false, error: plan.error, hint: plan.hint });
   const { get, set, chatId, assistantMessage } = context;
-  await get().changeMemory(plan.change);
+  if (!(await get().changeMemory(plan.change))) {
+    return done({
+      ok: false,
+      error: 'Memory could not be saved just now, so nothing was changed.',
+      hint: 'Tell the person it was not saved; they can add it themselves on their Memory page.',
+    });
+  }
   set((state) => {
     const result = updateMessageById(state, chatId, assistantMessage.id, (msg) => ({
       ...msg,

@@ -76,9 +76,14 @@
     text-transform: uppercase;
     color: var(--color-rubric);
   }
+  /* A long report scrolls on its own, so its Undo stays in view and the
+     folders below keep their room. */
   .memory-report__changes {
+    max-height: min(12rem, 30dvh);
     margin: var(--space-2) 0 0;
     padding-left: var(--space-5);
+    overflow-y: auto;
+    overscroll-behavior: contain;
     list-style: disc;
     font-size: 0.875rem;
     line-height: 1.5;

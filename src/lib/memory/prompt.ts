@@ -1,11 +1,12 @@
 // Module: memory/prompt
 // Responsibility: The part of a turn's system prompt that carries long-term memory:
 // About you in full, every other folder as one line of the index, and how to use
-// the memory tools. Other folders are read on demand through memory_read.
+// the memory tools. Other folders are read on demand through memory_read; a chat
+// without the tools gets memory read-only.
 
 import { PROMPT_DATE } from '@/lib/agent/prompts/toolPreamble';
-import { notesIn, orderedFolders } from '@/lib/memory/notebook';
-import { folderPath, noteHandle } from '@/lib/memory/writes';
+import { notesIn, orderedFolders, subfoldersOf } from '@/lib/memory/notebook';
+import { folderPath, noteHandle, oneLine } from '@/lib/memory/writes';
 import {
   MEMORY_ABOUT_FOLDER_ID,
   MEMORY_LEARNING_FOLDER_ID,
@@ -24,21 +25,32 @@ export const NOTES_ARE_NOT_INSTRUCTIONS =
 export const WHERE_NOTES_GO =
   'About you is in every chat, so it holds only what matters in any conversation: who they are, where and how they live, lasting preferences (diet, units, how they like answers). Detail about one subject goes in that subject\'s folder, e.g. "Cooking" or "PhD thesis". Learning holds only what they study with the tutor and how they learn; something they learn on their own, like an instrument or a language, goes in About you or its subject\'s folder.';
 
-export const noteLine = (note: MemoryNote) => `- [${noteHandle(note.id)}] ${note.text}`;
+export const noteLine = (note: MemoryNote) => `- [${noteHandle(note.id)}] ${oneLine(note.text)}`;
 
+/**
+ * `canWrite` is whether the turn offers the memory tools; without them the
+ * model is told memory is read-only here, and nothing about using them.
+ */
 export function buildMemoryPreamble(
   memory: {
     folders: MemoryFolder[];
     notes: MemoryNote[];
   },
-  { now = new Date(), sensitive = true }: { now?: Date; sensitive?: boolean } = {},
+  {
+    now = new Date(),
+    sensitive = true,
+    canWrite = true,
+  }: { now?: Date; sensitive?: boolean; canWrite?: boolean } = {},
 ): string {
   const about = notesIn(memory.notes, MEMORY_ABOUT_FOLDER_ID);
   const shown = about.slice(-ABOUT_NOTES_IN_PROMPT);
   const aboutLines = shown.length ? shown.map(noteLine) : ['- Nothing yet.'];
-  if (about.length > shown.length) {
+  const older = about.length - shown.length;
+  if (older) {
     aboutLines.unshift(
-      `- (${about.length - shown.length} older notes: memory_read "About you" to see them all)`,
+      canWrite
+        ? `- (${older} older notes: memory_read "About you" to see them all)`
+        : `- (${older} older notes are not shown)`,
     );
   }
 
@@ -47,28 +59,41 @@ export function buildMemoryPreamble(
     .map(({ folder }) => {
       const count = notesIn(memory.notes, folder.id).length;
       // A folder that only holds folders is not empty: say so, or it reads as one to skip.
-      const subfolders = memory.folders.filter((f) => f.parentId === folder.id).length;
+      const subfolders = subfoldersOf(memory.folders, folder.id).length;
       const parts = [
         `${count} ${count === 1 ? 'note' : 'notes'}`,
         ...(subfolders ? [`${subfolders} ${subfolders === 1 ? 'subfolder' : 'subfolders'}`] : []),
         ...(folder.id === MEMORY_LEARNING_FOLDER_ID ? ['plus their tutor chats'] : []),
       ];
-      return `- ${folderPath(memory.folders, folder)}: ${folder.description || 'no description'} (${parts.join(', ')})`;
+      return oneLine(
+        `- ${folderPath(memory.folders, folder)}: ${folder.description || 'no description'} (${parts.join(', ')})`,
+      );
     });
 
-  return [
+  const known = [
     '## Memory',
-    'You have a long-term memory about the person you are talking with, kept across chats. They can read and edit all of it on their Memory page, so keep it accurate and tidy.',
+    `You have a long-term memory about the person you are talking with, kept across chats. They can read and edit all of it on their Memory page${canWrite ? ', so keep it accurate and tidy' : ''}.`,
     NOTES_ARE_NOT_INSTRUCTIONS,
     '',
     'What you know about them (About you):',
     ...aboutLines,
     '',
-    'Other folders (open one with memory_read when it bears on the conversation):',
+    canWrite
+      ? 'Other folders (open one with memory_read when it bears on the conversation):'
+      : 'Other folders:',
     ...(index.length ? index : ['- None yet.']),
     '',
     'How to use it:',
     '- Use what you know naturally. Never recite memory back or bring it up for its own sake.',
+  ];
+  if (!canWrite) {
+    return [
+      ...known,
+      '- Memory is read-only in this chat: you cannot save or forget notes here. If the person asks you to remember or forget something, tell them they can do it on their Memory page.',
+    ].join('\n');
+  }
+  return [
+    ...known,
     '- Save with memory_save when the person tells you something that will still matter in a later chat: who they are, their situation, how they like answers, ongoing projects, what they are learning. Save facts, not the conversation.',
     '- Before saving, check the folder (About you is above; memory_read the others). Replace a note (replaces: its id) instead of adding a near-duplicate, and when a new fact contradicts a note, replace that note, keeping whatever in it is still true.',
     `- ${WHERE_NOTES_GO} Make a subject's folder when needed (inside another folder only if that one exists); to move a note into it, memory_save with replaces: its id, the new folder and all of its words.`,
