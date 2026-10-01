@@ -1,9 +1,14 @@
 import type { CarriedOver } from '@/lib/types';
 import { useChatStore } from '@/lib/store';
+import { memoryOnInChat } from '@/lib/memory/notebook';
 import { carriedOverWords } from '@/modules/tutor/ui/messageViews';
 import { Markdown } from '@/components/Markdown';
 
-/** Where a carried-over estimate came from, naming the source chat by its title today. */
+/**
+ * Where a carried-over estimate came from, naming the source chat by its title
+ * today, unless that chat has since been kept out of memory: then it is only
+ * "another tutor chat".
+ */
 export function CarriedOverWords({
   carried,
   setTo,
@@ -13,7 +18,10 @@ export function CarriedOverWords({
   setTo: number;
   topic: string;
 }) {
-  const title = useChatStore((s) => s.chats.find((chat) => chat.id === carried.chatId)?.title);
+  const title = useChatStore((s) => {
+    const source = s.chats.find((chat) => chat.id === carried.chatId);
+    return source && memoryOnInChat(s.ui, source) ? source.title : undefined;
+  });
   return (
     <Markdown
       inline
