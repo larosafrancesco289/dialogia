@@ -162,6 +162,12 @@
   /* Smoother auto-resize for message textarea */
 
   /* ===== Attachments ===== */
+  /* In the person's bubble: flush with its edge, a step above their words. */
+  .message-attachments--user {
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+  }
   .attachment-chip {
     border: 1px solid var(--color-border);
     border-radius: var(--radius-editorial);

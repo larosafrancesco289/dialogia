@@ -372,6 +372,17 @@ test('executeStreamingTurn marks a kept preamble stopped when Stop lands before 
   );
 });
 
+test('executeStreamingTurn marks a kept answer cut off mid-sentence stopped when Stop lands before the next round', async () => {
+  const kept = 'The answer is 42, and the reason it matters is that';
+  await assert.rejects(
+    runTurn({
+      tools: [...TOOLS, ...MEMORY_TOOLS],
+      rounds: [draftThenTool(kept, 'memory_save', SAVE), stopped()],
+    }),
+    { name: 'AbortError' },
+  );
+});
+
 test('executeStreamingTurn reports a provider abort in the round after a save, not a clean end', async () => {
   await assert.rejects(
     runTurn({

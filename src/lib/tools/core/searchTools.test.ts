@@ -89,3 +89,51 @@ test('a search keeps what it found on the reply, earlier results first, so citat
   );
   assert.equal(kept?.[1]?.description, 'About B');
 });
+
+registerSearchProvider({
+  id: 'refused-search',
+  label: 'Refused',
+  requiresKey: false,
+  search: async () => err('The provider did not accept the key.', { results: [] }),
+});
+registerSearchProvider({
+  id: 'empty-search',
+  label: 'Empty',
+  requiresKey: false,
+  search: async () => ok({ results: [] }),
+});
+
+async function searchWith(searchProvider: string): Promise<string> {
+  const store = createStore<StoreState>(
+    buildStoreInitializer() as unknown as StateCreator<StoreState>,
+  );
+  const log = { success: () => undefined, error: () => undefined };
+  const handler = getToolHandler('web_search');
+  assert.ok(handler);
+  const result = await handler({
+    toolCall: { id: 'c3', type: 'function', function: { name: 'web_search', arguments: '{}' } },
+    parsedArgs: { query: 'q' },
+    aggregatedResults: [],
+    context: {
+      chatId: 'chat-3',
+      assistantMessage: { id: 'reply-3', chatId: 'chat-3', role: 'assistant' } as Message,
+      userContent: 'q',
+      searchProvider,
+      controller: new AbortController(),
+      set: store.setState,
+      get: store.getState,
+      logger: { start: () => log },
+    } as unknown as ToolExecutionContext,
+  });
+  const content = result.convoMessages?.[0]?.content;
+  assert.equal(typeof content, 'string');
+  return content as string;
+}
+
+test('a failed search reaches the model as a failure, not as an empty result', async () => {
+  const failed = JSON.parse(await searchWith('refused-search'));
+  assert.equal(failed.ok, false);
+  assert.equal(failed.error, 'The search failed: The provider did not accept the key.');
+  assert.ok(failed.hint);
+  assert.deepEqual(JSON.parse(await searchWith('empty-search')), []);
+});

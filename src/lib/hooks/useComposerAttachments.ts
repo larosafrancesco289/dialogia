@@ -1,11 +1,12 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { ClipboardEvent, DragEvent } from 'react';
 import type { DraftAttachment } from '@/lib/types';
 import {
+  acceptedKinds,
+  sortAttachmentPick,
   toImageAttachment,
   toPdfAttachment,
   toAudioAttachment,
-  clampImages,
 } from '@/lib/attachments/ui';
 
 type UseComposerAttachmentsOptions = {
@@ -14,13 +15,6 @@ type UseComposerAttachmentsOptions = {
   /** Told which files were left out, so a drop or pick never fails silently. */
   onSkipped?: (message: string) => void;
 };
-
-const isPdf = (file: File) => file.type === 'application/pdf';
-const isImage = (file: File) => file.type.startsWith('image/');
-const isAudio = (file: File) =>
-  file.type.startsWith('audio/') ||
-  file.name.toLowerCase().endsWith('.wav') ||
-  file.name.toLowerCase().endsWith('.mp3');
 
 export function useComposerAttachments({
   canVision,
@@ -36,87 +30,26 @@ export function useComposerAttachments({
     setAttachmentsState(next);
   }, []);
 
-  const appendAttachments = useCallback(
-    (next: DraftAttachment[]) => {
-      if (!next.length) return;
-      setAttachments([...attachmentsRef.current, ...next]);
-    },
-    [setAttachments],
-  );
-
-  const processImages = useCallback(
+  const intake = useCallback(
     async (files: File[]) => {
-      if (!canVision || files.length === 0) return;
-      const existingImages = attachmentsRef.current.filter((att) => att.kind === 'image').length;
-      const limited = clampImages(existingImages, files);
+      const count = (kind: DraftAttachment['kind']) =>
+        attachmentsRef.current.filter((att) => att.kind === kind).length;
+      const pick = sortAttachmentPick(files, {
+        canVision,
+        canAudio,
+        existing: { pdf: count('pdf'), image: count('image'), audio: count('audio') },
+      });
+      if (pick.notice) onSkipped?.(pick.notice);
       const converted: DraftAttachment[] = [];
-      for (const file of limited) {
-        const att = await toImageAttachment(file);
-        if (att) converted.push(att);
-      }
-      appendAttachments(converted);
-    },
-    [appendAttachments, canVision],
-  );
-
-  const processPdfs = useCallback(
-    async (files: File[]) => {
-      if (!files.length) return;
-      const maxDocs = 2;
-      const existingDocs = attachmentsRef.current.filter((att) => att.kind === 'pdf').length;
-      const remaining = Math.max(0, maxDocs - existingDocs);
-      const toConvert = files.slice(0, remaining);
-      const converted: DraftAttachment[] = [];
-      for (const file of toConvert) {
-        const att = await toPdfAttachment(file);
-        if (att) converted.push(att);
-      }
-      appendAttachments(converted);
-    },
-    [appendAttachments],
-  );
-
-  const processAudio = useCallback(
-    async (files: File[]) => {
-      if (!canAudio || files.length === 0) return;
-      const maxAudio = 1;
-      const existing = attachmentsRef.current.filter((att) => att.kind === 'audio').length;
-      const remaining = Math.max(0, maxAudio - existing);
-      const toConvert = files.slice(0, remaining);
-      const converted: DraftAttachment[] = [];
-      for (const file of toConvert) {
+      for (const file of pick.pdfs) converted.push(await toPdfAttachment(file));
+      for (const file of pick.images) converted.push(await toImageAttachment(file));
+      for (const file of pick.audio) {
         const att = await toAudioAttachment(file);
         if (att) converted.push(att);
       }
-      appendAttachments(converted);
+      if (converted.length) setAttachments([...attachmentsRef.current, ...converted]);
     },
-    [appendAttachments, canAudio],
-  );
-
-  const accepted = useMemo(() => {
-    if (canVision && canAudio) return 'images, audio (mp3/wav) or PDFs';
-    if (canVision) return 'images or PDFs';
-    if (canAudio) return 'audio (mp3/wav) or PDFs';
-    return 'PDFs';
-  }, [canAudio, canVision]);
-
-  const intake = useCallback(
-    async (files: File[]) => {
-      const pdfs = files.filter(isPdf);
-      const images = files.filter(isImage);
-      const audios = files.filter((file) => !isImage(file) && isAudio(file));
-      const refused = files.filter(
-        (file) => !(isPdf(file) || (canVision && isImage(file)) || (canAudio && isAudio(file))),
-      );
-      if (refused.length) {
-        const names = refused.map((file) => file.name || 'a file').join(', ');
-        onSkipped?.(`Not attached: ${names}. This model takes ${accepted}.`);
-      }
-      if (pdfs.length) await processPdfs(pdfs);
-      if (images.length) await processImages(images);
-      if (audios.length) await processAudio(audios);
-    },
-    [accepted, canAudio, canVision, onSkipped, processAudio, processImages, processPdfs],
+    [canAudio, canVision, onSkipped, setAttachments],
   );
 
   const handleFileInputChange = useCallback(
@@ -174,7 +107,7 @@ export function useComposerAttachments({
     [setAttachments],
   );
 
-  const attachmentsHint = `Attach ${accepted}`;
+  const attachmentsHint = `Attach ${acceptedKinds(canVision, canAudio)}`;
 
   const openFilePicker = useCallback(() => {
     fileInputRef.current?.click();
