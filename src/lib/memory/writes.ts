@@ -25,6 +25,13 @@ export type WritePlan =
 /** The handle a note goes by in the model's view of memory. */
 export const noteHandle = (id: string) => id.slice(0, 8);
 
+/** Words on one line: a model's note or description never breaks into the prompt's own lines. */
+export const oneLine = (text: string) => text.replace(/\s+/g, ' ').trim();
+
+/** The longest note, and folder description, a model may write. */
+export const NOTE_MAX_LENGTH = 400;
+export const DESCRIPTION_MAX_LENGTH = 160;
+
 const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
 /** A folder's path from the top, "Projects/PhD thesis". */
@@ -103,9 +110,16 @@ export function planSave(args: {
   newId: () => string;
 }): WritePlan {
   const { memory, now, chatId } = args;
-  const text = args.text.trim();
+  const text = oneLine(args.text);
   if (!text) {
     return { ok: false, error: 'The note is empty.', hint: 'Write the fact as a short sentence.' };
+  }
+  if (text.length > NOTE_MAX_LENGTH) {
+    return {
+      ok: false,
+      error: `The note is too long (over ${NOTE_MAX_LENGTH} characters).`,
+      hint: 'Keep a note to one short line, and save separate facts as separate notes.',
+    };
   }
 
   let folder = resolveFolder(memory.folders, args.folder);
@@ -123,12 +137,19 @@ export function planSave(args: {
       };
     }
     const { name, parent } = place;
-    const description = args.newFolderDescription?.trim();
+    const description = oneLine(args.newFolderDescription ?? '');
     if (!description) {
       return {
         ok: false,
         error: `"${name}" would be a new folder, and a new folder needs a description.`,
         hint: 'Call again with new_folder_description: one line saying what the folder holds.',
+      };
+    }
+    if (description.length > DESCRIPTION_MAX_LENGTH) {
+      return {
+        ok: false,
+        error: `The folder description is too long (over ${DESCRIPTION_MAX_LENGTH} characters).`,
+        hint: 'Call again with a new_folder_description of one short line.',
       };
     }
     created = {
@@ -167,6 +188,7 @@ export function planSave(args: {
         action: 'updated',
         text,
         folderId: folder.id,
+        at: now,
         before,
         ...(created ? { createdFolderId: created.id } : {}),
       },
@@ -190,6 +212,7 @@ export function planSave(args: {
       action: 'added',
       text,
       folderId: folder.id,
+      at: now,
       ...(created ? { createdFolderId: created.id } : {}),
     },
   };
@@ -212,6 +235,7 @@ export function planForget(args: { memory: Memory; note: string; now: number }):
       action: 'forgotten',
       text: before.text,
       folderId: before.folderId,
+      at: args.now,
       before,
     },
   };
@@ -232,12 +256,17 @@ export function undoChange(
   now: number,
 ): MemoryChange | undefined {
   const note = memory.notes.find((n) => n.id === write.noteId);
+  const forgot = write.action === 'forgotten';
+  // Words alone miss an edit back to the same words; a write kept before `at` has only them.
   const asLeft =
     note &&
     note.text === write.text &&
     note.folderId === write.folderId &&
-    (note.forgottenAt !== undefined) === (write.action === 'forgotten');
+    (note.forgottenAt !== undefined) === forgot &&
+    (write.at === undefined || (forgot ? note.forgottenAt : note.updatedAt) === write.at);
   if (!asLeft) return undefined;
+  // Checked again as it is written, so a change another tab made meanwhile is never overwritten.
+  const expect = { notes: [note] };
   const made = memory.folders.find((f) => f.id === write.createdFolderId);
   const folderGone =
     made &&
@@ -246,26 +275,33 @@ export function undoChange(
   const deleteFolderIds = folderGone ? { deleteFolderIds: [made.id] } : {};
   if (write.action === 'added' || !write.before) {
     const folderId = folderGone ? (made.parentId ?? MEMORY_ABOUT_FOLDER_ID) : note.folderId;
-    return { notes: [{ ...note, folderId, forgottenAt: now }], ...deleteFolderIds };
+    return { notes: [{ ...note, folderId, forgottenAt: now }], ...deleteFolderIds, expect };
   }
   const { before } = write;
   return {
     notes: [{ ...before, folderId: returningFolder(memory.folders, before.folderId) }],
     ...deleteFolderIds,
+    expect,
   };
 }
 
 /**
- * The reply with `write` marked taken back. It is matched as the very object
- * the shown version holds, so two versions with alike writes are never
- * confused; a reply that no longer shows it comes back unchanged.
+ * The reply with the write `from` replaced by `to`, in whichever version holds
+ * it now. It is matched as the very object, so two versions with alike writes
+ * are never confused; a reply that holds it nowhere comes back unchanged.
  */
-export function markWriteUndone(message: Message, write: MemoryWrite): Message {
-  if (!message.memoryWrites?.includes(write)) return message;
-  return {
-    ...message,
-    memoryWrites: message.memoryWrites.map((w) => (w === write ? { ...w, undone: true } : w)),
-  };
+export function swapWrite(message: Message, from: MemoryWrite, to: MemoryWrite): Message {
+  const swap = (writes: MemoryWrite[] | undefined) =>
+    writes?.includes(from) ? writes.map((w) => (w === from ? to : w)) : writes;
+  if (message.memoryWrites?.includes(from)) {
+    return { ...message, memoryWrites: swap(message.memoryWrites) };
+  }
+  const at = message.versions?.findIndex((v) => v.memoryWrites?.includes(from)) ?? -1;
+  if (at === -1) return message;
+  const versions = message.versions!.map((v, i) =>
+    i === at ? { ...v, memoryWrites: swap(v.memoryWrites) } : v,
+  );
+  return { ...message, versions };
 }
 
 /** What became of a written note since: the person may have edited, forgotten or restored it. */

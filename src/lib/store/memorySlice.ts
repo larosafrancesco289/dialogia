@@ -4,7 +4,7 @@
 // and the repository tells the other tabs, the last consolidation included.
 
 import { MISSING_PROVIDER_KEY } from '@/lib/auth/require';
-import { repository } from '@/lib/db';
+import { MemoryChangedError, repository } from '@/lib/db';
 import type { MemoryChange } from '@/lib/db/repository';
 import { createStoreSlice } from '@/lib/store/createSlice';
 import {
@@ -13,7 +13,7 @@ import {
   repairs,
   returningFolder,
 } from '@/lib/memory/notebook';
-import { markWriteUndone, undoChange } from '@/lib/memory/writes';
+import { swapWrite, undoChange } from '@/lib/memory/writes';
 import { sameMemory, undoPass } from '@/lib/memory/consolidate';
 import { updateMessageById } from '@/lib/messages/updateMessageById';
 import {
@@ -54,10 +54,18 @@ export type MemorySliceActions = {
    * notes go, and mends what could not be read (`repairs`), writing only then.
    */
   loadMemory: () => Promise<void>;
-  /** Another tab changed memory or its last consolidation: read both again, writing nothing. */
+  /**
+   * Another tab changed memory or its last consolidation: read both again,
+   * writing nothing. While this tab's own change is being written, the read
+   * waits until it is.
+   */
   refreshMemory: () => Promise<void>;
-  /** Sets and saves rows, removes rows, and keeps the last consolidation, as one change. */
-  changeMemory: (change: MemoryChange) => Promise<void>;
+  /**
+   * Sets and saves rows, removes rows, and keeps the last consolidation, as one
+   * change. False when it was not saved: memory is then read again as stored,
+   * and the person told unless it was refused as changed since (`expect`).
+   */
+  changeMemory: (change: MemoryChange) => Promise<boolean>;
   addMemoryNote: (
     folderId: string,
     text: string,
@@ -93,6 +101,27 @@ const replaceById = <T extends { id: string }>(list: T[], rows: T[] = [], drop: 
 
 export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySliceActions>(
   (set, get) => {
+    // This tab's writes in flight, writes ever begun, and whether a read must follow them.
+    let writing = 0;
+    let begun = 0;
+    let readAfterWrites = false;
+
+    const refreshMemory = async (): Promise<void> => {
+      if (writing) {
+        readAfterWrites = true;
+        return;
+      }
+      const seen = begun;
+      const stored = await repository.loadMemory();
+      if (begun !== seen) {
+        // A write of this tab's began meanwhile, so what was read may predate it.
+        if (writing) readAfterWrites = true;
+        else await refreshMemory();
+        return;
+      }
+      set((s) => ({ memory: { ...s.memory, ...stored, loaded: true } }));
+    };
+
     const changeMemory = async (change: MemoryChange) => {
       set((s) => ({
         memory: {
@@ -102,7 +131,23 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
           ...(change.pass !== undefined ? { pass: change.pass ?? undefined } : {}),
         },
       }));
-      await repository.writeMemory(change);
+      writing += 1;
+      begun += 1;
+      let saved = true;
+      try {
+        await repository.writeMemory(change);
+      } catch (error) {
+        saved = false;
+        readAfterWrites = true;
+        if (!(error instanceof MemoryChangedError)) get().setNotice(NOTICE_SAVE_FAILED);
+      } finally {
+        writing -= 1;
+      }
+      if (readAfterWrites && !writing) {
+        readAfterWrites = false;
+        await refreshMemory();
+      }
+      return saved;
     };
 
     const changeNote = async (id: string, change: (note: MemoryNote) => MemoryNote) => {
@@ -140,10 +185,7 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
         }
       },
 
-      async refreshMemory() {
-        const stored = await repository.loadMemory();
-        set((s) => ({ memory: { ...s.memory, ...stored, loaded: true } }));
-      },
+      refreshMemory,
 
       changeMemory,
 
@@ -160,8 +202,7 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
           updatedAt: now,
           ...(options?.sourceChatId ? { sourceChatId: options.sourceChatId } : {}),
         };
-        await changeMemory({ notes: [note] });
-        return note;
+        return (await changeMemory({ notes: [note] })) ? note : undefined;
       },
 
       async editMemoryNote(id, text) {
@@ -199,8 +240,7 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
         const message = get().messagesById[messageId];
         const write = message?.memoryWrites?.[index];
         if (!message || !write || write.undone) return;
-        const change = undoChange(write, get().memory, Date.now());
-        if (!change) {
+        const refuse = () => {
           // Forgotten already (in a branch of this chat, say, or on the Memory page).
           const note = get().memory.notes.find((n) => n.id === write.noteId);
           const gone = write.action !== 'forgotten' && (!note || note.forgottenAt !== undefined);
@@ -208,30 +248,22 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
             gone ? NOTICE_MEMORY_ALREADY_FORGOTTEN : NOTICE_MEMORY_CHANGED_SINCE,
             'info',
           );
-          return;
-        }
+        };
+        const change = undoChange(write, get().memory, Date.now());
+        if (!change) return refuse();
         // Marked before the write is awaited, so a second click finds it taken back.
-        let taken: MemoryWrite | undefined;
-        set((s) => {
-          const result = updateMessageById(s, message.chatId, messageId, (m) =>
-            markWriteUndone(m, write),
-          );
-          taken = result?.messagesById?.[messageId]?.memoryWrites?.[index];
-          return result ?? {};
-        });
-        try {
-          await changeMemory(change);
-        } catch {
-          // Nothing was written: the line gets its Undo back, and memory is read again as stored.
+        const taken: MemoryWrite = { ...write, undone: true };
+        const mark = (from: MemoryWrite, to: MemoryWrite) =>
           set(
             (s) =>
-              updateMessageById(s, message.chatId, messageId, (m) => ({
-                ...m,
-                memoryWrites: m.memoryWrites?.map((w) => (w === taken ? write : w)),
-              })) ?? {},
+              updateMessageById(s, message.chatId, messageId, (m) => swapWrite(m, from, to)) ?? {},
           );
-          get().setNotice(NOTICE_SAVE_FAILED);
-          await get().refreshMemory();
+        mark(write, taken);
+        if (!(await changeMemory(change))) {
+          // Nothing was written: the line gets its Undo back, in whichever version holds it now.
+          mark(taken, write);
+          // Another tab changed the note first: memory as read again says how.
+          if (!undoChange(write, get().memory, Date.now())) refuse();
           return;
         }
         // The reply as it is now, which may have grown or switched versions
@@ -268,13 +300,19 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
       },
 
       async undoConsolidation() {
-        const pass = get().memory.pass;
-        if (!pass?.undo) return;
-        const { change, skipped } = undoPass(get().memory, pass.undo);
-        // As if it never ran: the nudge counts from the pass before it.
-        const back = pass.previousAt !== undefined ? { at: pass.previousAt, lines: [] } : null;
-        await changeMemory({ ...change, pass: back });
-        if (skipped) get().setNotice(NOTICE_CONSOLIDATION_PARTLY_UNDONE, 'info');
+        // A second try when the first is refused: another tab changed memory
+        // first, and memory as read again says what is still as the pass left it.
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          const pass = get().memory.pass;
+          if (!pass?.undo) return;
+          const { change, skipped } = undoPass(get().memory, pass.undo);
+          // As if it never ran: the nudge counts from the pass before it.
+          const back = pass.previousAt !== undefined ? { at: pass.previousAt, lines: [] } : null;
+          if (await changeMemory({ ...change, pass: back })) {
+            if (skipped) get().setNotice(NOTICE_CONSOLIDATION_PARTLY_UNDONE, 'info');
+            return;
+          }
+        }
       },
 
       async dismissConsolidation() {

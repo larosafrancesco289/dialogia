@@ -300,7 +300,7 @@ const WRITE_ACTIONS = new Set<unknown>(['added', 'updated', 'forgotten']);
  */
 function sanitizeMemoryWrite(value: unknown): MemoryWrite | undefined {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
-  const { noteId, action, text, folderId, before, createdFolderId, undone } = value as Record<
+  const { noteId, action, text, folderId, at, before, createdFolderId, undone } = value as Record<
     string,
     unknown
   >;
@@ -314,6 +314,7 @@ function sanitizeMemoryWrite(value: unknown): MemoryWrite | undefined {
     action: action as MemoryWrite['action'],
     text,
     folderId,
+    ...(isTime(at) ? { at } : {}),
     ...(was ? { before: was } : {}),
     ...(isString(createdFolderId) && createdFolderId ? { createdFolderId } : {}),
     ...(undone === true ? { undone } : {}),

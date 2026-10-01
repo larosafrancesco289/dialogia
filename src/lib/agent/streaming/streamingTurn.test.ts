@@ -120,6 +120,7 @@ async function runTurn({
     memory: { folders: missingBuiltInFolders([], 1), notes: [], loaded: true },
     changeMemory: async (change) => {
       memoryChanges.push(change);
+      return true;
     },
   });
 

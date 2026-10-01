@@ -3,20 +3,26 @@ import { shortDate } from '@/lib/ui/shortDate';
 import { shallow } from 'zustand/shallow';
 import { IconButton } from '@/components/ui/IconButton';
 import { LogoMark } from '@/components/ui/LogoMark';
-import { notesSince } from '@/lib/memory/consolidate';
+import { consolidationModelId, notesSince } from '@/lib/memory/consolidate';
 import { formatModelLabel } from '@/lib/models';
-import { ChatService } from '@/lib/services/chatService';
 import { useChatStore } from '@/lib/store';
+import { refocusIfDropped } from '@/lib/ui/focus';
+
+/** The Memory page holding a control, looked up on the click, before the control goes. */
+const pageOf = (control: unknown) =>
+  control instanceof Element ? control.closest('[role="dialog"]') : null;
+
+/** When the report or the button pressed goes away, focus goes to Consolidate, or the open folder. */
+const refocusOnPage = (page: Element | null) =>
+  refocusIfDropped(
+    () => page?.querySelector('.memory-consolidate'),
+    () => page?.querySelector('.memory-nav__item[aria-current="page"]'),
+  );
 
 /** The model a pass runs on: the one new chats start with, read when the button is drawn. */
 function consolidationModelLabel(): string {
   const s = useChatStore.getState();
-  const { modelId } = ChatService.buildSettingsForNewChat({
-    ui: s.ui,
-    chats: s.chats,
-    selectedChatId: s.selectedChatId,
-    models: s.models,
-  });
+  const modelId = consolidationModelId(s);
   return formatModelLabel({ model: s.modelIndex.get(modelId), fallbackId: modelId });
 }
 
@@ -36,7 +42,7 @@ export function ConsolidateAction() {
   const consolidateMemory = useChatStore((s) => s.consolidateMemory);
   if (consolidating)
     return (
-      <span className="memory-running" role="status">
+      <span className="memory-running" role="status" tabIndex={-1}>
         <LogoMark live className="memory-running__mark" />
         Consolidating…
       </span>
@@ -51,10 +57,15 @@ export function ConsolidateAction() {
       {nudge && <span className="memory-nudge">{nudge}</span>}
       <button
         type="button"
-        className="btn-outline btn-sm"
+        className="btn-outline btn-sm memory-consolidate"
         disabled={empty}
         title={empty ? 'Add a note first' : `Tidies memory with ${consolidationModelLabel()}`}
-        onClick={() => void consolidateMemory()}
+        onClick={(e) => {
+          // The button turns into the running line, and comes back when the pass ends.
+          const page = pageOf(e.currentTarget);
+          refocusIfDropped(() => page?.querySelector('.memory-running'));
+          void consolidateMemory().then(() => refocusOnPage(page));
+        }}
       >
         Consolidate
       </button>
@@ -81,12 +92,22 @@ export function ConsolidationReport() {
           <button
             type="button"
             className="btn-outline btn-sm"
-            onClick={() => void undoConsolidation()}
+            onClick={(e) => {
+              const page = pageOf(e.currentTarget);
+              void undoConsolidation().then(() => refocusOnPage(page));
+            }}
           >
             Undo
           </button>
         )}
-        <IconButton size="sm" title="Dismiss" onClick={() => void dismissConsolidation()}>
+        <IconButton
+          size="sm"
+          title="Dismiss"
+          onClick={(e) => {
+            const page = pageOf(e?.currentTarget);
+            void dismissConsolidation().then(() => refocusOnPage(page));
+          }}
+        >
           <XMarkIcon className="h-4 w-4" />
         </IconButton>
       </div>
