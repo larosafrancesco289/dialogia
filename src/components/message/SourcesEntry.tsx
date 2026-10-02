@@ -1,9 +1,5 @@
 import { useId, useState } from 'react';
-import {
-  ArrowTopRightOnSquareIcon,
-  ChevronDownIcon,
-  GlobeAltIcon,
-} from '@heroicons/react/24/outline';
+import { ArrowUpRightIcon, ChevronDownIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
 import { hostname, titleForSource, type MarkdownCitationSource } from '@/lib/markdown/citations';
 import type { SearchSourcesData } from '@/lib/ui/responseActivity';
 
@@ -33,7 +29,7 @@ function SourcesList({ sources }: { sources: MarkdownCitationSource[] }) {
           {source.url && hostname(source.url) !== titleForSource(source).toLowerCase() && (
             <span className="response-ledger__source-host">{hostname(source.url)}</span>
           )}
-          <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5 shrink-0 text-[var(--color-fg-muted)]" />
+          <ArrowUpRightIcon className="h-3.5 w-3.5 shrink-0 text-[var(--color-fg-muted)]" />
         </li>
       ))}
     </ol>

@@ -58,9 +58,7 @@ export function ApiKeyField(props: {
           className="input flex-1 basis-full sm:basis-0 min-w-0 text-base sm:text-sm"
           autoComplete="off"
           spellCheck={false}
-          placeholder={
-            stored ? `Saved ${describeKey(keyRef)}. Paste a new key to replace it` : placeholder
-          }
+          placeholder={stored ? `Saved ${describeKey(keyRef)}. Paste to replace` : placeholder}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
