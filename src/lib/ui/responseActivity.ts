@@ -109,9 +109,13 @@ function thinkingMeasure(activity: MessageActivityItem[], reasoning: string): st
   return words ? `${words} word${words === 1 ? '' : 's'}` : '';
 }
 
+function labelForTool(call: ToolCallLogEntry) {
+  if (call.name === 'web_search') return 'Searching the web';
+  return toolDisplayName(call.name);
+}
+
 // Plain words for the app's own tools; any other tool shows its name.
 const TOOL_LABELS: Record<string, string> = {
-  web_search: 'Searching the web',
   web_fetch: 'Reading a page',
   memory_read: 'Checking memory',
   memory_save: 'Saving to memory',
@@ -294,7 +298,7 @@ export function summarizeActivity({
   const hasSearchError = sources?.status === 'error';
 
   const runningTool = toolCalls.find((call) => call.status === 'pending');
-  if (runningTool) return toolDisplayName(runningTool.name);
+  if (runningTool) return labelForTool(runningTool);
   if (latestActivity?.type === 'tool_call' && latestActivity.status === 'pending') {
     const object = toolObject(latestActivity);
     return `${toolDisplayName(latestActivity.name)}${object ? `: ${object}` : ''}`;
