@@ -11,9 +11,25 @@ export function stepState(plan: LearningPlan, node: LearningPlanNode): StepState
   return unmetPrerequisites(plan, node).length > 0 ? 'locked' : 'ready';
 }
 
-/** What a locked topic is waiting on, by name, in plan order. */
+/** A topic's estimate as a hairline bar under its name. */
+export function Meter({ value }: { value: number }) {
+  return (
+    <span className="hub-path__meter" aria-hidden="true">
+      <span style={{ transform: `scaleX(${Math.min(1, Math.max(0, value))})` }} />
+    </span>
+  );
+}
+
+/**
+ * What a locked topic is waiting on, by name, in plan order, except the topic
+ * just before it: on a path that goes without saying, and under every topic of
+ * a linear plan it would only repeat.
+ */
 export function waitingOn(plan: LearningPlan, node: LearningPlanNode): string[] {
-  return unmetPrerequisites(plan, node).map((p) => p.name);
+  const before = plan.nodes[plan.nodes.indexOf(node) - 1];
+  return unmetPrerequisites(plan, node)
+    .filter((p) => p !== before)
+    .map((p) => p.name);
 }
 
 /**

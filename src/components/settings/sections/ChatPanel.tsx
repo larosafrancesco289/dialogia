@@ -102,7 +102,7 @@ export function ChatPanel(props: ChatPanelProps) {
               onKeyDown={(e) => e.stopPropagation()}
             />
             <p className="field__hint">
-              What every new chat is told before your first message. A tutoring session adds its own
+              What every new chat is told before your first message. A learning session adds its own
               instructions on top.
             </p>
           </div>

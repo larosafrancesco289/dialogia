@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import type { LearningPlan, LearningPlanNode } from '@/lib/types';
-import { listInProse } from '@/lib/utils/text';
-import { PathStep, stepState, waitingOn, type StepState } from './PlanPath';
+import type { LearningPlan, LearningPlanNode, TopicMastery } from '@/lib/types';
+import { shownPercent, statusWords } from '@/modules/tutor/lib/topicStatus';
+import { Meter, PathStep, stepState, waitingOn, type StepState } from './PlanPath';
 import { Markdown } from '@/components/Markdown';
 
 export type PlanRevisions = {
@@ -16,9 +16,18 @@ export type PlanRevisions = {
  * the Hub, with what the learner can change directly under each topic (skip
  * what they know, choose what comes next, take a finished one up again);
  * anything structural goes to the tutor, and the view says so, so there is
- * one answer to "the chatbot or the buttons?".
+ * one answer to "the chatbot or the buttons?". The percentages stay, as in the Hub.
  */
-export function ReviseView({ plan, revisions }: { plan: LearningPlan; revisions: PlanRevisions }) {
+export function ReviseView({
+  plan,
+  mastery,
+  revisions,
+}: {
+  plan: LearningPlan;
+  /** Absent when the learner model is hidden. */
+  mastery?: Record<string, TopicMastery>;
+  revisions: PlanRevisions;
+}) {
   const [confirming, setConfirming] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -42,6 +51,7 @@ export function ReviseView({ plan, revisions }: { plan: LearningPlan; revisions:
             number={index + 1}
             state={stepState(plan, node)}
             waiting={waitingOn(plan, node)}
+            mastery={mastery?.[node.id]}
             busy={busy === node.id}
             confirming={confirming === node.id}
             onConfirm={() => setConfirming(node.id)}
@@ -68,6 +78,7 @@ function ReviseItem({
   number,
   state,
   waiting,
+  mastery,
   busy,
   confirming,
   onConfirm,
@@ -80,6 +91,7 @@ function ReviseItem({
   number: number;
   state: StepState;
   waiting: string[];
+  mastery?: TopicMastery;
   busy: boolean;
   confirming: boolean;
   onConfirm: () => void;
@@ -88,14 +100,7 @@ function ReviseItem({
   onStartNext: () => void;
   onReopen: () => void;
 }) {
-  const status =
-    state === 'done'
-      ? 'Done'
-      : state === 'current'
-        ? 'In progress'
-        : state === 'locked'
-          ? `Starts after ${listInProse(waiting)}`
-          : 'Not started';
+  const percent = shownPercent(state, mastery);
 
   return (
     <PathStep state={state} number={number}>
@@ -103,9 +108,11 @@ function ReviseItem({
         <span className="hub-path__name">
           <Markdown inline content={node.name} />
         </span>
+        {percent != null && <span className="hub-path__pct">{percent}%</span>}
         <span className="hub-path__sub">
+          {percent != null && <Meter value={mastery!.confidence} />}
           <span className="hub-path__status">
-            <Markdown inline content={status} />
+            <Markdown inline content={statusWords(state, false, waiting)} />
           </span>
         </span>
       </div>

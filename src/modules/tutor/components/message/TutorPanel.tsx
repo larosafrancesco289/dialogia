@@ -47,9 +47,7 @@ export function TutorPanel(props: {
             {intake && intake.questions.length ? (
               <QuestionnaireCard chatId={chatId} messageId={messageId} intake={intake} />
             ) : null}
-            {proposal ? (
-              <PlanProposalCard chatId={chatId} messageId={messageId} proposal={proposal} />
-            ) : null}
+            {proposal ? <PlanProposalCard messageId={messageId} proposal={proposal} /> : null}
             {diagnostic && diagnostic.items.length ? (
               <DiagnosticCard chatId={chatId} messageId={messageId} diagnostic={diagnostic} />
             ) : null}

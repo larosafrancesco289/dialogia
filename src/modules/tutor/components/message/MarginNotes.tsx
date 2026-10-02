@@ -9,6 +9,7 @@ import {
 import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
 import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 import { Markdown } from '@/components/Markdown';
+import { asTheirIdea } from '@/modules/tutor/lib/text';
 import { CarriedOverWords } from './CarriedOverWords';
 
 /**
@@ -154,7 +155,7 @@ function ToClearUp({ items }: { items: NotedMisconception[] }) {
       {items.map((item, i) => (
         <p key={i} className="margin-note__clear">
           <span className="margin-note__clear-label">To clear up</span>{' '}
-          <Markdown inline content={item.description} />
+          <Markdown inline content={asTheirIdea(item.description)} />
         </p>
       ))}
     </>

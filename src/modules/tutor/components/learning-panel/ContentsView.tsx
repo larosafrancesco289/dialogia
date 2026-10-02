@@ -4,21 +4,14 @@ import { isMeasured, nextReadyNode, type TopicExplanation } from '@/modules/tuto
 import type { TutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 import { readableNote } from '@/modules/tutor/ui/messageViews';
 import { listInProse } from '@/lib/utils/text';
-import { PathStep, stepState, waitingOn, type StepState } from './PlanPath';
-import { pct, statusWords } from '@/modules/tutor/lib/topicStatus';
+import { Meter, PathStep, stepState, waitingOn, type StepState } from './PlanPath';
+import { pct, shownPercent, statusWords } from '@/modules/tutor/lib/topicStatus';
 import { Markdown } from '@/components/Markdown';
+import { asTheirIdea } from '@/modules/tutor/lib/text';
 import { CarriedOverWords } from '@/modules/tutor/components/message/CarriedOverWords';
 
 // Corrections are recorded for the tutor ("Learner said…"); read them back
 // to the learner in the second person.
-
-function Meter({ value }: { value: number }) {
-  return (
-    <span className="hub-path__meter" aria-hidden="true">
-      <span style={{ transform: `scaleX(${Math.min(1, Math.max(0, value))})` }} />
-    </span>
-  );
-}
 
 type Explain = (nodeId: string) => TopicExplanation | undefined;
 
@@ -29,8 +22,8 @@ export type ContentsCorrections = {
 
 /**
  * The Learning Hub at rest: the plan as a path, and the learner model on it.
- * Every topic says where it stands in words, and every topic with evidence
- * shows the tutor's estimate as a number. Opening a topic says what it
+ * Every topic says where it stands in words, and every started topic or one
+ * with evidence shows the tutor's estimate as a number. Opening a topic says what it
  * covers, why the estimate is what it is and, where the learner may, how to
  * correct it. Changing the plan lives in Edit plan.
  */
@@ -56,7 +49,9 @@ export function ContentsView({
   const done = plan.nodes.filter((n) => n.status === 'completed').length;
   const upNextId = nextReadyNode(plan)?.id;
   const hours = plan.metadata?.estimatedHours;
-  const anyMeasured = plan.nodes.some((n) => isMeasured(mastery?.[n.id]));
+  const anyShown = plan.nodes.some(
+    (n) => shownPercent(stepState(plan, n), mastery?.[n.id]) != null,
+  );
 
   return (
     <div className="hub-contents">
@@ -94,7 +89,7 @@ export function ContentsView({
         ))}
       </ol>
 
-      {affordances.showMastery && anyMeasured && (
+      {affordances.showMastery && anyShown && (
         <p className="hub-contents__hint">
           Each percentage is the tutor’s estimate of how well you know that topic. Open a topic to
           see why{affordances.correctMastery ? ', or to correct it' : ''}.
@@ -131,7 +126,8 @@ function ContentsItem({
 }) {
   const [busy, setBusy] = useState(false);
   const measured = isMeasured(mastery);
-  const showMastery = affordances.showMastery && measured && state !== 'locked';
+  const percent = affordances.showMastery ? shownPercent(state, mastery) : undefined;
+  const showMastery = percent != null;
   const openMisconceptions = affordances.showMastery
     ? (mastery?.misconceptions?.filter((m) => !m.resolved) ?? [])
     : [];
@@ -160,7 +156,7 @@ function ContentsItem({
         <span className="hub-path__name">
           <Markdown inline content={node.name} />
         </span>
-        {showMastery && <span className="hub-path__pct">{pct(mastery!.confidence)}%</span>}
+        {showMastery && <span className="hub-path__pct">{percent}%</span>}
         <span className="hub-path__sub">
           {showMastery && <Meter value={mastery!.confidence} />}
           <span className="hub-path__status">
@@ -232,7 +228,7 @@ function ContentsItem({
             <div key={m.id} className="hub-clear">
               <p className="hub-label">To clear up</p>
               <p className="hub-clear__text">
-                <Markdown inline content={m.description} />
+                <Markdown inline content={asTheirIdea(m.description)} />
               </p>
               {affordances.correctMastery && (
                 <button
@@ -276,17 +272,28 @@ function feltBy(
 const isSetting = (evidence: WhyStep['evidence']) =>
   !evidence || (typeof evidence.setTo === 'number' && evidence.kind !== 'misconception');
 
+// A setting that is where the estimate starts: the plan's starting estimate, or one carried over.
+const isStart = (evidence: WhyStep['evidence']) =>
+  !evidence ||
+  evidence.kind === 'placement' ||
+  evidence.source === 'placement' ||
+  !!evidence.carriedOver;
+
 /** What placed the estimate directly, in the learner's words. */
 function settingLabel(evidence: WhyStep['evidence']): string {
   if (evidence?.kind === 'placement') return 'Starting estimate';
   if (evidence?.kind === 'more_practice') return 'You asked for more practice';
   if (evidence?.kind === 'marked_known') return 'You marked it as known';
-  if (evidence?.source === 'learner') return 'Your correction';
-  if (evidence?.source === 'learner_said') return 'From what you told the tutor';
+  if (evidence?.source === 'learner') return 'You corrected it';
+  if (evidence?.source === 'learner_said') return 'You told the tutor';
   return 'Set by the tutor';
 }
 
-/** One line of "Why N%": what a piece of evidence did, or where it set the estimate. */
+/**
+ * One line of "Why N%": what moved the estimate, as a signed change and a sentence
+ * ("+7  You answered a quiz question correctly"). Only the first line, where the
+ * estimate starts, is a figure.
+ */
 function WhyLine({
   step: { evidence, before, after },
   first,
@@ -296,44 +303,40 @@ function WhyLine({
   first: boolean;
   topic: string;
 }) {
-  if (isSetting(evidence)) {
-    const details = evidence?.details ? readableNote(evidence.details) : '';
-    // Where it was set from, so the story reads through: 61%, then your 46%.
-    const was = !first && pct(before) !== pct(after) ? `It was ${pct(before)}%.` : '';
-    // The learner's own correction is its own label ("You said the estimate
-    // felt too high."), as is where a carried-over estimate came from; other
-    // settings are named, with their reason under.
-    const own = evidence?.source === 'learner' && evidence.kind === 'adjusted' && !!details;
-    const carried = evidence?.carriedOver;
-    const note = (own || carried ? [was] : [details, was]).filter(Boolean).join(' ');
-    return (
-      <li className="is-edge">
-        <span className="hub-why__figure">{pct(after)}%</span>
-        <span>
-          {own ? (
-            <Markdown inline content={details} />
-          ) : carried ? (
-            <CarriedOverWords carried={carried} setTo={after} topic={topic} />
-          ) : (
-            settingLabel(evidence)
-          )}
-          {note && (
-            <span className="hub-why__note">
-              <Markdown inline content={note} />
-            </span>
-          )}
-        </span>
-      </li>
-    );
-  }
+  const setting = isSetting(evidence);
+  const details = evidence?.details ? readableNote(evidence.details) : '';
+  // The learner's own correction is its own sentence ("You said the estimate
+  // felt too high."), as is where a carried-over estimate came from; other
+  // settings are named, with their reason under.
+  const own = evidence?.source === 'learner' && evidence.kind === 'adjusted' && !!details;
+  const carried = evidence?.carriedOver;
   const delta = pct(after) - pct(before);
+  const figure = first
+    ? `${pct(after)}%`
+    : delta > 0
+      ? `+${delta}`
+      : delta < 0
+        ? `−${-delta}`
+        : '0';
+  const tone = first ? '' : delta > 0 ? ' is-up' : delta < 0 ? ' is-down' : '';
   return (
-    <li>
-      <span className={`hub-why__figure${delta > 0 ? ' is-up' : delta < 0 ? ' is-down' : ''}`}>
-        {delta > 0 ? `+${delta}` : delta < 0 ? `−${-delta}` : '0'}
-      </span>
+    <li className={first ? 'is-edge' : undefined}>
+      <span className={`hub-why__figure${tone}`}>{figure}</span>
       <span>
-        <Markdown inline content={readableNote(evidence!.details)} />
+        {!setting || own ? (
+          <Markdown inline content={details} />
+        ) : carried ? (
+          <CarriedOverWords carried={carried} setTo={after} topic={topic} />
+        ) : (
+          <>
+            {settingLabel(evidence)}
+            {details && (
+              <span className="hub-why__note">
+                <Markdown inline content={details} />
+              </span>
+            )}
+          </>
+        )}
       </span>
     </li>
   );
@@ -342,9 +345,7 @@ function WhyLine({
 /**
  * "Why N%": the whole story, oldest first: where the estimate started, each
  * change, and where it stands now. A direct setting (a correction, more
- * practice, a starting estimate) says what it was set from, so a learner who
- * corrected it still sees why it was what it was, and the count reads on from
- * the new value.
+ * practice) reads as the change it made, like any other line.
  */
 function Why({ mastery, explanation }: { mastery: TopicMastery; explanation?: TopicExplanation }) {
   const start = explanation?.start ?? mastery.confidence;
@@ -352,16 +353,17 @@ function Why({ mastery, explanation }: { mastery: TopicMastery; explanation?: To
     ...step,
     evidence: mastery.evidence.find((entry) => entry.eventId === step.eventId),
   }));
-  // A starting estimate set by the plan is the start: no prior line above it.
-  const opensWithSetting = steps.length > 0 && isSetting(steps[0].evidence);
-  // A setting as the last line already states today's value.
-  const endsWithSetting = steps.length > 0 && isSetting(steps[steps.length - 1].evidence);
+  // A starting estimate set by the plan (or carried over) is the start: no prior
+  // line above it. Anything else, a correction included, moves on from the prior.
+  const opensWithStart = steps.length > 0 && isStart(steps[0].evidence);
+  // With nothing since the start, the start line already states today's value.
+  const startIsNow = steps.length === (opensWithStart ? 1 : 0);
 
   return (
     <div className="hub-why">
       <p className="hub-label">Why {pct(mastery.confidence)}%</p>
       <ol className="hub-why__list">
-        {!opensWithSetting && (
+        {!opensWithStart && (
           <li className="is-edge">
             <span className="hub-why__figure">{pct(start)}%</span>
             <span>
@@ -373,11 +375,11 @@ function Why({ mastery, explanation }: { mastery: TopicMastery; explanation?: To
           <WhyLine
             key={i}
             step={step}
-            first={i === 0 && opensWithSetting}
+            first={i === 0 && opensWithStart}
             topic={explanation?.name ?? mastery.nodeId}
           />
         ))}
-        {!endsWithSetting && (
+        {!startIsNow && (
           <li className="is-now">
             <span className="hub-why__figure">{pct(mastery.confidence)}%</span>
             <span>Now</span>

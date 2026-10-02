@@ -3,19 +3,19 @@ import { useChatStore } from '@/lib/store';
 import { useTutorToggle } from '@/modules/tutor/ui/useTutorToggle';
 
 /**
- * The tutor module's `phoneDrawer` slot: the phone's Tutor button, as a row
+ * The tutor module's `phoneDrawer` slot: the phone's Learn button, as a row
  * in the chat drawer under the book's name. A session is the live thing
  * here, so only its dot is gold.
  */
 export function TutorDrawerRow() {
   const tutor = useTutorToggle();
   const setUI = useChatStore((s) => s.setUI);
-  if (!tutor.available) return null;
+  if (!tutor.inChrome) return null;
 
   const hint = tutor.forced
-    ? 'Every chat is a session'
+    ? 'Every chat is a learning session'
     : tutor.active
-      ? 'In a session; tap to leave'
+      ? 'In a learning session; tap to leave'
       : 'Start a learning session';
 
   return (
@@ -32,7 +32,7 @@ export function TutorDrawerRow() {
     >
       <AcademicCapIcon className="tutor-drawer-row__icon" aria-hidden="true" />
       <span className="tutor-drawer-row__text">
-        <span className="tutor-drawer-row__label">Tutor</span>
+        <span className="tutor-drawer-row__label">Learn</span>
         <span className="tutor-drawer-row__hint">{hint}</span>
       </span>
       {tutor.active && <span className="tutor-drawer-row__live" aria-hidden="true" />}

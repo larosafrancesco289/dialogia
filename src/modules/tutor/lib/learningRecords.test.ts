@@ -37,6 +37,7 @@ test('a record shows the whole path, with numbers only where there is evidence',
       node('b', 'in_progress', ['a']),
       node('c', 'not_started', ['b']),
       node('d', 'not_started', ['a']),
+      node('e', 'not_started', ['b']),
     ],
   };
   state.mastery = {
@@ -44,6 +45,7 @@ test('a record shows the whole path, with numbers only where there is evidence',
     b: mastery('b', 0.615),
     c: mastery('c', 0.3),
     d: mastery('d', 0.3, false),
+    e: mastery('e', 0.3, false),
   };
 
   const record = learningRecord(chat, state);
@@ -56,9 +58,27 @@ test('a record shows the whole path, with numbers only where there is evidence',
     { name: 'A', state: 'done', percent: 84, status: 'Done' },
     { name: 'B', state: 'current', percent: 62, status: 'In progress' },
     // Locked: its number would say more than the tutor knows.
-    { name: 'C', state: 'locked', status: 'Starts after B' },
+    // The topic just before goes without saying; one further back is named.
+    { name: 'C', state: 'locked', status: 'Not started' },
     { name: 'D', state: 'ready', status: 'Up next' },
+    { name: 'E', state: 'locked', status: 'Starts after “B”' },
   ]);
+});
+
+test('a started topic shows its starting number before any evidence', () => {
+  const state = emptyTutorState();
+  state.plan = {
+    goal: 'Read a test result',
+    generatedAt: 0,
+    updatedAt: 0,
+    version: 1,
+    nodes: [node('a', 'in_progress'), node('b', 'not_started')],
+  };
+  state.mastery = { a: mastery('a', 0.3, false), b: mastery('b', 0.3, false) };
+  assert.deepEqual(
+    learningRecord(chat, state)?.topics.map((t) => t.percent),
+    [30, undefined],
+  );
 });
 
 test('a record carries its plan’s subject, and only tutor chats with a plan and memory have one', async () => {

@@ -127,7 +127,9 @@ export function QuestionnaireCard({
             ? 'Thank you. The plan will be shaped around this.'
             : isClosed
               ? 'Skipped. The tutor went on without these answers.'
-              : 'Choose the options that fit you best.'}
+              : allowMultiple
+                ? 'Choose any that fit you.'
+                : 'Choose one.'}
         </p>
       </div>
 
@@ -158,13 +160,7 @@ export function QuestionnaireCard({
             className="flex flex-col gap-4"
           >
             <div>
-              {(activeItem.category || allowMultiple) && (
-                <p className="exercise__tag mb-1">
-                  {[activeItem.category, allowMultiple ? 'choose any' : null]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </p>
-              )}
+              {activeItem.category && <p className="exercise__tag mb-1">{activeItem.category}</p>}
               <p className="exercise__question">
                 <Markdown inline content={activeItem.question} />
               </p>

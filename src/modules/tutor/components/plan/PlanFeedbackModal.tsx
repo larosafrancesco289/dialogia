@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { Markdown } from '@/components/Markdown';
+import { ENTER_MODIFIER } from '@/components/message/MessageActions';
 
 export type PlanFeedbackContext =
   | { type: 'plan_proposal' }
@@ -24,7 +25,6 @@ export function PlanFeedbackModal({
   onClose: () => void;
 }) {
   const [feedback, setFeedback] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
   useBackToClose(isOpen, onClose);
@@ -32,21 +32,14 @@ export function PlanFeedbackModal({
 
   // Reset feedback when modal opens
   useEffect(() => {
-    if (isOpen) {
-      setFeedback('');
-      setIsSubmitting(false);
-    }
+    if (isOpen) setFeedback('');
   }, [isOpen]);
 
-  const handleSubmit = async () => {
-    if (!feedback.trim() || isSubmitting) return;
-    setIsSubmitting(true);
-    try {
-      await onSubmit(feedback.trim(), context);
-      onClose();
-    } finally {
-      setIsSubmitting(false);
-    }
+  // Closes on send: the note and the tutor's revised plan arrive in the chat.
+  const handleSubmit = () => {
+    if (!feedback.trim()) return;
+    onSubmit(feedback.trim(), context);
+    onClose();
   };
 
   const isPhaseContext = context.type === 'phase';
@@ -55,7 +48,7 @@ export function PlanFeedbackModal({
   const placeholder = isPhaseContext
     ? `Go deeper on something before moving on, reorder the topics, or add groundwork if ${context.phaseName} feels too advanced.`
     : 'More practice on the fundamentals, skipping what you already know, or a different focus.';
-  const canSubmit = feedback.trim().length > 0 && !isSubmitting;
+  const canSubmit = feedback.trim().length > 0;
 
   // Portalled to the body: inside the side panel's stacking context the
   // scrim could not cover the top bar or the composer.
@@ -94,7 +87,7 @@ export function PlanFeedbackModal({
               }
               if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && canSubmit) {
                 e.preventDefault();
-                void handleSubmit();
+                handleSubmit();
               }
             }}
           >
@@ -126,19 +119,20 @@ export function PlanFeedbackModal({
               placeholder={placeholder}
               rows={6}
               className="textarea mt-4 text-sm leading-relaxed"
-              disabled={isSubmitting}
             />
             <p className="field__hint mt-2">
               Your note appears in the chat, and the tutor answers with a revised plan.
             </p>
 
             <div className="dialog__actions">
-              <span className="field__hint mr-auto hidden sm:inline">⌘ Enter to send</span>
-              <button onClick={onClose} className="btn-ghost btn-sm" disabled={isSubmitting}>
+              <span className="field__hint mr-auto hidden sm:inline">
+                {ENTER_MODIFIER} Enter to send
+              </span>
+              <button onClick={onClose} className="btn-ghost btn-sm">
                 Cancel
               </button>
               <button onClick={handleSubmit} disabled={!canSubmit} className="btn btn-sm">
-                {isSubmitting ? 'Sending…' : 'Send to tutor'}
+                Send to tutor
               </button>
             </div>
           </motion.div>

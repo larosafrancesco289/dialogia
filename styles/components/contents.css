@@ -42,6 +42,15 @@
   .hub-contents {
     padding: var(--space-5) var(--space-5) var(--space-6);
   }
+  /* A proposal previewed here is answered here too, under the plan it shows. */
+  .learning-panel__answer {
+    display: flex;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-5);
+    border-top: 1px solid var(--chrome-rule);
+  }
   .hub-label {
     margin: 0;
     font-size: 0.6875rem;
