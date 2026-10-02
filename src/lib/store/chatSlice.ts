@@ -11,7 +11,6 @@ import {
   stickyDefaultsFromPatch,
 } from '@/lib/settings/patch';
 import type { PersistFragment, StoreSetter, StoreState } from '@/lib/store/types';
-import type * as TurnService from '@/lib/services/turns';
 import type { Chat, ChatSettingsPatch, Folder } from '@/lib/types';
 import {
   appendMessagesToChat,
@@ -25,14 +24,6 @@ import { clearActiveTurnCount, isChatStreaming } from '@/lib/ui/streaming';
 import { abortTurn } from '@/lib/turns/runtime/abortControllers';
 import { readDraft } from '@/lib/ui/composerDrafts';
 import { chatPresence } from '@/lib/sync/chatPresence';
-
-// Keeps the turn pipeline out of the boot bundle; welcome priming is user-triggered
-// and fire-and-forget, so the deferred load is invisible to callers.
-function primeTutorWelcome(...args: Parameters<typeof TurnService.primeTutorWelcome>) {
-  void import('@/lib/services/turns')
-    .then((mod) => mod.primeTutorWelcome(...args))
-    .catch(() => undefined);
-}
 
 export type ChatSliceState = {
   chats: Chat[];
@@ -260,9 +251,6 @@ export function createChatSlice(
         }));
 
         leaveChat(leaving);
-        if (nextDraft.settings.features.tutor?.enabled) {
-          primeTutorWelcome(nextDraft.id, { set, get });
-        }
         return;
       }
 
@@ -282,7 +270,6 @@ export function createChatSlice(
       }));
 
       leaveChat(leaving);
-      if (chat.settings.features.tutor?.enabled) primeTutorWelcome(chat.id, { set, get });
     },
 
     selectChat(id: string) {
@@ -478,14 +465,6 @@ export function createChatSlice(
           chatDefaults: mergeChatDefaults(s.ui.chatDefaults, stickyDefaults),
         },
       }));
-
-      const turnedOn =
-        before.settings.features.tutor?.enabled !== nextSettings.features.tutor?.enabled &&
-        nextSettings.features.tutor?.enabled === true;
-
-      if (turnedOn && !!get().ui.flags.experimentalTutor) {
-        Promise.resolve(primeTutorWelcome(id, { set, get })).catch(() => undefined);
-      }
     },
 
     async moveChatToFolder(chatId: string, folderId?: string) {

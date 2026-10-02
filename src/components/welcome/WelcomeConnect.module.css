@@ -1,0 +1,153 @@
+/* WelcomeConnect: the box that stands where the composer will be, the same
+   width and paper, so connecting reads as the first thing you type here. */
+
+.connect {
+  width: 100%;
+  text-align: left;
+}
+
+.box {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-editorial);
+  background: var(--color-surface);
+}
+
+.title {
+  margin: 0 0 var(--space-1);
+  font-family: var(--font-serif-assistant);
+  font-size: 1.0625rem;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--color-fg);
+}
+
+.lead {
+  margin: 0 0 var(--space-3);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--color-fg-muted);
+}
+
+.row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.row :global(.input) {
+  background: var(--color-canvas);
+}
+
+.row :global(.btn) {
+  flex: none;
+  white-space: nowrap;
+}
+
+.error {
+  margin: var(--space-2) 0 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--color-danger);
+}
+
+.steps {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 0;
+  padding: var(--space-3) 0 0;
+  border-top: 1px solid var(--chrome-rule);
+  list-style: none;
+  counter-reset: step;
+}
+
+.steps li {
+  display: grid;
+  grid-template-columns: 1.375rem 1fr;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--color-fg-muted);
+  counter-increment: step;
+}
+
+.steps li::before {
+  content: counter(step);
+  font-family: var(--font-serif-assistant);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-rubric);
+}
+
+.steps b {
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.links {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.link {
+  padding: var(--space-1) 0;
+  border: 0;
+  background: none;
+  font-size: 0.8125rem;
+  color: var(--color-fg-muted);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in oklab, var(--color-fg) 25%, transparent);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.link:hover {
+  color: var(--color-fg);
+}
+
+.others {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.other {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-inner);
+  background: none;
+  font-size: 0.8125rem;
+  color: var(--color-fg);
+  text-align: left;
+  cursor: pointer;
+}
+
+.other:hover {
+  background: color-mix(in oklab, var(--color-fg) 4%, transparent);
+}
+
+.other span {
+  color: var(--color-fg-muted);
+}
+
+.privacy {
+  margin: var(--space-5) 0 0;
+  font-family: var(--font-serif-assistant);
+  font-size: 0.875rem;
+  font-style: italic;
+  text-align: center;
+  color: var(--color-fg-muted);
+}
+
+@media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
+  .row {
+    flex-direction: column;
+  }
+  .privacy {
+    margin-top: var(--space-3);
+  }
+}

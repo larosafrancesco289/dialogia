@@ -8,7 +8,7 @@ import { MobileDrawer } from '@/components/mobile/MobileDrawer';
 import { ModuleSlot } from '@/components/ModuleSlot';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { selectRightPanelContent } from '@/lib/modules';
-import { selectIntroTourOpen, selectSetupSheetOpen } from '@/lib/store/selectors';
+import { selectSetupSheetOpen } from '@/lib/store/selectors';
 import { useMobileDrawer } from '@/components/mobile/useMobileDrawer';
 import { useHaptics } from '@/lib/hooks/useHaptics';
 import { useBackToClose } from '@/lib/hooks/useBackToClose';
@@ -31,9 +31,6 @@ const GlobalNotice = lazyClient(() =>
 const SetupSheet = lazyClient(() =>
   import('@/components/SetupSheet').then((mod) => ({ default: mod.SetupSheet })),
 );
-const IntroTour = lazyClient(() =>
-  import('@/components/intro/IntroTour').then((mod) => ({ default: mod.IntroTour })),
-);
 
 /**
  * MobileShell: the phone app. One page, the conversation, under a slim
@@ -45,7 +42,6 @@ export function MobileShell() {
     settingsOpen,
     memoryOpen,
     setupOpen,
-    introOpen,
     selectedChatId,
     rightPanelOpen,
     hasPanelContent,
@@ -56,7 +52,6 @@ export function MobileShell() {
       settingsOpen: s.ui.showSettings,
       memoryOpen: s.ui.memoryOpen ?? false,
       setupOpen: selectSetupSheetOpen(s),
-      introOpen: selectIntroTourOpen(s),
       selectedChatId: s.selectedChatId,
       rightPanelOpen: s.ui.plan?.rightPanelOpen ?? false,
       hasPanelContent: selectRightPanelContent(s) || !!s.ui.plan?.sheetPlanOverride,
@@ -185,7 +180,6 @@ export function MobileShell() {
 
       {/* Never both: setup comes first, the tour once it is settled. */}
       {setupOpen && <SetupSheet />}
-      {introOpen && <IntroTour />}
 
       <GlobalNotice portal />
     </div>

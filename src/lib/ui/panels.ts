@@ -16,7 +16,9 @@ export type StandalonePanelSlot =
   // A row in the phone's chat drawer, under the book's name.
   | 'phoneDrawer'
   // The line under the chat's title on the phone, in place of the model.
-  | 'phoneHeaderLine';
+  | 'phoneHeaderLine'
+  // On a fresh page, above the composer: the modes a chat can begin in.
+  | 'welcomeModes';
 
 /** Slots rendered per assistant message. */
 export type MessagePanelSlot =

@@ -9,11 +9,7 @@ import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
 import { useAppBootstrap } from '@/lib/hooks/useAppBootstrap';
 import { useAmbientMotionPause } from '@/lib/hooks/useAmbientMotionPause';
-import {
-  selectIntroTourOpen,
-  selectIsTutorEnabled,
-  selectSetupSheetOpen,
-} from '@/lib/store/selectors';
+import { selectIsTutorEnabled, selectSetupSheetOpen } from '@/lib/store/selectors';
 import { selectRightPanelContent } from '@/lib/modules';
 import { MotionConfig } from 'framer-motion';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
@@ -37,9 +33,6 @@ const GlobalNotice = lazyClient(() =>
 const SetupSheet = lazyClient(() =>
   import('@/components/SetupSheet').then((mod) => ({ default: mod.SetupSheet })),
 );
-const IntroTour = lazyClient(() =>
-  import('@/components/intro/IntroTour').then((mod) => ({ default: mod.IntroTour })),
-);
 
 export function HomeClient() {
   const {
@@ -47,7 +40,6 @@ export function HomeClient() {
     isSettingsOpen,
     isMemoryOpen,
     isSetupOpen,
-    isIntroOpen,
     tutorActive,
     rightPanelOpen,
     hasPlan,
@@ -59,7 +51,6 @@ export function HomeClient() {
       isSettingsOpen: s.ui.showSettings,
       isMemoryOpen: s.ui.memoryOpen ?? false,
       isSetupOpen: selectSetupSheetOpen(s),
-      isIntroOpen: selectIntroTourOpen(s),
       tutorActive: selectIsTutorEnabled(s),
       rightPanelOpen: s.ui.plan?.rightPanelOpen ?? false,
       hasPlan: selectRightPanelContent(s),
@@ -138,9 +129,7 @@ export function HomeClient() {
           </div>
           {isSettingsOpen && <SettingsDrawer />}
           {isMemoryOpen && <MemoryPage />}
-          {/* Never both: setup comes first, the tour once it is settled. */}
           {isSetupOpen && <SetupSheet />}
-          {isIntroOpen && <IntroTour />}
           <GlobalNotice />
         </main>
 

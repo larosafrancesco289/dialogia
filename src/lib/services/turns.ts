@@ -42,7 +42,7 @@ export type SendTurnOptions = {
   repository: Repository;
 };
 
-export function primeTutorWelcome(chatId: string | undefined, store: StoreAccess) {
+function primeTutorWelcome(chatId: string | undefined, store: StoreAccess) {
   if (!chatId) return;
   try {
     const maybe = store.get().prepareTutorWelcomeMessage?.(chatId);

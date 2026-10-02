@@ -30,6 +30,11 @@ export const tutorPanels: ModulePanels = {
       default: m.TutorHeaderLine,
     })),
   ),
+  welcomeModes: lazy(() =>
+    import('@/modules/tutor/components/welcome/WelcomeModes').then((m) => ({
+      default: m.WelcomeModes,
+    })),
+  ),
   settingsSection: lazy(() =>
     import('@/modules/tutor/components/settings/TutorSettingsSection').then((m) => ({
       default: m.TutorSettingsSection,

@@ -1,5 +1,6 @@
 /* WelcomeHero: the opening page of a dialogue.
-   One centred group on empty paper: the mark, the headline, the composer.
+   One centred group on empty paper: the mark, the headline, the composer
+   (on first run, the box that asks for a key in its place).
    The only motion is the opening: the two voices of the mark glide together
    while the rest of the page settles in.
 */
@@ -19,11 +20,14 @@
   flex: 1;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   text-align: center;
-  /* Sit slightly above the optical centre, like a title page. */
-  padding: var(--space-8) var(--space-8) 14vh;
+  /* Set at a fixed height a little above the optical centre, like a title
+     page, rather than centred: what opens below (a key's steps, the tutor's
+     note) then grows downward and the mark and headline never move. */
+  padding: max(var(--space-8), 22vh) var(--space-8) var(--space-8);
   width: 100%;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 @media (min-width: 768px) and (not ((pointer: coarse) and (max-height: 499px) and (max-width: 1023px))) {
@@ -60,7 +64,17 @@
   font-style: italic;
 }
 
+.subline {
+  margin: var(--space-4) 0 0;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--color-fg-muted);
+  text-wrap: balance;
+}
+
 .composer {
+  display: flex;
+  flex-direction: column;
   width: min(100%, 40rem);
   margin-top: 2.75rem;
   text-align: left;
@@ -84,6 +98,7 @@
   animation: settle-eye var(--duration-fast) var(--ease-standard) 900ms both;
 }
 .headline,
+.subline,
 .composer {
   /* backwards, not both: a held transform would make each block its own
      layer, and the prompts would paint over the composer's menus. */
@@ -91,6 +106,9 @@
 }
 .headline {
   animation-delay: 120ms;
+}
+.subline {
+  animation-delay: 150ms;
 }
 .composer {
   animation-delay: 180ms;
@@ -125,6 +143,7 @@
   .mark :global(.logo-mark__voice),
   .mark :global(.logo-mark__eye--close),
   .headline,
+  .subline,
   .composer {
     animation: none;
   }
@@ -136,10 +155,18 @@
   position: relative;
   z-index: 10;
   flex: 1;
+  min-height: 0;
   flex-direction: column;
   justify-content: center;
-  padding: var(--space-4);
-  padding-bottom: var(--space-6);
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-4) var(--space-6);
+}
+
+/* While it asks for a key: anchored, not centred, for the same reason as on
+   desktop; it scrolls when a key's steps outgrow a short phone. */
+.heroMobileConnect {
+  justify-content: flex-start;
+  padding-top: max(var(--space-4), 12vh);
 }
 
 @media (min-width: 768px) and (not ((pointer: coarse) and (max-height: 499px) and (max-width: 1023px))) {
@@ -175,4 +202,17 @@
   letter-spacing: 0;
   color: var(--color-fg);
   margin: 0;
+}
+
+.heroMobileModes {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+@media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
+  .subline {
+    margin-top: var(--space-3);
+    font-size: 0.9375rem;
+  }
 }

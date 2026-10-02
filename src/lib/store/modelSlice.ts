@@ -77,11 +77,8 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
           }
         });
         if (authEntries.length === 0) {
-          // Nothing is configured yet: the setup flow is the answer, not a toast.
-          // Inside Settings, Connections is already that answer; the sheet would
-          // only stack on top of it. Once put away, it waits to be asked for.
-          const { showSettings, setupDismissed } = get().ui;
-          if (!showSettings && !setupDismissed) set((s) => ({ ui: { ...s.ui, setupOpen: true } }));
+          // Nothing is configured yet: the welcome page asks for a key in the
+          // composer's place, so there is nothing to say here.
           return;
         }
 

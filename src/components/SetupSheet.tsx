@@ -1,82 +1,54 @@
 import { motionTransition } from '@/lib/ui/motion';
 import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
-import { shallow } from 'zustand/shallow';
 import { DialogOverlay, DialogPortal } from '@/components/ui/Dialog';
+import { ExternalLink } from '@/components/ui/ExternalLink';
 import { useChatStore } from '@/lib/store';
-import { selectIntroTourOpen } from '@/lib/store/selectors';
-import { setKey } from '@/lib/keys/store';
 import { useBackToClose } from '@/lib/hooks/useBackToClose';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { useModalFocus } from '@/lib/hooks/useModalFocus';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import { COMPOSER_FIELD_SELECTOR, indexForKey } from '@/lib/ui/focus';
+import { INVALID_BASE_URL_MESSAGE } from '@/lib/transport/endpoints';
 import {
-  ANTHROPIC_ENDPOINT,
-  INVALID_BASE_URL_MESSAGE,
-  isValidBaseUrl,
-  OPENROUTER_ENDPOINT,
-  type ProviderEndpoint,
-} from '@/lib/transport/endpoints';
+  KEY_PAGES,
+  useConnectProvider,
+  VALUE_PLACEHOLDERS,
+  type ConnectChoice,
+} from '@/components/connect/useConnectProvider';
 
 // Component: SetupSheet
-// Responsibility: The first-run path from "nothing configured" to "chatting".
-// It replaces the notice that used to name an environment variable, which told
-// the user about the developer's build rather than about anything they could do.
+// Responsibility: Connecting a provider when asked for (Connect a model, a send
+// with no key). On first run the welcome page asks instead, in the composer's
+// place.
 
-type Choice = 'openrouter' | 'anthropic' | 'local';
-
-const CHOICES: { id: Choice; label: string }[] = [
+const CHOICES: { id: ConnectChoice; label: string }[] = [
   { id: 'openrouter', label: 'OpenRouter' },
   { id: 'anthropic', label: 'Anthropic' },
   { id: 'local', label: 'Local' },
 ];
 
-function KeysLink({ href, children }: { href: string; children: ReactNode }) {
-  return (
-    <a href={href} target="_blank" rel="noopener noreferrer">
-      {children}
-    </a>
-  );
-}
-
-const KEY_HINTS: Record<
-  Exclude<Choice, 'local'>,
-  { endpoint: ProviderEndpoint; hint: ReactNode }
-> = {
-  openrouter: {
-    endpoint: OPENROUTER_ENDPOINT,
-    hint: (
-      <>
-        One key, most models. Create one at{' '}
-        <KeysLink href="https://openrouter.ai/keys">openrouter.ai/keys</KeysLink>.
-      </>
-    ),
-  },
-  anthropic: {
-    endpoint: ANTHROPIC_ENDPOINT,
-    hint: (
-      <>
-        Claude models directly. Create one at{' '}
-        <KeysLink href="https://console.anthropic.com/settings/keys">
-          console.anthropic.com
-        </KeysLink>
-        .
-      </>
-    ),
-  },
+const KEY_HINTS: Record<Exclude<ConnectChoice, 'local'>, ReactNode> = {
+  openrouter: (
+    <>
+      One key, most models. Create one at{' '}
+      <ExternalLink href={KEY_PAGES.openrouter.href}>{KEY_PAGES.openrouter.label}</ExternalLink>.
+    </>
+  ),
+  anthropic: (
+    <>
+      Claude models directly. Create one at{' '}
+      <ExternalLink href={KEY_PAGES.anthropic.href}>{KEY_PAGES.anthropic.label}</ExternalLink>.
+    </>
+  ),
 };
 
 export function SetupSheet() {
-  const { setUI, loadModels, addEndpoint } = useChatStore(
-    (s) => ({ setUI: s.setUI, loadModels: s.loadModels, addEndpoint: s.addEndpoint }),
-    shallow,
-  );
-  const [choice, setChoice] = useState<Choice>('openrouter');
+  const setUI = useChatStore((s) => s.setUI);
+  const [choice, setChoice] = useState<ConnectChoice>('openrouter');
   const [value, setValue] = useState('');
   const [label, setLabel] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [urlInvalid, setUrlInvalid] = useState(false);
+  const { connect, busy, urlInvalid, clearUrlInvalid } = useConnectProvider();
 
   const surfaceRef = useRef<HTMLDivElement>(null);
   const valueRef = useRef<HTMLInputElement>(null);
@@ -84,8 +56,7 @@ export function SetupSheet() {
   // raise the keyboard over a dialog not yet read.
   const isTouch = useMediaQuery(MEDIA_QUERIES.touch);
 
-  // Put away for good: from here on it opens only when asked for.
-  const close = () => setUI({ setupOpen: false, setupDismissed: true });
+  const close = () => setUI({ setupOpen: false });
 
   useBackToClose(true, close);
   useModalFocus(true, surfaceRef, {
@@ -94,43 +65,20 @@ export function SetupSheet() {
     // On first run nothing had focus before it; the composer is where to go
     // next, except on a touch screen, where focusing it raises the keyboard.
     fallback: () => (isTouch ? null : document.querySelector<HTMLElement>(COMPOSER_FIELD_SELECTOR)),
-    // On first run the tour follows, and focus goes from here straight to it.
-    passesOn: () => selectIntroTourOpen(useChatStore.getState()),
   });
 
   const canSubmit = value.trim().length > 0;
 
-  const choose = (next: Choice) => {
+  const choose = (next: ConnectChoice) => {
     setChoice(next);
     setValue('');
-    setUrlInvalid(false);
+    clearUrlInvalid();
   };
 
   const submit = async () => {
-    if (!canSubmit || busy) return;
-    // An unreachable server is still saved (it may simply not be running
-    // yet); an address that is not one would only ever reach this page.
-    if (choice === 'local' && !isValidBaseUrl(value)) {
-      setUrlInvalid(true);
-      return;
-    }
-    setBusy(true);
-    try {
-      if (choice === 'local') {
-        addEndpoint({
-          kind: 'openai-compatible',
-          label: label.trim() || 'Local model',
-          baseUrl: value.trim(),
-        });
-      } else {
-        await setKey(KEY_HINTS[choice].endpoint.apiKeyRef ?? choice, value.trim());
-      }
-      setValue('');
-      close();
-      await loadModels();
-    } finally {
-      setBusy(false);
-    }
+    if (!(await connect(choice, value, label))) return;
+    setValue('');
+    close();
   };
 
   // Closing hands focus back to the opener while the key is still down, and
@@ -218,14 +166,14 @@ export function SetupSheet() {
                       ref={valueRef}
                       id="setup-value"
                       className="input w-full text-base sm:text-sm"
-                      placeholder="e.g. http://localhost:11434/v1"
+                      placeholder={VALUE_PLACEHOLDERS.local}
                       spellCheck={false}
                       value={value}
                       aria-invalid={urlInvalid || undefined}
                       aria-describedby="setup-value-hint"
                       onChange={(event) => {
                         setValue(event.target.value);
-                        setUrlInvalid(false);
+                        clearUrlInvalid();
                       }}
                       onKeyDown={submitOnEnter}
                     />
@@ -252,12 +200,12 @@ export function SetupSheet() {
                     autoComplete="off"
                     spellCheck={false}
                     className="input w-full text-base sm:text-sm"
-                    placeholder={choice === 'anthropic' ? 'sk-ant-…' : 'sk-or-…'}
+                    placeholder={VALUE_PLACEHOLDERS[choice]}
                     value={value}
                     onChange={(event) => setValue(event.target.value)}
                     onKeyDown={submitOnEnter}
                   />
-                  <p className="field__hint">{KEY_HINTS[choice].hint}</p>
+                  <p className="field__hint">{KEY_HINTS[choice]}</p>
                 </div>
               )}
             </div>
