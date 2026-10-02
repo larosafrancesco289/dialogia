@@ -14,10 +14,7 @@ test('a reply that finished cleanly has no note', () => {
 });
 
 test('a reply that failed before its first word still says why it is empty', () => {
-  assert.equal(
-    replyEndingNote({ content: '', cutOff: 'failed' }),
-    'This reply failed.',
-  );
+  assert.equal(replyEndingNote({ content: '', cutOff: 'failed' }), 'This reply failed.');
   assert.equal(
     replyEndingNote({ content: '  ', cutOff: 'stopped' }),
     'Stopped before the reply began.',
