@@ -1,21 +1,24 @@
+import type { RefObject } from 'react';
 import { XMarkIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import type { DraftAttachment } from '@/lib/types';
+import { neighbourOf, refocusIfDropped } from '@/lib/ui/focus';
 
 export type AttachmentPreviewListProps = {
   attachments: DraftAttachment[];
   onRemove: (id: string) => void;
-  className?: string;
+  /** Takes focus once the last attachment goes. */
+  fieldRef?: RefObject<HTMLElement>;
 };
 
 export function AttachmentPreviewList({
   attachments,
   onRemove,
-  className,
+  fieldRef,
 }: AttachmentPreviewListProps) {
   if (!attachments.length) return null;
 
   return (
-    <div className={className ?? 'mb-2 flex flex-wrap gap-2'}>
+    <div className="composer-attachments">
       {attachments.map((attachment) => (
         <div key={attachment.id} className="relative">
           {renderPreview(attachment)}
@@ -24,7 +27,20 @@ export function AttachmentPreviewList({
             className="attachment-remove"
             aria-label={`Remove ${attachment.name || 'attachment'}`}
             title="Remove"
-            onClick={() => onRemove(attachment.id)}
+            onClick={(event) => {
+              // Focus goes to the next chip's ×, else the one before, else the field.
+              const button = event.currentTarget;
+              const buttons = Array.from(
+                button.closest('.composer-attachments')?.querySelectorAll('.attachment-remove') ??
+                  [],
+              );
+              const neighbour = neighbourOf(buttons, button);
+              onRemove(attachment.id);
+              refocusIfDropped(
+                () => neighbour,
+                () => fieldRef?.current,
+              );
+            }}
           >
             <XMarkIcon className="h-3.5 w-3.5" />
           </button>

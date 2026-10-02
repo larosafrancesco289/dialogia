@@ -16,7 +16,8 @@ export type FolderTreeIndex = {
 
 const toKey = (id?: string) => id ?? ROOT_KEY;
 
-const compareByRecency = (
+/** The sidebar's order within a list: most recently touched first. */
+export const compareByRecency = (
   a: { id: string; updatedAt?: number; createdAt?: number },
   b: { id: string; updatedAt?: number; createdAt?: number },
 ) => {

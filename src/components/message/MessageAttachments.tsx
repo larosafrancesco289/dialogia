@@ -52,6 +52,8 @@ export function MessageAttachments({
           title="Open larger"
           type="button"
         >
+          {/* The whole image at one height, its width following its shape (square
+              until it loads): a square crop cut off part of what was sent. */}
           <img
             src={attachment.dataURL}
             alt={attachment.name || 'image'}
@@ -59,7 +61,7 @@ export function MessageAttachments({
             height={144}
             loading="lazy"
             decoding="async"
-            className="block h-28 w-28 sm:h-36 sm:w-36 object-cover attachment-thumb"
+            className="block h-28 w-auto max-w-56 sm:h-36 sm:max-w-72 object-contain attachment-thumb"
           />
         </button>
       ))}

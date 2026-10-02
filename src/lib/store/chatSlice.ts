@@ -23,6 +23,7 @@ import { notifyChatBranched, notifyChatDeleted } from '@/lib/modules';
 import { clearActiveTurnCount, isChatStreaming } from '@/lib/ui/streaming';
 import { abortTurn } from '@/lib/turns/runtime/abortControllers';
 import { readDraft } from '@/lib/ui/composerDrafts';
+import { compareByRecency } from '@/lib/ui/sidebar/folderTree';
 import { chatPresence } from '@/lib/sync/chatPresence';
 
 export type ChatSliceState = {
@@ -72,13 +73,16 @@ export const chatPersistFragment: PersistFragment = {
 /**
  * The chat that takes a deleted one's place: the next one down in the same
  * folder (or the root list), else the one above, else the nearest anywhere.
- * Jumping to the top of the whole list loses the person's place.
+ * Jumping to the top of the whole list loses the person's place. "Down" is the
+ * sidebar's order, not the store's (after a reload, the database's id order),
+ * so every tab picks the same chat.
  */
 export function neighbourChatId(chats: Chat[], id: string): string | undefined {
   const deleted = chats.find((c) => c.id === id);
   const pick = (list: Chat[]) => {
-    const index = list.findIndex((c) => c.id === id);
-    return (list[index + 1] ?? list[index - 1])?.id;
+    const sorted = [...list].sort(compareByRecency);
+    const index = sorted.findIndex((c) => c.id === id);
+    return (sorted[index + 1] ?? sorted[index - 1])?.id;
   };
   const siblings = chats.filter((c) => c.id === id || c.folderId === deleted?.folderId);
   return (siblings.length > 1 ? pick(siblings) : undefined) ?? pick(chats);
