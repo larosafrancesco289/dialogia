@@ -3,7 +3,7 @@ import { useChatStore } from '@/lib/store';
 import { selectMessagesForCurrentChat } from '@/lib/store/selectors';
 import type { Message } from '@/lib/types';
 import { nextReadyNode, percent as toPercent } from '@/modules/tutor/engine';
-import { evidenceBehind, seamOpen, type Completion } from '@/modules/tutor/ui/messageViews';
+import { seamOpen, type Completion } from '@/modules/tutor/ui/messageViews';
 import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
 import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 import { seamChoices } from '@/modules/tutor/ui/tutorFlags';
@@ -46,7 +46,6 @@ export function ChapterBreak({
   const next = started ?? nextReadyNode(learningPlan);
   const mastery = completion.mastery;
   const percent = affordances.showMastery && mastery ? toPercent(mastery.confidence) : undefined;
-  const behind = mastery ? evidenceBehind(mastery.evidence) : undefined;
   const reopened = !!completion.reopened;
   // The seam is open until the learner (or the tutor) starts what comes next.
   const atSeam = isLatest && seamOpen(completion, state.phase);
@@ -58,14 +57,8 @@ export function ChapterBreak({
   });
   const live = atSeam && (canGoOn || canNegotiate);
 
-  // The interface speaks here, not the tutor, so it reports the tutor's
-  // estimate rather than voicing it; the question is the plan's.
-  const estimate =
-    percent == null
-      ? null
-      : behind
-        ? `The tutor puts you at ${percent}%, from ${behind}.`
-        : `The tutor puts you at ${percent}%.`;
+  // The interface speaks here, not the tutor: the number, plainly; the question is the plan's.
+  const estimate = percent == null ? null : `You’re at ${percent}% on this topic.`;
   const question = canGoOn ? 'Ready to move on?' : 'That was the last topic in the plan.';
 
   const run = (fn: () => Promise<void>) => {
