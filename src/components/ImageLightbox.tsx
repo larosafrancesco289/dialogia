@@ -62,9 +62,11 @@ export function ImageLightbox({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="lightbox__bar flex items-center justify-between p-3">
-        <div className="text-sm opacity-90">
-          {index + 1} / {images.length} {current?.name ? `· ${current.name}` : ''}
+      <div className="lightbox__bar flex items-center justify-between gap-4 p-4">
+        <div className="min-w-0 truncate text-sm opacity-90">
+          {[images.length > 1 && `${index + 1} / ${images.length}`, current.name]
+            .filter(Boolean)
+            .join(' · ')}
         </div>
         <div className="flex items-center gap-2">
           <button className="lightbox__btn" onClick={download} title="Download">
@@ -92,13 +94,12 @@ export function ImageLightbox({
             ‹
           </button>
         )}
-        <div className="relative h-[85vh] w-[85vw]">
-          <img
-            src={current.src}
-            alt={current.name || 'image'}
-            className="absolute inset-0 h-full w-full object-contain"
-          />
-        </div>
+        {/* Fits the screen but never grows past its own size, which would blur it. */}
+        <img
+          src={current.src}
+          alt={current.name || 'image'}
+          className="max-h-[85vh] max-w-[85vw] min-w-0 object-contain"
+        />
         {images.length > 1 && (
           <button
             className="lightbox__btn lightbox__nav ml-3"
