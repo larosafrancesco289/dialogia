@@ -231,7 +231,7 @@ function SettingsWideView({
           </nav>
 
           {/* Main Content Area */}
-          <div className="flex-1 overflow-y-auto" ref={tabBarRef}>
+          <div className="settings-content flex-1 overflow-y-auto" ref={tabBarRef}>
             {/* Tab Panel Content */}
             <div
               role="tabpanel"
