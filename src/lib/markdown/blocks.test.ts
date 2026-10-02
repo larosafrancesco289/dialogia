@@ -154,6 +154,18 @@ test('markdownRenderBlocks holds back a closing fence still arriving while strea
   assert.deepEqual(markdownRenderBlocks('```\nx\n```\n`', true), ['```\nx\n```\n']);
 });
 
+test('while streaming, display maths waits for its closing line', () => {
+  const tail = (content: string) => markdownRenderBlocks(content, true).at(-1);
+  assert.equal(tail('So:\n$$\n\\int_0^1 x^'), 'So:\n');
+  assert.equal(tail('So:\n\\[\nx^'), 'So:\n');
+  assert.equal(tail('So:\n$$\nx^2\n$'), 'So:\n');
+  assert.equal(tail('So:\n$$\nx^2\n$$'), 'So:\n$$\nx^2\n$$');
+  // A math fence inside a code block is code.
+  assert.equal(tail('```\n$$\nx'), '```\n$$\nx');
+  // A finished reply is never held back.
+  assert.deepEqual(markdownRenderBlocks('So:\n$$\nx^'), ['So:\n$$\nx^']);
+});
+
 test('while streaming, the tail closes open inline marks and holds back dangling ones', () => {
   const tail = (content: string) => markdownRenderBlocks(content, true).at(-1);
   // An opener with nothing after it waits.

@@ -14,6 +14,8 @@ const FENCE_CLOSE_RE = /^ {0,3}(`{3,}|~{3,})[ \t]*$/;
 // merged into the previous block. Merging is always safe: a bigger block only
 // parses closer to how the whole document does.
 const CONTINUATION_RE = /^(?:[ \t]+\S| {0,3}(?:[-*+] |\d{1,9}[.)] |>|\|))/;
+// `$$`, `\[` or `\]` alone on a line fences display maths (see preprocess).
+const MATH_FENCE_RE = /^ {0,3}(?:\$\$|\\\[|\\\])\s*$/;
 
 export type MarkdownBlockSplit = {
   /** Completed blocks whose content will never change as the stream grows. */
@@ -60,8 +62,7 @@ export function splitMarkdownBlocks(content: string): MarkdownBlockSplit {
       continue;
     }
 
-    // `\[` and `\]` alone on a line fence display math too (see preprocess).
-    if (/^ {0,3}(?:\$\$|\\\[|\\\])\s*$/.test(line)) {
+    if (MATH_FENCE_RE.test(line)) {
       current += withNewline;
       inMathFence = !inMathFence;
       continue;
@@ -114,8 +115,33 @@ export function splitMarkdownBlocks(content: string): MarkdownBlockSplit {
  */
 export function markdownRenderBlocks(content: string, streaming = false): string[] {
   const { stable, tail } = splitMarkdownBlocks(content);
-  const shown = streaming ? withInlineMarksClosed(withoutPartialFenceClose(tail)) : tail;
+  const shown = streaming
+    ? withInlineMarksClosed(withoutPartialFenceClose(withoutOpenMath(tail)))
+    : tail;
   return shown ? [...stable, shown] : stable;
+}
+
+/**
+ * Display maths half written does not parse, so KaTeX would flip between the
+ * formula and its raw source on every flush, moving everything below it. An
+ * open maths block waits until its closing line arrives.
+ */
+function withoutOpenMath(tail: string): string {
+  let fence = '';
+  let mathStart = -1;
+  let offset = 0;
+  for (const line of tail.split('\n')) {
+    if (fence) {
+      const close = line.match(FENCE_CLOSE_RE);
+      if (close && close[1][0] === fence[0] && close[1].length >= fence.length) fence = '';
+    } else if (MATH_FENCE_RE.test(line)) {
+      mathStart = mathStart < 0 ? offset : -1;
+    } else if (mathStart < 0) {
+      fence = line.match(FENCE_OPEN_RE)?.[1] ?? '';
+    }
+    offset += line.length + 1;
+  }
+  return mathStart < 0 ? tail : tail.slice(0, mathStart);
 }
 
 /** The fence still open after `lines`, or '' when none is. */
