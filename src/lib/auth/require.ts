@@ -1,4 +1,4 @@
-import { getKey } from '@/lib/keys/store';
+import { getKey, isKeyRejected } from '@/lib/keys/store';
 import type { ModelIndex } from '@/lib/models';
 import { buildTransportAuth, type TransportAuth } from '@/lib/auth/transport';
 import { allowsKeylessCalls, type ProviderEndpoint } from '@/lib/transport/endpoints';
@@ -26,15 +26,15 @@ export function isEndpointConnected(endpoint: ProviderEndpoint): boolean {
 }
 
 /**
- * The endpoint has a model to offer: a key, or a keyless server with at least
- * one model, typed or listed. A server that answers with none can be called
- * but offers nothing to chat with.
+ * The endpoint has a model to offer: a key it has not refused, or a keyless
+ * server with at least one model, typed or listed. A server that answers with
+ * none can be called but offers nothing to chat with.
  */
 export function isEndpointUsable(
   endpoint: ProviderEndpoint,
   models: readonly { endpointId?: string }[],
 ): boolean {
-  if (getKey(endpoint.apiKeyRef)) return true;
+  if (getKey(endpoint.apiKeyRef)) return !isKeyRejected(endpoint.apiKeyRef);
   if (!allowsKeylessCalls(endpoint)) return false;
   return !!endpoint.modelIds?.length || models.some((model) => model.endpointId === endpoint.id);
 }

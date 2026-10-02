@@ -58,7 +58,9 @@ export function ApiKeyField(props: {
           className="input flex-1 basis-full sm:basis-0 min-w-0 text-base sm:text-sm"
           autoComplete="off"
           spellCheck={false}
-          placeholder={stored ? `Stored ${describeKey(keyRef)} — paste to replace` : placeholder}
+          placeholder={
+            stored ? `Saved ${describeKey(keyRef)}. Paste a new key to replace it` : placeholder
+          }
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
@@ -66,7 +68,7 @@ export function ApiKeyField(props: {
           }}
         />
         <button className="btn btn-sm" disabled={busy || !draft.trim()} onClick={() => void save()}>
-          {stored ? 'Replace' : 'Save'}
+          {stored ? 'Replace' : 'Connect'}
         </button>
         {stored && (
           <button
@@ -83,7 +85,7 @@ export function ApiKeyField(props: {
       <ConfirmDialog
         open={confirmingRemove}
         title={`Remove the ${label}?`}
-        description="It is deleted from this browser. To use it again you will have to paste it again."
+        description="It is deleted from this browser. To use it later, paste it in again."
         confirmLabel="Remove"
         onConfirm={() => void remove()}
         onCancel={() => setConfirmingRemove(false)}

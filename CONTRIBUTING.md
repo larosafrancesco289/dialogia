@@ -10,8 +10,8 @@ bun install     # packageManager is bun@1.3.2
 bun run dev     # http://localhost:3000
 ```
 
-No configuration is needed. The app opens its setup sheet, you paste a provider key or point it at
-a local server, and you are running. See [README.md](README.md) for the optional build-time
+No configuration is needed. The welcome page asks for a provider key or the address of a local
+server, and you are running. See [README.md](README.md) for the optional build-time
 defaults.
 
 ## Commands

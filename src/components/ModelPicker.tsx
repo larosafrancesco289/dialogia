@@ -23,6 +23,7 @@ import { useReturnFocus } from '@/lib/hooks/useModalFocus';
 import { tabbableIn, trapTarget } from '@/lib/ui/focus';
 import { useChatStore } from '@/lib/store';
 import { useAnyModelOffered } from '@/lib/hooks/useProviderKeys';
+import { CONNECT_FIELD_SELECTOR } from '@/components/connect/ConnectForm';
 
 export type ModelPickerVariant = 'auto' | 'sheet';
 
@@ -157,11 +158,14 @@ export function ModelPicker({
     setQuery('');
   }, []);
 
-  // With nothing to choose from, the way forward is the setup sheet.
+  // With nothing to choose from, the way forward is connecting: on the
+  // welcome page its box is already asking, elsewhere the setup sheet asks.
   const setUI = useChatStore((s) => s.setUI);
   const connect = () => {
     close();
-    setUI({ setupOpen: true });
+    const field = document.querySelector<HTMLElement>(CONNECT_FIELD_SELECTOR);
+    if (field) field.focus();
+    else setUI({ setupOpen: true });
   };
 
   // Closing (Escape, a pick, a click away) hands focus back to the trigger
@@ -219,11 +223,15 @@ export function ModelPicker({
 
   useEffect(() => {
     setActiveIndex(0);
+    // New results start at the top, under their heading.
+    listRef.current?.scrollTo({ top: 0 });
   }, [query]);
 
   useEffect(() => {
     const node = listRef.current?.querySelector<HTMLElement>(`[data-index="${activeIndex}"]`);
-    node?.scrollIntoView({ block: 'nearest' });
+    // A section's first row brings its heading with it, rather than half under the search.
+    const first = node?.previousElementSibling?.classList.contains('model-picker__heading');
+    (first ? node?.parentElement : node)?.scrollIntoView({ block: 'nearest' });
   }, [activeIndex]);
 
   const onKeyDown = (event: React.KeyboardEvent) => {
@@ -254,7 +262,7 @@ export function ModelPicker({
 
   // With no provider that has a model to offer, there is no model to name yet,
   // only one to connect.
-  const modelOffered = useAnyModelOffered();
+  const modelOffered = useAnyModelOffered() !== false;
   const label = !modelOffered
     ? 'Connect a model'
     : current
@@ -264,11 +272,12 @@ export function ModelPicker({
           fallbackName: current.name,
           among: availableModels,
         })
-      : 'Pick model';
+      : 'Choose a model';
 
   const triggerProps: ModelPickerTriggerProps = {
     label,
-    tooltip: currentUnavailable ? `${label}: not available while zero data retention is on` : label,
+    // Only what the label cannot say: a tooltip repeating it is noise.
+    tooltip: currentUnavailable ? `${label}: not available while zero data retention is on` : '',
     isOpen: open,
     onClick: () => (!modelOffered ? connect() : open ? close() : setOpen(true)),
   };
@@ -381,7 +390,7 @@ export function ModelPicker({
           className="model-picker-trigger"
           aria-haspopup="dialog"
           aria-expanded={open}
-          title={triggerProps.tooltip}
+          title={triggerProps.tooltip || undefined}
           onClick={triggerProps.onClick}
         >
           <span className="model-picker-trigger__name truncate">{label}</span>

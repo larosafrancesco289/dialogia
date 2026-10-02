@@ -238,7 +238,7 @@ export function Composer({
     // A desktop keeps focus through a reply, so the next message can be typed
     // ahead (the first message swaps the welcome composer for this one while
     // the reply streams); a phone drops its keyboard so the reply has the screen.
-    // An open dialog (the first-run tour) keeps focus even when it mounted first.
+    // An open dialog keeps focus even when it mounted first.
     if (!canAutoFocus) target.blur();
     else if (!isModalOpen()) target.focus({ preventScroll: true });
   }, [canAutoFocus, isStreaming, selectedChatId]);

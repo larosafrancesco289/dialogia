@@ -23,7 +23,6 @@ export type ModelPickerController = {
   selectedId?: string;
   selectedIds: string[];
   setModels: (modelIds: string[]) => void;
-  removeModelFromDropdown: (id: string) => void;
   toggleFavoriteModel: (id: string) => void;
   favoriteModelIds: string[];
   modelMap: Map<string, ReturnType<typeof findModelById>>;
@@ -52,8 +51,6 @@ export function useModelPickerController(): ModelPickerController {
     ui,
     setUI,
     favoriteModelIds,
-    hiddenModelIds,
-    removeModelFromDropdown,
     toggleFavoriteModel,
     models,
     zdrModelIds,
@@ -67,8 +64,6 @@ export function useModelPickerController(): ModelPickerController {
       ui: state.ui,
       setUI: state.setUI,
       favoriteModelIds: state.favoriteModelIds,
-      hiddenModelIds: state.hiddenModelIds,
-      removeModelFromDropdown: state.removeModelFromDropdown,
       toggleFavoriteModel: state.toggleFavoriteModel,
       models: state.models,
       zdrModelIds: state.zdrModelIds,
@@ -111,26 +106,14 @@ export function useModelPickerController(): ModelPickerController {
   const pinnedModelId = useMemo(() => resolveDefaultModelId(models || []), [models]);
 
   const options = useMemo(() => {
-    const hidden = new Set(hiddenModelIds || []);
-    return allOptions.filter((m: ModelPickerOption) => {
-      if (m.id === pinnedModelId) return true;
-      if (hidden.has(m.id)) return false;
-      if (ui?.zdrOnly === true) return allowedIds.has(m.id);
-      return true;
-    });
-  }, [allOptions, hiddenModelIds, ui?.zdrOnly, allowedIds, pinnedModelId]);
+    if (ui?.zdrOnly !== true) return allOptions;
+    return allOptions.filter((m) => m.id === pinnedModelId || allowedIds.has(m.id));
+  }, [allOptions, ui?.zdrOnly, allowedIds, pinnedModelId]);
 
   const zdrHiddenCount = useMemo(() => {
     if (ui?.zdrOnly !== true) return 0;
-    const hidden = new Set(hiddenModelIds || []);
-    let count = 0;
-    for (const option of allOptions) {
-      if (option.id === pinnedModelId) continue;
-      if (hidden.has(option.id)) continue;
-      if (!allowedIds.has(option.id)) count += 1;
-    }
-    return count;
-  }, [ui?.zdrOnly, hiddenModelIds, allOptions, allowedIds, pinnedModelId]);
+    return allOptions.filter((m) => m.id !== pinnedModelId && !allowedIds.has(m.id)).length;
+  }, [ui?.zdrOnly, allOptions, allowedIds, pinnedModelId]);
 
   const selectedIds = useMemo(() => {
     const fromChat = chat
@@ -187,7 +170,6 @@ export function useModelPickerController(): ModelPickerController {
     selectedId,
     selectedIds,
     setModels,
-    removeModelFromDropdown,
     toggleFavoriteModel,
     favoriteModelIds: favoriteModelIds || [],
     modelMap,
