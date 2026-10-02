@@ -10,6 +10,7 @@ import { ChevronRightIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/
 import { InlineTitleEdit } from '@/components/sidebar/InlineTitleEdit';
 import { ROW_INDENT } from '@/components/sidebar/ChatRowView';
 import { createSingleClickDeferral } from '@/lib/ui/clickIntent';
+import { cn } from '@/lib/ui/cn';
 
 export type FolderRowViewProps = {
   folderId: string;
@@ -101,9 +102,14 @@ export function FolderRowView({
 
   return (
     <div
-      className={`flex items-center gap-2 px-4 py-2 cursor-pointer group chat-item folder-row${
-        isDragOver ? ' is-drag-over' : ''
-      }${isEditing ? ' is-editing' : ''}${isExpanded ? ' is-expanded' : ''}`}
+      // No padding on a phone: the toggle is a thumb tall (44px) on its own, so
+      // a folder is as tall as a chat.
+      className={cn(
+        'flex items-center gap-2 px-4 py-0 sm:py-2 cursor-pointer group chat-item folder-row',
+        isDragOver && 'is-drag-over',
+        isEditing && 'is-editing',
+        isExpanded && 'is-expanded',
+      )}
       style={depth ? { marginLeft: `${depth * ROW_INDENT}px` } : undefined}
       // Folders do not nest or reorder, so a folder is not something to drag.
       draggable={false}
