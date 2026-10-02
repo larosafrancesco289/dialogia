@@ -4,8 +4,7 @@ import {
   ChevronDownIcon,
   GlobeAltIcon,
 } from '@heroicons/react/24/outline';
-import { hostname, titleForSource } from '@/lib/markdown/citations';
-import type { MarkdownCitationSource } from '@/lib/markdown/citations';
+import { hostname, titleForSource, type MarkdownCitationSource } from '@/lib/markdown/citations';
 import type { SearchSourcesData } from '@/lib/ui/responseActivity';
 
 // What the search returned; the model may have read fewer of them.
