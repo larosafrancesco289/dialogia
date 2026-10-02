@@ -29,7 +29,7 @@ const staggerContainer = {
 
 // A page with one section named like the page says what it holds instead.
 const TAB_SUMMARY_FALLBACK: Partial<Record<TabId, string>> = {
-  tutor: 'Tutor mode and its model',
+  tutor: 'Learning sessions and their model',
 };
 
 /** "Providers · Your servers · Web search": what a Settings page holds. */

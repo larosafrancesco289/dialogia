@@ -49,7 +49,7 @@ export function TutorHeaderLine() {
       aria-haspopup={canOpen ? 'dialog' : undefined}
       aria-expanded={canOpen ? rightPanelOpen : undefined}
     >
-      <span className="tutor-header-line__label">Tutor</span>
+      <span className="tutor-header-line__label">Learn</span>
       {/* The session is live, so its dot is gold, as on desktop. */}
       <span className="tutor-header-line__live" aria-hidden="true" />
       {detail && <span className="tutor-header-line__detail">{detail}</span>}
