@@ -131,7 +131,7 @@ const CAPABILITY_BODIES: Record<ProbeCapability, (model: string) => OpenRouterCh
 };
 
 function abortError(): Error {
-  return new DOMException('The connection test was cancelled.', 'AbortError');
+  return new DOMException('The connection test was canceled.', 'AbortError');
 }
 
 function isAbortError(error: unknown): boolean {

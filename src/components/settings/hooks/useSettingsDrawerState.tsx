@@ -147,7 +147,7 @@ export function useSettingsDrawerState(): SettingsDrawerState {
   const onExport = async () => {
     const exportResult = await buildChatExport();
     if (!exportResult.ok) {
-      setNotice(exportResult.error || 'Export failed');
+      setNotice(exportResult.error || 'The export failed. Try again.');
       return;
     }
     try {
@@ -163,7 +163,7 @@ export function useSettingsDrawerState(): SettingsDrawerState {
       URL.revokeObjectURL(url);
       setNotice(NOTICE_EXPORTED_CHATS, 'success');
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Export failed';
+      const message = e instanceof Error ? e.message : 'The export failed. Try again.';
       setNotice(message);
     }
   };
@@ -174,13 +174,13 @@ export function useSettingsDrawerState(): SettingsDrawerState {
       const text = await file.text();
       const importResult = await importChatExport(text);
       if (!importResult.ok) {
-        setNotice(importResult.error || 'Import failed');
+        setNotice(importResult.error || 'The import failed. Try again.');
         return;
       }
       await initializeApp();
       setNotice(importResult.notice, 'success');
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Import failed';
+      const message = e instanceof Error ? e.message : 'The import failed. Try again.';
       setNotice(message);
     }
   };
