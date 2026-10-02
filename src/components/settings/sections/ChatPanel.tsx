@@ -108,7 +108,7 @@ export function ChatPanel(props: ChatPanelProps) {
           </div>
 
           <div className="field">
-            <span className="field__label">Presets</span>
+            <span className="field__label">Saved prompts</span>
             {presetMode === 'save' || presetMode === 'rename' ? (
               <div className="flex flex-wrap items-center gap-2">
                 <input
@@ -152,11 +152,11 @@ export function ChatPanel(props: ChatPanelProps) {
                 <select
                   className="input flex-1 basis-full sm:basis-0 min-w-0"
                   value={selectedPresetId}
-                  aria-label="Preset"
+                  aria-label="Saved prompt"
                   onChange={(e) => setSelectedPresetId(e.target.value)}
                   onKeyDown={(e) => e.stopPropagation()}
                 >
-                  <option value="">Choose a preset…</option>
+                  <option value="">Choose a saved prompt…</option>
                   {presets.map((preset) => (
                     <option key={preset.id} value={preset.id}>
                       {preset.name}
@@ -176,7 +176,7 @@ export function ChatPanel(props: ChatPanelProps) {
                 {selectedPreset && (
                   <>
                     <IconButton
-                      title="Rename preset"
+                      title="Rename prompt"
                       onClick={() => {
                         setPresetName(selectedPreset.name);
                         setPresetMode('rename');
@@ -184,7 +184,7 @@ export function ChatPanel(props: ChatPanelProps) {
                     >
                       <PencilSquareIcon className="h-4 w-4" />
                     </IconButton>
-                    <IconButton title="Delete preset" onClick={() => setPresetMode('delete')}>
+                    <IconButton title="Delete prompt" onClick={() => setPresetMode('delete')}>
                       <TrashIcon className="h-4 w-4" />
                     </IconButton>
                   </>
@@ -197,7 +197,7 @@ export function ChatPanel(props: ChatPanelProps) {
             checked={messageTimestamps === true}
             onChange={setMessageTimestamps}
             label="Message timestamps"
-            description="Tell the model when each message was sent, so it knows the date. Adds a few tokens per message."
+            description="Tell the model when each message was sent, so it knows the date. Adds a little to each message's cost."
           />
         </SettingsSection>,
       )}
@@ -207,11 +207,11 @@ export function ChatPanel(props: ChatPanelProps) {
       {renderSection(
         'chat',
         'reasoning',
-        <SettingsSection title="Reasoning">
+        <SettingsSection title="Thinking">
           <div className="space-y-3">
             <div className="space-y-1">
               <label className="field__label" htmlFor="settings-reasoning-effort">
-                Reasoning effort
+                Thinking effort
               </label>
               <select
                 id="settings-reasoning-effort"
@@ -256,7 +256,7 @@ export function ChatPanel(props: ChatPanelProps) {
             </div>
             <div className="space-y-1">
               <label className="field__label" htmlFor="settings-reasoning-tokens">
-                Reasoning tokens
+                Thinking budget
               </label>
               <input
                 id="settings-reasoning-tokens"
@@ -293,8 +293,8 @@ export function ChatPanel(props: ChatPanelProps) {
                 role={tokensInvalid ? 'alert' : undefined}
               >
                 {tokensInvalid
-                  ? 'Enter a whole number of tokens above 0, or leave it empty. Not saved.'
-                  : 'A cap on thinking tokens, for models that accept one. Leave it empty to let the model decide.'}
+                  ? 'Enter a whole number above 0, or leave it empty. Not saved.'
+                  : 'The most the model may think, counted in tokens (about three quarters of a word each), for models that accept a limit. Leave it empty to let the model decide.'}
               </div>
             </div>
           </div>

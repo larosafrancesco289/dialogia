@@ -10,21 +10,21 @@ export const NOTICE_CATALOG = {
   invalidKey: 'That API key was rejected. Check it in Settings › Connections.',
   expiredKey: 'That API key has expired. Add a new one in Settings › Connections.',
   rateLimited: 'The provider is limiting requests. Wait a moment, then try again.',
-  missingSearchKey: 'Add a web search key in Settings › Connections to use tool-based search.',
+  missingSearchKey: 'This search needs a key. Add one in Settings › Connections.',
   searchUnavailable: 'Web search is unavailable for this chat; answering without it.',
   unknownEndpoint:
     'This chat uses a server that no longer exists. Add it again in Settings › Connections, or pick another model.',
-  exportedChats: 'Exported chats to JSON',
+  exportedChats: 'Your chats were exported.',
   planApplyFailed: 'The plan could not be applied. Try again.',
   copyFailed: 'Could not copy: the browser blocked clipboard access.',
   replyInOtherTab:
-    'Another tab is writing a reply in this chat. Send once it has finished, so both tabs keep the same conversation.',
+    'Another tab is writing a reply in this chat. Send once it has finished, so both tabs show the same chat.',
   saveFailed:
     'The reply could not be saved to this browser. It is on screen now, but may be cut short after a reload.',
   consolidationFailed:
     'Memory could not be consolidated. Nothing was changed; try again in a moment.',
   consolidationUnreadable:
-    'This model could not make a plan. Nothing was changed. Try Consolidate with another model.',
+    'This model could not suggest changes. Nothing was changed. Try another model.',
   consolidationUndone: 'Consolidation undone.',
   consolidationStale:
     'Memory changed while it was being consolidated, so nothing was changed. Consolidate again.',

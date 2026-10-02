@@ -54,7 +54,7 @@ export async function buildChatExport(): Promise<
       ),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Export failed';
+    const message = error instanceof Error ? error.message : 'The export failed. Try again.';
     return err(message);
   }
 }
@@ -118,7 +118,7 @@ export async function importChatExport(
     if (!notice) return err('None of the chats in this file could be read.');
     return ok({ notice });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Import failed';
+    const message = error instanceof Error ? error.message : 'The import failed. Try again.';
     return err(message);
   }
 }

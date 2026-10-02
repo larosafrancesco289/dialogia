@@ -114,7 +114,16 @@ function labelForTool(call: ToolCallLogEntry) {
   return toolDisplayName(call.name);
 }
 
+// Plain words for the app's own tools; any other tool shows its name.
+const TOOL_LABELS: Record<string, string> = {
+  web_fetch: 'Reading a page',
+  memory_read: 'Checking memory',
+  memory_save: 'Saving to memory',
+  memory_forget: 'Forgetting a note',
+};
+
 export function toolDisplayName(name: string) {
+  if (TOOL_LABELS[name]) return TOOL_LABELS[name];
   const text = name.replace(/_/g, ' ');
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
@@ -292,7 +301,7 @@ export function summarizeActivity({
   if (runningTool) return labelForTool(runningTool);
   if (latestActivity?.type === 'tool_call' && latestActivity.status === 'pending') {
     const object = toolObject(latestActivity);
-    return `${toolDisplayName(latestActivity.name)}${object ? ` — ${object}` : ''}`;
+    return `${toolDisplayName(latestActivity.name)}${object ? `: ${object}` : ''}`;
   }
   if (isSearching) return sources?.query ? `Searching: ${sources.query}` : 'Searching sources';
   // A failed search does not hold the head while the model carries on without it.

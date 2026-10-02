@@ -79,7 +79,7 @@ export function getSlashSuggestions(input: string, models: ModelDescriptor[]): S
     for (const choice of choices) {
       push(choice.name || choice.id, `/model ${choice.id}`, choice.id);
     }
-    if (suggestions.length === 0 && arg === '') push('Type a model id…', `/model `);
+    if (suggestions.length === 0 && arg === '') push('Type a model name…', `/model `);
     return suggestions;
   }
 
