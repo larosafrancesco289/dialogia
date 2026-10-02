@@ -369,7 +369,9 @@ export function createMessageStreamCallbacks(
       applyMessageUpdate(set, chatId, assistantMessage.id, (msg) => ({ ...msg, ...marks }));
       persistCheckpoint(marks.cutOff);
       turnFinished = true;
-      if (marks.cutOffReason) notify(get, marks.cutOffReason);
+      // The reply says why where it stopped; a toast is for a chat that is
+      // not on screen (over an open one it covered the first message).
+      if (marks.cutOffReason && get().selectedChatId !== chatId) notify(get, marks.cutOffReason);
       clearController?.();
     },
     discardPendingText: () => {

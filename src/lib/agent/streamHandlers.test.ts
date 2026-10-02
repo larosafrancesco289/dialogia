@@ -6,7 +6,7 @@ import { API_ERROR_CODES } from '@/lib/api/errors';
 import { buildAnthropicError } from '@/lib/anthropic/errors';
 import { NOTICE_INVALID_KEY, NOTICE_RATE_LIMITED } from '@/lib/store/notices';
 
-function harness() {
+function harness(extra: Record<string, unknown> = {}) {
   const notices: unknown[] = [];
   const assistant = {
     id: 'a1',
@@ -21,6 +21,7 @@ function harness() {
     ui: {},
     chats: [{ id: 'c1', settings: {} }],
     setNotice: (notice?: string) => notices.push(notice),
+    ...extra,
   };
   const persisted: Message[] = [];
   const set = (update: unknown) => {
@@ -101,6 +102,13 @@ test('a key refused mid-stream shows the same notice as one refused up front', a
   const limited = harness();
   limited.callbacks.onError?.(await refused(429, API_ERROR_CODES.RATE_LIMITED));
   assert.deepEqual(limited.notices, [NOTICE_RATE_LIMITED]);
+});
+
+test('a failure in the open chat is said in the reply, not again in a toast', async () => {
+  const open = harness({ selectedChatId: 'c1' });
+  open.callbacks.onError?.(new Error('Network error'));
+  assert.deepEqual(open.notices, []);
+  assert.ok(open.stored()?.cutOffReason);
 });
 
 test('thinking is timed from the request, so a model that thinks silently first shows it', async () => {

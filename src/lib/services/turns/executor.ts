@@ -142,9 +142,12 @@ export const executeModelTurn = async ({
       hooks: lifecycle.hooks,
     });
   } catch (error: unknown) {
-    handleTurnApiError(error, get, runtime.modelContexts.get(modelId)?.auth);
     controller.abort();
     await markUnfinished(error);
+    handleTurnApiError(error, get, runtime.modelContexts.get(modelId)?.auth, {
+      chatId: runtime.chatId,
+      messageId: assistantMessage.id,
+    });
   } finally {
     masterController.signal.removeEventListener('abort', abortListener);
     markComplete();
