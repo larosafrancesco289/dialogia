@@ -24,8 +24,9 @@ export function MobileHeader({
   onNewChat: () => void;
   menuButtonRef?: Ref<HTMLButtonElement>;
 }) {
-  const { title, isStreaming, tutorActive } = useChatStore(
+  const { hydrated, title, isStreaming, tutorActive } = useChatStore(
     (s) => ({
+      hydrated: s.hydrated,
       title: s.chats.find((c) => c.id === s.selectedChatId)?.title,
       isStreaming: selectIsStreaming(s),
       tutorActive: selectIsTutorEnabled(s),
@@ -54,7 +55,10 @@ export function MobileHeader({
       </button>
 
       <div className={styles.center}>
-        <h1 className={styles.title}>{title || (firstRun ? 'Dialogia' : 'New chat')}</h1>
+        {/* Nothing until the chats are read, so a reload never flashes "New chat". */}
+        <h1 className={styles.title}>
+          {hydrated ? title || (firstRun ? 'Dialogia' : 'New chat') : ''}
+        </h1>
 
         {/* While a session is on, the module says what drives the chat. */}
         {tutorActive ? (
