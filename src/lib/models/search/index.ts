@@ -95,7 +95,42 @@ export function buildModelSearchResults(
     const hay = `${model.id} ${model.name ?? ''} ${providerLabel}`.toLowerCase();
     return queryWords.every((word) => hay.includes(word));
   });
-  return filtered.slice(0, maxResults).map((model) => buildModelSearchResult(model, opts));
+  return plainBeforeVariants(filtered)
+    .slice(0, maxResults)
+    .map((model) => buildModelSearchResult(model, opts));
+}
+
+/**
+ * The list's own order, except that a model comes before the variants named
+ * after it ("GPT-6 Luna" before "GPT-6 Luna Pro"): the first result, the one
+ * Enter picks, is then the plain model, not a pricier one.
+ */
+function plainBeforeVariants(models: ModelDescriptor[]): ModelDescriptor[] {
+  const names = models.map((model) =>
+    formatModelLabel({ model, fallbackId: model.id }).toLowerCase(),
+  );
+  // A model's family is the shortest name listed that its own begins with, word for word.
+  const families = names.map((name) =>
+    names.reduce(
+      (family, other) =>
+        name.startsWith(`${other} `) && other.length < family.length ? other : family,
+      name,
+    ),
+  );
+  const familyAt = new Map<string, number>();
+  families.forEach((family, index) => {
+    if (!familyAt.has(family)) familyAt.set(family, index);
+  });
+  return models
+    .map((model, index) => ({ model, index }))
+    .sort(
+      (a, b) =>
+        familyAt.get(families[a.index])! - familyAt.get(families[b.index])! ||
+        Number(names[b.index] === families[b.index]) -
+          Number(names[a.index] === families[a.index]) ||
+        a.index - b.index,
+    )
+    .map(({ model }) => model);
 }
 
 export function getHighlightSegments(text: string, queryWords: string[]): HighlightSegment[] {
