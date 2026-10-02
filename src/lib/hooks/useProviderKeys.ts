@@ -10,7 +10,7 @@ import {
 } from '@/lib/keys/store';
 import { isEndpointUsable } from '@/lib/auth/require';
 import { useChatStore } from '@/lib/store';
-import { BUILT_IN_ENDPOINTS } from '@/lib/transport/endpoints';
+import { allowsKeylessCalls, BUILT_IN_ENDPOINTS } from '@/lib/transport/endpoints';
 
 /**
  * Re-renders when a key is added, removed or refused. The snapshot is the set of refs
@@ -36,9 +36,11 @@ export function useProviderKeys(): {
 
 /**
  * Whether any provider or server has a model to offer: one holds a key it has
- * not refused, or is a keyless server with a model. Undefined until the keys
- * have been read, so a page that depends on it shows neither state while it
- * starts.
+ * not refused, or is a server of the person's own. A saved server answered
+ * when it was added, so it counts before its list arrives (or while it is
+ * down) rather than showing the first-run page again. Undefined until the
+ * keys have been read, so a page that depends on it shows neither state
+ * while it starts.
  */
 export function useAnyModelOffered(): boolean | undefined {
   const { customEndpoints, models } = useChatStore(
@@ -49,8 +51,9 @@ export function useAnyModelOffered(): boolean | undefined {
     subscribeToKeys,
     () =>
       keysRead()
-        ? [...BUILT_IN_ENDPOINTS, ...customEndpoints].some((endpoint) =>
-            isEndpointUsable(endpoint, models),
+        ? BUILT_IN_ENDPOINTS.some((endpoint) => isEndpointUsable(endpoint, models)) ||
+          customEndpoints.some(
+            (endpoint) => isEndpointUsable(endpoint, models) || allowsKeylessCalls(endpoint),
           )
         : undefined,
     () => undefined,

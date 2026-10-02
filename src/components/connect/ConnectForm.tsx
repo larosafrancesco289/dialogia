@@ -70,6 +70,7 @@ type Fold = 'steps' | 'others';
 export function ConnectForm({
   id,
   title,
+  lead,
   variant,
   autoFocus = false,
   inputRef: givenInputRef,
@@ -78,6 +79,8 @@ export function ConnectForm({
   /** Prefixes the ids of the form's parts; the title's is `${id}-title`. */
   id: string;
   title: string;
+  /** Why it is asked for, in place of the provider's own lead. */
+  lead?: string;
   /** A box of its own where the composer will be, or the body of a dialog. */
   variant: 'box' | 'dialog';
   autoFocus?: boolean;
@@ -157,7 +160,7 @@ export function ConnectForm({
         <h2 id={`${id}-title`} className={variant === 'box' ? styles.title : 'dialog__title'}>
           {title}
         </h2>
-        <p className={styles.lead}>{LEADS[choice]}</p>
+        <p className={styles.lead}>{lead ?? LEADS[choice]}</p>
         <div className={styles.row}>
           <input
             ref={inputRef}

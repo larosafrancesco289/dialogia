@@ -72,6 +72,8 @@ export type UiSnapshot = {
    * opens only when asked for (Connect a model, a send with no key).
    */
   setupOpen?: boolean;
+  /** Why the sheet opened, when a send needed a key it lacks; session-scoped. */
+  setupReason?: string;
   /** The Memory page is open; session-scoped, never persisted. */
   memoryOpen?: boolean;
   /** The folder the Memory page opens on, when something asked for one. */

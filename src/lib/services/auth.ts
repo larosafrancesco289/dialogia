@@ -2,7 +2,12 @@
 // Responsibility: Resolve per-model auth for UI-driven turns and open the setup
 // flow when a provider is not configured yet.
 
-import { requireModelAuth } from '@/lib/auth/require';
+import {
+  MISSING_PROVIDER_KEY,
+  requireModelAuth,
+  type MissingProviderKeyError,
+} from '@/lib/auth/require';
+import { formatModelLabel } from '@/lib/models/labels';
 import type { ModelIndex } from '@/lib/models';
 import type { StoreGetter, StoreSetter } from '@/lib/agent/types';
 import type { TransportAuth } from '@/lib/auth/transport';
@@ -22,20 +27,35 @@ export type ModelAuthResolver = {
  * A missing key is a setup problem, not an error to narrate: open the setup
  * sheet rather than dropping a toast that names an environment variable.
  */
-const promptForSetup = (set: StoreSetter) => {
-  set((state) => ({ ui: { ...state.ui, setupOpen: true } }));
+const promptForSetup = (set: StoreSetter, setupReason?: string) => {
+  set((state) => ({ ui: { ...state.ui, setupOpen: true, setupReason } }));
 };
 
 /**
  * A deleted endpoint is not a setup problem the sheet can fix: say so instead of
  * offering a key field for a provider that is gone.
  */
-const reportAuthFailure = (error: unknown, set: StoreSetter, get: StoreGetter) => {
+const reportAuthFailure = (
+  error: unknown,
+  set: StoreSetter,
+  get: StoreGetter,
+  modelId: string,
+  modelIndex: ModelIndex,
+) => {
   if (isUnknownEndpointError(error)) {
     notify(get, NOTICE_UNKNOWN_ENDPOINT);
     return;
   }
-  promptForSetup(set);
+  // Say which model needed it: with a server of their own connected, "Connect
+  // a model" alone reads as if that connection had been lost (Learn runs on
+  // OpenRouter, say).
+  const missing = (error as MissingProviderKeyError)?.code === MISSING_PROVIDER_KEY;
+  const provider = missing ? (error as MissingProviderKeyError).endpointLabel : undefined;
+  const name = formatModelLabel({ model: modelIndex.get(modelId), fallbackId: modelId });
+  promptForSetup(
+    set,
+    provider ? `${name} runs on ${provider}. Add your ${provider} key to use it.` : undefined,
+  );
 };
 
 export const createModelAuthResolver = ({
@@ -58,7 +78,7 @@ export const createModelAuthResolver = ({
       cache.set(modelId, auth);
       return auth;
     } catch (error) {
-      reportAuthFailure(error, set, getState);
+      reportAuthFailure(error, set, getState, modelId, modelIndex);
       throw error;
     }
   };
@@ -101,7 +121,7 @@ export const resolveSingleModelAuth = ({
   try {
     return requireModelAuth(modelId, modelIndex);
   } catch (error) {
-    reportAuthFailure(error, set, getState);
+    reportAuthFailure(error, set, getState, modelId, modelIndex);
     return null;
   }
 };
