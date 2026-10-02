@@ -6,9 +6,9 @@ import type { Chat, LearningRecord } from '@/lib/types';
 import type { TutorState } from '@/modules/tutor/engine/state';
 import type { TutorSession } from '@/modules/tutor/store/tutorSlice';
 import { isSharedTutorChat } from '@/modules/tutor/store/selectors';
-import { isMeasured, nextReadyNode } from '@/modules/tutor/engine';
+import { nextReadyNode } from '@/modules/tutor/engine';
 import { stepState, waitingOn } from '@/modules/tutor/components/learning-panel/PlanPath';
-import { pct, statusWords } from '@/modules/tutor/lib/topicStatus';
+import { shownPercent, statusWords } from '@/modules/tutor/lib/topicStatus';
 
 /** The chat's record, or undefined while it has no approved plan. */
 export function learningRecord(chat: Chat, state: TutorState): LearningRecord | undefined {
@@ -23,11 +23,11 @@ export function learningRecord(chat: Chat, state: TutorState): LearningRecord | 
     finished: plan.nodes.every((node) => node.status === 'completed'),
     topics: plan.nodes.map((node) => {
       const step = stepState(plan, node);
-      const mastery = state.mastery[node.id];
+      const percent = shownPercent(step, state.mastery[node.id]);
       return {
         name: node.name,
         state: step,
-        ...(isMeasured(mastery) && step !== 'locked' ? { percent: pct(mastery.confidence) } : {}),
+        ...(percent != null ? { percent } : {}),
         status: statusWords(step, node.id === upNextId, waitingOn(plan, node)),
       };
     }),
