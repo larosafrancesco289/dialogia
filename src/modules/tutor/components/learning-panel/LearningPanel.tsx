@@ -66,6 +66,7 @@ export function LearningPanel() {
         {revising ? (
           <ReviseView
             plan={plan}
+            mastery={affordances.showMastery ? state.mastery : undefined}
             revisions={{
               onSkip: onMarkKnown,
               onStartNext,

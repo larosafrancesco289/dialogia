@@ -4,22 +4,14 @@ import { isMeasured, nextReadyNode, type TopicExplanation } from '@/modules/tuto
 import type { TutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 import { readableNote } from '@/modules/tutor/ui/messageViews';
 import { listInProse } from '@/lib/utils/text';
-import { PathStep, stepState, waitingOn, type StepState } from './PlanPath';
-import { pct, statusWords } from '@/modules/tutor/lib/topicStatus';
+import { Meter, PathStep, stepState, waitingOn, type StepState } from './PlanPath';
+import { pct, shownPercent, statusWords } from '@/modules/tutor/lib/topicStatus';
 import { Markdown } from '@/components/Markdown';
 import { asTheirIdea } from '@/modules/tutor/lib/text';
 import { CarriedOverWords } from '@/modules/tutor/components/message/CarriedOverWords';
 
 // Corrections are recorded for the tutor ("Learner said…"); read them back
 // to the learner in the second person.
-
-function Meter({ value }: { value: number }) {
-  return (
-    <span className="hub-path__meter" aria-hidden="true">
-      <span style={{ transform: `scaleX(${Math.min(1, Math.max(0, value))})` }} />
-    </span>
-  );
-}
 
 type Explain = (nodeId: string) => TopicExplanation | undefined;
 
@@ -30,8 +22,8 @@ export type ContentsCorrections = {
 
 /**
  * The Learning Hub at rest: the plan as a path, and the learner model on it.
- * Every topic says where it stands in words, and every topic with evidence
- * shows the tutor's estimate as a number. Opening a topic says what it
+ * Every topic says where it stands in words, and every started topic or one
+ * with evidence shows the tutor's estimate as a number. Opening a topic says what it
  * covers, why the estimate is what it is and, where the learner may, how to
  * correct it. Changing the plan lives in Edit plan.
  */
@@ -57,7 +49,9 @@ export function ContentsView({
   const done = plan.nodes.filter((n) => n.status === 'completed').length;
   const upNextId = nextReadyNode(plan)?.id;
   const hours = plan.metadata?.estimatedHours;
-  const anyMeasured = plan.nodes.some((n) => isMeasured(mastery?.[n.id]));
+  const anyShown = plan.nodes.some(
+    (n) => shownPercent(stepState(plan, n), mastery?.[n.id]) != null,
+  );
 
   return (
     <div className="hub-contents">
@@ -95,7 +89,7 @@ export function ContentsView({
         ))}
       </ol>
 
-      {affordances.showMastery && anyMeasured && (
+      {affordances.showMastery && anyShown && (
         <p className="hub-contents__hint">
           Each percentage is the tutor’s estimate of how well you know that topic. Open a topic to
           see why{affordances.correctMastery ? ', or to correct it' : ''}.
@@ -132,7 +126,8 @@ function ContentsItem({
 }) {
   const [busy, setBusy] = useState(false);
   const measured = isMeasured(mastery);
-  const showMastery = affordances.showMastery && measured && state !== 'locked';
+  const percent = affordances.showMastery ? shownPercent(state, mastery) : undefined;
+  const showMastery = percent != null;
   const openMisconceptions = affordances.showMastery
     ? (mastery?.misconceptions?.filter((m) => !m.resolved) ?? [])
     : [];
@@ -161,7 +156,7 @@ function ContentsItem({
         <span className="hub-path__name">
           <Markdown inline content={node.name} />
         </span>
-        {showMastery && <span className="hub-path__pct">{pct(mastery!.confidence)}%</span>}
+        {showMastery && <span className="hub-path__pct">{percent}%</span>}
         <span className="hub-path__sub">
           {showMastery && <Meter value={mastery!.confidence} />}
           <span className="hub-path__status">
@@ -353,8 +348,8 @@ function Why({ mastery, explanation }: { mastery: TopicMastery; explanation?: To
   }));
   // A starting estimate set by the plan is the start: no prior line above it.
   const opensWithSetting = steps.length > 0 && isSetting(steps[0].evidence);
-  // A starting setting as the only line already states today's value.
-  const startIsNow = opensWithSetting && steps.length === 1;
+  // With nothing since the start, the start line already states today's value.
+  const startIsNow = steps.length === (opensWithSetting ? 1 : 0);
 
   return (
     <div className="hub-why">
