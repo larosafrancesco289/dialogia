@@ -524,7 +524,10 @@ test('the tools write to memory, keep each change on the reply, and undo it', as
   const missing = await call('memory_read', { folder: 'Immunology' });
   assert.equal(missing.result?.ok, false);
   assert.match(String(missing.result?.hint), /The folders are: About you, Learning/);
-  assert.match(String(missing.result?.hint), /memory_save with its name and new_folder_description/);
+  assert.match(
+    String(missing.result?.hint),
+    /memory_save with its name and new_folder_description/,
+  );
 
   const bad = await call('memory_forget', { note: 'nothing' });
   assert.equal(bad.result?.ok, false);

@@ -65,7 +65,8 @@ test('a send zero data retention refuses keeps the draft, and names the model in
   store.getState().addEndpoint({
     kind: 'openai-compatible',
     label: 'Mock',
-    baseUrl: 'http://localhost:9999/v1',
+    // Elsewhere: a server on this machine has nothing for zero data retention to refuse.
+    baseUrl: 'https://llm.example.com/v1',
     modelIds: ['mock-think'],
   });
   const models = [{ id: 'endpoint:mock/mock-think', name: 'Mock Think' }];
