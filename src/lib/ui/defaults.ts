@@ -33,9 +33,6 @@ export function buildDefaultUIState(overrides?: Partial<UIState>): UIState {
       tavilyByMessageId: {},
     },
     tutor: {
-      welcomeByChatId: {},
-      welcomePreview: undefined,
-      greetedByChatId: {},
       defaultModelId: DEFAULT_TUTOR_MODEL_ID,
       forceMode: false,
       autoScroll: false,

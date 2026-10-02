@@ -15,24 +15,7 @@ export type UISearchState = UiSearchSnapshot;
 export type UIPlanState = UiPlanSnapshot;
 export type UIMobileState = UiMobileSnapshot;
 
-export type UITutorState = UiTutorSnapshot & {
-  welcomeByChatId?: Record<
-    string,
-    {
-      status: 'idle' | 'loading' | 'ready' | 'error';
-      message?: string;
-      error?: string;
-      generatedAt?: number;
-    }
-  >;
-  welcomePreview?: {
-    status: 'idle' | 'loading' | 'ready' | 'error';
-    message?: string;
-    error?: string;
-    generatedAt?: number;
-  };
-  greetedByChatId?: Record<string, boolean>;
-};
+export type UITutorState = UiTutorSnapshot;
 
 export type PersistedUiState = {
   showSettings: UiSnapshot['showSettings'];

@@ -3,7 +3,7 @@
 // while keeping the Zustand message slice focused on state updates.
 
 import type { DraftAttachment, Chat, Message } from '@/lib/types';
-import type { StoreAccess, StoreGetter, StoreSetter, TurnContext } from '@/lib/agent/types';
+import type { StoreGetter, StoreSetter, TurnContext } from '@/lib/agent/types';
 import type { Repository } from '@/lib/db/repository';
 import type { StoreGetter as StoreStateGetter } from '@/lib/store/stateTypes';
 import { applyModuleSettingsDefaults } from '@/lib/settings/moduleDefaults';
@@ -41,18 +41,6 @@ export type SendTurnOptions = {
   get: StoreGetter;
   repository: Repository;
 };
-
-function primeTutorWelcome(chatId: string | undefined, store: StoreAccess) {
-  if (!chatId) return;
-  try {
-    const maybe = store.get().prepareTutorWelcomeMessage?.(chatId);
-    if (maybe && typeof maybe.then === 'function') {
-      maybe.catch(() => undefined);
-    }
-  } catch {
-    // ignore tutor welcome prefetch failures
-  }
-}
 
 export type AppendAssistantArgs = {
   content: string;
@@ -99,8 +87,8 @@ export async function sendUserTurn({
   const runtime = await prepareSendRuntime({ attachments, set, get, repository });
   if (!runtime) return;
   let currentChat = runtime.chat;
-  const { chatId, ui, tutorEnabled, activeModelIds, primaryModelId, priorMessages, modelContexts } =
-    runtime;
+  const { chatId, ui, tutorEnabled, activeModelIds, primaryModelId, modelContexts } = runtime;
+  let { priorMessages } = runtime;
   if (!activeModelIds.length || !primaryModelId) return;
 
   const zdrAllowed = await enforceZdrGate(ui, modelContexts.keys(), (modelId) =>
@@ -113,7 +101,14 @@ export async function sendUserTurn({
     set((state) => ({ ui: resetEphemeralUi(state.ui) }));
   }
 
-  if (tutorEnabled) primeTutorWelcome(chatId, { set, get });
+  // A tutor chat's greeting is written by its first send, ahead of the learner's
+  // message, and read into this request's history so the model sees what they saw.
+  if (tutorEnabled && !priorMessages.some((m) => m.tutorWelcome)) {
+    await get()
+      .prepareTutorWelcomeMessage?.(chatId)
+      .catch(() => undefined);
+    priorMessages = getMessagesForChat(get(), chatId);
+  }
 
   const spawned = await spawnTurnMessages({
     chatId,
