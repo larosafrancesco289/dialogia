@@ -2,9 +2,12 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { shorten } from '@/modules/tutor/engine/commands/shared';
 import {
+  AFTER_CORRECTION_FACTOR,
   HELPED_FACTOR,
   MASTERY_PRIOR,
+  QUIZ_WEIGHTS,
   READY,
+  applyEvidence,
   decide,
   explainTopic,
   openMisconceptions,
@@ -515,16 +518,19 @@ describe('quizzes', () => {
     assert.ok(answered.type === 'quiz_answered' && answered.correct);
     assert.ok(evidence.type === 'evidence_recorded');
     assert.equal(evidence.source, 'quiz');
-    assert.equal(evidence.weight, 0.4);
+    assert.equal(evidence.weight, QUIZ_WEIGHTS.correct);
     assert.deepEqual(evidence.ref, { quizId, itemId: 'q1' });
-    assert.equal(h.state.mastery.limits.confidence, 0.3 + 0.4 * 0.7);
+    assert.equal(
+      h.state.mastery.limits.confidence,
+      applyEvidence(MASTERY_PRIOR, { weight: QUIZ_WEIGHTS.correct }),
+    );
 
     assertError(
       h.refuse({ by: 'learner', type: 'answer_quiz_item', quizId, itemId: 'q1', choice: 1 }),
       'already_answered',
     );
     const wrong = h.learner({ type: 'answer_quiz_item', quizId, itemId: 'q2', choice: 0 });
-    assert.ok(wrong[1].type === 'evidence_recorded' && wrong[1].weight === -0.3);
+    assert.ok(wrong[1].type === 'evidence_recorded' && wrong[1].weight === QUIZ_WEIGHTS.incorrect);
 
     const quizEvidence = h.state.mastery.limits.evidence.filter((e) => e.source === 'quiz');
     assert.equal(quizEvidence.length, 2);
@@ -610,8 +616,11 @@ describe('evidence and misconceptions', () => {
     h.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.5 });
     h.tutor({ type: 'give_quiz', items: QUIZ_ITEMS.slice(0, 1) }, 'reply-3');
     h.learner({ type: 'answer_quiz_item', quizId: h.state.awaiting!.id, itemId: 'q1', choice: 0 });
-    // A quiz answer too: 0.5 + 0.2 × 0.5.
-    assert.equal(Math.round(h.state.mastery.limits.confidence * 100), 60);
+    // A quiz answer too, at half its weight: 0.5 + 0.125 × 0.5.
+    assert.equal(
+      h.state.mastery.limits.confidence,
+      applyEvidence(0.5, { weight: QUIZ_WEIGHTS.correct * AFTER_CORRECTION_FACTOR }),
+    );
   });
 
   test('record_evidence counts a step the tutor led them to for less, and never softens a struggle', () => {

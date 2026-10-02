@@ -18,6 +18,7 @@ import {
 } from '@/modules/tutor/engine';
 import {
   CALCULUS,
+  MASTERY_ITEMS,
   QUIZ_ITEMS,
   harness,
   master,
@@ -282,7 +283,7 @@ test('results carry what the model needs and never an answer key', () => {
     return tutorToolResult(name, before, h.state, events);
   };
 
-  const quiz = run('give_quiz', { items: QUIZ_ITEMS });
+  const quiz = run('give_quiz', { items: MASTERY_ITEMS });
   assert.deepEqual(quiz, {
     ok: true,
     shown: 'quiz',
@@ -292,14 +293,14 @@ test('results carry what the model needs and never an answer key', () => {
   });
   assert.doesNotMatch(JSON.stringify(quiz), /correct|lim x/);
   const quizId = h.state.awaiting!.id;
-  QUIZ_ITEMS.forEach((item, i) =>
+  MASTERY_ITEMS.forEach((item, i) =>
     h.learner({ type: 'answer_quiz_item', quizId, itemId: `q${i + 1}`, choice: item.correct }),
   );
 
   const evidence = run('record_evidence', { kind: 'applied', note: 'Solved a new one' });
   assert.equal(evidence.id, 'limits');
-  assert.equal(evidence.was, 85);
-  assert.equal(evidence.mastery, 89);
+  assert.equal(evidence.was, 83);
+  assert.equal(evidence.mastery, 88);
   assert.equal(evidence.band, 'ready');
 
   const done = run('complete_topic', {});

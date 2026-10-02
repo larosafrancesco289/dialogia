@@ -47,7 +47,12 @@ export const AFTER_CORRECTION_FACTOR = 0.5;
 export const WEIGHT_MIN = -0.5;
 export const WEIGHT_MAX = 0.7;
 
-export const QUIZ_WEIGHTS = { correct: 0.4, incorrect: -0.3 } as const;
+/**
+ * Picking the right option is recognition, weaker evidence than explaining or
+ * applying an idea in their own words (OBSERVATION_WEIGHTS), so it moves the
+ * estimate less: one right answer from the prior is 30% → 48%, not 58%.
+ */
+export const QUIZ_WEIGHTS = { correct: 0.25, incorrect: -0.2 } as const;
 export const DIAGNOSTIC_WEIGHTS = { correct: 0.3, incorrect: -0.2 } as const;
 
 /** Budgets are counted from events, so they survive a reload. */
