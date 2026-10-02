@@ -149,7 +149,8 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: baseline;
-    gap: 6px var(--space-2);
+    /* The meter belongs to the line it measures: closer to it than to the status. */
+    gap: 3px var(--space-2);
     width: 100%;
     padding: 10px 0 var(--space-4);
     border: 0;

@@ -145,9 +145,12 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
 
     setAtBottom((prev) => (prev === snapshot.atBottom ? prev : snapshot.atBottom));
     setShowJump((prev) => {
+      // Not while the list is taking itself to the end (the button's own
+      // click included): it would come back for the length of the glide.
       const next =
         snapshot.hasOverflow &&
         !snapshot.atBottom &&
+        !programmaticScrollRef.current &&
         (!followAllowedRef.current || !autoScrollRef.current);
       return prev === next ? prev : next;
     });
@@ -196,11 +199,6 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
         el.scrollTop = target;
       }
 
-      const clearProgrammatic = () => {
-        programmaticScrollRef.current = false;
-        applySnapshot(readSnapshot());
-      };
-
       if (programmaticClearTimerRef.current) {
         clearTimeout(programmaticClearTimerRef.current);
         programmaticClearTimerRef.current = null;
@@ -210,8 +208,22 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
         programmaticClearFrameRef.current = null;
       }
 
+      const clearProgrammatic = () => {
+        el.removeEventListener('scroll', waitForStill);
+        programmaticClearTimerRef.current = null;
+        programmaticScrollRef.current = false;
+        applySnapshot(readSnapshot());
+      };
+      // A glide lasts as long as its distance needs, so it is over once the
+      // list has been still for a moment, not after a fixed guess.
+      function waitForStill() {
+        if (programmaticClearTimerRef.current) clearTimeout(programmaticClearTimerRef.current);
+        programmaticClearTimerRef.current = setTimeout(clearProgrammatic, 150);
+      }
+
       if (behavior === 'smooth' && !prefersReducedMotion) {
-        programmaticClearTimerRef.current = setTimeout(clearProgrammatic, 320);
+        el.addEventListener('scroll', waitForStill);
+        waitForStill();
       } else {
         programmaticClearFrameRef.current = requestAnimationFrame(() => {
           programmaticClearFrameRef.current = null;
@@ -241,24 +253,14 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
       return;
     }
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        const snapshot = readSnapshot();
-        if (snapshot) {
-          applySnapshot({
-            ...snapshot,
-            atBottom: snapshot.atBottom || entry.isIntersecting,
-            showJump: snapshot.showJump && !entry.isIntersecting,
-          });
-        }
-      },
-      {
-        root: el,
-        rootMargin: `0px 0px ${bottomThresholdPx}px 0px`,
-        threshold: 0,
-      },
-    );
+    // Only a prompt to measure: the end marker shows well before the last
+    // 40px (the list pads its foot for the composer), and two answers to
+    // "at the bottom?" made the jump button blink on and off between them.
+    const observer = new IntersectionObserver(() => applySnapshot(readSnapshot()), {
+      root: el,
+      rootMargin: `0px 0px ${bottomThresholdPx}px 0px`,
+      threshold: 0,
+    });
 
     observer.observe(target);
     return () => observer.disconnect();
