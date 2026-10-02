@@ -7,8 +7,8 @@ import { isRecord } from '@/lib/utils/guards';
 import { listInProse } from '@/lib/utils/text';
 
 export const NOTICE_CATALOG = {
-  invalidKey: 'That API key was rejected. Check it in Settings › Connections.',
-  expiredKey: 'That API key has expired. Add a new one in Settings › Connections.',
+  invalidKey: 'That key was rejected. Check it in Settings › Connections.',
+  expiredKey: 'That key has expired. Add a new one in Settings › Connections.',
   rateLimited: 'The provider is limiting requests. Wait a moment, then try again.',
   missingSearchKey: 'Add a web search key in Settings › Connections to use tool-based search.',
   searchUnavailable: 'Web search is unavailable for this chat; answering without it.',

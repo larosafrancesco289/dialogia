@@ -21,6 +21,7 @@ import {
 import { listEndpoints } from '@/lib/transport/endpointRegistry';
 import type { RenderSection } from '@/components/settings/types';
 import { refocusIfDropped } from '@/lib/ui/focus';
+import { CONNECT_OPTIONS } from '@/components/connect/useConnectProvider';
 
 function EndpointStatus({ endpoint }: { endpoint: ProviderEndpoint }) {
   const { hasKey, isKeyRejected } = useProviderKeys();
@@ -37,7 +38,7 @@ function EndpointStatus({ endpoint }: { endpoint: ProviderEndpoint }) {
   if (endpoint.kind === 'openai-compatible') {
     return (
       <span className="text-xs text-fg-muted">
-        {allowsKeylessCalls(endpoint) ? 'Ready (no key needed)' : 'Needs a base URL'}
+        {allowsKeylessCalls(endpoint) ? 'Ready (no key needed)' : 'Needs an address'}
       </span>
     );
   }
@@ -64,7 +65,7 @@ function CustomEndpointEditor({
       <ConfirmDialog
         open={confirmRemove}
         title={`Remove ${endpoint.label}?`}
-        description="Its address, key and capability settings go. Chats that used its models keep their messages."
+        description="Its address, key and settings go. Chats that used its models keep their messages."
         confirmLabel="Remove"
         onCancel={() => setConfirmRemove(false)}
         onConfirm={() => {
@@ -75,7 +76,7 @@ function CustomEndpointEditor({
       />
       <div className="space-y-2">
         <label className="field__label" htmlFor={`base-${endpoint.id}`}>
-          Base URL
+          Server address
         </label>
         <input
           id={`base-${endpoint.id}`}
@@ -107,13 +108,13 @@ function CustomEndpointEditor({
         >
           {urlInvalid
             ? `${INVALID_BASE_URL_MESSAGE} Not saved.`
-            : 'The OpenAI-compatible root, e.g. http://localhost:11434/v1 for Ollama.'}
+            : "The server's address, e.g. http://localhost:11434/v1 for Ollama."}
         </p>
       </div>
 
       <div className="space-y-2">
         <label className="field__label" htmlFor={`models-${endpoint.id}`}>
-          Model ids
+          Model names
         </label>
         <input
           id={`models-${endpoint.id}`}
@@ -139,7 +140,7 @@ function CustomEndpointEditor({
 
       <ApiKeyField
         keyRef={endpoint.apiKeyRef ?? endpointKeyRef(endpoint.id)}
-        label="API key (optional)"
+        label="Key (optional)"
         placeholder="Most local servers need none"
         onChanged={onChanged}
       />
@@ -200,7 +201,7 @@ function CustomEndpointEditor({
       </div>
 
       <button className="btn-ghost btn-sm" onClick={() => setConfirmRemove(true)}>
-        Remove this endpoint
+        Remove this server
       </button>
     </div>
   );
@@ -255,7 +256,7 @@ function AddEndpointForm({ onAdded }: { onAdded: () => void }) {
         />
         <input
           className="input flex-1 basis-full sm:basis-0 min-w-0 text-base sm:text-sm"
-          placeholder="e.g. http://localhost:11434/v1"
+          placeholder={CONNECT_OPTIONS.local.placeholder}
           value={baseUrl}
           spellCheck={false}
           aria-invalid={urlInvalid || undefined}
@@ -269,7 +270,7 @@ function AddEndpointForm({ onAdded }: { onAdded: () => void }) {
             event.preventDefault();
             add();
           }}
-          aria-label="Base URL"
+          aria-label="Server address"
         />
         <button className="btn btn-sm" disabled={!canAdd} onClick={add}>
           Add
@@ -306,20 +307,24 @@ export function ProvidersPanel({ renderSection, loadModels }: ProvidersPanelProp
                 carries the user's own endpoints. */}
             {listEndpoints()
               .filter((endpoint) => isBuiltInEndpointId(endpoint.id))
-              .map((endpoint) => (
-                <div key={endpoint.id} className="space-y-2">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <div className="text-sm font-medium">{endpoint.label}</div>
-                    <EndpointStatus endpoint={endpoint} />
+              .map((endpoint) => {
+                const option =
+                  CONNECT_OPTIONS[endpoint.id === 'anthropic' ? 'anthropic' : 'openrouter'];
+                return (
+                  <div key={endpoint.id} className="space-y-2">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <div className="text-sm font-medium">{endpoint.label}</div>
+                      <EndpointStatus endpoint={endpoint} />
+                    </div>
+                    <ApiKeyField
+                      keyRef={endpoint.apiKeyRef ?? endpoint.id}
+                      label={option.name}
+                      placeholder={option.placeholder}
+                      onChanged={refresh}
+                    />
                   </div>
-                  <ApiKeyField
-                    keyRef={endpoint.apiKeyRef ?? endpoint.id}
-                    label={`${endpoint.label} API key`}
-                    placeholder={endpoint.id === 'anthropic' ? 'sk-ant-…' : 'sk-or-…'}
-                    onChanged={refresh}
-                  />
-                </div>
-              ))}
+                );
+              })}
             <p className="field__hint">Keys stay in this browser and are never exported.</p>
           </div>
         </SettingsSection>,
@@ -333,7 +338,7 @@ export function ProvidersPanel({ renderSection, loadModels }: ProvidersPanelProp
             {customEndpoints.map((endpoint) => (
               <div key={endpoint.id} data-endpoint-id={endpoint.id}>
                 <CollapsibleSection
-                  title={`${endpoint.label} · ${endpoint.baseUrl ?? 'no base URL'}`}
+                  title={`${endpoint.label} · ${endpoint.baseUrl ?? 'no address'}`}
                 >
                   <CustomEndpointEditor endpoint={endpoint} onChanged={refresh} />
                 </CollapsibleSection>
@@ -361,7 +366,7 @@ export function ProvidersPanel({ renderSection, loadModels }: ProvidersPanelProp
                 <ApiKeyField
                   key={provider.id}
                   keyRef={searchProviderKeyRef(provider)}
-                  label={`${provider.label} API key`}
+                  label={`${provider.label} key`}
                   placeholder="tvly-…"
                   onChanged={refresh}
                 />
