@@ -75,7 +75,10 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
     if (!allowed.includes(effort)) return false;
     ctx.accept();
     if (!isReasoningSupported(currentModel)) {
-      ctx.setNotice('This model does not reason, so it has no effort to set.', 'info');
+      ctx.setNotice(
+        'This model answers without thinking first, so there is nothing to set.',
+        'info',
+      );
       return true;
     }
     const selectable = getSelectableReasoningEfforts(currentModel);
@@ -100,7 +103,7 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
         },
       });
     }
-    ctx.setNotice(`Reasoning effort set to ${effort}.`, 'success');
+    ctx.setNotice(`Thinking effort set to ${effort}.`, 'success');
     return true;
   }
 

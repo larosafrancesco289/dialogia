@@ -101,7 +101,7 @@ export function ResponseContextPanel({
 
   const showSourcesEntry = hasSources || isSearching;
   // One word pair names the work: "Thinking" for as long as the model is at
-  // it, whatever it is doing ("Thinking · Memory read"), then "Thought for 8
+  // it, whatever it is doing ("Thinking · Checking memory"), then "Thought for 8
   // seconds". A reply that never thought has a summary that speaks alone
   // ("1 search", or the search's failure).
   const hasThought = hasReasoning || orderedActivity.some((item) => item.type === 'reasoning');
@@ -160,8 +160,8 @@ export function ResponseContextPanel({
                 <button
                   type="button"
                   className={`icon-button response-ledger__copy${copied ? ' is-success' : ''}`}
-                  aria-label={copied ? 'Copied' : 'Copy reasoning'}
-                  title={copied ? 'Copied' : 'Copy reasoning'}
+                  aria-label={copied ? 'Copied' : 'Copy thinking'}
+                  title={copied ? 'Copied' : 'Copy thinking'}
                   onClick={copyReasoning}
                 >
                   {copied ? (
