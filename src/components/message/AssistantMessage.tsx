@@ -380,7 +380,7 @@ export function AssistantMessage({
                   <ActionButton
                     icon={<PencilSquareIcon className="h-4 w-4" />}
                     title="Edit"
-                    ariaLabel="Edit message"
+                    ariaLabel="Edit reply"
                     onClick={startEditingMessage}
                   />
                 )}
