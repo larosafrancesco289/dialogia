@@ -100,15 +100,17 @@ const QUIET_MS = 1000;
 
 /** When the reply's words last changed, once they have rested QUIET_MS while `active`. */
 function useQuietSince(content: string, active: boolean): number | undefined {
-  const [quietSince, setQuietSince] = useState<number>();
+  // The rest belongs to the words it was measured on, so new words end it in
+  // the same render rather than an effect later (which painted the pen under
+  // the first word for a frame after a long wait).
+  const [quiet, setQuiet] = useState<{ content: string; since: number }>();
   useEffect(() => {
-    setQuietSince(undefined);
     if (!active) return;
     const changedAt = Date.now();
-    const timer = window.setTimeout(() => setQuietSince(changedAt), QUIET_MS);
+    const timer = window.setTimeout(() => setQuiet({ content, since: changedAt }), QUIET_MS);
     return () => window.clearTimeout(timer);
   }, [content, active]);
-  return quietSince;
+  return active && quiet?.content === content ? quiet.since : undefined;
 }
 
 export function AssistantMessage({
