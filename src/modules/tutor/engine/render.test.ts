@@ -43,7 +43,7 @@ test('while teaching: goal, current topic with objectives, bands, misconceptions
       '- "lim x->1 of 2x?" (quiz, not answered)',
       '- "lim x->2 of x^2?" (quiz, not answered)',
       'Topics (building < 50%, practising 50-79%, ready >= 80%):',
-      '- Limits [limits]: in progress; practising 58%',
+      '- Limits [limits]: in progress; building 48%',
       '- Derivatives [derivatives]: not started; building 30%; needs limits',
       '- Chain rule [chain-rule]: not started; building 30%; needs derivatives',
       'Open misconceptions:',
@@ -148,7 +148,7 @@ test('learnerChangesSince describes only learner events after the given seq', ()
   h.learner({ type: 'reopen_topic', nodeId: 'derivatives' });
   const lines = learnerChangesSince(h.state, h.events, since);
   assert.deepEqual(lines, [
-    'Set Limits to 62% (was 89%).',
+    'Set Limits to 62% (was 88%).',
     'Flagged Derivatives for review.',
     'Marked Derivatives as already known (now 80%).',
     'Reopened Derivatives for more practice.',
@@ -167,7 +167,7 @@ test('learnerChangesSince summarizes quiz answers per quiz, with what was missed
   h.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.3 });
   assert.deepEqual(learnerChangesSince(h.state, h.events, since), [
     'Answered your quiz on Limits: 2 of 3 right. Missed: "lim x->1 of 2x?" (chose "3"; right answer "2").',
-    'Set Limits to 30% (was 64%).',
+    'Set Limits to 30% (was 54%).',
   ]);
 });
 

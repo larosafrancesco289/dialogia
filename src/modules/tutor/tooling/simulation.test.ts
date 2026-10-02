@@ -159,7 +159,10 @@ function stallingTutor(params: TransportStreamParams): void {
   );
   if (said.startsWith('Answered the quiz') || (teaching && said === 'Is it x = 4?')) {
     if (round > 1) return reply(params, 'Now try another one.');
-    return reply(params, '', [call('record_evidence', { kind: 'applied', note: 'Undid a step' })]);
+    // As strong as the healthy tutor's: two right quiz answers alone no longer reach READY.
+    return reply(params, '', [
+      call('record_evidence', { kind: 'applied', note: 'Undid a step', weight: 0.7 }),
+    ]);
   }
   return scriptedTutor(params);
 }

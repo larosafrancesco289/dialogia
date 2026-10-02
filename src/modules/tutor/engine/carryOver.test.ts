@@ -25,7 +25,7 @@ import type { LearningRecord } from '@/lib/types';
 
 const SOURCE = 'chat-src';
 
-/** A finished-ish earlier chat: Limits studied to 85%, Derivatives never touched. */
+/** A finished-ish earlier chat: Limits studied to 83%, Derivatives never touched. */
 function earlierChat() {
   const source = teaching();
   master(source);

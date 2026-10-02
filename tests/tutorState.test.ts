@@ -15,8 +15,8 @@ import { createAssistantMessage, createUserMessage } from '@/lib/messages/create
 import { appendMessagesToChat, getMessagesForChat } from '@/lib/messages/indexing';
 import type { ResolvedTurnSettings } from '@/lib/settings/resolve';
 import { buildTutorComposeContribution } from '@/modules/tutor/agent/compose';
-import { remainingBudgets } from '@/modules/tutor/engine';
-import { CALCULUS, QUIZ_ITEMS } from '@/modules/tutor/engine/testSupport';
+import { STARTING_ESTIMATE_MAX, remainingBudgets } from '@/modules/tutor/engine';
+import { CALCULUS, MASTERY_ITEMS, QUIZ_ITEMS } from '@/modules/tutor/engine/testSupport';
 import { cardsForMessage } from '@/modules/tutor/ui/messageViews';
 import { TUTOR_SAVE_FAILED_NOTICE } from '@/modules/tutor/store/tutorSlice';
 import { makeChat } from './helpers/makeChat';
@@ -1057,13 +1057,13 @@ test('deleting a chat mid-dispatch leaves no events behind and refuses what was 
   assert.ok(!exported.tutorEvents.some((e) => e.chatId === id));
 });
 
-/** A tutor chat on disk whose Limits has an estimate from a quiz answered in full. */
+/** A tutor chat on disk whose Limits is past READY from a full-length quiz answered in full. */
 async function studiedChat() {
   const { id, store } = await teachingChat();
   const { dispatchTutor: teach } = store.getState();
-  await teach(id, { by: 'tutor', type: 'give_quiz', items: QUIZ_ITEMS }, { by: 'tutor' });
+  await teach(id, { by: 'tutor', type: 'give_quiz', items: MASTERY_ITEMS }, { by: 'tutor' });
   const quizId = store.getState().tutorSessions[id].state.awaiting!.id;
-  for (const [i, item] of QUIZ_ITEMS.entries()) {
+  for (const [i, item] of MASTERY_ITEMS.entries()) {
     await teach(
       id,
       {
@@ -1118,7 +1118,8 @@ test('a plan carries a topic over from another tutor chat, whose log is loaded t
   const [entry] = store.getState().tutorSessions[id].state.mastery.limits.evidence;
   assert.equal(entry.carriedOver?.chatId, source);
   assert.equal(entry.carriedOver?.estimate, studied);
-  assert.equal(entry.setTo, 0.75);
+  assert.ok(studied > STARTING_ESTIMATE_MAX, 'the source is above the cap');
+  assert.equal(entry.setTo, STARTING_ESTIMATE_MAX);
   // What was read is on disk with the event, for a replay that never reads the source.
   const stored = await repository.loadTutorEvents(id);
   assert.ok(stored.some((row) => (row as { carriedOver?: unknown }).carriedOver));

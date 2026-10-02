@@ -12,7 +12,7 @@ export type ExplanationStep = {
   kind?: string;
   before: number;
   after: number;
-  /** One plain sentence, e.g. `Quiz, right: "..." (+40% of the gap): 30% -> 58%`. */
+  /** One plain sentence, e.g. `Quiz, right: "..." (+25% of the gap): 30% -> 48%`. */
   text: string;
 };
 

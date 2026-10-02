@@ -123,11 +123,21 @@ export const QUIZ_ITEMS = [
   { question: 'lim x->2 of x^2?', choices: ['2', '4'], correct: 1 },
 ];
 
+/**
+ * A full-length quiz: five right answers take a topic from the prior past READY
+ * (30% -> 83%), where three no longer do.
+ */
+export const MASTERY_ITEMS = [
+  ...QUIZ_ITEMS,
+  { question: 'lim x->3 of x+1?', choices: ['3', '4'], correct: 1 },
+  { question: 'lim x->0 of 5?', choices: ['0', '5'], correct: 1 },
+];
+
 /** Raises the current topic past READY by answering a full quiz correctly. */
 export function master(h: Harness) {
-  h.tutor({ type: 'give_quiz', items: QUIZ_ITEMS });
+  h.tutor({ type: 'give_quiz', items: MASTERY_ITEMS });
   const quizId = h.state.awaiting!.id;
-  QUIZ_ITEMS.forEach((item, i) =>
+  MASTERY_ITEMS.forEach((item, i) =>
     h.learner({ type: 'answer_quiz_item', quizId, itemId: `q${i + 1}`, choice: item.correct }),
   );
 }

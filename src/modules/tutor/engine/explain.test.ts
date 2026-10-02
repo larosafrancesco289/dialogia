@@ -54,9 +54,9 @@ test('each step reads as a plain sentence', () => {
   });
   h.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.5 });
   const [quiz, observed, placed] = explainTopic(h.state, 'limits')!.steps.map((s) => s.text);
-  assert.equal(quiz, 'Quiz, right: "lim x->0 of x?" (+40% of the gap to 100%): 30% -> 58%');
-  assert.equal(observed, 'The tutor observed: Needed a hint (-20% of the estimate): 58% -> 46%');
-  assert.equal(placed, 'You: Set to 50% by the learner. (set directly): 46% -> 50%');
+  assert.equal(quiz, 'Quiz, right: "lim x->0 of x?" (+25% of the gap to 100%): 30% -> 48%');
+  assert.equal(observed, 'The tutor observed: Needed a hint (-20% of the estimate): 48% -> 38%');
+  assert.equal(placed, 'You: Set to 50% by the learner. (set directly): 38% -> 50%');
   assert.equal(explainTopic(h.state, 'limits')!.startText, 'Every topic starts at 30%.');
 });
 
