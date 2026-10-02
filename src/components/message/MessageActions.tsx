@@ -25,11 +25,13 @@ export function MessageActions({
   );
 }
 
-const SAVE_SHORTCUT =
+/** The key held with Enter to save or send: ⌘ on Apple devices, Ctrl elsewhere. */
+export const ENTER_MODIFIER =
   typeof navigator !== 'undefined' &&
   /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
-    ? '⌘ Enter to save'
-    : 'Ctrl Enter to save';
+    ? '⌘'
+    : 'Ctrl';
+const SAVE_SHORTCUT = `${ENTER_MODIFIER} Enter to save`;
 
 /** Save and cancel under a message being edited, with the shortcut named. */
 export function MessageEditBar({ onSave, onCancel }: { onSave: () => void; onCancel: () => void }) {
