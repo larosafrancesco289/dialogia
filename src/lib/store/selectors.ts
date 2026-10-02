@@ -15,6 +15,18 @@ export const selectCurrentChat = (state: StoreState) => {
   return state.chats.find((chat) => chat.id === chatId);
 };
 
+/**
+ * The welcome page shows: no chat open, or an empty one. A chat whose saved
+ * messages simply haven't loaded yet is not empty.
+ */
+export const selectOnWelcomePage = (state: StoreState) => {
+  const chat = selectCurrentChat(state);
+  return (
+    !chat ||
+    (!state.nonEmptyChatIds[chat.id] && (state.messageIdsByChatId[chat.id]?.length ?? 0) === 0)
+  );
+};
+
 export const selectMessagesForChat = (chatId?: string) => (state: StoreState) =>
   chatId ? getMessagesForChat(state, chatId) : [];
 
