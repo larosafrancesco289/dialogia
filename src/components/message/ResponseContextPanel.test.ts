@@ -8,6 +8,7 @@ import {
   summarizeActivity,
   toolAnnotation,
   toolDisplayName,
+  toolObject,
   type ToolActivityItem,
 } from '@/lib/ui/responseActivity';
 import type { MessageActivityItem, ToolCallLogEntry } from '@/lib/types';
@@ -233,6 +234,36 @@ test('a tool row speaks plainly: refusals quietly, failures on their own line, n
 
   assert.equal(toolAnnotation(tool({ duration: 34 })).text, '');
   assert.equal(toolAnnotation(tool({ duration: 2300 })).text, '2.3s');
+});
+
+test('a refused memory call says what came of it, never the reason written for the model', () => {
+  const refused = (name: string) =>
+    toolAnnotation({
+      id: 't',
+      type: 'tool_call',
+      name,
+      timestamp: 1,
+      status: 'error',
+      input: { folder: 'Learning' },
+      error: 'Learning holds only what the person studies with the tutor.',
+    });
+  const save = refused('memory_save');
+  assert.deepEqual(
+    [save.text, save.error, save.detail, save.hint],
+    ['Not saved', undefined, undefined, undefined],
+  );
+  assert.equal(refused('memory_read').text, 'Not found');
+  assert.equal(
+    toolObject({
+      id: 't',
+      type: 'tool_call',
+      name: 'memory_save',
+      timestamp: 1,
+      status: 'success',
+      input: { folder: 'Exams' },
+    }),
+    'Exams',
+  );
 });
 
 test('a tool call the person stopped reads quietly, not as a failure', () => {

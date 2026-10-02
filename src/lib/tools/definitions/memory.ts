@@ -5,7 +5,7 @@ export const MEMORY_READ_TOOL: ToolDefinition = {
   function: {
     name: 'memory_read',
     description:
-      'Read one folder of your long-term memory about the person: its notes (with ids), its subfolders and, for Learning, their tutor chats and progress. Use it when a folder from the memory index bears on the conversation, and before saving into a folder you have not read this turn.',
+      'Read one folder of your long-term memory about the person: its notes (with ids), its subfolders and, for Learning, their tutor chats and progress. Use it when a folder from the memory index bears on the conversation, and before saving into an existing folder you have not read this turn (a new folder needs no read).',
     parameters: {
       type: 'object',
       properties: {

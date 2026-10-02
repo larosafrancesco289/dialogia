@@ -220,12 +220,13 @@ test('executeStreamingTurn closes with tools withheld once the tool rounds run o
       draftThenTool('Checking.', 'quiz', '{"n":1}'),
       draftThenTool('Checking again.', 'quiz', '{"n":2}'),
       draftThenTool('One more.', 'quiz', '{"n":3}'),
+      draftThenTool('And the last.', 'quiz', '{"n":4}'),
       finish(ANSWER),
     ],
   });
 
-  assert.equal(run.calls, 4);
-  assert.deepEqual(run.toolChoices, ['auto', 'auto', 'auto', 'none']);
+  assert.equal(run.calls, 5);
+  assert.deepEqual(run.toolChoices, ['auto', 'auto', 'auto', 'auto', 'none']);
   assert.equal(run.message?.content, ANSWER);
 });
 
