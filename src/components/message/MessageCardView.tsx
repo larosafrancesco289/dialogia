@@ -166,7 +166,7 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
     <div
       className={messageClassName}
       data-mid={message.id}
-      aria-label={message.role === 'assistant' ? 'Assistant message' : 'Your message'}
+      aria-label={message.role === 'assistant' ? 'Reply' : 'Your message'}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

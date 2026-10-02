@@ -39,15 +39,15 @@ test('a cut-off reply says how it ended', () => {
 });
 
 test('the end of a reply is announced by how it ended', () => {
-  assert.equal(replyOutcomeAnnouncement({ finishReason: 'stop' }), 'Response complete');
-  assert.equal(replyOutcomeAnnouncement({ cutOff: 'stopped' }), 'Response stopped');
-  assert.equal(replyOutcomeAnnouncement({ cutOff: 'failed' }), 'Response failed');
-  assert.equal(replyOutcomeAnnouncement({ cutOff: 'interrupted' }), 'Response failed');
+  assert.equal(replyOutcomeAnnouncement({ finishReason: 'stop' }), 'Reply finished');
+  assert.equal(replyOutcomeAnnouncement({ cutOff: 'stopped' }), 'Reply stopped');
+  assert.equal(replyOutcomeAnnouncement({ cutOff: 'failed' }), 'Reply failed');
+  assert.equal(replyOutcomeAnnouncement({ cutOff: 'interrupted' }), 'Reply failed');
   assert.equal(
     replyOutcomeAnnouncement({ finishReason: 'length' }),
-    'Response stopped at the length limit',
+    'Reply stopped at the length limit',
   );
-  assert.equal(replyOutcomeAnnouncement(undefined), 'Response complete');
+  assert.equal(replyOutcomeAnnouncement(undefined), 'Reply finished');
 });
 
 test('a failed reply keeps saying why once its notice is gone', () => {
