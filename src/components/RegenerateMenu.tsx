@@ -11,6 +11,7 @@ import { useDismissOnOutside } from '@/lib/hooks/useDismissOnOutside';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import { focusComposer } from '@/lib/ui/focus';
+import { cn } from '@/lib/ui/cn';
 import { BottomSheet, SheetItem } from '@/components/ui/BottomSheet';
 
 export function RegenerateMenu({
@@ -209,7 +210,7 @@ export function RegenerateMenu({
         !isMobile &&
         createPortal(
           <div
-            className={`popover fixed p-1 w-60${coords.placement === 'up' ? ' popover--up' : ''}`}
+            className={cn('popover fixed p-1 w-60', coords.placement === 'up' && 'popover--up')}
             style={{
               zIndex: 80,
               left: coords.left,

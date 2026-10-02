@@ -8,6 +8,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { InlineTitleEdit } from '@/components/sidebar/InlineTitleEdit';
 import { BRANCH_TITLE_SUFFIX } from '@/lib/services/chatService';
+import { cn } from '@/lib/ui/cn';
 
 export type ChatRowViewProps = {
   chatId: string;
@@ -130,7 +131,7 @@ export function ChatRowView({
           {isTutor && <AcademicCapIcon className="chat-item__kind" aria-hidden="true" />}
           <div
             key={title}
-            className={`flex flex-1 min-w-0 text-sm${retitled ? ' chat-item__title--new' : ''}`}
+            className={cn('flex flex-1 min-w-0 text-sm', retitled && 'chat-item__title--new')}
           >
             {isTutor && <span className="sr-only">Tutoring: </span>}
             <span className="truncate">{name}</span>
