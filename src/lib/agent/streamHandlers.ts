@@ -129,14 +129,21 @@ export function createMessageStreamCallbacks(
   // A page put away (another tab, a phone's home screen) may never run the
   // next timer, or be closed from there: save what is on screen now.
   const checkpointNow = () => {
-    // Already marked: a request refused before its stream began ends there.
-    if (get().messagesById[assistantMessage.id]?.cutOff) return;
     reasoningAccumulator.flush();
     contentAccumulator.flush();
     clearCheckpointTimer();
     persistCheckpoint();
   };
-  const stopCheckpointingOnHide = onPageHidden(checkpointNow);
+  // Watched from the stream's first token: a stream that has begun always
+  // ends in onDone or onError, which stop it; a request refused before then
+  // never starts watching (its placeholder is already marked on disk).
+  let stopCheckpointingOnHide = () => {};
+  let watchingPage = false;
+  const watchPage = () => {
+    if (watchingPage || turnFinished) return;
+    watchingPage = true;
+    stopCheckpointingOnHide = onPageHidden(checkpointNow);
+  };
 
   const scheduleCheckpoint = () => {
     if (turnFinished || checkpointTimer) return;
@@ -318,9 +325,11 @@ export function createMessageStreamCallbacks(
     },
     onToken: (delta: string) => {
       if (firstTokenAt == null) firstTokenAt = performance.now();
+      watchPage();
       pushContent(delta);
     },
     onReasoningToken: (delta: string) => {
+      watchPage();
       // Thinking is timed on the reasoning line; the colophon's "first word"
       // is the first word of the answer.
       reasoningAccumulator.push(delta);

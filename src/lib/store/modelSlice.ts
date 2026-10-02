@@ -21,7 +21,7 @@ export type ModelSliceState = {
   models: ModelDescriptor[];
   modelIndex: ModelIndex;
   favoriteModelIds: string[];
-  /** No longer written or read; kept so a stored list survives (persisted key set). */
+  /** Never read; still persisted so a stored list survives (persisted key set). */
   hiddenModelIds: string[];
   // Cached ZDR model/provider ids, persisted so ZDR_CACHE_TTL_MS survives reloads.
   zdrModelIds?: string[];
@@ -68,6 +68,8 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
     const reportedUnreachable = new Set<string>();
 
     const load = async (opts?: { showErrors?: boolean }) => {
+      // Nothing was offered before this load: the first connect.
+      const firstModels = get().models.length === 0;
       // Memoized: only the first caller actually reads IndexedDB.
       await loadKeys();
       const authEntries = listEndpoints().flatMap((endpoint) => {
@@ -205,15 +207,20 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
       const empty = openEmptyChat(get());
       const modelId = empty?.settings.modelId;
       if (
+        firstModels &&
         modelId &&
         !empty.settings.features.tutor?.enabled &&
         !mergedModels.some((model) => model.id === modelId)
       ) {
         const settings = { ...empty.settings, modelId: resolveDefaultModelId(mergedModels) };
-        const updated = await ChatService.updateChat(empty, { settings }, repository, {
-          touch: false,
-        });
-        set((s) => ({ chats: s.chats.map((chat) => (chat.id === updated.id ? updated : chat)) }));
+        try {
+          const updated = await ChatService.updateChat(empty, { settings }, repository, {
+            touch: false,
+          });
+          set((s) => ({ chats: s.chats.map((chat) => (chat.id === updated.id ? updated : chat)) }));
+        } catch {
+          // Left on its old model; the picker still offers the new one.
+        }
       }
     };
 
@@ -229,12 +236,15 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
       loadModels(opts?: { showErrors?: boolean }) {
         if (running) {
           rerunShowsErrors ||= !!opts?.showErrors;
-          rerun ??= running.then(() => {
-            const showErrors = rerunShowsErrors;
-            rerun = null;
-            rerunShowsErrors = false;
-            return get().loadModels({ showErrors });
-          });
+          // A failed load still lets the queued one run.
+          rerun ??= running
+            .catch(() => undefined)
+            .then(() => {
+              const showErrors = rerunShowsErrors;
+              rerun = null;
+              rerunShowsErrors = false;
+              return get().loadModels({ showErrors });
+            });
           return rerun;
         }
         running = load(opts).finally(() => {

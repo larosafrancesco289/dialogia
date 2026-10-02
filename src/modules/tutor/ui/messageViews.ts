@@ -131,7 +131,7 @@ export function carriedOverWords(
 ): string {
   const sameTopic = carried.topic.trim().toLowerCase() === topic.trim().toLowerCase();
   const from = !title
-    ? `${carried.topic} in another tutor chat`
+    ? `${carried.topic} in another learning session`
     : sameTopic
       ? title
       : `${carried.topic} in ${title}`;

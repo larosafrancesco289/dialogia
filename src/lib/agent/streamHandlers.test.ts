@@ -208,7 +208,7 @@ test('a finished or failed reply is not saved again as cut off when the page clo
     const counts = [done.persisted.length, failed.persisted.length];
     close();
     assert.deepEqual([done.persisted.length, failed.persisted.length], counts);
-    // Marked before its stream began (the executor's job): left as it is.
+    // Refused before its stream began: never watched the page, left as it is.
     const refused = harness();
     (refused.stored() as Message).cutOff = 'failed';
     close();

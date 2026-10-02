@@ -75,9 +75,9 @@ function bySubject(records: LearningRecord[]): { subject?: string; records: Lear
 export function LearningRecords({ records }: { records: LearningRecord[] }) {
   if (!records.length) return null;
   return (
-    <section className="memory-records" aria-label="Tutor chats">
+    <section className="memory-records" aria-label="Learning sessions">
       <p className="memory-hint">
-        Tutor chats appear here on their own, with their progress read live from the chat.
+        Learning sessions appear here on their own, with their progress read live from the chat.
       </p>
       {bySubject(records).map((group, i) => (
         <div key={group.subject ?? `alone-${i}`} className="memory-subject">

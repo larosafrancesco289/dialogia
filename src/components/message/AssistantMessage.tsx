@@ -160,7 +160,8 @@ export function AssistantMessage({
   // An empty version still has a footer: the way back to the others is in it.
   const hasVersions = versionCount(message) > 1;
   // Tried again with another model, say: the colophon names it even without its stats.
-  const writtenByOtherModel = !!message.model && message.model !== chat?.settings.modelId;
+  const writtenByOtherModel =
+    !canned && !!message.model && message.model !== chat?.settings.modelId;
   const writing = isStreaming && isLatestAssistant;
   const quietSince = useQuietSince(displayContent, writing);
   // A reply written while it was open fades its footer in as the words end;
@@ -335,7 +336,7 @@ export function AssistantMessage({
       {!isStreaming &&
         !isEditing &&
         (displayContent.trim() || hasVersions) &&
-        (showInlineActions || showStats || writtenByOtherModel) && (
+        (showInlineActions || showStats || writtenByOtherModel || !!resolvedCitationSources) && (
           <div
             className={cn(
               'message-foot px-4',

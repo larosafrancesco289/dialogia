@@ -34,11 +34,8 @@ export const CONNECT_OPTIONS: Record<
 
 /** Where each provider hands out keys. */
 export const KEY_PAGES = {
-  openrouter: { href: 'https://openrouter.ai/keys', label: 'openrouter.ai/keys' },
-  anthropic: {
-    href: 'https://console.anthropic.com/settings/keys',
-    label: 'console.anthropic.com',
-  },
+  openrouter: { href: 'https://openrouter.ai/keys' },
+  anthropic: { href: 'https://console.anthropic.com/settings/keys' },
 } as const;
 
 const KEY_REFS: Record<KeyChoice, string> = {

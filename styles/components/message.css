@@ -138,7 +138,6 @@
     }
   }
 
-  /* The colophon: a line of record under a reply, in the book face. */
   /* "5 sources found", beside the colophon and in its voice; the list
      opens on a line of its own under the footer. */
   .message-sources__toggle {
