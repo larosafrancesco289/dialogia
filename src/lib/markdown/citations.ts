@@ -69,6 +69,22 @@ export function titleForSource(source: { title?: string; url?: string }) {
   return source.title || hostname(source.url) || source.url || 'Untitled source';
 }
 
+/**
+ * The URL without its `utm_*` tracking parameters (OpenAI's search adds
+ * `utm_source=openai` to every source), or as it was when it has none.
+ */
+export function withoutTracking(url: string): string {
+  try {
+    const parsed = new URL(url);
+    const tracking = [...parsed.searchParams.keys()].filter((key) => key.startsWith('utm_'));
+    if (!tracking.length) return url;
+    tracking.forEach((key) => parsed.searchParams.delete(key));
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
 function markdownUrl(url: string) {
   return `<${url.replace(/>/g, '%3E')}>`;
 }
@@ -96,9 +112,40 @@ export function linkCitationMarkers(content: string, sources?: MarkdownCitationS
       const source = sources[Number(rawIndex) - 1];
       if (!source?.url) return undefined;
       const title = markdownTitle(`Source ${rawIndex}: ${titleForSource(source)}`);
-      return `[${rawIndex}](${markdownUrl(source.url)} ${title})`;
+      return `[${rawIndex}](${markdownUrl(withoutTracking(source.url))} ${title})`;
     });
     if (linked.every((link) => link === undefined)) return run;
     return linked.map((link, i) => link ?? `[${markers[i]}]`).join(', ');
+  });
+}
+
+// "([python.org](https://…))": a parenthesis holding only links, the way
+// provider-native search cites. Several may share it, split by commas.
+const LINK = String.raw`\[[^[\]\n]+\]\(<?([^()\s<>]+)>?\)`;
+const LINK_RE = new RegExp(LINK, 'g');
+const LINK_GROUP_RE = new RegExp(String.raw`\(\s*${LINK}(?:\s*[,;]?\s*${LINK})*\s*\)`, 'g');
+
+/** One spelling per page: no tracking, and "https://a.test" is "https://a.test/". */
+function urlKey(url: string): string {
+  try {
+    return new URL(withoutTracking(url)).href;
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * Turns a provider's own citations, links in parentheses to the pages its
+ * search returned, into [n] markers for those sources, so they read like any
+ * other citation. A group with a link to anything else is left as written.
+ */
+export function citeSourceLinks(content: string, sources?: MarkdownCitationSource[]) {
+  if (!sources?.length) return content;
+  const indexOf = (url: string) =>
+    sources.findIndex((source) => source.url && urlKey(source.url) === urlKey(url));
+  return content.replace(LINK_GROUP_RE, (group: string) => {
+    const indices = [...group.matchAll(LINK_RE)].map((link) => indexOf(link[1]));
+    if (indices.some((index) => index < 0)) return group;
+    return indices.map((index) => `[${index + 1}]`).join('');
   });
 }

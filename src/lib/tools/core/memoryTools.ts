@@ -40,10 +40,11 @@ const readMemory: PlanningToolHandler = async ({ parsedArgs, context }) => {
   const { folders, notes } = context.get().memory;
   const folder = resolveFolder(folders, text(parsedArgs.folder));
   if (!folder) {
+    // Often a folder the model means to save into: a new one needs no read first.
     return done({
       ok: false,
       error: `There is no folder "${text(parsedArgs.folder)}".`,
-      hint: 'Use a folder name from the memory index.',
+      hint: `The folders are: ${folders.map((f) => folderPath(folders, f)).join(', ')}. To save into a new folder, call memory_save with its name and new_folder_description: it is created.`,
     });
   }
   const subfolders = subfoldersOf(folders, folder.id).map(

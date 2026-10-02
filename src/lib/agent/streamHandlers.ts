@@ -68,6 +68,20 @@ export function cleanStreamedText(text: string, timestamps: boolean): string {
   return cleaned?.trim() || '';
 }
 
+/** Calls `fn` when the page is hidden or closing; returns the unsubscribe. */
+function onPageHidden(fn: () => void): () => void {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return () => undefined;
+  const onVisibility = () => {
+    if (document.visibilityState === 'hidden') fn();
+  };
+  window.addEventListener('pagehide', fn);
+  document.addEventListener('visibilitychange', onVisibility);
+  return () => {
+    window.removeEventListener('pagehide', fn);
+    document.removeEventListener('visibilitychange', onVisibility);
+  };
+}
+
 export function createMessageStreamCallbacks(
   options: MessageStreamOptions,
   timing: { startedAt: number },
@@ -90,8 +104,9 @@ export function createMessageStreamCallbacks(
   let roundSentAt = Date.now();
 
   // Periodically checkpoint the partial response to storage so a crash or
-  // reload mid-stream cannot lose everything that already arrived.
-  const CHECKPOINT_INTERVAL_MS = 2500;
+  // reload mid-stream loses at most a second of it. Often enough to matter:
+  // a reload tears the page down before a write begun on its way out lands.
+  const CHECKPOINT_INTERVAL_MS = 1000;
   let checkpointTimer: ReturnType<typeof setTimeout> | null = null;
   let turnFinished = false;
 
@@ -110,6 +125,18 @@ export function createMessageStreamCallbacks(
     if (!current) return;
     void Promise.resolve(persistMessage({ ...current, cutOff })).catch(() => undefined);
   };
+
+  // A page put away (another tab, a phone's home screen) may never run the
+  // next timer, or be closed from there: save what is on screen now.
+  const checkpointNow = () => {
+    // Already marked: a request refused before its stream began ends there.
+    if (get().messagesById[assistantMessage.id]?.cutOff) return;
+    reasoningAccumulator.flush();
+    contentAccumulator.flush();
+    clearCheckpointTimer();
+    persistCheckpoint();
+  };
+  const stopCheckpointingOnHide = onPageHidden(checkpointNow);
 
   const scheduleCheckpoint = () => {
     if (turnFinished || checkpointTimer) return;
@@ -304,6 +331,7 @@ export function createMessageStreamCallbacks(
       settleReasoning();
       turnFinished = true;
       clearCheckpointTimer();
+      stopCheckpointingOnHide();
 
       const state = get();
       const current = state.messagesById[assistantMessage.id];
@@ -369,6 +397,7 @@ export function createMessageStreamCallbacks(
       applyMessageUpdate(set, chatId, assistantMessage.id, (msg) => ({ ...msg, ...marks }));
       persistCheckpoint(marks.cutOff);
       turnFinished = true;
+      stopCheckpointingOnHide();
       // The reply says why where it stopped; a toast is for a chat that is
       // not on screen (over an open one it covered the first message).
       if (marks.cutOffReason && get().selectedChatId !== chatId) notify(get, marks.cutOffReason);

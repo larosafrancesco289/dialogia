@@ -11,17 +11,20 @@ export function MessageColophon({
   message,
   chat,
   models,
+  stats = true,
 }: {
   message: Message;
   chat: Chat;
   models: ModelDescriptor[];
+  /** False: the model's name alone, for a reply another model wrote. */
+  stats?: boolean;
 }) {
   const modelId = message.model || chat.settings.modelId;
   const modelInfo = models.find((model) => model.id === modelId);
   const parts: string[] = [formatModelLabel({ model: modelInfo, fallbackId: modelId })];
 
   const metrics = message.metrics;
-  if (metrics) {
+  if (metrics && stats) {
     if (metrics.ttftMs != null) parts.push(`first word in ${formatSeconds(metrics.ttftMs)}`);
     const out = metrics.completionTokens ?? message.tokensOut;
     if (out != null) parts.push(`${out.toLocaleString()} tokens`);

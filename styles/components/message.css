@@ -139,6 +139,34 @@
   }
 
   /* The colophon: a line of record under a reply, in the book face. */
+  /* "5 sources found", beside the colophon and in its voice; the list
+     opens on a line of its own under the footer. */
+  .message-sources__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-family: var(--font-serif-assistant);
+    font-style: italic;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: var(--color-fg-muted);
+  }
+  .message-sources__toggle:hover {
+    color: var(--color-fg);
+  }
+  .message-sources__toggle .response-ledger__chevron {
+    width: 12px;
+    height: 12px;
+  }
+  .message-sources__list {
+    flex-basis: 100%;
+    padding-bottom: var(--space-2);
+  }
+
   .message-colophon {
     margin: 0;
     font-family: var(--font-serif-assistant);

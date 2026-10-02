@@ -75,6 +75,11 @@ test('a reply refused before its first token is marked failed and saved that way
     assert.ok(spawned);
     const reply = spawned.assistantByModel.get(model.id);
     assert.ok(reply);
+    // Until it has an ending, the reply on disk reads as one the page closed on;
+    // on screen it is simply under way.
+    const [placeholder] = await repository.loadMessages([reply.id]);
+    assert.equal(placeholder?.cutOff, 'interrupted');
+    assert.equal(get().messagesById[reply.id]?.cutOff, undefined);
     await executeModelTurn({
       modelId: model.id,
       isPrimary: true,

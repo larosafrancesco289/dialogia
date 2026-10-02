@@ -519,6 +519,16 @@ test('the tools write to memory, keep each change on the reply, and undo it', as
   assert.equal(read.result?.ok, true);
   assert.deepEqual(read.result?.notes, [`- [${noteHandle(write.noteId)}] Plays the cello`]);
 
+  // A read of a folder that is not there (often one the model means to save
+  // into) names the folders there are, and how a new one is made.
+  const missing = await call('memory_read', { folder: 'Immunology' });
+  assert.equal(missing.result?.ok, false);
+  assert.match(String(missing.result?.hint), /The folders are: About you, Learning/);
+  assert.match(
+    String(missing.result?.hint),
+    /memory_save with its name and new_folder_description/,
+  );
+
   const bad = await call('memory_forget', { note: 'nothing' });
   assert.equal(bad.result?.ok, false);
 
@@ -781,7 +791,9 @@ test('memory_save into Learning, or a folder inside it, is refused outside a tut
       new_folder_description: 'Scales',
     });
     assert.equal(refused.result?.ok, false, folder);
+    // It says where to save instead, a new folder for the subject among the choices.
     assert.match(String(refused.result?.hint), /About you/);
+    assert.match(String(refused.result?.hint), /memory_save again .*new_folder_description/);
   }
   assert.equal(store.getState().messagesById[reply.id].memoryWrites, undefined);
 

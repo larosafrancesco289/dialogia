@@ -136,13 +136,23 @@ function toolQuery(item: ToolActivityItem) {
   return '';
 }
 
-/** The object of the tool call — what was searched for or fetched. */
+/** The object of the tool call — what was searched for or fetched, or which memory folder. */
 export function toolObject(item: ToolActivityItem) {
   const query = toolQuery(item);
   if (query) return `‘${query}’`;
   if (typeof item.input?.url === 'string') return hostname(item.input.url);
+  if (typeof item.input?.folder === 'string') return item.input.folder;
   return '';
 }
+
+// A memory call refused (a folder that is not there, a note already gone) is
+// the model's guess corrected: it reads why, addressed to it, and tries
+// another way. The person needs only the outcome, in plain words.
+const MEMORY_REFUSED: Record<string, string> = {
+  memory_read: 'Not found',
+  memory_save: 'Not saved',
+  memory_forget: 'Not found',
+};
 
 // A wait worth noting: a tool that answers in milliseconds (the tutor's own
 // bookkeeping) needs no clock beside it.
@@ -163,6 +173,7 @@ function toolResultCount(item: ToolActivityItem) {
  * by the session's rules (the model reads why and carries on), not a failure:
  * it says so quietly, with the reason, which is addressed to the model, kept
  * to a tooltip. A call the person's Stop cut short says so just as quietly.
+ * A refused memory call says only what came of it (`MEMORY_REFUSED`).
  * A real failure keeps the error colour and its message on its own line, so it
  * never squeezes the name.
  */
@@ -179,12 +190,11 @@ export function toolAnnotation(item: ToolActivityItem): {
   if (item.status === 'error') {
     if (item.category === 'tutor') return { text: 'Not applied', hint: item.error };
     if (item.error === TOOL_CALL_STOPPED) return { text: TOOL_CALL_STOPPED };
+    if (MEMORY_REFUSED[item.name]) return { text: MEMORY_REFUSED[item.name] };
     return { text: 'Failed', error: true, detail: item.error };
   }
-  if (item.name === 'web_search') {
-    const results = toolResultCount(item);
-    return { text: `${results ?? 0} result${results === 1 ? '' : 's'}` };
-  }
+  // How many pages a search found is said once, on the sources line.
+  if (item.name === 'web_search' && toolResultCount(item) === 0) return { text: 'No results' };
   if (typeof item.metadata?.notes === 'string') return { text: item.metadata.notes };
   return { text: formatDuration(item.duration) };
 }

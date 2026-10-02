@@ -139,3 +139,25 @@ test('before KaTeX arrives, maths is quiet plain text without its dollars, never
   assert.ok(!html.includes('$'));
   assert.ok(!/<code|<pre/.test(html));
 });
+
+test('a single line break in prose stays a line break, in lists and quotes too', () => {
+  assert.match(render('Po\nTiber\nArno'), /<p dir="auto">Po<br\/>\s*Tiber<br\/>\s*Arno<\/p>/);
+  assert.match(render('- one\n  still one'), /one<br\/>\s*still one/);
+  assert.match(render('> a\n> b'), /a<br\/>\s*b/);
+  // Code keeps its own lines, with no break elements inside.
+  assert.ok(!render('```\nx\ny\n```').includes('<br'));
+  assert.ok(!render('Use `a` and\n`b`').includes('<code><br'));
+});
+
+test('a citation is a small chip with its number, whatever search found the source', () => {
+  // Built-in search's [n] and a provider's parenthesised link read the same.
+  const marker = render('Dembélé won in 2025. [2]', sources);
+  const link = render(
+    'Dembélé won in 2025. ([two.test](https://two.test?utm_source=openai))',
+    sources,
+  );
+  assert.match(marker, /<a href="https:\/\/two.test"[^>]*class="citation"[^>]*>2<\/a>/);
+  assert.equal(link, marker);
+  // A link that merely reads as a number is not a citation.
+  assert.ok(!render('Page [2](https://x.test).').includes('citation'));
+});

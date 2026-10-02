@@ -1,4 +1,6 @@
 import { fetchZdrLists } from '@/lib/openrouter';
+import { findModelEndpoint } from '@/lib/transport/endpointRegistry';
+import type { ProviderEndpoint } from '@/lib/transport/endpoints';
 
 export type ZdrLists = {
   modelIds: Set<string>;
@@ -56,9 +58,28 @@ export async function ensureZdrLists(
   };
 }
 
+// This machine, or the local network: loopback, private ranges, .local names.
+const LOCAL_HOST_RE =
+  /^(?:localhost|.+\.localhost|.+\.local|::1|127(?:\.\d+){3}|10(?:\.\d+){3}|192\.168(?:\.\d+){2}|172\.(?:1[6-9]|2\d|3[01])(?:\.\d+){2})$/i;
+
+/**
+ * Whether the endpoint is the person's own server on this machine or their
+ * network. What it is sent stays with them, so it has no retention for zero
+ * data retention to rule out; a server elsewhere is a provider like any other.
+ */
+export function isLocalServer(endpoint?: Pick<ProviderEndpoint, 'kind' | 'baseUrl'>): boolean {
+  if (endpoint?.kind !== 'openai-compatible' || !endpoint.baseUrl) return false;
+  try {
+    return LOCAL_HOST_RE.test(new URL(endpoint.baseUrl).hostname.replace(/^\[|\]$/g, ''));
+  } catch {
+    return false;
+  }
+}
+
 export function evaluateZdrModel(modelId: string, lists: ZdrLists): ZdrCheck {
   const trimmed = modelId.trim();
   if (!trimmed) return { status: 'forbidden', reason: 'model' };
+  if (isLocalServer(findModelEndpoint(trimmed))) return { status: 'allowed' };
   if (lists.modelIds.size > 0) {
     return lists.modelIds.has(trimmed)
       ? { status: 'allowed' }

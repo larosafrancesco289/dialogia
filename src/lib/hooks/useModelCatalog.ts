@@ -36,6 +36,7 @@ export function useAvailableModels() {
  */
 export function useCuratedModels() {
   const allModels = useChatStore((s) => s.models);
+  const zdrOnly = useChatStore((s) => s.ui.zdrOnly === true);
 
   return useMemo(() => {
     if (!hasAnyEndpoint()) return [];
@@ -50,7 +51,9 @@ export function useCuratedModels() {
         ...entry,
         id: concreteId,
         // What it names today leads: a long description is cut at the end.
-        description: `${currentName} · ${entry.description}`,
+        // Zero data retention may leave only an older model of the family, which
+        // the family's description does not describe: it goes by its name alone.
+        description: zdrOnly ? currentName : `${currentName} · ${entry.description}`,
       };
     });
     // A family can resolve to a model that is also listed by name; the list
@@ -58,7 +61,7 @@ export function useCuratedModels() {
     const seen = new Set<string>();
     const unique = resolved.filter((entry) => !seen.has(entry.id) && !!seen.add(entry.id));
     return filterCuratedModelsByAvailability(unique, availableIds);
-  }, [allModels]);
+  }, [allModels, zdrOnly]);
 }
 
 /** The concrete model a new chat starts with. */

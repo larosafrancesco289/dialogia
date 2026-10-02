@@ -83,7 +83,7 @@ export function MarkdownRenderer({
     return (
       <span ref={rootRef} className="markdown markdown--inline">
         <ReactMarkdown
-          remarkPlugins={REMARK_PLUGINS}
+          remarkPlugins={INLINE_REMARK_PLUGINS}
           rehypePlugins={rehypePlugins}
           components={INLINE_COMPONENTS}
           disallowedElements={INLINE_UNWRAPPED}
@@ -116,7 +116,32 @@ export function MarkdownRenderer({
 // block in the reply because their element types changed.
 const StreamingContext = createContext(false);
 
-const REMARK_PLUGINS = [remarkGfm, remarkMath];
+type MdastNode = { type: string; value?: string; children?: MdastNode[] };
+
+// A line break in prose stays a line break, as in every chat app: markdown
+// alone would join "Po\nTiber\nArno" into one line. Code and maths are not
+// text nodes, so they keep their own lines anyway.
+function keepLineBreaks(node: MdastNode) {
+  if (!node.children) return;
+  node.children = node.children.flatMap((child) => {
+    if (child.type !== 'text' || !child.value?.includes('\n')) {
+      keepLineBreaks(child);
+      return [child];
+    }
+    return child.value
+      .split(/\r?\n/)
+      .flatMap((line, i) => [
+        ...(i ? [{ type: 'break' }] : []),
+        ...(line ? [{ type: 'text', value: line }] : []),
+      ]);
+  });
+}
+
+const remarkLineBreaks = () => keepLineBreaks;
+
+// Inline text is one line set inside other text, so it keeps markdown's joining.
+const INLINE_REMARK_PLUGINS = [remarkGfm, remarkMath];
+const REMARK_PLUGINS = [...INLINE_REMARK_PLUGINS, remarkLineBreaks];
 
 // Maths reaches these overrides only while KaTeX is still on its way (once
 // it is here, rehype-katex has replaced it): set it as quiet plain text, its
@@ -192,13 +217,16 @@ const COMPONENTS: Components = {
   // becomes node="[object Object]".
   a: ({ href, children, node: _node, ...props }) => {
     const isExternal = href && /^https?:\/\//.test(href);
-    // A citation shows only its number; its title says which source it is.
-    const isCitation = typeof children === 'string' && /^\d+$/.test(children);
+    // A citation (`linkCitationMarkers`) shows only its number, set small;
+    // its title says which source it is.
+    const isCitation =
+      typeof children === 'string' && !!props.title?.startsWith(`Source ${children}: `);
     return (
       <a
         href={href}
         target={isExternal ? '_blank' : undefined}
         rel={isExternal ? 'noopener noreferrer' : undefined}
+        className={isCitation ? 'citation' : undefined}
         aria-label={isCitation ? props.title : undefined}
         {...props}
       >

@@ -94,7 +94,12 @@ export const spawnTurnMessages = async ({
     ui: adjustActiveTurnCount(state.ui, chatId, assistantPlaceholders.length),
   }));
 
-  await persistMessages(repository, [userMessage, ...assistantPlaceholders]);
+  // On disk a reply starts out as one the page closed on: a reload before its
+  // first checkpoint still says what happened. Its ending clears the mark.
+  await persistMessages(repository, [
+    userMessage,
+    ...assistantPlaceholders.map((msg) => ({ ...msg, cutOff: 'interrupted' as const })),
+  ]);
 
   return { userMessage, assistantByModel, masterController, markComplete, completeAll };
 };

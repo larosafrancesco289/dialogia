@@ -19,15 +19,12 @@
   .markdown p {
     margin: 0.5rem 0 0.75rem;
   }
+  /* No automatic hyphens: a learner meeting "antibody" for the first time
+     should not read "anti-body". */
   .markdown p,
   .markdown li,
   .markdown blockquote {
     text-wrap: pretty;
-    hyphens: auto;
-  }
-  .markdown code,
-  .markdown a {
-    hyphens: manual;
   }
   .markdown h1,
   .markdown h2,
@@ -255,7 +252,6 @@
   .markdown td {
     overflow-wrap: normal;
     word-break: normal;
-    hyphens: manual;
   }
   /* Booktabs: a heavy rule above and below, a light one under the header,
      and nothing between rows. */
@@ -398,6 +394,32 @@
   .markdown .token.italic {
     font-style: italic;
   }
+}
+
+/* A citation: its number, small and raised in a quiet ink chip, never
+   underlined, so it reads as a reference rather than a stray digit. */
+.markdown a.citation {
+  display: inline-block;
+  /* Not a thumb-sized target: it sits in a line of text, and the footer's
+     list of sources is the way in on a phone. */
+  min-height: 0;
+  min-width: 1.5em;
+  margin: 0 0.1em;
+  padding: 0 0.3em;
+  font-family: var(--font-sans);
+  font-size: 0.62em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+  text-align: center;
+  vertical-align: 0.5em;
+  color: var(--color-fg-muted);
+  background: color-mix(in oklab, var(--color-fg) 7%, transparent);
+  border-radius: var(--radius-inner);
+  text-decoration: none;
+}
+.markdown a.citation:hover {
+  color: var(--color-rubric);
+  background: color-mix(in oklab, var(--color-rubric) 12%, transparent);
 }
 
 /* Heading anchors (rehype-slug + autolink): a heading keeps its rubric and
