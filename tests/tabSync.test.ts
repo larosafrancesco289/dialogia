@@ -64,8 +64,8 @@ function twoTabs(chats: Chat[]) {
   };
 }
 
-async function savedChat(title = 'Chat') {
-  const chat = makeChat({ id: uniqueId('chat'), title });
+async function savedChat(title = 'Chat', updatedAt = 1) {
+  const chat = makeChat({ id: uniqueId('chat'), title, updatedAt });
   await repository.saveChat(chat);
   return chat;
 }
@@ -245,7 +245,12 @@ test('a tab never re-announces or re-saves what it adopted', async () => {
 });
 
 test('a chat deleted in another tab goes, and selection moves as a local delete moves it', async () => {
-  const [first, open, next] = [await savedChat(), await savedChat(), await savedChat()];
+  // Listed newest first: first, open, next.
+  const [first, open, next] = [
+    await savedChat('First', 3),
+    await savedChat('Open', 2),
+    await savedChat('Next', 1),
+  ];
   const tabs = twoTabs([first, open, next]);
   tabs.b.store.setState({ selectedChatId: open.id });
   try {
