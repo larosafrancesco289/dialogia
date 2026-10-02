@@ -273,7 +273,7 @@ export function EndpointProbe({
         ) : null}
       </div>
       <p className="field__hint">
-        Sends a handful of one-token requests
+        Sends a handful of tiny requests
         {modelId ? ` to ${modelId}` : ''} to see which fields this server accepts, so the checkboxes
         below can be set from an answer instead of a guess.
       </p>
