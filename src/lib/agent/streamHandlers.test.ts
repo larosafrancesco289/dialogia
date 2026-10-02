@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { mock, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMessageStreamCallbacks } from '@/lib/agent/streamHandlers';
 import type { Message } from '@/lib/types';
@@ -214,3 +214,18 @@ test('a finished or failed reply is not saved again as cut off when the page clo
     close();
     assert.equal(refused.persisted.length, 0);
   }));
+
+test('a reply under way is saved within a second of its words arriving', () => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  try {
+    const { callbacks, persisted } = harness();
+    callbacks.onToken?.('Words on screen');
+    mock.timers.tick(32);
+    assert.equal(persisted.length, 0);
+    mock.timers.tick(1000);
+    assert.equal(persisted.at(-1)?.content, 'Words on screen');
+    assert.equal(persisted.at(-1)?.cutOff, 'interrupted');
+  } finally {
+    mock.timers.reset();
+  }
+});
