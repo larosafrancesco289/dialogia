@@ -68,8 +68,8 @@ export type NoticeTone = 'info' | 'success' | 'error';
 export type UiSnapshot = {
   showSettings: boolean;
   /**
-   * The provider setup sheet was opened; session-scoped, never persisted. It
-   * shows unless the visitor dismissed it (see `selectSetupSheetOpen`).
+   * The provider setup sheet is open; session-scoped, never persisted. It
+   * opens only when asked for (Connect a model, a send with no key).
    */
   setupOpen?: boolean;
   /** The Memory page is open; session-scoped, never persisted. */

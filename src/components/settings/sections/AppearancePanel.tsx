@@ -19,7 +19,6 @@ type AppearancePanelProps = {
   showStats: boolean;
   setShowThinking: (v: boolean) => void;
   setShowStats: (v: boolean) => void;
-  onShowIntro: () => void;
   // Developer
   showToolCallLog: boolean;
   setShowToolCallLog: (v: boolean) => void;
@@ -36,7 +35,6 @@ export function AppearancePanel(props: AppearancePanelProps) {
     showStats,
     setShowThinking,
     setShowStats,
-    onShowIntro,
     showToolCallLog,
     setShowToolCallLog,
     debugMode,
@@ -113,24 +111,6 @@ export function AppearancePanel(props: AppearancePanelProps) {
             label="Show reply details"
             description="A line under each reply: which model wrote it, how fast, and what it cost."
           />
-          <div className="settings-row">
-            <div className="settings-row-label">
-              <div className="settings-row-label-text">Intro tour</div>
-              <div className="settings-row-label-description">
-                The short tour from your first visit.
-              </div>
-            </div>
-            <div className="settings-row-control">
-              <button
-                type="button"
-                className="btn-ghost btn-sm"
-                aria-label="Show the intro tour"
-                onClick={onShowIntro}
-              >
-                Show
-              </button>
-            </div>
-          </div>
         </SettingsSection>,
       )}
 

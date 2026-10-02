@@ -23,9 +23,9 @@ export function useAppBootstrap() {
     initializeApp();
   }, [initializeApp]);
 
-  // The model list (and, with nothing configured, the Connect a model sheet)
-  // comes up with the app on every layout. It used to ride on the desktop
-  // sidebar, so phones only loaded models once Chats or Settings opened.
+  // The model list comes up with the app on every layout. It used to ride on
+  // the desktop sidebar, so phones only loaded models once Chats or Settings
+  // opened.
   useEffect(() => {
     void loadModels();
   }, [loadModels]);

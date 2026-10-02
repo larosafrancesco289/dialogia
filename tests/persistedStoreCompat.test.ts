@@ -63,9 +63,6 @@ test('a pre-refactor persisted blob survives migrate + merge', () => {
   assert.equal(merged.ui.tutor?.defaultModelId, 'anthropic/claude-3.5-haiku');
   assert.equal(merged.ui.plan?.rightPanelOpen, true);
 
-  // A blob written before the intro tour existed leaves the tour unseen.
-  assert.equal(merged.ui.introSeen, false);
-
   // Ephemeral UI state must still be present after merging a partial blob.
   assert.ok(merged.ui.mobile);
   assert.ok(merged.ui.search);
@@ -86,17 +83,17 @@ test('partialize emits the same key set the pre-refactor build wrote', () => {
     'zdrModelIds',
     'zdrProviderIds',
   ]);
+  // `introSeen` and `setupDismissed` went with the first-run tour and the setup
+  // sheet opening by itself; a stored value is simply never read again.
   assert.deepEqual(Object.keys(persisted.ui).sort(), [
     'chatDefaults',
     'debug',
     'dynamicDefaultResolutions',
     'flags',
-    'introSeen',
     'memoryEnabled',
     'memorySensitive',
     'messageTimestamps',
     'plan',
-    'setupDismissed',
     'showSettings',
     'sidebarCollapsed',
     'tutor',

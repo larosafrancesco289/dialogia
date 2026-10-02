@@ -10,7 +10,6 @@ import { API_ERROR_CODES, ApiError } from '@/lib/api/errors';
 import { handleTurnApiError } from '@/lib/services/turns/errors';
 import { resolveDefaultModelId } from '@/lib/models';
 import {
-  selectIntroTourOpen,
   selectResolvedModelId,
   selectResolvedTurnSettings,
   selectSetupSheetOpen,
@@ -259,66 +258,24 @@ test('only an absolute http(s) address is a base URL', () => {
   assert.equal(isValidBaseUrl(''), false);
 });
 
-test('with nothing configured, loading models opens the setup sheet, but not over Settings', async () => {
+test('with nothing configured, loading models leaves the setup sheet shut: the welcome page asks', async () => {
   resetEndpointRegistryForTest();
   const store = createTestStore();
   await store.getState().loadModels();
-  assert.equal(store.getState().ui.setupOpen, true);
-
-  const inSettings = createTestStore();
-  inSettings.getState().setUI({ showSettings: true });
-  await inSettings.getState().loadModels();
-  assert.notEqual(inSettings.getState().ui.setupOpen, true);
+  assert.equal(selectSetupSheetOpen(store.getState()), false);
 });
 
-test('a dismissed setup sheet stays shut on the next load, until a send asks for it', async () => {
+test('a send with no key asks for one with the setup sheet', () => {
   resetEndpointRegistryForTest();
-  const first = createTestStore();
-  await first.getState().loadModels();
-  assert.equal(selectSetupSheetOpen(first.getState()), true);
-  // Not now.
-  first.getState().setUI({ setupOpen: false, setupDismissed: true });
-
-  // A reload: the dismissal is persisted, and the load that opens the sheet by itself is quiet.
-  const reloaded = createTestStore();
-  reloaded.setState(
-    mergePersistedState(reloaded.getState(), buildPersistedState(first.getState()) as never),
-  );
-  await reloaded.getState().loadModels();
-  assert.equal(selectSetupSheetOpen(reloaded.getState()), false);
-
-  // Sending with no key is asking for it.
+  const store = createTestStore();
   const auth = resolveSingleModelAuth({
     modelId: 'openai/gpt-4o',
-    modelIndex: reloaded.getState().modelIndex,
-    set: reloaded.setState,
-    get: reloaded.getState,
+    modelIndex: store.getState().modelIndex,
+    set: store.setState,
+    get: store.getState,
   });
   assert.equal(auth, null);
-  assert.equal(selectSetupSheetOpen(reloaded.getState()), true);
-});
-
-test('a first visit meets the setup sheet, then the tour, never both at once', async () => {
-  resetEndpointRegistryForTest();
-  const store = createTestStore();
-  const showing = () => ({
-    setup: selectSetupSheetOpen(store.getState()),
-    tour: selectIntroTourOpen(store.getState()),
-  });
-  // Before the models load, nothing is known yet: the tour waits for setup.
-  assert.deepEqual(showing(), { setup: false, tour: false });
-  await store.getState().loadModels();
-  assert.deepEqual(showing(), { setup: true, tour: false });
-  store.getState().setUI({ setupOpen: false, setupDismissed: true });
-  assert.deepEqual(showing(), { setup: false, tour: true });
-  store.getState().setUI({ introSeen: true });
-  assert.deepEqual(showing(), { setup: false, tour: false });
-});
-
-test('with a provider already connected, the tour needs no setup first', () => {
-  const store = createTestStore();
-  store.setState({ models: [{ id: 'openai/gpt-4o' } as never] });
-  assert.equal(selectIntroTourOpen(store.getState()), true);
+  assert.equal(selectSetupSheetOpen(store.getState()), true);
 });
 
 test('a built-in provider is connected once it holds a key, and not before', async () => {

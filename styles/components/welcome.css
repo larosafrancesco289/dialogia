@@ -1,0 +1,13 @@
+@layer components {
+  /* ===== Welcome page: Chat / Learn =====
+     The switch sits above the composer on a fresh page. */
+  .welcome-modes {
+    align-self: center;
+    margin-bottom: var(--space-4);
+  }
+  .welcome-modes .segment {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+}

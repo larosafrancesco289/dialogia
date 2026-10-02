@@ -11,8 +11,6 @@ export function buildPersistedUiState(ui: UIState): PersistedUiState {
     // A fold the narrow window made is not the reader's: saved as the open
     // sidebar they had, so a wide reload brings it back.
     sidebarCollapsed: ui.sidebarFoldedByLayout ? false : ui.sidebarCollapsed,
-    introSeen: ui.introSeen,
-    setupDismissed: ui.setupDismissed,
     zdrOnly: ui.zdrOnly,
     messageTimestamps: ui.messageTimestamps,
     memoryEnabled: ui.memoryEnabled,
