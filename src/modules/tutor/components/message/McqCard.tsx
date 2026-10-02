@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   CheckIcon,
@@ -60,39 +60,16 @@ export function McqCard({
     items,
     isPending,
   );
-  const advanceTimer = useRef<number | null>(null);
-
-  useEffect(
-    () => () => {
-      if (advanceTimer.current != null) {
-        window.clearTimeout(advanceTimer.current);
-        advanceTimer.current = null;
-      }
-    },
-    [],
-  );
 
   const activeAttempt = activeItem ? attempts[activeItem.id] : undefined;
   const picked = activeAttempt?.choice;
   const answered = !!activeAttempt;
   const correctIdx = typeof activeItem?.correct === 'number' ? activeItem.correct : -1;
 
+  // The answer and its explanation stay until the learner presses Next, right or wrong.
   const handleSelect = (choiceIdx: number) => {
-    if (!activeItem) return;
-    if (answered) return;
-    const correct = choiceIdx === correctIdx;
+    if (!activeItem || answered) return;
     void onAnswer(activeItem.id, choiceIdx);
-
-    if (advanceTimer.current != null) {
-      window.clearTimeout(advanceTimer.current);
-      advanceTimer.current = null;
-    }
-    if (correct && activeIndex < total - 1) {
-      advanceTimer.current = window.setTimeout(() => {
-        goToIndex(activeIndex + 1);
-        advanceTimer.current = null;
-      }, 1200);
-    }
   };
 
   if (!total || !activeItem) return null;
