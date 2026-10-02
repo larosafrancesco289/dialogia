@@ -27,7 +27,7 @@ export const CONNECT_OPTIONS: Record<
   local: {
     name: 'Your own server',
     note: 'Ollama, LM Studio and similar',
-    placeholder: 'e.g. http://localhost:11434/v1',
+    placeholder: 'http://localhost:11434/v1',
   },
 };
 
