@@ -2,7 +2,7 @@
 // Responsibility: what one assistant message's tutor surfaces show, read from the event log:
 // its cards, and what its events changed (margin notes, a finished chapter).
 
-import type { CarriedOver, Evidence, LearningPlan, TopicMastery } from '@/lib/types';
+import type { CarriedOver, LearningPlan, TopicMastery } from '@/lib/types';
 import { shortDate } from '@/lib/ui/shortDate';
 import {
   MASTERY_EVIDENCE_MIN,
@@ -18,7 +18,6 @@ import {
   type TutorEvent,
 } from '@/modules/tutor/engine';
 import type { TutorSession } from '@/modules/tutor/store/tutorSlice';
-import { listInProse } from '@/lib/utils/text';
 import { countWord, joinSentences } from '@/modules/tutor/lib/text';
 
 export type ProposalView = {
@@ -160,7 +159,7 @@ const REASONS_SHOWN = 2;
 // tutor reads it as it is; the learner is shown it in words.
 const GRADED = /^(Quiz|Diagnostic), (right|wrong): "([\s\S]*)"$/;
 
-const cardWord = (kind: string) => (kind === 'Quiz' ? 'quiz' : 'starting');
+const cardWord = (kind: string) => (kind === 'Quiz' ? 'quiz' : 'quick check');
 
 // Notes the engine words for the tutor, and how the learner reads them: the
 // Hub already labels a starting estimate, and speaks to the learner as "you".
@@ -179,8 +178,8 @@ export function readableNote(note: string): string {
   const question = rawQuestion.replace(/\.\.\.$/, '…');
   const what = `a ${cardWord(kind)} question`;
   return verdict === 'right'
-    ? `Answered ${what} correctly: “${question}”`
-    : `Missed ${what}: “${question}”`;
+    ? `You answered ${what} correctly: “${question}”`
+    : `You missed ${what}: “${question}”`;
 }
 
 /** Graded answers in one reply, counted: the card itself is just above. */
@@ -336,82 +335,4 @@ export function seamOpen(
     !completed.nextNodeId &&
     (phase === 'interlude' || phase === 'complete')
   );
-}
-
-// Legacy entries carry no source; these types were the learner's own work.
-const LEGACY_ANSWERS = new Set<Evidence['type']>([
-  'correct_answer',
-  'incorrect_answer',
-  'partial_answer',
-  'insight_demonstrated',
-]);
-
-type EvidenceGroup =
-  | 'answer'
-  | 'observation'
-  | 'said'
-  | 'correction'
-  | 'practice'
-  | 'estimate'
-  | 'carried'
-  | 'earlier';
-
-const GROUP_WORDS: Record<EvidenceGroup, (n: number) => string> = {
-  answer: (n) => `${countWord(n)} answer${n === 1 ? '' : 's'}`,
-  // Read after "The tutor puts you at N%, from …", so "it" is the tutor.
-  observation: (n) => (n === 1 ? 'something it noticed' : `${countWord(n)} things it noticed`),
-  said: (n) =>
-    n === 1 ? 'something you told the tutor' : `${countWord(n)} things you told the tutor`,
-  correction: (n) => (n === 1 ? 'your correction' : `${countWord(n)} corrections of yours`),
-  practice: (n) =>
-    n === 1 ? 'your request for more practice' : `${countWord(n)} requests for more practice`,
-  estimate: (n) => (n === 1 ? 'a starting estimate' : `${countWord(n)} starting estimates`),
-  // Only a topic with no evidence yet takes one, so there is never a second.
-  carried: () => 'what you showed in another tutor chat',
-  earlier: (n) => `${countWord(n)} earlier note${n === 1 ? '' : 's'}`,
-};
-
-function groupOf(entry: Evidence): EvidenceGroup {
-  if (entry.carriedOver) return 'carried';
-  if (entry.kind === 'placement' || entry.source === 'placement') return 'estimate';
-  // Older logs: asking for more practice used to cap the estimate. It corrected nothing.
-  if (entry.kind === 'more_practice') return 'practice';
-  switch (entry.source) {
-    case 'quiz':
-    case 'diagnostic':
-      return 'answer';
-    case 'observation':
-      return 'observation';
-    case 'learner_said':
-      return 'said';
-    case 'learner':
-      return 'correction';
-    default:
-      return LEGACY_ANSWERS.has(entry.type) ? 'answer' : 'earlier';
-  }
-}
-
-/**
- * Everything a topic's estimate rests on, in words: "one answer, two
- * observations and a starting estimate". Every piece counts, whatever its
- * source, so the sentence never claims less than stands behind the number.
- */
-export function evidenceBehind(evidence: readonly Evidence[]): string | undefined {
-  const counts = new Map<EvidenceGroup, number>();
-  for (const entry of evidence) {
-    const group = groupOf(entry);
-    counts.set(group, (counts.get(group) ?? 0) + 1);
-  }
-  const order: EvidenceGroup[] = [
-    'answer',
-    'observation',
-    'said',
-    'correction',
-    'practice',
-    'earlier',
-    'carried',
-    'estimate',
-  ];
-  const parts = order.filter((g) => counts.has(g)).map((g) => GROUP_WORDS[g](counts.get(g)!));
-  return parts.length ? listInProse(parts) : undefined;
 }

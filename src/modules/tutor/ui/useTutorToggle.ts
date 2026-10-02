@@ -1,15 +1,22 @@
 import { useCallback } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
+import { useAnyModelOffered } from '@/lib/hooks/useProviderKeys';
 import {
   selectIsTutorEnabled,
   selectMessagesForCurrentChat,
   selectNextOverrides,
+  selectOnWelcomePage,
 } from '@/lib/store/selectors';
 
 export type TutorToggleState = {
   /** The Tutor mode is offered at all (Settings > Tutor). */
   available: boolean;
+  /**
+   * The header's Learn button and the phone drawer's row are shown: not on the
+   * welcome page, whose Chat / Learn switch is there, nor before a model is connected.
+   */
+  inChrome: boolean;
   active: boolean;
   /** Every chat is a tutoring session; the toggle can't turn it off. */
   forced: boolean;
@@ -33,6 +40,7 @@ export function useTutorToggle(): TutorToggleState {
     forced,
     nextTutorMode,
     active,
+    onWelcome,
   } = useChatStore(
     (s) => ({
       chat: s.chats.find((c) => c.id === s.selectedChatId),
@@ -45,9 +53,11 @@ export function useTutorToggle(): TutorToggleState {
       forced: !!s.ui.tutor?.forceMode,
       nextTutorMode: !!selectNextOverrides(s).tutorMode,
       active: selectIsTutorEnabled(s),
+      onWelcome: selectOnWelcomePage(s),
     }),
     shallow,
   );
+  const connected = useAnyModelOffered();
 
   const toggle = useCallback(async () => {
     if (forced) return;
@@ -99,5 +109,5 @@ export function useTutorToggle(): TutorToggleState {
     updateChatSettings,
   ]);
 
-  return { available, active, forced, toggle };
+  return { available, inChrome: available && connected && !onWelcome, active, forced, toggle };
 }

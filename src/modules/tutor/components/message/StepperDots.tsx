@@ -25,7 +25,7 @@ export function StepperDots<T>({
             key={idx}
             className={classes.join(' ')}
             onClick={() => onSelect(idx)}
-            aria-label={`Go to item ${idx + 1}`}
+            aria-label={`Question ${idx + 1}`}
             aria-current={idx === activeIndex ? 'step' : undefined}
           />
         );

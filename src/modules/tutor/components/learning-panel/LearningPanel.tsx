@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { shallow } from 'zustand/shallow';
 import { explainTopic } from '@/modules/tutor/engine';
-import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
+import {
+  useApprovePlan,
+  usePlanCallbacks,
+  useRequestPlanChanges,
+} from '@/modules/tutor/ui/usePlanCallbacks';
 import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 import { useChatStore } from '@/lib/store';
 import { LearningPanelHeader } from './LearningPanelHeader';
@@ -31,6 +35,9 @@ export function LearningPanel() {
     onCloseRightPanel,
   } = usePlanCallbacks();
   const affordances = useTutorAffordances();
+  const approvePlan = useApprovePlan();
+  const requestPlanChanges = useRequestPlanChanges();
+  const [approving, setApproving] = useState(false);
 
   const { planSheetOverride, revisingState, setUI } = useChatStore(
     (s) => ({
@@ -46,6 +53,10 @@ export function LearningPanel() {
   // The override is only ever a proposal, previewed rather than lived in:
   // nothing on it can be changed, even beside a plan that already stands.
   const isPreviewingProposal = !!planSheetOverride;
+  // The proposal still waiting can be answered here as on its card. A declined
+  // draft cannot; the revision replaces it here when it arrives.
+  const pending = isPreviewingProposal ? state.proposal : undefined;
+  const answerable = !!pending && pending.plan === planSheetOverride;
 
   if (!plan) return null;
 
@@ -66,6 +77,7 @@ export function LearningPanel() {
         {revising ? (
           <ReviseView
             plan={plan}
+            mastery={affordances.showMastery ? state.mastery : undefined}
             revisions={{
               onSkip: onMarkKnown,
               onStartNext,
@@ -89,11 +101,43 @@ export function LearningPanel() {
         )}
       </div>
 
+      {answerable && (
+        <div className="learning-panel__answer">
+          <button
+            type="button"
+            className="btn btn-sm"
+            disabled={approving}
+            onClick={() => {
+              setApproving(true);
+              void approvePlan(pending).finally(() => setApproving(false));
+            }}
+          >
+            {approving ? 'Applying…' : 'Approve plan'}
+          </button>
+          {affordances.revisePlan && (
+            <button
+              type="button"
+              className="btn-outline btn-sm"
+              disabled={approving}
+              onClick={() => setFeedbackContext({ type: 'plan_proposal' })}
+            >
+              Suggest changes
+            </button>
+          )}
+        </div>
+      )}
+
       {feedbackContext && (
         <PlanFeedbackModal
           isOpen
           context={feedbackContext}
-          onSubmit={(feedback) => onRequestPlanChanges(feedback)}
+          // A proposal's draft stays open here for its revision to replace;
+          // a request about the standing plan goes back to it.
+          onSubmit={(feedback, context) =>
+            context.type === 'plan_proposal'
+              ? requestPlanChanges(feedback)
+              : onRequestPlanChanges(feedback)
+          }
           onClose={() => setFeedbackContext(null)}
         />
       )}

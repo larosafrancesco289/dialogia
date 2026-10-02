@@ -1,5 +1,5 @@
 // Module: services/tutorWelcome
-// Responsibility: Generate and persist tutor welcome messages for chats.
+// Responsibility: Write a tutor chat's greeting, once, before its first message.
 
 import type { LearningPlan, Message } from '@/lib/types';
 import type { StoreGetter, StoreSetter } from '@/lib/store/types';
@@ -40,6 +40,13 @@ export const buildPlanWelcomeMessage = (plan?: LearningPlan): string => {
   );
 };
 
+/**
+ * Writes the tutor's greeting into a chat that has none, before its first user
+ * message, and resolves with its text. Awaited by the first send before the
+ * request's history is read, so the model sees the greeting the learner saw. A
+ * greeting is written once: the top of a transcript must not rewrite itself as
+ * the plan moves on, so later calls only return it.
+ */
 export async function prepareTutorWelcomeMessage({
   chatId,
   set,
@@ -54,112 +61,49 @@ export async function prepareTutorWelcomeMessage({
   if (!chatId) return undefined;
   const state = get();
   const chat = state.chats.find((entry) => entry.id === chatId);
-  const tutorEnabled = chat ? isTutorRuntimeEnabled(state.ui, chat) : false;
-  if (!chat || !tutorEnabled) {
-    set((s) => ({
-      ui: {
-        ...s.ui,
-        tutor: {
-          ...s.ui.tutor,
-          welcomeByChatId: {
-            ...(s.ui.tutor?.welcomeByChatId || {}),
-            [chatId]: { status: 'error', error: 'tutor_disabled' },
-          },
-        },
-      },
-    }));
-    return undefined;
-  }
+  if (!chat || !isTutorRuntimeEnabled(state.ui, chat)) return undefined;
 
-  const currentMessages = getMessagesForChat(state, chatId);
-  // Selecting a tutor chat lands here, so this is also where its session loads.
+  const written = getMessagesForChat(state, chatId).find(
+    (m) => m.role === 'assistant' && m.tutorWelcome,
+  );
+  if (written) return written.content;
+
+  // A chat that already has a plan (an older one, never greeted) is welcomed back to it.
   const session = await state.ensureTutorSession?.(chatId).catch(() => undefined);
-  // The greeting is frozen once written: the top of a transcript must not
-  // rewrite itself as the plan moves on.
-  const written = currentMessages.find((m) => m.role === 'assistant' && m.tutorWelcome);
-  const planMessage = written?.content.trim()
-    ? written.content
-    : buildPlanWelcomeMessage(session?.state.plan);
+  const content = buildPlanWelcomeMessage(session?.state.plan).trim();
 
-  const findWelcomeIndex = (list: Message[]) => {
-    const flaggedIdx = list.findIndex((m) => m.role === 'assistant' && m.tutorWelcome);
-    if (flaggedIdx >= 0) return flaggedIdx;
+  let welcome: Message | undefined;
+  set((s) => {
+    const list = getMessagesForChat(s, chatId);
     const firstUserIdx = list.findIndex((m) => m.role === 'user');
-    const searchLimit = firstUserIdx >= 0 ? firstUserIdx : list.length;
-    for (let i = 0; i < searchLimit; i += 1) {
-      if (list[i]?.role === 'assistant') return i;
+    const before = firstUserIdx >= 0 ? firstUserIdx : list.length;
+    // An older chat's first reply before any question was its greeting: flag it.
+    const existingIdx = list.slice(0, before).findIndex((m) => m.role === 'assistant');
+    const modelId =
+      chat.settings.features.tutor?.defaultModelId ||
+      chat.settings.modelId ||
+      DEFAULT_TUTOR_MODEL_ID;
+    if (existingIdx >= 0) {
+      welcome = { ...list[existingIdx], content, model: modelId, tutorWelcome: true };
+      return setMessagesForChat(
+        s,
+        chatId,
+        list.map((m, idx) => (idx === existingIdx ? welcome! : m)),
+      );
     }
-    return -1;
-  };
-
-  const resolveInsertionTimestamp = (list: Message[]) => {
-    const welcomeIndex = findWelcomeIndex(list);
-    if (welcomeIndex >= 0) return list[welcomeIndex].createdAt;
-    const firstUser = list.find((m) => m.role === 'user');
-    if (firstUser) return firstUser.createdAt - 1;
-    const firstAssistant = list.find((m) => m.role === 'assistant');
-    if (firstAssistant) return firstAssistant.createdAt - 1;
-    return Date.now() - 1;
-  };
-
-  const upsertWelcomeMessage = (content: string) => {
-    const trimmed = content.trim();
-    let welcomeMessage: Message | undefined;
-    set((s) => {
-      const list = getMessagesForChat(s, chatId) ?? currentMessages;
-      const welcomeIndex = findWelcomeIndex(list);
-      const existing = welcomeIndex >= 0 ? list[welcomeIndex] : undefined;
-      const createdAt = existing?.createdAt ?? resolveInsertionTimestamp(list);
-      const modelId =
-        chat.settings.features.tutor?.defaultModelId ||
-        chat.settings.modelId ||
-        DEFAULT_TUTOR_MODEL_ID;
-      welcomeMessage = existing
-        ? { ...existing, content: trimmed, model: modelId, tutorWelcome: true }
-        : createTutorWelcomeMessage({
-            chatId,
-            content: trimmed,
-            createdAt,
-            model: modelId,
-          });
-      const nextMessages = (() => {
-        if (welcomeIndex >= 0)
-          return list.map((m, idx) => (idx === welcomeIndex ? welcomeMessage! : m));
-        const insertIdx = (() => {
-          const firstUserIdx = list.findIndex((m) => m.role === 'user');
-          if (firstUserIdx >= 0) return firstUserIdx;
-          const firstAssistantIdx = list.findIndex((m) => m.role === 'assistant');
-          if (firstAssistantIdx >= 0) return firstAssistantIdx;
-          return list.length;
-        })();
-        const next = [...list];
-        next.splice(insertIdx, 0, welcomeMessage!);
-        return next;
-      })();
-      return {
-        ...setMessagesForChat(s, chatId, nextMessages),
-        ui: {
-          ...s.ui,
-          tutor: {
-            ...s.ui.tutor,
-            welcomeByChatId: {
-              ...(s.ui.tutor?.welcomeByChatId || {}),
-              [chatId]: {
-                status: 'ready',
-                message: trimmed,
-                generatedAt: Date.now(),
-              },
-            },
-            greetedByChatId: { ...(s.ui.tutor?.greetedByChatId || {}), [chatId]: true },
-          },
-        },
-      };
+    const next = list[before];
+    welcome = createTutorWelcomeMessage({
+      chatId,
+      content,
+      createdAt: next ? next.createdAt - 1 : Date.now() - 1,
+      model: modelId,
     });
-    return welcomeMessage!;
-  };
-
-  const welcome = upsertWelcomeMessage(planMessage);
-  const persistMessage = createMessagePersister(repository);
-  await persistMessage(welcome).catch(() => undefined);
-  return planMessage;
+    return setMessagesForChat(s, chatId, [
+      ...list.slice(0, before),
+      welcome,
+      ...list.slice(before),
+    ]);
+  });
+  await createMessagePersister(repository)(welcome!).catch(() => undefined);
+  return content;
 }

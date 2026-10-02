@@ -10,7 +10,6 @@ import { logger } from '@/lib/logger';
 import { memoryOnInChat } from '@/lib/memory/notebook';
 import { notify } from '@/lib/store/notify';
 import { getMessagesForChat } from '@/lib/messages/indexing';
-import { readNextOverrides } from '@/lib/ui/next';
 import {
   branchEvents,
   emptyTutorState,
@@ -28,10 +27,7 @@ import {
 } from '@/modules/tutor/engine';
 import { buildLegacyImport } from '@/modules/tutor/store/legacyImport';
 import { isSharedTutorChat } from '@/modules/tutor/store/selectors';
-import {
-  buildPlanWelcomeMessage,
-  prepareTutorWelcomeMessage as prepareTutorWelcomeMessageService,
-} from '@/modules/tutor/services/tutorWelcome';
+import { prepareTutorWelcomeMessage as prepareTutorWelcomeMessageService } from '@/modules/tutor/services/tutorWelcome';
 
 export type TutorSession = {
   /** The chat's log in seq order. */
@@ -101,7 +97,6 @@ export type TutorStoreActions = {
    * replaced by an imported backup); each chat's log loads again on demand.
    */
   resetTutorSessions: () => void;
-  primeTutorWelcomePreview: () => Promise<string | undefined>;
   prepareTutorWelcomeMessage: (chatId?: string) => Promise<string | undefined>;
 };
 
@@ -465,34 +460,6 @@ export function createTutorSlice(
       failures.clear();
       dropped.clear();
       set(() => ({ tutorSessions: {} }));
-    },
-
-    async primeTutorWelcomePreview() {
-      const state = get();
-      const nextOverrides = readNextOverrides(state.ui);
-      const tutorActive =
-        !!state.ui.flags.experimentalTutor &&
-        (state.ui.tutor?.forceMode || nextOverrides.tutorMode);
-      if (!tutorActive) {
-        set((s) => ({
-          ui: { ...s.ui, tutor: { ...s.ui.tutor, welcomePreview: { status: 'idle' } } },
-        }));
-        return undefined;
-      }
-      const plan = state.selectedChatId
-        ? state.tutorSessions[state.selectedChatId]?.state.plan
-        : undefined;
-      const message = buildPlanWelcomeMessage(plan);
-      set((s) => ({
-        ui: {
-          ...s.ui,
-          tutor: {
-            ...s.ui.tutor,
-            welcomePreview: { status: 'ready', message, generatedAt: Date.now() },
-          },
-        },
-      }));
-      return message;
     },
 
     async prepareTutorWelcomeMessage(chatId?: string) {
