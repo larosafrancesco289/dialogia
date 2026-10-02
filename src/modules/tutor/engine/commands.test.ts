@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { shorten } from '@/modules/tutor/engine/commands/shared';
 import {
   AFTER_CORRECTION_FACTOR,
+  DIAGNOSTIC_WEIGHTS,
   HELPED_FACTOR,
   MASTERY_PRIOR,
   QUIZ_WEIGHTS,
@@ -155,7 +156,7 @@ describe('diagnostics', () => {
     assert.deepEqual(h.state.diagnostics[diagnosticId].answers, { q1: 1, q2: 0, q3: 0 });
   });
 
-  test('with a plan, each scored item moves its topic by +0.3 / -0.2', () => {
+  test('with a plan, each scored item moves its topic by the diagnostic weights', () => {
     const h = teaching();
     h.tutor({ type: 'complete_topic', how: 'skipped' });
     assert.equal(h.state.phase, 'interlude');
@@ -210,8 +211,9 @@ describe('diagnostics', () => {
       'evidence_recorded:system',
     ]);
     const weights = events.flatMap((e) => (e.type === 'evidence_recorded' ? [e.weight] : []));
-    assert.deepEqual(weights, [0.3, 0.3, -0.2]);
-    const expected = [0.3, 0.3, -0.2].reduce(
+    const { correct, incorrect } = DIAGNOSTIC_WEIGHTS;
+    assert.deepEqual(weights, [correct, correct, incorrect]);
+    const expected = [correct, correct, incorrect].reduce(
       (c, w) => (w > 0 ? c + w * (1 - c) : c + w * c),
       MASTERY_PRIOR,
     );
