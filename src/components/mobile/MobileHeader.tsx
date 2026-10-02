@@ -5,6 +5,7 @@ import { Bars2Icon, PlusIcon } from '@heroicons/react/24/outline';
 import { ModelPicker } from '@/components/ModelPicker';
 import { ModuleSlot } from '@/components/ModuleSlot';
 import { selectIsStreaming, selectIsTutorEnabled } from '@/lib/store/selectors';
+import { useAnyModelOffered } from '@/lib/hooks/useProviderKeys';
 import styles from './MobileHeader.module.css';
 
 /**
@@ -31,6 +32,9 @@ export function MobileHeader({
     }),
     shallow,
   );
+  // Nothing connected yet: the page is the welcome, and a new chat could not
+  // be sent anything.
+  const firstRun = useAnyModelOffered() === false;
 
   return (
     <header className={styles.header}>
@@ -50,7 +54,7 @@ export function MobileHeader({
       </button>
 
       <div className={styles.center}>
-        <h1 className={styles.title}>{title || 'New chat'}</h1>
+        <h1 className={styles.title}>{title || (firstRun ? 'Dialogia' : 'New chat')}</h1>
 
         {/* While a session is on, the module says what drives the chat. */}
         {tutorActive ? (
@@ -60,14 +64,19 @@ export function MobileHeader({
         )}
       </div>
 
-      <button
-        type="button"
-        className={`icon-button icon-button--lg ${styles.iconButton}`}
-        onClick={onNewChat}
-        aria-label="New chat"
-      >
-        <PlusIcon className="h-5 w-5" aria-hidden="true" />
-      </button>
+      {firstRun ? (
+        // Holds the column, so the title stays centred.
+        <span />
+      ) : (
+        <button
+          type="button"
+          className={`icon-button icon-button--lg ${styles.iconButton}`}
+          onClick={onNewChat}
+          aria-label="New chat"
+        >
+          <PlusIcon className="h-5 w-5" aria-hidden="true" />
+        </button>
+      )}
     </header>
   );
 }

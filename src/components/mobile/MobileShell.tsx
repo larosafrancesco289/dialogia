@@ -178,7 +178,6 @@ export function MobileShell() {
       {settingsOpen && <SettingsDrawer />}
       {memoryOpen && <MemoryPage />}
 
-      {/* Never both: setup comes first, the tour once it is settled. */}
       {setupOpen && <SetupSheet />}
 
       <GlobalNotice portal />
