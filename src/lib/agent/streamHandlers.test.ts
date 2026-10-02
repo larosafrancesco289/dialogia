@@ -156,3 +156,61 @@ test('thinking settles at the first word even when animation frames stall', asyn
     globalThis.cancelAnimationFrame = realCancel;
   }
 });
+
+/** A page whose hiding and closing the test controls. */
+function withPage(run: (page: { hide: () => void; close: () => void }) => Promise<void> | void) {
+  const g = globalThis as Record<string, unknown>;
+  const saved = { window: g.window, document: g.document };
+  const win = new EventTarget();
+  const doc = Object.assign(new EventTarget(), { visibilityState: 'visible' });
+  g.window = win;
+  g.document = doc;
+  const page = {
+    hide: () => {
+      doc.visibilityState = 'hidden';
+      doc.dispatchEvent(new Event('visibilitychange'));
+    },
+    close: () => win.dispatchEvent(new Event('pagehide')),
+  };
+  return Promise.resolve(run(page)).finally(() => {
+    g.window = saved.window;
+    g.document = saved.document;
+  });
+}
+
+test('a page closing mid-reply saves the text on screen at once, marked as cut off', () =>
+  withPage(({ close }) => {
+    const { callbacks, persisted } = harness();
+    // Still waiting for its 32 ms flush, and well inside the first checkpoint's wait.
+    callbacks.onToken?.('The first words');
+    close();
+    assert.equal(persisted.at(-1)?.content, 'The first words');
+    assert.equal(persisted.at(-1)?.cutOff, 'interrupted');
+  }));
+
+test('a page put away mid-reply saves it too; one coming back into view does not', () =>
+  withPage(({ hide }) => {
+    const { callbacks, persisted } = harness();
+    callbacks.onToken?.('Half');
+    document.dispatchEvent(new Event('visibilitychange'));
+    assert.equal(persisted.length, 0);
+    hide();
+    assert.equal(persisted.at(-1)?.content, 'Half');
+  }));
+
+test('a finished or failed reply is not saved again as cut off when the page closes', () =>
+  withPage(async ({ close }) => {
+    const done = harness();
+    done.callbacks.onToken?.('A whole answer.');
+    await done.callbacks.onDone?.('A whole answer.', { finishReason: 'stop' });
+    const failed = harness();
+    failed.callbacks.onError?.(new Error('Network error'));
+    const counts = [done.persisted.length, failed.persisted.length];
+    close();
+    assert.deepEqual([done.persisted.length, failed.persisted.length], counts);
+    // Marked before its stream began (the executor's job): left as it is.
+    const refused = harness();
+    (refused.stored() as Message).cutOff = 'failed';
+    close();
+    assert.equal(refused.persisted.length, 0);
+  }));

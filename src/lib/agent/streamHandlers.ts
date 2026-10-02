@@ -68,6 +68,20 @@ export function cleanStreamedText(text: string, timestamps: boolean): string {
   return cleaned?.trim() || '';
 }
 
+/** Calls `fn` when the page is hidden or closing; returns the unsubscribe. */
+function onPageHidden(fn: () => void): () => void {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return () => undefined;
+  const onVisibility = () => {
+    if (document.visibilityState === 'hidden') fn();
+  };
+  window.addEventListener('pagehide', fn);
+  document.addEventListener('visibilitychange', onVisibility);
+  return () => {
+    window.removeEventListener('pagehide', fn);
+    document.removeEventListener('visibilitychange', onVisibility);
+  };
+}
+
 export function createMessageStreamCallbacks(
   options: MessageStreamOptions,
   timing: { startedAt: number },
@@ -110,6 +124,18 @@ export function createMessageStreamCallbacks(
     if (!current) return;
     void Promise.resolve(persistMessage({ ...current, cutOff })).catch(() => undefined);
   };
+
+  // A page closing (or a phone putting it away) may never run the next
+  // timer: save what is on screen now, so a reload loses nothing.
+  const checkpointNow = () => {
+    // Already marked: a request refused before its stream began ends there.
+    if (get().messagesById[assistantMessage.id]?.cutOff) return;
+    reasoningAccumulator.flush();
+    contentAccumulator.flush();
+    clearCheckpointTimer();
+    persistCheckpoint();
+  };
+  const stopCheckpointingOnHide = onPageHidden(checkpointNow);
 
   const scheduleCheckpoint = () => {
     if (turnFinished || checkpointTimer) return;
@@ -304,6 +330,7 @@ export function createMessageStreamCallbacks(
       settleReasoning();
       turnFinished = true;
       clearCheckpointTimer();
+      stopCheckpointingOnHide();
 
       const state = get();
       const current = state.messagesById[assistantMessage.id];
@@ -369,6 +396,7 @@ export function createMessageStreamCallbacks(
       applyMessageUpdate(set, chatId, assistantMessage.id, (msg) => ({ ...msg, ...marks }));
       persistCheckpoint(marks.cutOff);
       turnFinished = true;
+      stopCheckpointingOnHide();
       // The reply says why where it stopped; a toast is for a chat that is
       // not on screen (over an open one it covered the first message).
       if (marks.cutOffReason && get().selectedChatId !== chatId) notify(get, marks.cutOffReason);
