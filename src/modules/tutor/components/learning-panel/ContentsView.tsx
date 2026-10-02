@@ -197,7 +197,7 @@ function ContentsItem({
 
           {showMastery && affordances.correctMastery && saidFelt && (
             // The list above already says what they told the tutor; this says what comes next.
-            <p className="hub-topic__note">Noted. Your next answers will settle it.</p>
+            <p className="hub-topic__note">Your next answers will move it from here.</p>
           )}
           {showMastery && affordances.correctMastery && !saidFelt && (
             <div className="hub-topic__correct">
@@ -317,7 +317,7 @@ function WhyLine({
       ? `+${delta}`
       : delta < 0
         ? `−${-delta}`
-        : '0';
+        : '+0';
   const tone = first ? '' : delta > 0 ? ' is-up' : delta < 0 ? ' is-down' : '';
   return (
     <li className={first ? 'is-edge' : undefined}>

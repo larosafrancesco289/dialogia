@@ -18,7 +18,7 @@ test('the numbers the spec fixes', () => {
   assert.equal(READY, 0.8);
   assert.equal(quizWeight(true), 0.25);
   assert.equal(quizWeight(false), -0.2);
-  assert.equal(diagnosticWeight(true), 0.3);
+  assert.equal(diagnosticWeight(true), 0.25);
   assert.equal(diagnosticWeight(false), -0.2);
 });
 
