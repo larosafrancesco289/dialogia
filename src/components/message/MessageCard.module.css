@@ -149,13 +149,6 @@
   white-space: pre-wrap;
 }
 
-/* A person's own words are never broken with hyphens they did not type. */
-.user :global(.markdown p),
-.user :global(.markdown li),
-.user :global(.markdown blockquote) {
-  hyphens: manual;
-}
-
 .user :global(.markdown p + p) {
   margin-top: 0.65rem;
 }
