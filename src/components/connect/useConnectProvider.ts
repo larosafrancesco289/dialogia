@@ -2,7 +2,6 @@ import { useRef, useState } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
 import { isKeyRejected, setKey } from '@/lib/keys/store';
-import { isEndpointUsable } from '@/lib/auth/require';
 import {
   ANTHROPIC_ENDPOINT,
   INVALID_BASE_URL_MESSAGE,
@@ -75,11 +74,11 @@ const KEY_NOT_SAVED =
   'This browser could not save your key, so it works only until you close this page.';
 
 export function useConnectProvider() {
-  const { loadModels, addEndpoint, removeEndpoint, setNotice } = useChatStore(
+  const { loadModels, probeServer, addEndpoint, setNotice } = useChatStore(
     (s) => ({
       loadModels: s.loadModels,
+      probeServer: s.probeServer,
       addEndpoint: s.addEndpoint,
-      removeEndpoint: s.removeEndpoint,
       setNotice: s.setNotice,
     }),
     shallow,
@@ -88,25 +87,11 @@ export function useConnectProvider() {
   const [error, setError] = useState<string>();
   // Set at once: a second press can land before the render that disables it.
   const busyRef = useRef(false);
-  // The server this form added that never answered: a corrected address
-  // replaces it rather than joining it.
-  const addedRef = useRef<string>();
 
-  const saveServer = (address: string) => {
-    const baseUrl = normalizeBaseUrl(address);
-    if (addedRef.current) removeEndpoint(addedRef.current);
-    addedRef.current = undefined;
-    const existing = useChatStore
-      .getState()
-      .customEndpoints.find((endpoint) => endpoint.baseUrl === baseUrl);
-    if (existing) return existing;
-    const endpoint = addEndpoint({
-      kind: 'openai-compatible',
-      label: serverName(baseUrl),
-      baseUrl,
-    });
-    addedRef.current = endpoint.id;
-    return endpoint;
+  // A server already saved at this address is reused, not added again.
+  const saveServer = (baseUrl: string) => {
+    const saved = useChatStore.getState().customEndpoints.some((e) => e.baseUrl === baseUrl);
+    if (!saved) addEndpoint({ kind: 'openai-compatible', label: serverName(baseUrl), baseUrl });
   };
 
   /**
@@ -115,8 +100,6 @@ export function useConnectProvider() {
    */
   const connect = async (choice: ConnectChoice, value: string): Promise<boolean> => {
     if (!value.trim() || busyRef.current) return false;
-    // An unreachable server is still saved (it may simply not be running
-    // yet); an address that is not one would only ever reach this page.
     if (choice === 'local' && !isValidBaseUrl(value)) {
       setError(INVALID_BASE_URL_MESSAGE);
       return false;
@@ -126,13 +109,15 @@ export function useConnectProvider() {
     setError(undefined);
     try {
       if (choice === 'local') {
-        const endpoint = saveServer(value);
-        await loadModels();
-        if (!isEndpointUsable(endpoint, useChatStore.getState().models)) {
+        // Asked first and saved only once it answers: a wrong address is
+        // said in the box, never kept to fail again on every visit.
+        const baseUrl = normalizeBaseUrl(value);
+        if (!(await probeServer(baseUrl))) {
           setError(SERVER_SILENT);
           return false;
         }
-        addedRef.current = undefined;
+        saveServer(baseUrl);
+        await loadModels();
         return true;
       }
       try {

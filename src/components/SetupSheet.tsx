@@ -16,13 +16,14 @@ import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 
 export function SetupSheet() {
   const setUI = useChatStore((s) => s.setUI);
+  const reason = useChatStore((s) => s.ui.setupReason);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const fieldRef = useRef<HTMLInputElement>(null);
   // A touch screen starts on the dialog itself: focusing the field would
   // raise the keyboard over a dialog not yet read.
   const isTouch = useMediaQuery(MEDIA_QUERIES.touch);
 
-  const close = () => setUI({ setupOpen: false });
+  const close = () => setUI({ setupOpen: false, setupReason: undefined });
 
   useBackToClose(true, close);
   useModalFocus(true, surfaceRef, {
@@ -52,6 +53,7 @@ export function SetupSheet() {
             <ConnectForm
               id="setup"
               title="Connect a model"
+              lead={reason}
               variant="dialog"
               inputRef={fieldRef}
               onConnected={close}

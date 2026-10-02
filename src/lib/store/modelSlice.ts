@@ -32,6 +32,8 @@ export type ModelSliceState = {
 export type ModelSliceActions = {
   /** `showErrors` repeats a failure already reported this session (an explicit refresh). */
   loadModels: (opts?: { showErrors?: boolean }) => Promise<void>;
+  /** Whether a server at this address answers with a model, without saving it. */
+  probeServer: (baseUrl: string) => Promise<boolean>;
   toggleFavoriteModel: (id: string) => void;
 };
 
@@ -232,6 +234,16 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
       zdrModelIds: undefined,
       zdrProviderIds: undefined,
       zdrFetchedAt: undefined,
+
+      async probeServer(baseUrl: string) {
+        const endpoint = { id: 'probe', kind: 'openai-compatible' as const, label: baseUrl, baseUrl };
+        try {
+          const models = await getTransportClient(endpoint.kind).fetchModels({ endpoint });
+          return models.length > 0;
+        } catch {
+          return false;
+        }
+      },
 
       loadModels(opts?: { showErrors?: boolean }) {
         if (running) {
