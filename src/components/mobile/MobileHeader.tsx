@@ -1,7 +1,7 @@
 import type { Ref } from 'react';
 import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
-import { Bars2Icon, PlusIcon } from '@heroicons/react/24/outline';
+import { Bars2Icon, DocumentPlusIcon } from '@heroicons/react/24/outline';
 import { ModelPicker } from '@/components/ModelPicker';
 import { ModuleSlot } from '@/components/ModuleSlot';
 import {
@@ -83,7 +83,7 @@ export function MobileHeader({
           onClick={onNewChat}
           aria-label="New chat"
         >
-          <PlusIcon className="h-5 w-5" aria-hidden="true" />
+          <DocumentPlusIcon className="h-5 w-5" aria-hidden="true" />
         </button>
       )}
     </header>

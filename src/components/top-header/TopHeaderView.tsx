@@ -1,4 +1,4 @@
-import { BookmarkIcon, Cog6ToothIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { BookmarkIcon, Cog6ToothIcon, DocumentPlusIcon } from '@heroicons/react/24/outline';
 import { ModuleSlot } from '@/components/ModuleSlot';
 import { SidebarIcon } from '@/components/ui/icons';
 import { HeaderDivider } from '@/components/top-header/HeaderDivider';
@@ -55,7 +55,7 @@ export function TopHeaderView({
               title="New chat"
               onClick={onNewChat}
             >
-              <PlusIcon className="h-5 w-5" />
+              <DocumentPlusIcon className="h-5 w-5" />
             </button>
           )}
           <button
