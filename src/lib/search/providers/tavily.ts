@@ -27,7 +27,7 @@ export const TAVILY_PROVIDER_ID = 'tavily';
 // and pay-as-you-go limits.
 function describeStatus(status: number, attempt: string): string {
   if (status === 401 || status === 403) {
-    return 'Tavily did not accept the search key. Check it in Settings.';
+    return 'Tavily did not accept the search key. Check it in Settings › Connections.';
   }
   if (status === 429) return 'Tavily is limiting searches right now. Try again in a moment.';
   if (status === 432 || status === 433) return 'The Tavily plan has reached its search limit.';

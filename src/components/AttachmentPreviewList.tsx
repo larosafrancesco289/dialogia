@@ -63,7 +63,7 @@ function renderPreview(attachment: DraftAttachment) {
     );
   }
 
-  return <PdfChip name={attachment.name} detail="Attached (parsed locally)" />;
+  return <PdfChip name={attachment.name} detail="Attached (read in your browser)" />;
 }
 
 /** A PDF as a chip: the document glyph, its name, and a line under it. */
