@@ -285,9 +285,9 @@ export function AssistantMessage({
                 </p>
                 <p className="text-xs text-fg-muted">
                   {displayContent.trim()
-                    ? 'The reply was cut short by a safety classifier.'
+                    ? "The reply was cut short by the provider's safety filter."
                     : 'A safety classifier blocked this request before the model could answer.'}
-                  {message.stopPolicy ? ` Flagged policy: ${message.stopPolicy}.` : ''}
+                  {message.stopPolicy ? ` Reason given: ${message.stopPolicy}.` : ''}
                 </p>
               </div>
             </div>

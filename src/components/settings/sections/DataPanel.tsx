@@ -24,7 +24,7 @@ export function DataPanel({ renderSection, onExport, onImportPicked }: DataPanel
             <div className="settings-row-label">
               <div className="settings-row-label-text">Chats and settings</div>
               <div className="settings-row-label-description">
-                Everything as one JSON file. Keys are never included.
+                Everything in one file. Your keys are never included.
               </div>
             </div>
             <div className="settings-row-control flex gap-2">

@@ -217,7 +217,7 @@ export function RegenerateMenu({
             }}
             data-placement={coords.placement}
             role="menu"
-            aria-label="Regenerate options"
+            aria-label="Try again with another model"
             ref={menuRef}
             onKeyDown={onMenuKeyDown}
           >

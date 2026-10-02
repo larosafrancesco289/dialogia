@@ -41,8 +41,8 @@ export function replyEndingNote(
 export function replyOutcomeAnnouncement(
   message?: Pick<Message, 'cutOff' | 'finishReason'>,
 ): string {
-  if (message?.cutOff === 'stopped') return 'Response stopped';
-  if (message?.cutOff) return 'Response failed';
-  if (message?.finishReason === 'length') return 'Response stopped at the length limit';
-  return 'Response complete';
+  if (message?.cutOff === 'stopped') return 'Reply stopped';
+  if (message?.cutOff) return 'Reply failed';
+  if (message?.finishReason === 'length') return 'Reply stopped at the length limit';
+  return 'Reply finished';
 }

@@ -101,7 +101,7 @@ export function SettingsDrawerShell({
                   <SettingsSearch
                     value={searchQuery}
                     onChange={onSearchChange}
-                    placeholder="Search settings…"
+                    placeholder="Search settings"
                   />
                 )}
 

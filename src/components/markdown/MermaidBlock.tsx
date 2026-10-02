@@ -106,7 +106,7 @@ export function MermaidBlock({ code, streaming }: { code: string; streaming?: bo
       } catch {
         // ignore
         if (!cancelled && ref.current) {
-          ref.current.innerText = 'Mermaid diagram failed to render.';
+          ref.current.innerText = 'This diagram could not be drawn.';
         }
       }
     }, 300);

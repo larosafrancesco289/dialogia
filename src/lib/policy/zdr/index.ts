@@ -112,4 +112,4 @@ export function getZdrBlockNotice(modelName: string): string {
 }
 
 export const ZDR_UNAVAILABLE_NOTICE =
-  'Could not fetch the zero data retention list. Check your connection, or turn off Zero data retention only in Settings › Models.';
+  'Could not check which providers keep no data. Check your connection, or turn off Zero data retention only in Settings › Models.';

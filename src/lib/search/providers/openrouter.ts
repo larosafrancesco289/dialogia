@@ -25,7 +25,7 @@ const OPENROUTER_SEARCH_PROVIDER_ID = 'openrouter-search';
 
 function describeSearchStatus(status: number): string {
   if (status === 401 || status === 403) {
-    return 'OpenRouter did not accept the key. Check it in Settings.';
+    return 'OpenRouter did not accept the key. Check it in Settings › Connections.';
   }
   if (status === 402) return 'The OpenRouter account is out of credit.';
   if (status === 429) return 'OpenRouter is limiting requests right now. Try again in a moment.';

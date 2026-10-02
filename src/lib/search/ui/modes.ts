@@ -32,7 +32,7 @@ export function listSearchModeOptions(endpoint?: ProviderEndpoint): SearchModeOp
     options.push({
       mode: provider.id,
       label: provider.label,
-      description: 'Search and read pages as tool calls',
+      description: 'Searches when it needs to, and reads the pages it finds',
     });
   }
   return options;

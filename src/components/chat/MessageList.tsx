@@ -264,7 +264,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
           // Most chats arrive in a few milliseconds; the line only shows
           // itself (CSS delay) when a read is actually slow.
           <p className="message-list__loading" role="status">
-            Opening the conversation…
+            Opening the chat…
           </p>
         )}
         {hiddenCount > 0 && (
