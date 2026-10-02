@@ -279,7 +279,7 @@ export function AssistantMessage({
           // With no words before it the note is the reply: said at the reply's size.
           <div className="px-4 pt-3 pb-2">
             <div className="markdown">
-              <p className="italic text-fg-muted [text-wrap:balance]">{endingNote}</p>
+              <p className="italic text-fg-muted">{endingNote}</p>
             </div>
           </div>
         ))}

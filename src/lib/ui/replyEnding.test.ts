@@ -16,7 +16,7 @@ test('a reply that finished cleanly has no note', () => {
 test('a reply that failed before its first word still says why it is empty', () => {
   assert.equal(
     replyEndingNote({ content: '', cutOff: 'failed' }),
-    'This reply failed before it started.',
+    'This reply failed.',
   );
   assert.equal(
     replyEndingNote({ content: '  ', cutOff: 'stopped' }),
@@ -54,7 +54,7 @@ test('a failed reply keeps saying why once its notice is gone', () => {
   const reason = 'That API key has expired. Add a new one in Settings › Connections.';
   assert.equal(
     replyEndingNote({ content: '', cutOff: 'failed', cutOffReason: reason }),
-    `This reply failed before it started. ${reason}`,
+    `This reply failed. ${reason}`,
   );
   assert.equal(
     replyEndingNote({ content: 'Half an answer', cutOff: 'failed', cutOffReason: reason }),
