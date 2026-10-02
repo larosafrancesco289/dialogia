@@ -24,6 +24,19 @@ export function joinSentences(...parts: Array<string | undefined | null | false>
     .join(' ');
 }
 
+/**
+ * A mistaken belief the tutor noted, framed as the learner's idea, so a skim never
+ * reads it as fact: "A vaccine kills the germ" becomes "You thought a vaccine kills
+ * the germ". The tutor is asked to write it that way; older notes get the frame here.
+ */
+export function asTheirIdea(belief: string): string {
+  const text = asSentence(belief);
+  if (!text || /^you\b/i.test(text)) return text;
+  // Lowercase a plain first word ("A", "Vaccines"), never "I" or an acronym like "DNA".
+  const lower = /^(?!I\b)[A-Z](?![A-Z])/.test(text);
+  return `You thought ${lower ? text.charAt(0).toLowerCase() + text.slice(1) : text}`;
+}
+
 const NUMBER_WORDS = [
   'one',
   'two',
