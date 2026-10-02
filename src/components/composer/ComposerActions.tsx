@@ -1,4 +1,10 @@
-import { ArrowUpIcon, BookmarkIcon, StopIcon, PaperClipIcon } from '@heroicons/react/24/outline';
+import {
+  ArrowUpIcon,
+  BookmarkIcon,
+  BookmarkSlashIcon,
+  StopIcon,
+  PaperClipIcon,
+} from '@heroicons/react/24/outline';
 import { ComposerToolLabel } from '@/components/composer/ComposerToolLabel';
 import type { SearchMode } from '@/lib/search/providers/types';
 import type { ReasoningEffort } from '@/lib/types';
@@ -104,7 +110,8 @@ export function ComposerActions({
           endpoint={modelEndpoint}
         />
 
-        {/* On is the usual state and stays quiet; a chat kept out of memory says so. */}
+        {/* On is the usual state and stays quiet; a chat kept out of memory says so,
+            in ink, with the bookmark struck through. */}
         {memoryOn !== undefined && (
           <button
             type="button"
@@ -118,7 +125,11 @@ export function ComposerActions({
             }
             onClick={toggleMemory}
           >
-            <BookmarkIcon className="h-4 w-4" aria-hidden="true" />
+            {memoryOn ? (
+              <BookmarkIcon className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <BookmarkSlashIcon className="h-4 w-4" aria-hidden="true" />
+            )}
             <ComposerToolLabel text={memoryOn ? null : 'Memory off'} />
           </button>
         )}
