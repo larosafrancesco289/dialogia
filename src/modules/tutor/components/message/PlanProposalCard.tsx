@@ -1,31 +1,23 @@
 import { useRef, useState } from 'react';
 import { useChatStore } from '@/lib/store';
-import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
-import { NOTICE_PLAN_APPLY_FAILED } from '@/lib/store/notices';
 import { PlanFeedbackModal } from '@/modules/tutor/components/plan/PlanFeedbackModal';
 import type { ProposalView } from '@/modules/tutor/ui/messageViews';
-import { LEDGER } from '@/modules/tutor/lib/ledger';
-import { useLedger } from '@/modules/tutor/ui/ledger';
-import { useRequestPlanChanges } from '@/modules/tutor/ui/usePlanCallbacks';
+import { useApprovePlan, useRequestPlanChanges } from '@/modules/tutor/ui/usePlanCallbacks';
 import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 import { Markdown } from '@/components/Markdown';
 
 export function PlanProposalCard({
-  chatId,
   messageId,
   proposal,
 }: {
-  chatId: string;
   messageId: string;
   proposal: ProposalView;
 }) {
   const [approving, setApproving] = useState(false);
   const [declining, setDeclining] = useState(false);
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
-  const dispatchTutor = useChatStore((s) => s.dispatchTutor);
   const setUI = useChatStore((s) => s.setUI);
-  const setNotice = useChatStore((s) => s.setNotice);
-  const ledger = useLedger();
+  const approvePlan = useApprovePlan();
   const requestPlanChanges = useRequestPlanChanges();
   // A second click lands before the disabled state renders; without this it
   // would find the proposal already approved and report a failure.
@@ -36,7 +28,6 @@ export function PlanProposalCard({
   // Once answered, the card is a record: its choices go, and only what became of it stays.
   const resolved = proposal.status !== 'pending';
   const disableActions = approving || declining;
-  const nodesCount = proposal.plan.nodes.length;
   const estimatedHours = proposal.plan.metadata?.estimatedHours;
 
   // An approved proposal is the plan the Hub already shows; one still open is
@@ -57,30 +48,7 @@ export function PlanProposalCard({
     acting.current = true;
     setApproving(true);
     try {
-      const result = await dispatchTutor(
-        chatId,
-        { by: 'learner', type: 'approve_plan', proposalId: proposal.proposalId },
-        { by: 'learner', messageId },
-      );
-      if (!result.ok) {
-        setNotice(NOTICE_PLAN_APPLY_FAILED);
-        return;
-      }
-      // Beside the chat on a desktop the Hub opens with the plan; on a phone it
-      // is a tall sheet that would cover the tutor's first question, so it
-      // waits to be asked for from the header.
-      const phone = window.matchMedia(MEDIA_QUERIES.mobile).matches;
-      setUI({
-        plan: {
-          rightPanelOpen: !phone,
-          rightPanelTab: 'plan',
-          sheetPlanOverride: null,
-          sheetOpen: false,
-        },
-      });
-      await ledger(LEDGER.planApproved());
-    } catch {
-      setNotice(NOTICE_PLAN_APPLY_FAILED);
+      await approvePlan({ proposalId: proposal.proposalId, messageId });
     } finally {
       acting.current = false;
       setApproving(false);
@@ -122,12 +90,18 @@ export function PlanProposalCard({
           <p className="exercise__question">
             <Markdown inline content={proposal.plan.goal} />
           </p>
-          <p className="exercise__meta mt-1">
-            {nodesCount} {nodesCount === 1 ? 'topic' : 'topics'}
-            {estimatedHours
-              ? ` · about ${estimatedHours} ${estimatedHours === 1 ? 'hour' : 'hours'}`
-              : ''}
-          </p>
+          <ol className="exercise__topics">
+            {proposal.plan.nodes.map((node) => (
+              <li key={node.id}>
+                <Markdown inline content={node.name} />
+              </li>
+            ))}
+          </ol>
+          {estimatedHours ? (
+            <p className="exercise__meta">
+              About {estimatedHours} {estimatedHours === 1 ? 'hour' : 'hours'}
+            </p>
+          ) : null}
         </div>
         {!resolved && proposal.rationale && (
           <p className="exercise__aside">

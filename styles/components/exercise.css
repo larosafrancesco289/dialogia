@@ -59,6 +59,19 @@
     font-size: 0.8125rem;
     color: var(--color-fg-muted);
   }
+  /* A proposal's topics by name, numbered in rubric like a contents page. */
+  .exercise__topics {
+    margin: var(--space-2) 0 0;
+    padding-left: 1.4em;
+    list-style: decimal;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--color-fg-muted);
+  }
+  .exercise__topics li::marker {
+    color: var(--color-rubric);
+    font-variant-numeric: tabular-nums;
+  }
   .exercise__bar {
     display: flex;
     align-items: center;
