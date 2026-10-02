@@ -1,7 +1,9 @@
 import { useCallback, useMemo } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
+import { NOTICE_PLAN_APPLY_FAILED } from '@/lib/store/notices';
 import { selectMessagesForCurrentChat } from '@/lib/store/selectors';
+import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import type { LearningPlan, TopicMastery } from '@/lib/types';
 import {
   confidenceOf,
@@ -84,6 +86,54 @@ export function useRequestPlanChanges(): (
       return true;
     },
     [dispatchTutor, ledger],
+  );
+}
+
+/**
+ * Approving a proposal, from its card or from the Hub previewing it: one path,
+ * so both open the plan the same way and leave the same ledger line. Resolves
+ * false (having said so) when the engine refused.
+ */
+export function useApprovePlan(): (proposal: ProposalRef) => Promise<boolean> {
+  const { dispatchTutor, setUI, setNotice } = useChatStore(
+    (s) => ({ dispatchTutor: s.dispatchTutor, setUI: s.setUI, setNotice: s.setNotice }),
+    shallow,
+  );
+  const ledger = useLedger();
+  return useCallback(
+    async ({ proposalId, messageId }: ProposalRef) => {
+      const chatId = useChatStore.getState().selectedChatId;
+      if (!chatId) return false;
+      try {
+        const result = await dispatchTutor(
+          chatId,
+          { by: 'learner', type: 'approve_plan', proposalId },
+          { by: 'learner', ...(messageId ? { messageId } : {}) },
+        );
+        if (!result.ok) {
+          setNotice(NOTICE_PLAN_APPLY_FAILED);
+          return false;
+        }
+        // Beside the chat on a desktop the Hub opens with the plan; on a phone it
+        // is a tall sheet that would cover the tutor's first question, so it
+        // waits to be asked for from the header.
+        const phone = window.matchMedia(MEDIA_QUERIES.mobile).matches;
+        setUI({
+          plan: {
+            rightPanelOpen: !phone,
+            rightPanelTab: 'plan',
+            sheetPlanOverride: null,
+            sheetOpen: false,
+          },
+        });
+        await ledger(LEDGER.planApproved());
+        return true;
+      } catch {
+        setNotice(NOTICE_PLAN_APPLY_FAILED);
+        return false;
+      }
+    },
+    [dispatchTutor, ledger, setNotice, setUI],
   );
 }
 
