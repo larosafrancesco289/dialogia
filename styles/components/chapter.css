@@ -5,6 +5,7 @@
      carries the tutor's estimate and three quiet choices; once answered it
      settles into a single line of record. Rubric for the marks, gold only on the live choice. */
   .chapter-break {
+    container-type: inline-size;
     margin: var(--space-4) 0 var(--space-3);
     padding: var(--space-3) 0 var(--space-4);
     text-align: center;
@@ -50,21 +51,35 @@
     font-size: 0.8125rem;
     color: var(--color-fg-muted);
   }
+  /* The three choices share one row, or stack evenly in a narrow column:
+     never two on a row and one alone below. A long topic name wraps inside its button. */
   .chapter-break__actions {
     display: flex;
-    flex-wrap: wrap;
     justify-content: center;
     gap: var(--space-2);
     margin-top: var(--space-4);
   }
+  @container (max-width: 36rem) {
+    .chapter-break__actions {
+      flex-direction: column;
+      align-items: center;
+    }
+    .chapter-break__action {
+      width: min(100%, 20rem);
+    }
+  }
   .chapter-break__action {
+    flex: none;
+    min-width: 0;
     padding: 0.45rem 0.9rem;
     border: 1px solid var(--chrome-rule);
     border-radius: var(--radius-editorial);
     background: transparent;
     color: var(--color-fg-muted);
+    font-family: var(--font-sans);
     font-size: 0.875rem;
     font-weight: 500;
+    text-wrap: balance;
     cursor: pointer;
     transition:
       background-color var(--duration-fast) var(--ease-standard),
@@ -81,6 +96,7 @@
     cursor: progress;
   }
   .chapter-break__action--primary {
+    flex-shrink: 1;
     color: var(--color-fg);
     border-color: color-mix(in oklab, var(--color-accent) 55%, transparent);
   }

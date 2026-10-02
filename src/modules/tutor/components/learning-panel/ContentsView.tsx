@@ -282,12 +282,16 @@ function settingLabel(evidence: WhyStep['evidence']): string {
   if (evidence?.kind === 'placement') return 'Starting estimate';
   if (evidence?.kind === 'more_practice') return 'You asked for more practice';
   if (evidence?.kind === 'marked_known') return 'You marked it as known';
-  if (evidence?.source === 'learner') return 'Your correction';
-  if (evidence?.source === 'learner_said') return 'From what you told the tutor';
+  if (evidence?.source === 'learner') return 'You corrected it';
+  if (evidence?.source === 'learner_said') return 'You told the tutor';
   return 'Set by the tutor';
 }
 
-/** One line of "Why N%": what a piece of evidence did, or where it set the estimate. */
+/**
+ * One line of "Why N%": what moved the estimate, as a signed change and a sentence
+ * ("+7  You answered a quiz question correctly"). Only the first line, where the
+ * estimate starts, is a figure.
+ */
 function WhyLine({
   step: { evidence, before, after },
   first,
@@ -297,44 +301,40 @@ function WhyLine({
   first: boolean;
   topic: string;
 }) {
-  if (isSetting(evidence)) {
-    const details = evidence?.details ? readableNote(evidence.details) : '';
-    // Where it was set from, so the story reads through: 61%, then your 46%.
-    const was = !first && pct(before) !== pct(after) ? `It was ${pct(before)}%.` : '';
-    // The learner's own correction is its own label ("You said the estimate
-    // felt too high."), as is where a carried-over estimate came from; other
-    // settings are named, with their reason under.
-    const own = evidence?.source === 'learner' && evidence.kind === 'adjusted' && !!details;
-    const carried = evidence?.carriedOver;
-    const note = (own || carried ? [was] : [details, was]).filter(Boolean).join(' ');
-    return (
-      <li className="is-edge">
-        <span className="hub-why__figure">{pct(after)}%</span>
-        <span>
-          {own ? (
-            <Markdown inline content={details} />
-          ) : carried ? (
-            <CarriedOverWords carried={carried} setTo={after} topic={topic} />
-          ) : (
-            settingLabel(evidence)
-          )}
-          {note && (
-            <span className="hub-why__note">
-              <Markdown inline content={note} />
-            </span>
-          )}
-        </span>
-      </li>
-    );
-  }
+  const setting = isSetting(evidence);
+  const details = evidence?.details ? readableNote(evidence.details) : '';
+  // The learner's own correction is its own sentence ("You said the estimate
+  // felt too high."), as is where a carried-over estimate came from; other
+  // settings are named, with their reason under.
+  const own = evidence?.source === 'learner' && evidence.kind === 'adjusted' && !!details;
+  const carried = evidence?.carriedOver;
   const delta = pct(after) - pct(before);
+  const figure = first
+    ? `${pct(after)}%`
+    : delta > 0
+      ? `+${delta}`
+      : delta < 0
+        ? `−${-delta}`
+        : '0';
+  const tone = first ? '' : delta > 0 ? ' is-up' : delta < 0 ? ' is-down' : '';
   return (
-    <li>
-      <span className={`hub-why__figure${delta > 0 ? ' is-up' : delta < 0 ? ' is-down' : ''}`}>
-        {delta > 0 ? `+${delta}` : delta < 0 ? `−${-delta}` : '0'}
-      </span>
+    <li className={first ? 'is-edge' : undefined}>
+      <span className={`hub-why__figure${tone}`}>{figure}</span>
       <span>
-        <Markdown inline content={readableNote(evidence!.details)} />
+        {!setting || own ? (
+          <Markdown inline content={details} />
+        ) : carried ? (
+          <CarriedOverWords carried={carried} setTo={after} topic={topic} />
+        ) : (
+          <>
+            {settingLabel(evidence)}
+            {details && (
+              <span className="hub-why__note">
+                <Markdown inline content={details} />
+              </span>
+            )}
+          </>
+        )}
       </span>
     </li>
   );
@@ -343,9 +343,7 @@ function WhyLine({
 /**
  * "Why N%": the whole story, oldest first: where the estimate started, each
  * change, and where it stands now. A direct setting (a correction, more
- * practice, a starting estimate) says what it was set from, so a learner who
- * corrected it still sees why it was what it was, and the count reads on from
- * the new value.
+ * practice) reads as the change it made, like any other line.
  */
 function Why({ mastery, explanation }: { mastery: TopicMastery; explanation?: TopicExplanation }) {
   const start = explanation?.start ?? mastery.confidence;
@@ -355,8 +353,8 @@ function Why({ mastery, explanation }: { mastery: TopicMastery; explanation?: To
   }));
   // A starting estimate set by the plan is the start: no prior line above it.
   const opensWithSetting = steps.length > 0 && isSetting(steps[0].evidence);
-  // A setting as the last line already states today's value.
-  const endsWithSetting = steps.length > 0 && isSetting(steps[steps.length - 1].evidence);
+  // A starting setting as the only line already states today's value.
+  const startIsNow = opensWithSetting && steps.length === 1;
 
   return (
     <div className="hub-why">
@@ -378,7 +376,7 @@ function Why({ mastery, explanation }: { mastery: TopicMastery; explanation?: To
             topic={explanation?.name ?? mastery.nodeId}
           />
         ))}
-        {!endsWithSetting && (
+        {!startIsNow && (
           <li className="is-now">
             <span className="hub-why__figure">{pct(mastery.confidence)}%</span>
             <span>Now</span>

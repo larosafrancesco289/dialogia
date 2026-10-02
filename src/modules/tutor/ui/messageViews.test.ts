@@ -11,7 +11,6 @@ import {
   cardsForMessage,
   carriedOverWords,
   effectsByMessage,
-  evidenceBehind,
   marginChanges,
   marginReason,
   readableNote,
@@ -50,7 +49,7 @@ test('graded answers are counted in words, never quoted back from the log', () =
   assert.equal(marginReason(notes, false).text, 'Got 2 of 3 quiz questions right.');
   assert.equal(
     readableNote('Diagnostic, wrong: "Which is larger?"'),
-    'Missed a starting question: “Which is larger?”',
+    'You missed a quick check question: “Which is larger?”',
   );
   assert.equal(readableNote('Saw why'), 'Saw why');
 });
@@ -69,27 +68,6 @@ test('a quiz answer and the tutor’s own observation in one reply are both in i
   const [change] = effectsByMessage(h.events).get('reply-1')!.masteryChanges;
   assert.equal(change.notes.length, 2);
   assert.match(marginReason(change.notes, false).text, /Saw why\.$/);
-});
-
-test('the evidence behind an estimate is counted whole, every source named', () => {
-  const h = harness();
-  h.tutor({
-    type: 'propose_plan',
-    ...CALCULUS,
-    nodes: CALCULUS.nodes.map((node, i) =>
-      i === 0 ? { ...node, startingEstimate: { value: 0.6, reason: 'Did some before' } } : node,
-    ),
-  });
-  h.learner({ type: 'approve_plan', proposalId: h.state.proposal!.proposalId });
-  h.tutor({ type: 'give_quiz', items: QUIZ_ITEMS.slice(0, 1) });
-  h.learner({ type: 'answer_quiz_item', quizId: h.state.awaiting!.id, itemId: 'q1', choice: 0 });
-  h.tutor({ type: 'record_evidence', kind: 'applied', note: 'One', source: 'observation' });
-  h.tutor({ type: 'record_evidence', kind: 'explained', note: 'Two', source: 'observation' });
-  assert.equal(
-    evidenceBehind(h.state.mastery.limits.evidence),
-    'one answer, two things it noticed and a starting estimate',
-  );
-  assert.equal(evidenceBehind([]), undefined);
 });
 
 test('a carried-over start says where it came from, in the note under the approval and in words', () => {
@@ -113,10 +91,6 @@ test('a carried-over start says where it came from, in the note under the approv
   assert.deepEqual(change.notes, []);
   const carried = change.carriedOver!;
   assert.equal(carried.chatId, 'chat-src');
-  assert.equal(
-    evidenceBehind(h.state.mastery.limits.evidence),
-    'what you showed in another tutor chat',
-  );
 
   const at = {
     ...carried,
@@ -184,23 +158,6 @@ test('a topic taken up again from Revise settles its break before any later choi
   const completed = effectsByMessage(h.events).get('reply-1')!.completed!;
   assert.equal(completed.reopened, true);
   assert.equal(completed.nextNodeId, undefined);
-});
-
-test('what a break says the estimate rests on names a request for practice as one', () => {
-  const entry = (kind: string, source: 'learner' | 'quiz') => ({
-    timestamp: 0,
-    type: 'self_report' as const,
-    details: '',
-    weight: 0,
-    source,
-    kind,
-    eventId: kind,
-  });
-  assert.equal(
-    evidenceBehind([entry('correct_answer', 'quiz'), entry('more_practice', 'learner')]),
-    'one answer and your request for more practice',
-  );
-  assert.equal(evidenceBehind([entry('adjusted', 'learner')]), 'your correction');
 });
 
 test('the reply that finishes a topic keeps its margin note beside the chapter break', () => {
@@ -301,6 +258,6 @@ test('an evidence note speaks to the learner, without the engine prefix', () => 
   assert.equal(readableNote('Learner explained it well'), 'You explained it well');
   assert.equal(
     readableNote('Quiz, right: "What is the derivative of f at t..."'),
-    'Answered a quiz question correctly: “What is the derivative of f at t…”',
+    'You answered a quiz question correctly: “What is the derivative of f at t…”',
   );
 });
