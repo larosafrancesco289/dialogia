@@ -57,8 +57,9 @@ function normalizeScrollBehavior(behavior: ScrollBehavior): ScrollBehavior {
   return behavior === 'instant' ? 'auto' : behavior;
 }
 
-// How long a freshly opened chat keeps to its end while its content settles.
-const OPEN_SETTLE_MS = 1500;
+// A freshly opened chat keeps to its end until its content has stopped growing
+// for this long (lazy cards, fonts, maths), the person scrolls away, or a turn starts.
+const OPEN_SETTLE_QUIET_MS = 800;
 
 export function useMessageScrolling(options: MessageScrollingOptions) {
   const {
@@ -91,9 +92,11 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
   // jump button when something lands below the fold.
   const autoScrollRef = useRef(autoScrollPreference);
   autoScrollRef.current = autoScrollPreference;
-  // Until then, a freshly opened chat keeps to its end while its content
-  // settles (fonts, math, cards measuring themselves), whatever it follows.
-  const settleUntilRef = useRef(0);
+  // A freshly opened chat keeps to its end while its content settles, whatever
+  // it follows. The quiet countdown restarts on every resize, and resizes are
+  // only observed in a shown tab, so a chat opened in the background settles once shown.
+  const settlingRef = useRef(false);
+  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const bottomThresholdPx = isMobile ? 56 : 40;
 
@@ -117,6 +120,10 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
       if (programmaticClearTimerRef.current) {
         clearTimeout(programmaticClearTimerRef.current);
         programmaticClearTimerRef.current = null;
+      }
+      if (settleTimerRef.current) {
+        clearTimeout(settleTimerRef.current);
+        settleTimerRef.current = null;
       }
     };
   }, []);
@@ -147,6 +154,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
   }, []);
 
   const lockFollow = useCallback(() => {
+    settlingRef.current = false;
     if (!followAllowedRef.current) return;
     followAllowedRef.current = false;
     onScrollAwayRef.current?.();
@@ -317,7 +325,14 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     if (!contentEl || typeof ResizeObserver === 'undefined') return;
 
     const observer = new ResizeObserver(() => {
-      const settling = performance.now() < settleUntilRef.current;
+      const settling = settlingRef.current;
+      if (settling) {
+        if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
+        settleTimerRef.current = setTimeout(() => {
+          settleTimerRef.current = null;
+          settlingRef.current = false;
+        }, OPEN_SETTLE_QUIET_MS);
+      }
       if ((autoScrollPreference || settling) && followAllowedRef.current) {
         followToBottom();
       } else {
@@ -338,7 +353,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     programmaticScrollRef.current = false;
     touchStartYRef.current = null;
     lastMessageMetaRef.current = undefined;
-    settleUntilRef.current = performance.now() + OPEN_SETTLE_MS;
+    settlingRef.current = true;
     scrollToBottom('auto');
   }, [chatId, scrollToBottom]);
 
@@ -402,6 +417,8 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
   ]);
 
   useEffect(() => {
+    // A reply is not the opened chat settling: one the chat does not follow stays unfollowed.
+    if (isStreaming) settlingRef.current = false;
     if (!isStreaming || !autoScrollPreference || !followAllowedRef.current) return;
     followToBottom();
   }, [autoScrollPreference, followToBottom, isStreaming]);
