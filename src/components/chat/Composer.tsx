@@ -314,7 +314,12 @@ export function Composer({
 
   return (
     <ComposerLayout variant={variant} onDrop={handleDrop}>
-      <AttachmentPreviewList attachments={attachments} onRemove={removeAttachment} />
+      {/* No field on a phone: focusing it would open the keyboard. */}
+      <AttachmentPreviewList
+        attachments={attachments}
+        onRemove={removeAttachment}
+        fieldRef={isMobile ? undefined : taRef}
+      />
 
       <input
         ref={fileInputRef}
