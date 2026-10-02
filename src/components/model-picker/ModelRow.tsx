@@ -31,11 +31,11 @@ function ModelCapabilities({ result }: { result?: ModelSearchResult }) {
   if (!reasoning && !vision && !audio && !image && !zdr) return null;
   return (
     <span className="model-row__caps">
-      {reasoning && <LightBulbIcon title="Reasoning" />}
-      {vision && <EyeIcon title="Vision input" />}
-      {audio && <MicrophoneIcon title="Audio input" />}
-      {image && <PhotoIcon title="Image output" />}
-      {zdr && <ShieldCheckIcon title="Zero data retention" />}
+      {reasoning && <LightBulbIcon title="Thinks before answering" />}
+      {vision && <EyeIcon title="Reads images" />}
+      {audio && <MicrophoneIcon title="Hears audio" />}
+      {image && <PhotoIcon title="Makes images" />}
+      {zdr && <ShieldCheckIcon title="Keeps none of your data (zero data retention)" />}
     </span>
   );
 }
@@ -49,7 +49,7 @@ function ModelRowFacts({ result }: { result: ModelSearchResult }) {
     <>
       <span>{result.providerLabel || result.provider}</span>
       {result.contextLength && (
-        <span title="Context length">
+        <span title="How much it can read at once">
           {Intl.NumberFormat().format(result.contextLength)} tokens
         </span>
       )}
