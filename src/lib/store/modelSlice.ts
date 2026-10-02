@@ -236,7 +236,12 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
       zdrFetchedAt: undefined,
 
       async probeServer(baseUrl: string) {
-        const endpoint = { id: 'probe', kind: 'openai-compatible' as const, label: baseUrl, baseUrl };
+        const endpoint = {
+          id: 'probe',
+          kind: 'openai-compatible' as const,
+          label: baseUrl,
+          baseUrl,
+        };
         try {
           const models = await getTransportClient(endpoint.kind).fetchModels({ endpoint });
           return models.length > 0;
