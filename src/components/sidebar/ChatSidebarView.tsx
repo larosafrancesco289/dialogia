@@ -4,7 +4,7 @@ import { SidebarSearch } from '@/components/sidebar/SidebarSearch';
 import { groupByRecency } from '@/components/sidebar/groupByRecency';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { IconButton } from '@/components/ui/IconButton';
-import { PlusIcon, FolderPlusIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { DocumentPlusIcon, FolderPlusIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { InlineTitleEdit } from '@/components/sidebar/InlineTitleEdit';
 import type { ChatSidebarState } from '@/components/sidebar/useChatSidebarState';
 
@@ -39,7 +39,7 @@ export function ChatSidebarView({
           </div>
           <div className="flex items-center gap-2">
             <IconButton onClick={onNewChat} title="New chat" className="w-11 h-11 sm:w-9 sm:h-9">
-              <PlusIcon className="h-5 w-5" />
+              <DocumentPlusIcon className="h-5 w-5" />
             </IconButton>
             {!collapsed && (
               <IconButton
