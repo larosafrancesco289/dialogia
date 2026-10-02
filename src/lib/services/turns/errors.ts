@@ -10,12 +10,23 @@ import { notify } from '@/lib/store/notify';
 
 // The streaming count is not touched here: each turn takes back its own share
 // when it ends, and zeroing it would also end a turn started since this one.
-export const handleTurnApiError = (error: unknown, get: StoreGetter, auth?: TransportAuth) => {
+export const handleTurnApiError = (
+  error: unknown,
+  get: StoreGetter,
+  auth?: TransportAuth,
+  reply?: { chatId: string; messageId: string },
+) => {
   // Settings › Connections says so on that provider's row until a new key is saved.
   if (isApiError(error) && error.code === API_ERROR_CODES.UNAUTHORIZED) {
     markKeyRejected(auth?.endpoint.apiKeyRef, auth?.apiKey);
   }
-  // A friendly notice for any error; user-initiated aborts get none.
+  // A friendly notice for any error; user-initiated aborts get none, and a
+  // reply on screen that already says why needs no toast over the chat.
   const errorMessage = describeErrorNotice(error);
-  if (errorMessage) notify(get, errorMessage);
+  const state = get();
+  const saidInReply =
+    !!reply &&
+    state.selectedChatId === reply.chatId &&
+    !!state.messagesById[reply.messageId]?.cutOffReason;
+  if (errorMessage && !saidInReply) notify(get, errorMessage);
 };
