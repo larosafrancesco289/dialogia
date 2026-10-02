@@ -5,6 +5,7 @@ import { SunIcon, MoonIcon, ComputerDesktopIcon } from '@heroicons/react/24/outl
 import { useThemeMode, type ThemeMode } from '@/lib/hooks/useThemeMode';
 import type { RenderSection } from '@/components/settings/types';
 import { indexForKey } from '@/lib/ui/focus';
+import { cn } from '@/lib/ui/cn';
 
 const SCHEMES = [
   { mode: 'light', label: 'Light', Icon: SunIcon },
@@ -81,7 +82,10 @@ export function AppearancePanel(props: AppearancePanelProps) {
                     role="radio"
                     aria-checked={themeMode === mode}
                     tabIndex={themeMode === mode ? 0 : -1}
-                    className={`segment inline-flex items-center gap-1.5${themeMode === mode ? ' is-active' : ''}`}
+                    className={cn(
+                      'segment inline-flex items-center gap-1.5',
+                      themeMode === mode && 'is-active',
+                    )}
                     onClick={() => setThemeMode(mode)}
                     onKeyDown={(event) => onSchemeKeyDown(event, index)}
                   >

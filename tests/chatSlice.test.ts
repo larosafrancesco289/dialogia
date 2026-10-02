@@ -109,8 +109,11 @@ test('a chat whose messages are not loaded yet is never reused as an empty draft
   assert.ok(!Object.values(ids).includes(selectedChatId!));
 });
 
-// Deleting a chat: the neighbour that takes its place.
-const chat = (id: string, folderId?: string) => ({ id, folderId }) as Chat;
+// Deleting a chat: the neighbour that takes its place, in the sidebar's order
+// (most recently touched first), whatever order the store holds them in.
+// Each chat made here is older than the last, so a list reads in that order.
+let clock = 1000;
+const chat = (id: string, folderId?: string) => ({ id, folderId, updatedAt: clock-- }) as Chat;
 
 test('deleting a chat selects the next one down in the same list', () => {
   const chats = [chat('a'), chat('b'), chat('c')];
@@ -120,6 +123,19 @@ test('deleting a chat selects the next one down in the same list', () => {
 test('deleting the last chat in a list selects the one above', () => {
   const chats = [chat('a'), chat('b'), chat('c')];
   assert.equal(neighbourChatId(chats, 'c'), 'b');
+});
+
+test('the neighbour is the one below in the sidebar, not in the store', () => {
+  // Stored in the database's id order, as a reload leaves them; the sidebar
+  // lists them b, c, a.
+  const chats = [
+    { id: 'a', updatedAt: 1 },
+    { id: 'b', updatedAt: 3 },
+    { id: 'c', updatedAt: 2 },
+  ] as Chat[];
+  assert.equal(neighbourChatId(chats, 'b'), 'c');
+  assert.equal(neighbourChatId(chats, 'c'), 'a');
+  assert.equal(neighbourChatId(chats, 'a'), 'c');
 });
 
 test('a chat in a folder hands over to a sibling in that folder', () => {

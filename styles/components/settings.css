@@ -7,6 +7,11 @@
     border-left: 1px solid var(--chrome-rule);
     box-shadow: var(--shadow-2);
   }
+  /* The scrollbar's room is kept even while nothing scrolls, so opening a
+     section that makes the page scroll does not push it sideways. */
+  .settings-content {
+    scrollbar-gutter: stable;
+  }
   .settings-panel__header {
     position: sticky;
     top: 0;

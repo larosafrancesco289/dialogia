@@ -39,10 +39,16 @@
   }
 
   /* A narrow bar (both side panels open, or a small window) keeps the tutor
-     controls as icons so the model name stays readable. */
+     controls as icons and drops the space between groups, so the model name
+     stays readable. */
   @container (max-width: 720px) {
-    .top-header .tutor-toggle__text {
+    .top-header .tutor-toggle__text,
+    .top-header .header-divider {
       display: none;
+    }
+    .top-header .tutor-toggle,
+    .top-header .plan-button {
+      padding: 0 var(--space-2);
     }
   }
 
@@ -50,10 +56,15 @@
    * HEADER DIVIDER
    * ============================================ */
 
-  /* Spacing separates the groups; no drawn divider. */
+  /* Spacing separates the groups; no drawn divider. The bar's own buttons
+     follow the tutor's at the row's gap, not a group's: the space after the
+     last group would read as a missing button. */
   .header-divider {
     width: var(--space-2);
     flex-shrink: 0;
+  }
+  .header-divider:has(+ .header-controls) {
+    display: none;
   }
 
   @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
