@@ -23,7 +23,6 @@ export const DEFAULT_TUTOR_MODEL: CuratedModel = {
 };
 
 export const DEFAULT_MODEL_ID = DEFAULT_CHAT_MODEL.id;
-export const DEFAULT_MODEL_NAME = DEFAULT_CHAT_MODEL.name;
 export const DEFAULT_TUTOR_MODEL_ID = DEFAULT_TUTOR_MODEL.id;
 
 /**

@@ -3,7 +3,7 @@
 // and announce the model new chats fall back to, with a notice for each that moved.
 
 import { CURATED_MODELS } from '@/data/curatedModels';
-import { DEFAULT_MODEL_ID, DEFAULT_MODEL_NAME } from '@/lib/constants';
+import { DEFAULT_MODEL_ID } from '@/lib/constants';
 import { findModelById } from '@/lib/models';
 import { resolveDefaultModelId } from '@/lib/models/defaultModels';
 import { isDynamicModelId, resolveDynamicModelId } from '@/lib/models/dynamicDefaults';
@@ -23,7 +23,8 @@ type ModelDefaultsUpdate = {
  * chats start with never moves silently; chats already under way keep the
  * model they started with. A fallback for an unserved default is announced
  * once, not on every load: `previous` keeps the last one announced beside the
- * family resolutions.
+ * family resolutions. The first load records it quietly: whoever just connected
+ * never chose the default it replaces.
  */
 export function reconcileModelDefaults(
   models: ModelDescriptor[],
@@ -49,16 +50,19 @@ export function reconcileModelDefaults(
     }
   }
 
-  if (!availableIds.has(resolveDynamicModelId(DEFAULT_MODEL_ID, models))) {
+  const defaultId = resolveDynamicModelId(DEFAULT_MODEL_ID, models);
+  if (!availableIds.has(defaultId)) {
     const fallback = findModelById(models, resolveDefaultModelId(models)) ?? models[0];
     const announcedKey = `fallback:${DEFAULT_MODEL_ID}`;
-    if (next[announcedKey] !== fallback.id) {
+    if (next[announcedKey] !== fallback.id && Object.keys(previous).length > 0) {
+      // Named as the picker names it before a list carries it.
+      const defaultLabel = formatModelLabel({ fallbackId: defaultId });
       const fallbackLabel = formatModelLabel({ model: fallback, fallbackId: fallback.id });
       notices.push(
-        `${DEFAULT_MODEL_NAME} is not offered by your providers, so new chats start with ${fallbackLabel}.`,
+        `${defaultLabel} is not offered by your providers, so new chats start with ${fallbackLabel}.`,
       );
-      next[announcedKey] = fallback.id;
     }
+    next[announcedKey] = fallback.id;
   }
 
   const changed = Object.keys(next).some((key) => next[key] !== previous[key]);
