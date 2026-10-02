@@ -19,15 +19,12 @@
   .markdown p {
     margin: 0.5rem 0 0.75rem;
   }
+  /* No automatic hyphens: a learner meeting "antibody" for the first time
+     should not read "anti-body". */
   .markdown p,
   .markdown li,
   .markdown blockquote {
     text-wrap: pretty;
-    hyphens: auto;
-  }
-  .markdown code,
-  .markdown a {
-    hyphens: manual;
   }
   .markdown h1,
   .markdown h2,
@@ -255,7 +252,6 @@
   .markdown td {
     overflow-wrap: normal;
     word-break: normal;
-    hyphens: manual;
   }
   /* Booktabs: a heavy rule above and below, a light one under the header,
      and nothing between rows. */
