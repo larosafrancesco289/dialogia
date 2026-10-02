@@ -63,8 +63,8 @@ export function ComposerActions({
           type="button"
           className="composer-btn-stop"
           onClick={onStop}
-          aria-label="Stop generating"
-          title="Stop"
+          aria-label="Stop the reply"
+          title="Stop the reply"
         >
           <StopIcon className="h-4 w-4" />
         </button>

@@ -7,6 +7,7 @@ import {
   silentWaitLine,
   summarizeActivity,
   toolAnnotation,
+  toolDisplayName,
   type ToolActivityItem,
 } from '@/lib/ui/responseActivity';
 import type { MessageActivityItem, ToolCallLogEntry } from '@/lib/types';
@@ -185,6 +186,29 @@ test('the summary names a running tool and, while live, the line of thought', ()
       isLive: true,
     }),
     '',
+  );
+});
+
+test("the app's own tools read in plain words, and a running one names its object", () => {
+  assert.equal(toolDisplayName('memory_read'), 'Checking memory');
+  assert.equal(toolDisplayName('web_fetch'), 'Reading a page');
+  assert.equal(toolDisplayName('plan_topic'), 'Plan topic');
+  const fetching: ToolActivityItem = {
+    id: 'fetch-1',
+    type: 'tool_call',
+    name: 'web_fetch',
+    status: 'pending',
+    timestamp: 100,
+    input: { url: 'https://example.com/page' },
+  };
+  assert.equal(
+    summarizeActivity({
+      orderedActivity: [fetching],
+      toolCalls: [],
+      reasoning: '',
+      isLive: true,
+    }),
+    'Reading a page: example.com',
   );
 });
 

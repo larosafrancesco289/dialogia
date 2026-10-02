@@ -109,12 +109,17 @@ function thinkingMeasure(activity: MessageActivityItem[], reasoning: string): st
   return words ? `${words} word${words === 1 ? '' : 's'}` : '';
 }
 
-function labelForTool(call: ToolCallLogEntry) {
-  if (call.name === 'web_search') return 'Searching the web';
-  return toolDisplayName(call.name);
-}
+// Plain words for the app's own tools; any other tool shows its name.
+const TOOL_LABELS: Record<string, string> = {
+  web_search: 'Searching the web',
+  web_fetch: 'Reading a page',
+  memory_read: 'Checking memory',
+  memory_save: 'Saving to memory',
+  memory_forget: 'Forgetting a note',
+};
 
 export function toolDisplayName(name: string) {
+  if (TOOL_LABELS[name]) return TOOL_LABELS[name];
   const text = name.replace(/_/g, ' ');
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
@@ -289,10 +294,10 @@ export function summarizeActivity({
   const hasSearchError = sources?.status === 'error';
 
   const runningTool = toolCalls.find((call) => call.status === 'pending');
-  if (runningTool) return labelForTool(runningTool);
+  if (runningTool) return toolDisplayName(runningTool.name);
   if (latestActivity?.type === 'tool_call' && latestActivity.status === 'pending') {
     const object = toolObject(latestActivity);
-    return `${toolDisplayName(latestActivity.name)}${object ? ` — ${object}` : ''}`;
+    return `${toolDisplayName(latestActivity.name)}${object ? `: ${object}` : ''}`;
   }
   if (isSearching) return sources?.query ? `Searching: ${sources.query}` : 'Searching sources';
   // A failed search does not hold the head while the model carries on without it.
