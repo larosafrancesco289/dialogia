@@ -7,6 +7,7 @@ import { listInProse } from '@/lib/utils/text';
 import { PathStep, stepState, waitingOn, type StepState } from './PlanPath';
 import { pct, statusWords } from '@/modules/tutor/lib/topicStatus';
 import { Markdown } from '@/components/Markdown';
+import { asTheirIdea } from '@/modules/tutor/lib/text';
 import { CarriedOverWords } from '@/modules/tutor/components/message/CarriedOverWords';
 
 // Corrections are recorded for the tutor ("Learner said…"); read them back
@@ -232,7 +233,7 @@ function ContentsItem({
             <div key={m.id} className="hub-clear">
               <p className="hub-label">To clear up</p>
               <p className="hub-clear__text">
-                <Markdown inline content={m.description} />
+                <Markdown inline content={asTheirIdea(m.description)} />
               </p>
               {affordances.correctMastery && (
                 <button

@@ -107,7 +107,7 @@ function scriptedTutor(params: TransportStreamParams): void {
   const round = messages.slice(lastUser + 1).filter((m) => m.role === 'assistant').length + 1;
   const system = textOf(messages.find((m) => m.role === 'system')?.content);
 
-  if (said.startsWith('Answered the intake')) {
+  if (said.startsWith('Answered the opening')) {
     return reply(params, 'Here is a plan.', [call('propose_plan', PLAN)]);
   }
   if (said === 'Approved the plan') {
@@ -257,7 +257,7 @@ test('a simulated session answers every card through learner commands, as the UI
 
   // 2: the intake was answered by command, then the UI's line went to the tutor.
   assert.equal(x[1].student.kind, 'ledger');
-  assert.equal(x[1].student.text, 'Answered the intake questions');
+  assert.equal(x[1].student.text, 'Answered the opening questions');
   assert.deepEqual(
     x[1].student.actions.map((a) => [a.action.type, a.ok]),
     [['answer_intake', true]],
