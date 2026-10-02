@@ -146,7 +146,8 @@ test('on a local server alone, the composer and header name the open chat model 
   }
 
   const state = store.getState();
-  assert.match(state.ui.notice ?? '', /new chats start with/);
+  // Connecting for the first time is not news about a default nobody chose.
+  assert.equal(state.ui.notice, undefined);
   // The header reads the chat's settings; the composer and the turn read these.
   const fallback = resolveDefaultModelId(state.models);
   assert.equal(selectResolvedModelId(fallback)(state), chat.settings.modelId);
