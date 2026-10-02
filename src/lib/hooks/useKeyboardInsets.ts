@@ -8,6 +8,10 @@ export type KeyboardMetrics = {
 
 const KEYBOARD_THRESHOLD = 60; // px difference to treat as a real keyboard occlusion
 
+/** What raises the on-screen keyboard. */
+const FIELD_SELECTOR =
+  'textarea, input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="range"]):not([type="file"])';
+
 export type KeyboardTrackerState = {
   viewportBaseline: number;
   viewportKeyboardVisible: boolean;
@@ -180,6 +184,12 @@ export function useKeyboardInsets(): KeyboardMetrics {
           viewportTop: viewport?.offsetTop ?? 0,
         };
       }
+      // No field, no keyboard: a viewport still shrinking as the keys slide
+      // away must not take the room back.
+      if (!document.activeElement?.matches(FIELD_SELECTOR)) {
+        trackerState.viewportKeyboardVisible = false;
+        return { offset: 0, viewportHeight: window.innerHeight, viewportTop: 0 };
+      }
       return computeKeyboardMetrics(trackerState, { window, viewport });
     };
 
@@ -193,6 +203,52 @@ export function useKeyboardInsets(): KeyboardMetrics {
 
     handleChange();
 
+    // iOS scrolls the whole page to a field the keyboard is about to cover,
+    // and the shell, already shrunk, then followed it a frame late: the page
+    // jumped up and back. A tap on a field focuses it without that scroll;
+    // the shell makes the room, and a field still hidden once the keyboard is
+    // up is brought into view inside its own scroller.
+    let touchStart: { x: number; y: number } | null = null;
+    const onTouchStart = (event: TouchEvent) => {
+      const t = event.touches[0];
+      touchStart = t ? { x: t.clientX, y: t.clientY } : null;
+    };
+    const onTouchEnd = (event: TouchEvent) => {
+      const field = (event.target as Element | null)?.closest?.(FIELD_SELECTOR) as
+        | HTMLInputElement
+        | HTMLTextAreaElement
+        | null;
+      const t = event.changedTouches[0];
+      const moved =
+        !touchStart || !t || Math.hypot(t.clientX - touchStart.x, t.clientY - touchStart.y) > 10;
+      if (!field || moved || field.disabled || field === document.activeElement) return;
+      event.preventDefault();
+      field.focus({ preventScroll: true });
+    };
+    const revealFocused = () => {
+      const field = document.activeElement;
+      if (!(field instanceof HTMLElement) || !field.matches(FIELD_SELECTOR)) return;
+      // After the shell has eased to its new height.
+      // A field may ask for its row (its button with it) to be shown too.
+      const target = field.closest('[data-keyboard-reveal]') ?? field;
+      window.setTimeout(() => target.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 320);
+    };
+    // iOS reports the keyboard's size as it starts to rise but only once it
+    // has gone when it closes, so the composer hung over an empty space and
+    // then dropped. Leaving the last field is when it starts to close: give
+    // the room back then, and the composer comes down with the keys.
+    const onFocusOut = () => {
+      window.setTimeout(() => {
+        if (!document.activeElement?.matches(FIELD_SELECTOR)) commitMetrics(computeMetrics());
+      }, 0);
+    };
+    if (trackVirtualKeyboard) {
+      doc?.addEventListener('touchstart', onTouchStart, { passive: true });
+      doc?.addEventListener('touchend', onTouchEnd, { passive: false });
+      doc?.addEventListener('focusout', onFocusOut);
+      viewport?.addEventListener('resize', revealFocused);
+    }
+
     if (viewport) {
       viewport.addEventListener('resize', handleChange);
       viewport.addEventListener('scroll', handleChange);
@@ -203,6 +259,10 @@ export function useKeyboardInsets(): KeyboardMetrics {
 
     return () => {
       cancelAnimationFrame(frameHandle);
+      doc?.removeEventListener('touchstart', onTouchStart);
+      doc?.removeEventListener('touchend', onTouchEnd);
+      doc?.removeEventListener('focusout', onFocusOut);
+      viewport?.removeEventListener('resize', revealFocused);
       if (viewport) {
         viewport.removeEventListener('resize', handleChange);
         viewport.removeEventListener('scroll', handleChange);
