@@ -204,13 +204,24 @@
   margin: 0;
 }
 
-.heroMobileModes {
+/* The Chat / Learn switch. Its chunk arrives after the page, so its room
+   (the switch and the space under it) is held while it is coming. */
+.modes {
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
+/* A segment, the track's padding and hairline, and the space under it; on a
+   phone each segment is a full touch target. */
+.modes[data-reserved] {
+  min-height: calc(30px + 6px + var(--space-4));
+}
+
 @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
+  .modes[data-reserved] {
+    min-height: calc(var(--touch-target-min) + 6px + var(--space-4));
+  }
   .subline {
     margin-top: var(--space-3);
     font-size: 0.9375rem;

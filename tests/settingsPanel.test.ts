@@ -49,7 +49,21 @@ test('the Developer group sits in Appearance and search finds it', () => {
   for (const query of ['developer', 'debug', 'tool call', 'raw json']) {
     assert.ok(sectionMatches('developer', query), query);
   }
-  assert.ok(sectionMatches('display', 'introduction'));
+});
+
+test('search finds a section by the labels it shows', () => {
+  const cases: [Parameters<typeof sectionMatches>[0], string][] = [
+    ['display', 'show reply details'],
+    ['display', 'reply'],
+    ['display', 'cost'],
+    ['general', 'message timestamps'],
+    ['memory', 'use memory'],
+    ['developer', 'request view'],
+    ['developer', 'tool-call'],
+    ['developer', 'Tool call log'],
+  ];
+  for (const [section, query] of cases) assert.ok(sectionMatches(section, query), query);
+  assert.equal(sectionMatches('display', 'tour'), false);
 });
 
 test('Settings opens on the first tab listed, then on the last one used', () => {

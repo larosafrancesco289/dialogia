@@ -202,6 +202,10 @@ html {
   border: none;
   box-shadow: none;
 }
+/* A value that cannot be used: a crimson hairline beside the message. */
+.input[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
 .input::placeholder {
   color: var(--color-fg-muted);
 }

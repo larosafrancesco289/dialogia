@@ -35,7 +35,7 @@ export function ModelPickerTrigger({
       aria-haspopup="dialog"
       aria-expanded={props.isOpen}
       onClick={props.onClick}
-      title={props.tooltip}
+      title={props.tooltip || undefined}
     >
       <span className="model-picker-trigger__name truncate">{props.label}</span>
       <ChevronDownIcon className="model-picker-trigger__chevron h-4 w-4 shrink-0" />

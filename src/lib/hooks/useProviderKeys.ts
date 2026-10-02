@@ -35,11 +35,12 @@ export function useProviderKeys(): {
 }
 
 /**
- * Whether any provider or server has a model to offer: one holds a key, or is
- * a keyless server with a model. True until the keys have been read, so an app
- * that is connected never flashes its setup state while it starts.
+ * Whether any provider or server has a model to offer: one holds a key it has
+ * not refused, or is a keyless server with a model. Undefined until the keys
+ * have been read, so a page that depends on it shows neither state while it
+ * starts.
  */
-export function useAnyModelOffered(): boolean {
+export function useAnyModelOffered(): boolean | undefined {
   const { customEndpoints, models } = useChatStore(
     (s) => ({ customEndpoints: s.customEndpoints, models: s.models }),
     shallow,
@@ -47,10 +48,11 @@ export function useAnyModelOffered(): boolean {
   return useSyncExternalStore(
     subscribeToKeys,
     () =>
-      !keysRead() ||
-      [...BUILT_IN_ENDPOINTS, ...customEndpoints].some((endpoint) =>
-        isEndpointUsable(endpoint, models),
-      ),
-    () => true,
+      keysRead()
+        ? [...BUILT_IN_ENDPOINTS, ...customEndpoints].some((endpoint) =>
+            isEndpointUsable(endpoint, models),
+          )
+        : undefined,
+    () => undefined,
   );
 }

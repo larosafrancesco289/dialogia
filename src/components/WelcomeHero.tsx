@@ -1,8 +1,9 @@
+import { useEffect, useState } from 'react';
 import { useChatStore } from '@/lib/store';
 import { selectIsTutorEnabled } from '@/lib/store/selectors';
 import { Composer } from '@/components/chat/Composer';
 import { ModuleSlot } from '@/components/ModuleSlot';
-import { WelcomeConnect } from '@/components/welcome/WelcomeConnect';
+import { ConnectForm } from '@/components/connect/ConnectForm';
 import type { KeyboardMetrics } from '@/lib/hooks/useKeyboardInsets';
 import { useAnyModelOffered } from '@/lib/hooks/useProviderKeys';
 import { LogoMark } from '@/components/ui/LogoMark';
@@ -23,6 +24,17 @@ export function WelcomeHero({ keyboardMetrics }: { keyboardMetrics: KeyboardMetr
   const connected = useAnyModelOffered();
   const tutorActive = useChatStore(selectIsTutorEnabled);
   const tutorOffered = useChatStore((s) => !!s.ui.flags.experimentalTutor);
+  // The Chat / Learn switch loads after the page: its room is kept, so the
+  // composer does not drop when it arrives.
+  const modesShown = useChatStore((s) => !!s.ui.flags.experimentalTutor && !s.ui.tutor?.forceMode);
+  // "Connected" is said when the box gives way, not on a page that opened so.
+  const [asked, setAsked] = useState(false);
+  useEffect(() => {
+    if (connected === false) setAsked(true);
+  }, [connected]);
+
+  // Until the keys are read, neither the box nor the composer is a fact.
+  if (connected === undefined) return <div className={styles.hero} />;
 
   const headline = !connected ? (
     <>
@@ -46,9 +58,24 @@ export function WelcomeHero({ keyboardMetrics }: { keyboardMetrics: KeyboardMetr
       ? 'Chat with the leading AI models, or learn something with a tutor.'
       : 'Chat with the leading AI models.';
 
+  const connectBox = (
+    <ConnectForm id="welcome-connect" title="First, connect a model" variant="box" autoFocus />
+  );
+  const status = (
+    <p className="sr-only" role="status">
+      {asked && connected ? 'Connected' : ''}
+    </p>
+  );
+  const modes = (
+    <div className={styles.modes} data-reserved={modesShown || undefined}>
+      <ModuleSlot slot="welcomeModes" />
+    </div>
+  );
+
   if (!isMobile) {
     return (
       <div className={styles.hero}>
+        {status}
         <div className={styles.heroDesktop}>
           <div className={styles.opening}>
             <LogoMark className={styles.mark} />
@@ -60,11 +87,11 @@ export function WelcomeHero({ keyboardMetrics }: { keyboardMetrics: KeyboardMetr
           <div key={connected ? 'compose' : 'connect'} className={styles.composer}>
             {connected ? (
               <>
-                <ModuleSlot slot="welcomeModes" />
+                {modes}
                 <Composer variant="hero" keyboardMetrics={keyboardMetrics} />
               </>
             ) : (
-              <WelcomeConnect />
+              connectBox
             )}
           </div>
         </div>
@@ -75,6 +102,7 @@ export function WelcomeHero({ keyboardMetrics }: { keyboardMetrics: KeyboardMetr
   // Phone: the opening centred, the composer floating at the foot.
   return (
     <div className={styles.hero}>
+      {status}
       <div className={`${styles.heroMobile}${connected ? '' : ` ${styles.heroMobileConnect}`}`}>
         <div className={styles.heroMobileContent}>
           <div className={styles.heroMobileTitleBlock}>
@@ -82,13 +110,7 @@ export function WelcomeHero({ keyboardMetrics }: { keyboardMetrics: KeyboardMetr
             <h1 className={styles.heroMobileHeadline}>{headline}</h1>
             {subline && <p className={styles.subline}>{subline}</p>}
           </div>
-          {connected ? (
-            <div className={styles.heroMobileModes}>
-              <ModuleSlot slot="welcomeModes" />
-            </div>
-          ) : (
-            <WelcomeConnect />
-          )}
+          {connected ? modes : connectBox}
         </div>
       </div>
 

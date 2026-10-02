@@ -27,11 +27,11 @@ import {
 const STEP_LABELS: Record<ProbeStep, string> = {
   models: 'Listing models…',
   chat: 'Sending a first message…',
-  tools: 'Checking tool calls…',
-  parallelToolCalls: 'Checking parallel tool calls…',
-  reasoning: 'Checking reasoning effort…',
+  tools: 'Checking tools…',
+  parallelToolCalls: 'Checking several tools at once…',
+  reasoning: 'Checking thinking effort…',
   vision: 'Checking images…',
-  streamUsage: 'Checking usage in stream…',
+  streamUsage: 'Checking reply costs…',
   promptCaching: 'Checking prompt caching…',
 };
 

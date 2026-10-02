@@ -27,6 +27,9 @@ const preRefactorBlob = {
     sidebarCollapsed: true,
     zdrOnly: true,
     messageTimestamps: true,
+    // Written by the first-run tour and the setup sheet that opened by itself.
+    introSeen: true,
+    setupDismissed: true,
     dynamicDefaultResolutions: { 'dialogia/latest': 'anthropic/claude-3.5-sonnet' },
     chatDefaults: { modelId: 'anthropic/claude-3.5-sonnet' },
     flags: { experimentalTutor: true },
@@ -84,7 +87,9 @@ test('partialize emits the same key set the pre-refactor build wrote', () => {
     'zdrProviderIds',
   ]);
   // `introSeen` and `setupDismissed` went with the first-run tour and the setup
-  // sheet opening by itself; a stored value is simply never read again.
+  // sheet opening by itself; a stored value is never read, and never written again.
+  assert.equal('introSeen' in persisted.ui, false);
+  assert.equal('setupDismissed' in persisted.ui, false);
   assert.deepEqual(Object.keys(persisted.ui).sort(), [
     'chatDefaults',
     'debug',

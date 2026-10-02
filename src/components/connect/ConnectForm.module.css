@@ -1,5 +1,7 @@
-/* WelcomeConnect: the box that stands where the composer will be, the same
-   width and paper, so connecting reads as the first thing you type here. */
+/* ConnectForm: on the welcome page a box that stands where the composer will
+   be, the same width and paper, so connecting reads as the first thing you
+   type here; in the setup sheet the same form on the dialog's paper. Folds
+   open below their toggles, so a toggle never moves from under the pointer. */
 
 .connect {
   width: 100%;
@@ -14,7 +16,7 @@
 }
 
 .title {
-  margin: 0 0 var(--space-1);
+  margin: 0;
   font-family: var(--font-serif-assistant);
   font-size: 1.0625rem;
   font-weight: 500;
@@ -23,7 +25,7 @@
 }
 
 .lead {
-  margin: 0 0 var(--space-3);
+  margin: var(--space-1) 0 var(--space-3);
   font-size: 0.875rem;
   line-height: 1.5;
   color: var(--color-fg-muted);
@@ -38,8 +40,10 @@
   background: var(--color-canvas);
 }
 
+/* As tall as the field beside it. */
 .row :global(.btn) {
   flex: none;
+  height: auto;
   white-space: nowrap;
 }
 
@@ -50,10 +54,47 @@
   color: var(--color-danger);
 }
 
+.toggles {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: var(--space-1) 0;
+  border: 0;
+  background: none;
+  font-size: 0.8125rem;
+  color: var(--color-fg-muted);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in oklab, var(--color-fg) 25%, transparent);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.toggle:hover {
+  color: var(--color-fg);
+}
+
+.chevron {
+  width: 14px;
+  height: 14px;
+  transition: transform var(--duration-fast) var(--ease-standard);
+}
+
+.toggle[aria-expanded='true'] .chevron {
+  transform: rotate(180deg);
+}
+
 .steps {
   display: grid;
   gap: var(--space-2);
-  margin: var(--space-4) 0 0;
+  margin: var(--space-2) 0 0;
   padding: var(--space-3) 0 0;
   border-top: 1px solid var(--chrome-rule);
   list-style: none;
@@ -82,30 +123,6 @@
   color: var(--color-fg);
 }
 
-.links {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-top: var(--space-2);
-}
-
-.link {
-  padding: var(--space-1) 0;
-  border: 0;
-  background: none;
-  font-size: 0.8125rem;
-  color: var(--color-fg-muted);
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-decoration-color: color-mix(in oklab, var(--color-fg) 25%, transparent);
-  text-underline-offset: 3px;
-  cursor: pointer;
-}
-
-.link:hover {
-  color: var(--color-fg);
-}
-
 .others {
   display: grid;
   gap: var(--space-2);
@@ -130,7 +147,7 @@
   background: color-mix(in oklab, var(--color-fg) 4%, transparent);
 }
 
-.other span {
+.note {
   color: var(--color-fg-muted);
 }
 
@@ -149,5 +166,11 @@
   }
   .privacy {
     margin-top: var(--space-3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chevron {
+    transition: none;
   }
 }

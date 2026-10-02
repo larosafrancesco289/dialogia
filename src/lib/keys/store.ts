@@ -103,7 +103,12 @@ function readKeys(): Promise<boolean> {
       emit();
       return true;
     })
-    .catch(() => false);
+    .catch(() => {
+      // Tried and failed: the page asks for a key rather than waiting forever.
+      read = true;
+      emit();
+      return false;
+    });
 }
 
 // A blocked or unavailable IndexedDB must not stop the app booting; the user
@@ -130,7 +135,7 @@ export function getKey(ref?: string): string | undefined {
   return cache.get(ref);
 }
 
-/** Whether the keys have been read yet: before then an empty cache means nothing. */
+/** Whether the keys have been read (or tried) yet: before then an empty cache means nothing. */
 export function keysRead(): boolean {
   return read;
 }

@@ -15,8 +15,6 @@ type ModelsPanelProps = {
   toggleFavoriteModel: (id: string) => void;
   setUI: (ui: UIStatePartial) => void;
   loadModels: (opts?: { showErrors?: boolean }) => Promise<void>;
-  hiddenModelIds?: string[];
-  resetHiddenModels: () => void;
   renderSection: RenderSection;
   modelSearchRef: Ref<ModelSearchHandle | null>;
   ui: StoreState['ui'];
@@ -34,8 +32,6 @@ export function ModelsPanel(props: ModelsPanelProps) {
     toggleFavoriteModel,
     setUI,
     loadModels,
-    hiddenModelIds,
-    resetHiddenModels,
     renderSection,
     modelSearchRef,
     ui,
@@ -126,19 +122,6 @@ export function ModelsPanel(props: ModelsPanelProps) {
               if (!favoriteModelIds.includes(result.id)) toggleFavoriteModel(result.id);
             }}
           />
-          {hiddenModelIds && hiddenModelIds.length > 0 && (
-            <div className="settings-row">
-              <div className="settings-row-label">
-                <div className="settings-row-label-description">
-                  {hiddenModelIds.length} {hiddenModelIds.length === 1 ? 'model is' : 'models are'}{' '}
-                  hidden from the picker.
-                </div>
-              </div>
-              <button className="btn-outline btn-sm" onClick={() => resetHiddenModels()}>
-                Show again
-              </button>
-            </div>
-          )}
         </SettingsSection>,
       )}
 

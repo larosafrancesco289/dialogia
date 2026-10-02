@@ -43,12 +43,20 @@ test('a family that moves to a new release says so, and an unmoved one saves not
 });
 
 test('a fallback for an unserved default is announced once', () => {
-  const first = reconcileModelDefaults([OPUS], {});
+  const previous = { '~openai/gpt-luna-latest': 'openai/gpt-6-luna' };
+  const first = reconcileModelDefaults([OPUS], previous);
   assert.equal(first.notices.length, 1);
-  assert.match(first.notices[0], /^GPT Luna is not offered by your providers/);
+  // Named as the picker names it, not by its family.
+  assert.match(first.notices[0], /^GPT-6 Luna is not offered by your providers/);
   assert.equal(first.resolutions?.['fallback:~openai/gpt-luna-latest'], OPUS.id);
 
   const again = reconcileModelDefaults([OPUS], first.resolutions ?? {});
   assert.deepEqual(again.notices, []);
   assert.equal(again.resolutions, undefined);
+});
+
+test('the first connect records the fallback quietly: nobody chose the default yet', () => {
+  const first = reconcileModelDefaults([OPUS], {});
+  assert.deepEqual(first.notices, []);
+  assert.equal(first.resolutions?.['fallback:~openai/gpt-luna-latest'], OPUS.id);
 });

@@ -49,30 +49,19 @@ export type SettingsDrawerState = {
 export function useSettingsDrawerState(): SettingsDrawerState {
   const [closing, setClosing] = useState(false);
 
-  const {
-    setUI,
-    setNotice,
-    ui,
-    loadModels,
-    toggleFavoriteModel,
-    favoriteModelIds,
-    hiddenModelIds,
-    resetHiddenModels,
-    initializeApp,
-  } = useChatStore(
-    (s) => ({
-      setUI: s.setUI,
-      setNotice: s.setNotice,
-      ui: s.ui,
-      loadModels: s.loadModels,
-      toggleFavoriteModel: s.toggleFavoriteModel,
-      favoriteModelIds: s.favoriteModelIds,
-      hiddenModelIds: s.hiddenModelIds,
-      resetHiddenModels: s.resetHiddenModels,
-      initializeApp: s.initializeApp,
-    }),
-    shallow,
-  );
+  const { setUI, setNotice, ui, loadModels, toggleFavoriteModel, favoriteModelIds, initializeApp } =
+    useChatStore(
+      (s) => ({
+        setUI: s.setUI,
+        setNotice: s.setNotice,
+        ui: s.ui,
+        loadModels: s.loadModels,
+        toggleFavoriteModel: s.toggleFavoriteModel,
+        favoriteModelIds: s.favoriteModelIds,
+        initializeApp: s.initializeApp,
+      }),
+      shallow,
+    );
   const {
     system,
     setSystem,
@@ -193,8 +182,6 @@ export function useSettingsDrawerState(): SettingsDrawerState {
         toggleFavoriteModel={toggleFavoriteModel}
         setUI={setUI}
         loadModels={loadModels}
-        hiddenModelIds={hiddenModelIds}
-        resetHiddenModels={resetHiddenModels}
         renderSection={renderSection}
         modelSearchRef={modelSearchRef}
         ui={ui}
