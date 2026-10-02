@@ -13,7 +13,7 @@ const CUT_OFF_NOTES: Record<NonNullable<Message['cutOff']>, string> = {
 // The same endings for a reply that never got its first word out.
 const NOTHING_WRITTEN_NOTES: Record<NonNullable<Message['cutOff']>, string> = {
   stopped: 'Stopped before the reply began.',
-  failed: 'This reply failed before it started.',
+  failed: 'This reply failed.',
   interrupted: 'The page closed before this reply began.',
 };
 
