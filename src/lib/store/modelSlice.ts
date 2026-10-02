@@ -1,7 +1,7 @@
 import type { PersistFragment, StoreState } from '@/lib/store/types';
 import { requireEndpointAuth } from '@/lib/auth/require';
 import { loadKeys, markKeyRejected } from '@/lib/keys/store';
-import { ZDR_UNAVAILABLE_NOTICE } from '@/lib/policy/zdr';
+import { isLocalServer, ZDR_UNAVAILABLE_NOTICE } from '@/lib/policy/zdr';
 import { computeZdrFilterCached } from '@/lib/policy/zdr/cache';
 import type { ModelIndex } from '@/lib/models';
 import { createModelIndex, EMPTY_MODEL_INDEX, resolveDefaultModelId } from '@/lib/models';
@@ -95,8 +95,8 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
           await Promise.all(
             authEntries.map(async ([endpoint, auth]) => {
               // The ZDR list only describes OpenRouter's providers, so ZDR-only
-              // mode can vouch for nothing else.
-              if (endpoint.kind !== 'openrouter' && zdrOnly) {
+              // mode can vouch for nothing else but the person's own local server.
+              if (endpoint.kind !== 'openrouter' && zdrOnly && !isLocalServer(endpoint)) {
                 modelsByEndpoint.set(endpoint.id, []);
                 noticeSegments.push(
                   `${endpoint.label} models are hidden: zero data retention is on, and only OpenRouter can promise it.`,
