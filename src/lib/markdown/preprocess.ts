@@ -5,6 +5,7 @@
 // citation.
 
 import {
+  citeSourceLinks,
   escapeCurrency,
   linkCitationMarkers,
   type MarkdownCitationSource,
@@ -106,6 +107,9 @@ export function hasMathDelimiter(processed: string): boolean {
 
 export function preprocessMarkdown(content: string, sources?: MarkdownCitationSource[]): string {
   return mapOutsideCode(content, (prose) =>
-    linkCitationMarkers(normalizeMathDelimiters(escapeCurrency(prose)), sources),
+    linkCitationMarkers(
+      citeSourceLinks(normalizeMathDelimiters(escapeCurrency(prose)), sources),
+      sources,
+    ),
   );
 }

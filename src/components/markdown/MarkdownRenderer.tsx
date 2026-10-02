@@ -217,13 +217,16 @@ const COMPONENTS: Components = {
   // becomes node="[object Object]".
   a: ({ href, children, node: _node, ...props }) => {
     const isExternal = href && /^https?:\/\//.test(href);
-    // A citation shows only its number; its title says which source it is.
-    const isCitation = typeof children === 'string' && /^\d+$/.test(children);
+    // A citation (`linkCitationMarkers`) shows only its number, set small;
+    // its title says which source it is.
+    const isCitation =
+      typeof children === 'string' && !!props.title?.startsWith(`Source ${children}: `);
     return (
       <a
         href={href}
         target={isExternal ? '_blank' : undefined}
         rel={isExternal ? 'noopener noreferrer' : undefined}
+        className={isCitation ? 'citation' : undefined}
         aria-label={isCitation ? props.title : undefined}
         {...props}
       >
