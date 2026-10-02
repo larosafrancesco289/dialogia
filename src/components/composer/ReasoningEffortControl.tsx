@@ -93,7 +93,7 @@ function ReasoningMenu({
     <motion.div
       ref={menuRef}
       role="radiogroup"
-      aria-label="Reasoning effort"
+      aria-label="Thinking effort"
       className="popover popover--motion effort-menu absolute bottom-full left-0 z-30 mb-2"
       style={{ translate: `${shift}px 0` }}
       initial={{ opacity: 0, y: 4 }}
@@ -179,8 +179,8 @@ function ReasoningSheet({
   return (
     <BottomSheet
       open={open}
-      label="Reasoning effort"
-      title="Reasoning effort"
+      label="Thinking effort"
+      title="Thinking effort"
       onClose={onClose}
       returnFocus={returnFocus}
     >
@@ -249,8 +249,8 @@ export function ReasoningEffortControl({
         data-effort={effort}
         aria-haspopup="true"
         aria-expanded={reasoningOpen}
-        aria-label="Reasoning effort"
-        title={reasoningActive ? `Reasoning: ${effortLabel(effort)}` : 'Reasoning effort'}
+        aria-label="Thinking effort"
+        title={reasoningActive ? `Thinking: ${effortLabel(effort)}` : 'Thinking effort'}
         onClick={() => setReasoningOpen((v) => !v)}
       >
         {/* A level meter filled to the effort; the word beside it names it. */}
