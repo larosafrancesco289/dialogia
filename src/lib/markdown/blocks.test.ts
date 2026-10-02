@@ -147,8 +147,37 @@ test('markdownRenderBlocks holds back a closing fence still arriving while strea
   const growing = 'Intro.\n\n```ts\nconst a = 1;\n``';
   assert.deepEqual(markdownRenderBlocks(growing, true), ['Intro.\n\n', '```ts\nconst a = 1;\n']);
   assert.deepEqual(markdownRenderBlocks(growing), ['Intro.\n\n', '```ts\nconst a = 1;\n``']);
-  // A backtick line outside an open fence, or a different fence character, is text.
-  assert.deepEqual(markdownRenderBlocks('Intro\n`', true), ['Intro\n`']);
+  // A backtick line outside an open fence, or a different fence character, is
+  // text (outside a fence, a lone backtick waits like any code span opener).
+  assert.deepEqual(markdownRenderBlocks('Intro\n`', true), ['Intro\n']);
   assert.deepEqual(markdownRenderBlocks('~~~\nx\n`', true), ['~~~\nx\n`']);
-  assert.deepEqual(markdownRenderBlocks('```\nx\n```\n`', true), ['```\nx\n```\n`']);
+  assert.deepEqual(markdownRenderBlocks('```\nx\n```\n`', true), ['```\nx\n```\n']);
+});
+
+test('while streaming, the tail closes open inline marks and holds back dangling ones', () => {
+  const tail = (content: string) => markdownRenderBlocks(content, true).at(-1);
+  // An opener with nothing after it waits.
+  assert.equal(tail('A reply with **'), 'A reply with ');
+  assert.equal(tail('A reply with *'), 'A reply with ');
+  assert.equal(tail('Run `'), 'Run ');
+  // Open marks close, so the words show styled as they arrive.
+  assert.equal(tail('A reply with **bo'), 'A reply with **bo**');
+  assert.equal(tail('An *ita'), 'An *ita*');
+  assert.equal(tail('Both ***bi'), 'Both ***bi***');
+  assert.equal(tail('**see `foo'), '**see `foo`**');
+  // A closer still arriving waits for its second asterisk.
+  assert.equal(tail('A **bold*'), 'A **bold**');
+  // Finished marks, bullets, spaced or intraword asterisks are left alone.
+  assert.equal(tail('A **bold** word'), 'A **bold** word');
+  assert.equal(tail('* item'), '* item');
+  assert.equal(tail('* item **b'), '* item **b**');
+  assert.equal(tail('a * b and 2*3'), 'a * b and 2*3');
+  assert.equal(tail('`a*b` then'), '`a*b` then');
+  // Earlier lines, code blocks, indented code and maths are not touched.
+  assert.equal(tail('**a\nb'), '**a\nb');
+  assert.equal(tail('```\nlet *p'), '```\nlet *p');
+  assert.equal(tail('    let *p'), '    let *p');
+  assert.equal(tail('So $a*b'), 'So $a*b');
+  // A finished reply is never rewritten.
+  assert.deepEqual(markdownRenderBlocks('A reply with **bo'), ['A reply with **bo']);
 });
