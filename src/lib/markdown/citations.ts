@@ -65,8 +65,21 @@ export function hostname(url?: string) {
   }
 }
 
+/**
+ * A source's title, without the site name a page title often ends with
+ * ("Nobel Prize in Physics - NobelPrize.org"): the host beside it says that.
+ */
 export function titleForSource(source: { title?: string; url?: string }) {
-  return source.title || hostname(source.url) || source.url || 'Untitled source';
+  const host = hostname(source.url);
+  const title = source.title?.trim();
+  if (!title) return host || source.url || 'Untitled source';
+  const [, page, site] = title.match(/^(.+?)\s+[-|–—·]\s+([^-|–—·]+)$/) ?? [];
+  const squash = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const names = host
+    .split('.')
+    .slice(0, -1)
+    .filter((label) => label.length >= 3);
+  return page && names.some((name) => squash(site).includes(squash(name))) ? page : title;
 }
 
 /**

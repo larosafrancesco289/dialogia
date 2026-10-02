@@ -29,7 +29,8 @@ function SourcesList({ sources }: { sources: MarkdownCitationSource[] }) {
           >
             {titleForSource(source)}
           </a>
-          {source.url && (
+          {/* The host, unless the title already is it. */}
+          {source.url && hostname(source.url) !== titleForSource(source).toLowerCase() && (
             <span className="response-ledger__source-host">{hostname(source.url)}</span>
           )}
           <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5 shrink-0 text-[var(--color-fg-muted)]" />
