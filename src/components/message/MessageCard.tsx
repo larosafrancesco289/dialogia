@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { useLongPressSheet } from '@/lib/hooks/useLongPressSheet';
 import { useMessageCardController } from '@/components/message/useMessageCardController';
 import { MessageCardView, type MessageCardViewData } from '@/components/message/MessageCardView';
@@ -75,7 +75,8 @@ function MessageCardComponent({
   const [sourcesExpanded, setSourcesExpanded] = useState(false);
   const [debugExpanded, setDebugExpanded] = useState(false);
 
-  useEffect(() => {
+  // Before paint, so the editor never opens empty for a frame and then grows.
+  useLayoutEffect(() => {
     const wasEditing = prevEditingRef.current;
     prevEditingRef.current = isEditing;
     if (isEditing && !wasEditing) {
@@ -88,7 +89,9 @@ function MessageCardComponent({
       if (!active || active === document.body) {
         document
           .querySelector(`[data-mid="${CSS.escape(messageId)}"]`)
-          ?.querySelector<HTMLElement>('button[aria-label="Edit message"]')
+          ?.querySelector<HTMLElement>(
+            'button[aria-label="Edit message"], button[aria-label="Edit reply"]',
+          )
           ?.focus({ preventScroll: true });
       }
     }
