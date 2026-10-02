@@ -272,6 +272,13 @@ function feltBy(
 const isSetting = (evidence: WhyStep['evidence']) =>
   !evidence || (typeof evidence.setTo === 'number' && evidence.kind !== 'misconception');
 
+// A setting that is where the estimate starts: the plan's starting estimate, or one carried over.
+const isStart = (evidence: WhyStep['evidence']) =>
+  !evidence ||
+  evidence.kind === 'placement' ||
+  evidence.source === 'placement' ||
+  !!evidence.carriedOver;
+
 /** What placed the estimate directly, in the learner's words. */
 function settingLabel(evidence: WhyStep['evidence']): string {
   if (evidence?.kind === 'placement') return 'Starting estimate';
@@ -346,16 +353,17 @@ function Why({ mastery, explanation }: { mastery: TopicMastery; explanation?: To
     ...step,
     evidence: mastery.evidence.find((entry) => entry.eventId === step.eventId),
   }));
-  // A starting estimate set by the plan is the start: no prior line above it.
-  const opensWithSetting = steps.length > 0 && isSetting(steps[0].evidence);
+  // A starting estimate set by the plan (or carried over) is the start: no prior
+  // line above it. Anything else, a correction included, moves on from the prior.
+  const opensWithStart = steps.length > 0 && isStart(steps[0].evidence);
   // With nothing since the start, the start line already states today's value.
-  const startIsNow = steps.length === (opensWithSetting ? 1 : 0);
+  const startIsNow = steps.length === (opensWithStart ? 1 : 0);
 
   return (
     <div className="hub-why">
       <p className="hub-label">Why {pct(mastery.confidence)}%</p>
       <ol className="hub-why__list">
-        {!opensWithSetting && (
+        {!opensWithStart && (
           <li className="is-edge">
             <span className="hub-why__figure">{pct(start)}%</span>
             <span>
@@ -367,7 +375,7 @@ function Why({ mastery, explanation }: { mastery: TopicMastery; explanation?: To
           <WhyLine
             key={i}
             step={step}
-            first={i === 0 && opensWithSetting}
+            first={i === 0 && opensWithStart}
             topic={explanation?.name ?? mastery.nodeId}
           />
         ))}
