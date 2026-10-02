@@ -16,6 +16,7 @@ export const NOTICE_CATALOG = {
     'This chat uses a server that no longer exists. Add it again in Settings › Connections, or pick another model.',
   exportedChats: 'Your chats were exported.',
   planApplyFailed: 'The plan could not be applied. Try again.',
+  planChangesFailed: 'Your suggestion could not be sent. Try again.',
   copyFailed: 'Could not copy: the browser blocked clipboard access.',
   replyInOtherTab:
     'Another tab is writing a reply in this chat. Send once it has finished, so both tabs show the same chat.',
@@ -200,6 +201,7 @@ export const NOTICE_MISSING_SEARCH_KEY = NOTICE_CATALOG.missingSearchKey;
 export const NOTICE_UNKNOWN_ENDPOINT = NOTICE_CATALOG.unknownEndpoint;
 export const NOTICE_EXPORTED_CHATS = NOTICE_CATALOG.exportedChats;
 export const NOTICE_PLAN_APPLY_FAILED = NOTICE_CATALOG.planApplyFailed;
+export const NOTICE_PLAN_CHANGES_FAILED = NOTICE_CATALOG.planChangesFailed;
 export const NOTICE_REPLY_IN_OTHER_TAB = NOTICE_CATALOG.replyInOtherTab;
 export const NOTICE_SAVE_FAILED = NOTICE_CATALOG.saveFailed;
 export const NOTICE_CONSOLIDATION_FAILED = NOTICE_CATALOG.consolidationFailed;

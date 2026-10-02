@@ -4,7 +4,11 @@ import { shallow } from 'zustand/shallow';
 import { Bars2Icon, PlusIcon } from '@heroicons/react/24/outline';
 import { ModelPicker } from '@/components/ModelPicker';
 import { ModuleSlot } from '@/components/ModuleSlot';
-import { selectIsStreaming, selectIsTutorEnabled } from '@/lib/store/selectors';
+import {
+  selectIsStreaming,
+  selectIsTutorEnabled,
+  selectOnWelcomePage,
+} from '@/lib/store/selectors';
 import { useAnyModelOffered } from '@/lib/hooks/useProviderKeys';
 import styles from './MobileHeader.module.css';
 
@@ -24,9 +28,10 @@ export function MobileHeader({
   onNewChat: () => void;
   menuButtonRef?: Ref<HTMLButtonElement>;
 }) {
-  const { hydrated, title, isStreaming, tutorActive } = useChatStore(
+  const { hydrated, onWelcome, title, isStreaming, tutorActive } = useChatStore(
     (s) => ({
       hydrated: s.hydrated,
+      onWelcome: selectOnWelcomePage(s),
       title: s.chats.find((c) => c.id === s.selectedChatId)?.title,
       isStreaming: selectIsStreaming(s),
       tutorActive: selectIsTutorEnabled(s),
@@ -35,7 +40,7 @@ export function MobileHeader({
   );
   // Nothing connected yet: the page is the welcome, and a new chat could not
   // be sent anything.
-  const firstRun = useAnyModelOffered() === false;
+  const firstRun = useAnyModelOffered() === false && onWelcome;
 
   return (
     <header className={styles.header}>

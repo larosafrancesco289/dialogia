@@ -153,6 +153,15 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     });
   }, []);
 
+  // The quiet countdown that ends a freshly opened chat's settling.
+  const restartSettleTimer = useCallback(() => {
+    if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
+    settleTimerRef.current = setTimeout(() => {
+      settleTimerRef.current = null;
+      settlingRef.current = false;
+    }, OPEN_SETTLE_QUIET_MS);
+  }, []);
+
   const lockFollow = useCallback(() => {
     settlingRef.current = false;
     if (!followAllowedRef.current) return;
@@ -326,13 +335,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
 
     const observer = new ResizeObserver(() => {
       const settling = settlingRef.current;
-      if (settling) {
-        if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
-        settleTimerRef.current = setTimeout(() => {
-          settleTimerRef.current = null;
-          settlingRef.current = false;
-        }, OPEN_SETTLE_QUIET_MS);
-      }
+      if (settling) restartSettleTimer();
       if ((autoScrollPreference || settling) && followAllowedRef.current) {
         followToBottom();
       } else {
@@ -342,7 +345,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
 
     observer.observe(contentEl);
     return () => observer.disconnect();
-  }, [applySnapshot, autoScrollPreference, followToBottom, readSnapshot]);
+  }, [applySnapshot, autoScrollPreference, followToBottom, readSnapshot, restartSettleTimer]);
 
   useEffect(() => {
     if (!chatId) return;
@@ -354,8 +357,11 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     touchStartYRef.current = null;
     lastMessageMetaRef.current = undefined;
     settlingRef.current = true;
+    // A chat with nothing left to grow settles too. In a hidden tab the
+    // first resize starts the countdown, once the tab is shown.
+    if (document.visibilityState === 'visible') restartSettleTimer();
     scrollToBottom('auto');
-  }, [chatId, scrollToBottom]);
+  }, [chatId, restartSettleTimer, scrollToBottom]);
 
   const lastMessageMeta = useMemo<LastMessageMeta | null>(() => {
     const last = messages[messages.length - 1];

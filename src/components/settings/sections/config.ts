@@ -45,10 +45,10 @@ export const SECTION_KEYWORDS: Record<SectionId, string> = {
     'your own server local ollama lm studio llama.cpp vllm server address base url custom endpoint openai compatible key api model names test connection tools images thinking effort reply costs prompt caching chat titles remove self-hosted',
   'web-search': 'tavily key search browse web openrouter search jina reader',
   'default-model': 'new chat default model reset refresh list',
-  favorites: 'favorite favourite star models remove hidden show again picker',
+  favorites: 'favorite favourite star models remove picker',
   privacy: 'zero data retention only zdr privacy providers prompts',
   general:
-    'system prompt presets choose a preset save current rename delete message timestamps date time',
+    'system prompt saved prompts choose a saved prompt preset save current rename delete message timestamps date time',
   memory:
     'use memory remember forget notes about you learning include sensitive topics private health open memory bookmark',
   reasoning: 'thinking effort thinking budget reasoning tokens level model default',

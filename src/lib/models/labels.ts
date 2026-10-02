@@ -88,5 +88,5 @@ function baseModelLabel(params: {
   const family = idSource ? getModelFamily(idSource) : undefined;
   if (family) return family.label;
   const derived = deriveNameFromId(idSource);
-  return derived || 'Pick model';
+  return derived || 'Choose a model';
 }

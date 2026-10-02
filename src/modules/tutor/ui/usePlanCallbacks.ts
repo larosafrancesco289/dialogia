@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
-import { NOTICE_PLAN_APPLY_FAILED } from '@/lib/store/notices';
+import { NOTICE_PLAN_APPLY_FAILED, NOTICE_PLAN_CHANGES_FAILED } from '@/lib/store/notices';
 import { selectMessagesForCurrentChat } from '@/lib/store/selectors';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import type { LearningPlan, TopicMastery } from '@/lib/types';
@@ -67,7 +67,10 @@ export function useRequestPlanChanges(): (
   feedback: string,
   proposal?: ProposalRef,
 ) => Promise<boolean> {
-  const dispatchTutor = useChatStore((s) => s.dispatchTutor);
+  const { dispatchTutor, setNotice } = useChatStore(
+    (s) => ({ dispatchTutor: s.dispatchTutor, setNotice: s.setNotice }),
+    shallow,
+  );
   const ledger = useLedger();
   return useCallback(
     async (feedback: string, proposal?: ProposalRef) => {
@@ -80,12 +83,16 @@ export function useRequestPlanChanges(): (
           { by: 'learner', type: 'decline_plan', proposalId: pending.proposalId, feedback },
           { by: 'learner', ...(pending.messageId ? { messageId: pending.messageId } : {}) },
         );
-        if (!result.ok) return false;
+        // The dialog has closed already: say so here.
+        if (!result.ok) {
+          setNotice(NOTICE_PLAN_CHANGES_FAILED);
+          return false;
+        }
       }
       await ledger(LEDGER.planDeclined(feedback));
       return true;
     },
-    [dispatchTutor, ledger],
+    [dispatchTutor, ledger, setNotice],
   );
 }
 
@@ -94,6 +101,10 @@ export function useRequestPlanChanges(): (
  * so both open the plan the same way and leave the same ledger line. Resolves
  * false (having said so) when the engine refused.
  */
+// Proposals being approved: a second click (on the card or in the Hub) lands
+// before the disabled state renders, and would find the plan already approved.
+const approving = new Set<string>();
+
 export function useApprovePlan(): (proposal: ProposalRef) => Promise<boolean> {
   const { dispatchTutor, setUI, setNotice } = useChatStore(
     (s) => ({ dispatchTutor: s.dispatchTutor, setUI: s.setUI, setNotice: s.setNotice }),
@@ -103,7 +114,8 @@ export function useApprovePlan(): (proposal: ProposalRef) => Promise<boolean> {
   return useCallback(
     async ({ proposalId, messageId }: ProposalRef) => {
       const chatId = useChatStore.getState().selectedChatId;
-      if (!chatId) return false;
+      if (!chatId || approving.has(proposalId)) return false;
+      approving.add(proposalId);
       try {
         const result = await dispatchTutor(
           chatId,
@@ -131,6 +143,8 @@ export function useApprovePlan(): (proposal: ProposalRef) => Promise<boolean> {
       } catch {
         setNotice(NOTICE_PLAN_APPLY_FAILED);
         return false;
+      } finally {
+        approving.delete(proposalId);
       }
     },
     [dispatchTutor, ledger, setNotice, setUI],
