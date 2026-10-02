@@ -70,7 +70,12 @@ export function SearchModeControl({
         onClick={() => (hasSearchChoice ? setSearchMenuOpen((open) => !open) : toggleSearch())}
       >
         <GlobeAltIcon className="h-4 w-4" aria-hidden="true" />
-        <ComposerToolLabel text={searchEnabled ? 'Search' : null} />
+        {/* Which search, when there is a choice: Built-in reads as plain Search. */}
+        <ComposerToolLabel
+          text={
+            searchEnabled ? (isNativeSearchMode(searchProvider) ? 'Search' : providerLabel) : null
+          }
+        />
       </button>
       <AnimatePresence>
         {hasSearchChoice && searchMenuOpen && (
