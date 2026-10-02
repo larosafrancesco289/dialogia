@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { linkCitationMarkers } from '@/lib/markdown/citations';
+import { citeSourceLinks, linkCitationMarkers, withoutTracking } from '@/lib/markdown/citations';
 
 const TWO_SOURCES = [
   { title: 'One', url: 'https://example.com/one' },
@@ -57,4 +57,38 @@ test('linkCitationMarkers leaves existing markdown links alone', () => {
   ]);
 
   assert.equal(result, 'Already linked [1](https://example.com).');
+});
+
+test("a provider's own citation, a parenthesised link to a source, becomes that source's marker", () => {
+  const sources = [
+    { title: 'Python', url: 'https://www.python.org/downloads/' },
+    { title: 'PEP', url: 'https://peps.python.org/pep-0745/' },
+  ];
+  assert.equal(
+    citeSourceLinks(
+      'Python 3.14.8 is out. ([python.org](https://www.python.org/downloads/?utm_source=openai))',
+      sources,
+    ),
+    'Python 3.14.8 is out. [1]',
+  );
+  assert.equal(
+    citeSourceLinks(
+      'Two ([a](https://peps.python.org/pep-0745/), [b](https://www.python.org/downloads/)).',
+      sources,
+    ),
+    'Two [2][1].',
+  );
+  // A link to anything that is not a source stays a link.
+  const other = 'See ([docs](https://docs.python.org/)) here.';
+  assert.equal(citeSourceLinks(other, sources), other);
+});
+
+test('tracking parameters come off a source link, and nothing else does', () => {
+  assert.equal(
+    withoutTracking('https://a.test/page?id=3&utm_source=openai&utm_medium=x'),
+    'https://a.test/page?id=3',
+  );
+  assert.equal(withoutTracking('https://a.test/page?utm_source=openai'), 'https://a.test/page');
+  assert.equal(withoutTracking('https://a.test'), 'https://a.test');
+  assert.equal(withoutTracking('not a url'), 'not a url');
 });

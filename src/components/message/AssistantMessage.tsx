@@ -14,6 +14,7 @@ import { MessageAttachments } from '@/components/message/MessageAttachments';
 import { MessageModuleSlot } from '@/components/ModuleSlot';
 import { ActionButton, MessageEditBar } from '@/components/message/MessageActions';
 import { MessageColophon } from '@/components/message/MessageColophon';
+import { ReplySources } from '@/components/message/SourcesEntry';
 import { StreamingMarkdown } from '@/components/message/StreamingMarkdown';
 import { MemoryWrites } from '@/components/memory/MemoryWrites';
 import { useChatStore } from '@/lib/store';
@@ -387,6 +388,7 @@ export function AssistantMessage({
               </div>
             )}
             {showStats && chat && <MessageColophon message={message} chat={chat} models={models} />}
+            {resolvedCitationSources && <ReplySources sources={resolvedCitationSources} />}
           </div>
         )}
 

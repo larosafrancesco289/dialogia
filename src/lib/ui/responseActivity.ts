@@ -193,10 +193,8 @@ export function toolAnnotation(item: ToolActivityItem): {
     if (MEMORY_REFUSED[item.name]) return { text: MEMORY_REFUSED[item.name] };
     return { text: 'Failed', error: true, detail: item.error };
   }
-  if (item.name === 'web_search') {
-    const results = toolResultCount(item);
-    return { text: `${results ?? 0} result${results === 1 ? '' : 's'}` };
-  }
+  // How many pages a search found is said once, on the sources line.
+  if (item.name === 'web_search' && toolResultCount(item) === 0) return { text: 'No results' };
   if (typeof item.metadata?.notes === 'string') return { text: item.metadata.notes };
   return { text: formatDuration(item.duration) };
 }
