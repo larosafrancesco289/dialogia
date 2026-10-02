@@ -57,7 +57,8 @@ export function useTutorToggle(): TutorToggleState {
     }),
     shallow,
   );
-  const connected = useAnyModelOffered();
+  // Undefined until the keys are read: not shown until then.
+  const connected = useAnyModelOffered() === true;
 
   const toggle = useCallback(async () => {
     if (forced) return;
