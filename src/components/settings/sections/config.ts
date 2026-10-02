@@ -27,7 +27,7 @@ export const SECTION_TITLES: Record<SectionId, string> = {
   privacy: 'Privacy',
   general: 'System prompt',
   memory: 'Memory',
-  reasoning: 'Reasoning',
+  reasoning: 'Thinking',
   tutor: 'Tutor',
   theme: 'Theme',
   display: 'Display',
@@ -35,23 +35,30 @@ export const SECTION_TITLES: Record<SectionId, string> = {
   data: 'Import and export',
 };
 
-/** What each section is about, so search finds it by its contents too. */
+/**
+ * What each section shows (its labels) and is about, so search finds it by
+ * the words on screen as well as by its title.
+ */
 export const SECTION_KEYWORDS: Record<SectionId, string> = {
-  providers: 'openrouter anthropic api key provider connect',
+  providers: 'openrouter key anthropic key api provider connect replace remove',
   endpoints:
-    'local server ollama lm studio llama.cpp vllm base url custom endpoint openai compatible api key model self-hosted',
-  'web-search': 'tavily search key browse web',
-  'default-model': 'new chat default model refresh list',
-  favorites: 'favorite favourite star models add remove hidden picker',
-  privacy: 'zdr zero data retention privacy providers store',
-  general: 'system prompt preset instructions timestamps date time',
-  memory: 'memory remember forget notes about you learning sensitive topics private health',
-  reasoning: 'reasoning effort thinking tokens budget',
-  tutor: 'tutor learning plan learner model teaching',
-  theme: 'theme dark light auto color colour scheme',
-  display: 'thinking stats colophon display introduction intro tour welcome help',
-  developer: 'developer debug request raw json tool call log calls inspect',
-  data: 'export import json backup data',
+    'your own server local ollama lm studio llama.cpp vllm server address base url custom endpoint openai compatible key api model names test connection tools images thinking effort reply costs prompt caching chat titles remove self-hosted',
+  'web-search': 'tavily key search browse web openrouter search jina reader',
+  'default-model': 'new chat default model reset refresh list',
+  favorites: 'favorite favourite star models remove hidden show again picker',
+  privacy: 'zero data retention only zdr privacy providers prompts',
+  general:
+    'system prompt presets choose a preset save current rename delete message timestamps date time',
+  memory:
+    'use memory remember forget notes about you learning include sensitive topics private health open memory bookmark',
+  reasoning: 'thinking effort thinking budget reasoning tokens level model default',
+  tutor:
+    'tutor mode always tutor follow the tutor scroll tutor model learning plan learner teaching',
+  theme: 'theme color colour scheme light dark auto system',
+  display: 'show thinking by default show reply details model speed cost stats colophon display',
+  developer:
+    'developer tool-call log request view include the raw json each reply debug inspect arguments result',
+  data: 'import and export chats and settings json file backup data',
 };
 
 // Settings reopens on the tab last used in this page's life; a reload starts
@@ -66,10 +73,19 @@ export function rememberSettingsTab(tab: TabId) {
   lastTab = tab;
 }
 
-/** Whether a section answers a settings search (title or contents, every word). */
+/** Lower case, with punctuation as spaces: "Tool-call" and "tool call" read alike. */
+const searchWords = (text: string) =>
+  text
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+
+/** Whether a section answers a settings search: every word is in its title or contents. */
 export function sectionMatches(sectionId: SectionId, query: string): boolean {
-  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const words = searchWords(query);
   if (!words.length) return true;
-  const haystack = `${SECTION_TITLES[sectionId]} ${SECTION_KEYWORDS[sectionId]}`.toLowerCase();
+  const haystack = searchWords(`${SECTION_TITLES[sectionId]} ${SECTION_KEYWORDS[sectionId]}`).join(
+    ' ',
+  );
   return words.every((word) => haystack.includes(word));
 }
