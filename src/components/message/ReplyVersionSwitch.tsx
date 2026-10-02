@@ -3,6 +3,7 @@ import { ChevronLeftIcon, ChevronRightIcon, TrashIcon } from '@heroicons/react/2
 import { useChatStore } from '@/lib/store';
 import { shownVersionIndex, versionCount } from '@/lib/messages/versions';
 import { refocusIfDropped } from '@/lib/ui/focus';
+import { formatModelLabel } from '@/lib/models';
 import type { Message } from '@/lib/types';
 
 /**
@@ -23,12 +24,18 @@ export function ReplyVersionSwitch({
   onDelete: (messageId: string) => void;
 }) {
   const showReplyVersion = useChatStore((s) => s.showReplyVersion);
+  const models = useChatStore((s) => s.models);
   const previousRef = useRef<HTMLButtonElement>(null);
   const nextRef = useRef<HTMLButtonElement>(null);
   const count = versionCount(message);
   if (count < 2) return null;
   const at = shownVersionIndex(message);
   const locked = !canSwitch || disabled;
+  // Try again may use another model: each version says which one wrote it.
+  const model = message.model
+    ? `, ${formatModelLabel({ model: models.find((m) => m.id === message.model), fallbackId: message.model })}`
+    : '';
+  const label = `Version ${at + 1} of ${count}${model}`;
 
   // At either end the arrow pressed disables itself: focus crosses to the other.
   const step = (index: number) => {
@@ -57,11 +64,11 @@ export function ReplyVersionSwitch({
       >
         <ChevronLeftIcon className="h-3.5 w-3.5" />
       </button>
-      <span className="reply-versions__count" aria-hidden="true">
+      <span className="reply-versions__count" aria-hidden="true" title={label}>
         {at + 1}/{count}
       </span>
       <span className="sr-only" aria-live="polite">
-        Version {at + 1} of {count}
+        {label}
       </span>
       <button
         ref={nextRef}
