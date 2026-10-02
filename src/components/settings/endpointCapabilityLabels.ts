@@ -5,14 +5,14 @@ export const CAPABILITY_LABELS: Array<{
   label: string;
   hint: string;
 }> = [
-  { key: 'tools', label: 'Tool calls', hint: 'Send tool definitions and accept tool calls.' },
-  { key: 'vision', label: 'Images', hint: 'Accept image content blocks.' },
-  { key: 'reasoning', label: 'Reasoning effort', hint: 'Send reasoning/effort parameters.' },
-  { key: 'streamUsage', label: 'Usage in stream', hint: 'Ask for token usage on the last chunk.' },
+  { key: 'tools', label: 'Tools', hint: 'Let the model use tools, such as search and memory.' },
+  { key: 'vision', label: 'Images', hint: 'Send images.' },
+  { key: 'reasoning', label: 'Thinking effort', hint: 'Send a thinking level.' },
+  { key: 'streamUsage', label: 'Reply costs', hint: 'Report what each reply cost.' },
   {
     key: 'parallelToolCalls',
-    label: 'Parallel tool calls',
-    hint: 'Allow more than one per round.',
+    label: 'Several tools at once',
+    hint: 'Let the model use more than one tool in a step.',
   },
-  { key: 'promptCaching', label: 'Prompt caching', hint: 'Send cache_control markers.' },
+  { key: 'promptCaching', label: 'Prompt caching', hint: 'Reuse long prompts to save cost.' },
 ];

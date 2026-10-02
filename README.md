@@ -34,9 +34,10 @@ bun install
 bun run dev
 ```
 
-Open http://localhost:3000. After a short tour you can skip, the setup sheet appears. Pick
-OpenRouter or Anthropic, paste a key, and send a message. That is the whole setup. There is no
-`.env` file to write and no build flags to set.
+Open http://localhost:3000. The welcome page asks for a key where the composer will be: paste an
+OpenRouter key (or choose an Anthropic key under **Other ways to connect**), press **Connect**, and
+send a message. That is the whole setup. There is no `.env` file to write and no build flags to
+set.
 
 Get a key from [openrouter.ai/keys](https://openrouter.ai/keys) (one key, most models) or
 [console.anthropic.com](https://console.anthropic.com) (Claude, direct).
@@ -50,14 +51,15 @@ ollama pull qwen3:8b
 bun run dev
 ```
 
-In the setup sheet choose **Local**, name it, and give it `http://localhost:11434/v1`. Whatever the
-server lists at `/models` shows up in the picker under **Your servers**. Then in **Settings ›
+On the welcome page open **Other ways to connect**, choose **Your own server**, and give it
+`http://localhost:11434/v1`. Whatever the server lists at `/models` shows up in the picker under
+**Your servers**. Then in **Settings ›
 Connections**, under **Your servers**, turn on the capabilities your server actually supports, and
-add any model ids it does not list.
+add any model names it does not list.
 
 Capabilities start off and stay off until you enable them. A strict OpenAI-compatible server rejects
 an entire request over one field it does not recognise, so Dialogia sends the minimal body until you
-say otherwise. You do not have to guess: **Test connection** in the endpoint's settings sends a few
+say otherwise. You do not have to guess: **Test connection** in the server's settings sends a few
 one-token requests, reports which fields the server accepted, and can set the checkboxes from the
 answer. If tool calls or search are unavailable you get a visible notice rather than silence.
 
@@ -74,8 +76,8 @@ Cloudflare Pages, Netlify, GitHub Pages, or your own nginx. Dialogia is a single
 a host has to serve `index.html` for unknown paths. `wrangler.toml` sets that up for Cloudflare.
 Anywhere else, point unknown paths at `index.html` yourself.
 
-Every visitor supplies their own key. The first visit opens the setup sheet, which explains where to
-get one and stores it in that browser only. A deployment therefore pays for nothing and can be
+Every visitor supplies their own key. The first visit is the welcome page, which asks for one,
+explains where to get it, and stores it in that browser only. A deployment therefore pays for nothing and can be
 shared with anyone by link. On Cloudflare the whole setup is build command `bun run build`, deploy
 command `npx wrangler deploy`, and no environment variables; `wrangler.toml` does the rest.
 

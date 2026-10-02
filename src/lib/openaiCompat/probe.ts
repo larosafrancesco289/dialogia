@@ -276,7 +276,8 @@ export async function probeEndpoint(
 
   const modelId = options.modelId ?? auth.endpoint.modelIds?.[0] ?? discovered[0];
   if (!modelId) {
-    const detail = 'No model to test with. Type a model id above, or check what the server lists.';
+    const detail =
+      'No model to test with. Type a model name above, or check what the server lists.';
     return { models, chat: { verdict: 'skipped', detail }, capabilities: skipped(detail) };
   }
 
