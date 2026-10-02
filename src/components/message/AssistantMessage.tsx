@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   PencilSquareIcon,
   CheckIcon,
@@ -22,6 +22,7 @@ import { messageHasModuleContent } from '@/lib/modules';
 import { versionCount } from '@/lib/messages/versions';
 import type { Chat, Message, ModelDescriptor, PersistedAttachment } from '@/lib/types';
 import { LogoMark } from '@/components/ui/LogoMark';
+import { cn } from '@/lib/ui/cn';
 import { penIsLive, toolCallInFlight } from '@/lib/ui/streaming';
 import { replyEndingNote } from '@/lib/ui/replyEnding';
 import { silentWaitLine } from '@/lib/ui/responseActivity';
@@ -159,6 +160,10 @@ export function AssistantMessage({
   const hasVersions = versionCount(message) > 1;
   const writing = isStreaming && isLatestAssistant;
   const quietSince = useQuietSince(displayContent, writing);
+  // A reply written while it was open fades its footer in as the words end;
+  // one opened from history has it from the start.
+  const wroteHere = useRef(false);
+  if (writing) wroteHere.current = true;
   const penLive = writing && penIsLive(message, quietSince !== undefined);
 
   let messageBody: ReactNode = null;
@@ -329,7 +334,10 @@ export function AssistantMessage({
         (displayContent.trim() || hasVersions) &&
         (showInlineActions || showStats) && (
           <div
-            className={`message-foot px-4 ${isLatestAssistant ? '' : styles.footOnHover}`.trim()}
+            className={cn(
+              'message-foot px-4',
+              isLatestAssistant ? wroteHere.current && 'motion-fade' : styles.footOnHover,
+            )}
           >
             {showInlineActions && (
               <div className="message-actions__group">
