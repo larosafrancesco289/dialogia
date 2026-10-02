@@ -114,8 +114,63 @@ export function splitMarkdownBlocks(content: string): MarkdownBlockSplit {
  */
 export function markdownRenderBlocks(content: string, streaming = false): string[] {
   const { stable, tail } = splitMarkdownBlocks(content);
-  const shown = streaming ? withoutPartialFenceClose(tail) : tail;
+  const shown = streaming ? withInlineMarksClosed(withoutPartialFenceClose(tail)) : tail;
   return shown ? [...stable, shown] : stable;
+}
+
+/** The fence still open after `lines`, or '' when none is. */
+function openFence(lines: string[]): string {
+  let marker = '';
+  for (const line of lines) {
+    if (!marker) {
+      marker = line.match(FENCE_OPEN_RE)?.[1] ?? '';
+      continue;
+    }
+    const close = line.match(FENCE_CLOSE_RE);
+    if (close && close[1][0] === marker[0] && close[1].length >= marker.length) marker = '';
+  }
+  return marker;
+}
+
+/**
+ * While a reply streams, `**bold` shows its asterisks until the closing pair
+ * arrives, and an opener with nothing after it yet (`with **`) shows on its
+ * own. On the tail's last line, a dangling run of asterisks is held back and
+ * an open code span, emphasis or strong is closed, so the words show styled
+ * from their first letter. Code blocks, indented code and anything with maths
+ * are left alone, as are asterisks that cannot open emphasis (a bullet,
+ * `a * b`, `2*3`).
+ */
+function withInlineMarksClosed(tail: string): string {
+  const lastBreak = tail.lastIndexOf('\n');
+  const head = tail.slice(0, lastBreak + 1);
+  let line = tail.slice(lastBreak + 1);
+  if (!/[*`]/.test(line) || /[$\\]/.test(tail) || /^( {4}|\t)/.test(line)) return tail;
+  if (openFence(tail.split('\n'))) return tail;
+
+  // A backtick that opens nothing yet waits; an open code span is closed.
+  const ticks = (line.match(/`/g) ?? []).length;
+  if (ticks % 2 && line.endsWith('`')) line = line.slice(0, -1);
+  const codeOpen = (line.match(/`/g) ?? []).length % 2 === 1;
+  let marks = codeOpen ? line.slice(0, line.lastIndexOf('`')) : line;
+  marks = marks
+    .replace(/`[^`]*`/g, '')
+    .replace(/(^|\s)\*+(?=\s|$)/g, '$1')
+    .replace(/(?<=[A-Za-z0-9])\*+(?=[A-Za-z0-9])/g, '');
+
+  if (!codeOpen) {
+    const trailing = line.match(/\*+$/)?.[0] ?? '';
+    // An opener with nothing after it, or a closer still arriving.
+    const opener = trailing && /(^|\s)\*+$/.test(line);
+    const odd = (marks.match(/\*/g) ?? []).length % 2 === 1;
+    if (trailing && (opener || odd)) {
+      line = line.slice(0, -trailing.length);
+      if (!opener) marks = marks.slice(0, -trailing.length);
+    }
+  }
+  const strong = (marks.match(/\*\*/g) ?? []).length % 2 === 1;
+  const em = (marks.replace(/\*\*/g, '').match(/\*/g) ?? []).length % 2 === 1;
+  return `${head}${line}${codeOpen ? '`' : ''}${em ? '*' : ''}${strong ? '**' : ''}`;
 }
 
 /**
@@ -129,15 +184,7 @@ function withoutPartialFenceClose(tail: string): string {
   const lastBreak = tail.lastIndexOf('\n');
   const last = tail.slice(lastBreak + 1);
   if (lastBreak < 0 || !/^ {0,3}(`+|~+)$/.test(last)) return tail;
-  let marker = '';
-  for (const line of tail.slice(0, lastBreak).split('\n')) {
-    if (!marker) {
-      marker = line.match(FENCE_OPEN_RE)?.[1] ?? '';
-      continue;
-    }
-    const close = line.match(FENCE_CLOSE_RE);
-    if (close && close[1][0] === marker[0] && close[1].length >= marker.length) marker = '';
-  }
+  const marker = openFence(tail.slice(0, lastBreak).split('\n'));
   return marker && last.trim()[0] === marker[0] ? tail.slice(0, lastBreak + 1) : tail;
 }
 
