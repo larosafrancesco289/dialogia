@@ -5,7 +5,7 @@
 // message as annotations. The ledger's sources and the reply's
 // [n] citation links both read this one list.
 
-import type { MarkdownCitationSource } from '@/lib/markdown/citations';
+import { withoutTracking, type MarkdownCitationSource } from '@/lib/markdown/citations';
 import type { SearchSourcesData } from '@/lib/ui/responseActivity';
 import type { UIState } from '@/lib/store/types';
 import { isRecord } from '@/lib/utils/guards';
@@ -20,7 +20,7 @@ function collect(value: unknown, out: MarkdownCitationSource[]): void {
     return;
   }
   if (!isRecord(value)) return;
-  const url = typeof value.url === 'string' ? value.url.trim() : '';
+  const url = typeof value.url === 'string' ? withoutTracking(value.url.trim()) : '';
   if (url) {
     const title = typeof value.title === 'string' && value.title.trim() ? value.title : undefined;
     const description =

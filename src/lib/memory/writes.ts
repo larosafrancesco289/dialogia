@@ -182,7 +182,7 @@ export function planSave(args: {
       ok: false,
       error:
         'Learning holds only what the person studies with the tutor, and this is not a tutor chat.',
-      hint: "Save it in About you, or in its subject's own folder.",
+      hint: 'Call memory_save again with a folder named for its subject (e.g. "Exams" or the course\'s name): one that does not exist yet is created when you also pass new_folder_description. Use About you only if it matters in every conversation.',
     };
   }
 

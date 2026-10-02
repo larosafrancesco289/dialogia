@@ -18,6 +18,7 @@ import { guardModelOrNotice } from './enforce';
 import type { ModelDescriptor } from '@/lib/types';
 import { findModelById } from '@/lib/models';
 import { formatModelLabel } from '@/lib/models/labels';
+import { parseEndpointModelId } from '@/lib/transport/endpoints';
 import { ZDR_CACHE_TTL_MS } from './constants';
 import type { EnsureListsResult, ZdrFilterMode, ZdrSnapshot } from './types';
 
@@ -140,8 +141,14 @@ export function guardZdrOrNotifyCached<S extends ZdrCacheState>(
   );
 }
 
+// A model the list no longer carries is named as its server writes it
+// ("mock-slow"), not as a name guessed from its id ("Mock Slow").
 function zdrModelName<S extends ZdrCacheState>(modelId: string, get: StoreGetter<S>): string {
-  return formatModelLabel({ model: findModelById(get().models, modelId), fallbackId: modelId });
+  return formatModelLabel({
+    model: findModelById(get().models, modelId),
+    fallbackId: modelId,
+    fallbackName: parseEndpointModelId(modelId)?.modelId,
+  });
 }
 
 /**
