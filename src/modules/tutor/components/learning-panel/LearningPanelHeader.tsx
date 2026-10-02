@@ -1,4 +1,5 @@
 import { PencilSquareIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { COMPOSER_FIELD_SELECTOR, refocusIfDropped } from '@/lib/ui/focus';
 
 export function LearningPanelHeader({
   revising,
@@ -37,7 +38,15 @@ export function LearningPanelHeader({
         <button
           type="button"
           className="icon-button learning-panel__close"
-          onClick={onClose}
+          onClick={() => {
+            onClose();
+            // The button went with the panel: back to the header's Hub button,
+            // or the composer when the Hub was a proposal's preview.
+            refocusIfDropped(
+              () => document.querySelector('.plan-button'),
+              () => document.querySelector(COMPOSER_FIELD_SELECTOR),
+            );
+          }}
           aria-label="Close Learning Hub"
           title="Close"
         >

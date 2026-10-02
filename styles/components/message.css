@@ -189,9 +189,9 @@
   /* Smoother auto-resize for message textarea */
 
   /* ===== Attachments ===== */
-  /* In the person's bubble: flush with its edge, a step above their words. */
+  /* In the person's bubble: set where their words start, a step above them. */
   .message-attachments--user {
-    justify-content: flex-end;
+    justify-content: flex-start;
     gap: var(--space-2);
     margin-bottom: var(--space-2);
   }

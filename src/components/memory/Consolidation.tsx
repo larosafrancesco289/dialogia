@@ -28,6 +28,8 @@ function consolidationModelLabel(): string {
   return formatModelLabel({ model: s.modelIndex.get(modelId), fallbackId: modelId });
 }
 
+const sameDay = (at: number) => new Date(at).toDateString() === new Date().toDateString();
+
 /**
  * Consolidate, for the whole of memory: a quiet count of what is new since the
  * last pass beside the button, and the live mark while a pass runs.
@@ -53,7 +55,11 @@ export function ConsolidateAction() {
   // Beside the report nothing more needs saying; before any pass, nothing does.
   const fresh = notesSince(notes, pass?.at);
   const nudge =
-    !pass || pass.shown ? null : fresh ? `${fresh} new since ${shortDate(pass.at)}` : 'Up to date';
+    !pass || pass.shown
+      ? null
+      : fresh
+        ? `${fresh} new since ${sameDay(pass.at) ? 'earlier today' : shortDate(pass.at)}`
+        : 'Up to date';
   return (
     <>
       {nudge && <span className="memory-nudge">{nudge}</span>}
