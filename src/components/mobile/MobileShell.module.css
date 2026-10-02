@@ -9,6 +9,11 @@
   height: var(--viewport-height, 100dvh);
   overflow: hidden;
   background: var(--color-chrome);
+  /* The keyboard's size arrives at once, as it starts to slide: easing to it
+     lets the composer rise with the keys instead of ahead of them. */
+  transition:
+    height var(--duration-med) var(--ease-out-quint),
+    top var(--duration-med) var(--ease-out-quint);
   /* Sideways swipes belong to the drawer; vertical ones scroll, and pinch
      still zooms. */
   touch-action: pan-y pinch-zoom;

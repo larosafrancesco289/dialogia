@@ -161,7 +161,7 @@ export function ConnectForm({
           {title}
         </h2>
         <p className={styles.lead}>{lead ?? LEADS[choice]}</p>
-        <div className={styles.row}>
+        <div className={styles.row} data-keyboard-reveal="">
           <input
             ref={inputRef}
             data-connect-field=""
