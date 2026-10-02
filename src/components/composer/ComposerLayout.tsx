@@ -1,4 +1,9 @@
-import { useEffect, useRef, type ReactNode, type DragEventHandler } from 'react';
+import { useEffect, useLayoutEffect, useRef, type ReactNode, type DragEventHandler } from 'react';
+import { motionEase, motionTransition } from '@/lib/ui/motion';
+
+// Where the welcome page's composer last stood, so the chat's composer can
+// glide down from there on the first send instead of jumping.
+let heroLeft: { top: number; at: number } | null = null;
 
 export function ComposerLayout({
   children,
@@ -36,6 +41,27 @@ export function ComposerLayout({
       ro.disconnect();
       root.style.setProperty('--composer-height', '0px');
     };
+  }, [variant]);
+
+  useLayoutEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    if (variant === 'hero') {
+      return () => {
+        const top = el.getBoundingClientRect().top;
+        heroLeft = top ? { top, at: performance.now() } : null;
+      };
+    }
+    const from = heroLeft;
+    heroLeft = null;
+    if (!from || performance.now() - from.at > 300) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const dy = from.top - el.getBoundingClientRect().top;
+    if (Math.abs(dy) < 2) return;
+    el.animate([{ translate: `0 ${dy}px` }, { translate: '0 0' }], {
+      duration: motionTransition.layout.duration * 1000,
+      easing: `cubic-bezier(${motionEase.outQuint.join(',')})`,
+    });
   }, [variant]);
 
   return (
