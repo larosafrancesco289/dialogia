@@ -171,12 +171,14 @@ export function FolderRowView({
         >
           {chevron}
           <span className="flex-1 min-w-0 text-sm truncate folder-row__name">{name}</span>
-          <span
-            className="folder-row__count"
-            aria-label={`${count} ${count === 1 ? 'chat' : 'chats'}`}
-          >
-            {count}
-          </span>
+          {count > 0 && (
+            <span
+              className="folder-row__count"
+              aria-label={`${count} ${count === 1 ? 'chat' : 'chats'}`}
+            >
+              {count}
+            </span>
+          )}
         </button>
       )}
 
