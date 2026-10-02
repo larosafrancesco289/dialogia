@@ -400,6 +400,9 @@
    underlined, so it reads as a reference rather than a stray digit. */
 .markdown a.citation {
   display: inline-block;
+  /* Not a thumb-sized target: it sits in a line of text, and the footer's
+     list of sources is the way in on a phone. */
+  min-height: 0;
   min-width: 1.5em;
   margin: 0 0.1em;
   padding: 0 0.3em;
