@@ -47,8 +47,8 @@ export function TutorPanel(props: TutorPanelProps) {
           <ToggleSwitch
             checked={experimentalTutor}
             onChange={(checked) => setUI({ flags: { experimentalTutor: checked } })}
-            label="Tutor mode"
-            description="Show the Tutor button and its practice tools: a learning plan and multiple-choice questions."
+            label="Offer Learn"
+            description="Learn sits beside Chat: a tutor plans a short course with you, teaches it, and checks what you know with quick questions."
           />
           {experimentalTutor && (
             <>
@@ -57,8 +57,8 @@ export function TutorPanel(props: TutorPanelProps) {
                 onChange={(checked) => {
                   void onForceTutorModeChange(checked);
                 }}
-                label="Always tutor"
-                description="Every chat runs as a tutoring session, with the settings below."
+                label="Always learn"
+                description="Every chat is a learning session. Chat is not offered."
               />
               <ToggleSwitch
                 checked={!!ui?.tutor?.autoScroll}
@@ -79,11 +79,11 @@ export function TutorPanel(props: TutorPanelProps) {
                   clearOnSelect
                   onSelect={(result) => setTutorDefaultModel(result.id)}
                 />
-                <p className="field__hint">Every tutoring session uses this model.</p>
+                <p className="field__hint">Every learning session uses this model.</p>
               </div>
               <p className="field__hint">
-                Each session drafts a learning plan from your first message and keeps the learner
-                model in step as you go. The tutor moves on to the next topic when you are ready.
+                Each learning session drafts a plan from your first message and keeps track of what
+                you know as you go. The tutor moves on to the next topic when you are ready.
               </p>
             </>
           )}

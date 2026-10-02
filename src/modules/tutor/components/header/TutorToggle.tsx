@@ -9,11 +9,12 @@ export function TutorToggle({
   forceTutorMode: boolean;
   onToggle: () => void | Promise<void>;
 }) {
+  // Shown only beside a chat under way, so either choice leaves it in history.
   const title = forceTutorMode
-    ? 'Tutor mode is enforced in Settings'
+    ? 'Every chat is a learning session (Settings › Tutor)'
     : active
-      ? 'Leave tutor mode. Opens a new chat; this session stays in your history.'
-      : 'Start a learning session';
+      ? 'Leave this learning session. It stays in your history, and a new chat opens.'
+      : 'Start a learning session. It opens as a new chat; this one stays in your history.';
 
   return (
     <button
@@ -27,7 +28,7 @@ export function TutorToggle({
       title={title}
     >
       <AcademicCapIcon className="tutor-toggle__icon h-5 w-5" />
-      <span className="tutor-toggle__text">Tutor</span>
+      <span className="tutor-toggle__text">Learn</span>
       {/* The session is the live thing on this bar, so it alone is gold. */}
       {active && <span className="tutor-toggle__live" aria-hidden="true" />}
     </button>

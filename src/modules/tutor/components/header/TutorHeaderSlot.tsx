@@ -17,7 +17,7 @@ export function TutorHeaderSlot() {
 
   return (
     <>
-      {tutor.available && (
+      {tutor.inChrome && (
         <>
           <TutorToggle
             active={tutor.active}
