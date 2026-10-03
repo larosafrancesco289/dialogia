@@ -543,7 +543,8 @@
 .settings-panel:has(> .memory-body) {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  /* Clip, not hidden: a hidden box still scrolls to a field focused in it. */
+  overflow: clip;
 }
 .settings-panel:has(> .memory-body) > .settings-panel__header {
   flex-shrink: 0;
