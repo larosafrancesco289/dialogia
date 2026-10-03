@@ -35,8 +35,9 @@
      it: nothing re-pins, nothing jumps. */
   @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
     .composer-chrome {
-      left: var(--space-3);
-      right: var(--space-3);
+      /* On its side, clear of the island and the rounded corners. */
+      left: max(var(--space-3), env(safe-area-inset-left));
+      right: max(var(--space-3), env(safe-area-inset-right));
       bottom: max(var(--space-3), calc(env(safe-area-inset-bottom) + var(--space-1)));
       width: auto;
       padding: var(--space-1) var(--space-1) var(--space-1) var(--space-2);
