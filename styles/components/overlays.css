@@ -94,6 +94,9 @@
   html.keyboard-active .bottom-sheet {
     padding-bottom: var(--space-2);
   }
+  html.keyboard-active .bottom-sheet--tall {
+    padding-bottom: 0;
+  }
   /* The paper runs on under the keys, so their glass bar shows the sheet
      rather than the page. */
   .bottom-sheet::after {
@@ -111,6 +114,10 @@
   .bottom-sheet--tall {
     height: calc(100% - env(safe-area-inset-top) - var(--space-6) - var(--keyboard-offset, 0px));
     padding-bottom: 0;
+    /* Its height eases with its margin, so its top stays put on the keys. */
+    transition:
+      margin-bottom var(--duration-med) var(--ease-out-quint),
+      height var(--duration-med) var(--ease-out-quint);
     /* The Learning Hub keeps its recessed tone, as beside the chat. */
     background: var(--color-chrome);
   }
