@@ -80,6 +80,8 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
   const followAllowedRef = useRef(true);
   const programmaticScrollRef = useRef(false);
   const hasOverflowRef = useRef(false);
+  // Where the list last stood, read before its own height changes.
+  const atBottomRef = useRef(true);
   const lastMessageMetaRef = useRef<LastMessageMeta>();
   const previousChatIdRef = useRef<string>();
   const followFrameRef = useRef<number | null>(null);
@@ -138,6 +140,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     if (!snapshot) return;
 
     hasOverflowRef.current = snapshot.hasOverflow;
+    atBottomRef.current = snapshot.atBottom;
 
     if (snapshot.atBottom) {
       followAllowedRef.current = true;
@@ -333,9 +336,17 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
 
   useEffect(() => {
     const contentEl = contentRef.current;
+    const el = containerRef.current;
     if (!contentEl || typeof ResizeObserver === 'undefined') return;
 
-    const observer = new ResizeObserver(() => {
+    const observer = new ResizeObserver((entries) => {
+      // The list itself grew shorter (a phone's keyboard rising, a window
+      // resized): an end that was in view stays in view, so a question being
+      // answered is not pushed under the composer.
+      if (entries.some((entry) => entry.target === el) && atBottomRef.current) {
+        scrollToBottom('auto');
+        return;
+      }
       const settling = settlingRef.current;
       if (settling) restartSettleTimer();
       if ((autoScrollPreference || settling) && followAllowedRef.current) {
@@ -346,8 +357,17 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     });
 
     observer.observe(contentEl);
+    if (el) observer.observe(el);
     return () => observer.disconnect();
-  }, [applySnapshot, autoScrollPreference, followToBottom, readSnapshot, restartSettleTimer]);
+  }, [
+    applySnapshot,
+    autoScrollPreference,
+    containerRef,
+    followToBottom,
+    readSnapshot,
+    restartSettleTimer,
+    scrollToBottom,
+  ]);
 
   useEffect(() => {
     if (!chatId) return;
