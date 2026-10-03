@@ -9,7 +9,10 @@ export type MessageScrollingOptions = {
   prefersReducedMotion: boolean;
   isAssistantPlaceholder: (message?: Message, previous?: Message) => boolean;
   onScrollAway?: () => void;
-  /** When false, disable streaming follow. User messages still scroll into view. */
+  /**
+   * Follow a reply's end as it is written. Off, the person's message is set at
+   * the top on send and the reply is written under it while the list stays still.
+   */
   autoScrollPreference?: boolean;
 };
 
@@ -45,6 +48,25 @@ export function getScrollSnapshot(
   };
 }
 
+/**
+ * The blank room a just-sent turn needs below it so its first message can
+ * stand at the top of the list, as the person's message does on send in
+ * every chat app: the reply then grows into that room and the list stays
+ * still. All positions are in the list's scroll coordinates.
+ */
+export function turnRoom(m: {
+  /** Where the sent message starts. */
+  anchorTop: number;
+  paddingTop: number;
+  clientHeight: number;
+  /** The list's whole length without the room. */
+  lengthWithoutRoom: number;
+}): { room: number; target: number } {
+  const target = Math.max(m.anchorTop - m.paddingTop, 0);
+  const room = Math.max(0, Math.round(target + m.clientHeight - m.lengthWithoutRoom));
+  return { room, target };
+}
+
 type LastMessageMeta = {
   id?: string;
   role?: Message['role'];
@@ -76,6 +98,16 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  // The room under a turn sent here, and the message it keeps at the top.
+  const roomRef = useRef<HTMLDivElement>(null);
+  const anchorIdRef = useRef<string | null>(null);
+  // Held at the top until the person scrolls: anything above it changing
+  // height (the last reply giving up its actions, a note arriving) is made
+  // up in the same frame, so the message never moves.
+  const pinnedTargetRef = useRef<number | null>(null);
+  // The person asked for the latest (the jump button): follow it until they
+  // scroll away, as a chat that follows would.
+  const followRequestedRef = useRef(false);
   const onScrollAwayRef = useRef(onScrollAway);
   const followAllowedRef = useRef(true);
   const programmaticScrollRef = useRef(false);
@@ -154,7 +186,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
         snapshot.hasOverflow &&
         !snapshot.atBottom &&
         !programmaticScrollRef.current &&
-        (!followAllowedRef.current || !autoScrollRef.current);
+        (!followAllowedRef.current || !(autoScrollRef.current || followRequestedRef.current));
       return prev === next ? prev : next;
     });
   }, []);
@@ -170,6 +202,8 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
 
   const lockFollow = useCallback(() => {
     settlingRef.current = false;
+    followRequestedRef.current = false;
+    pinnedTargetRef.current = null;
     if (!followAllowedRef.current) return;
     followAllowedRef.current = false;
     onScrollAwayRef.current?.();
@@ -187,8 +221,38 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     }
   }, [lockFollow, readSnapshot]);
 
-  const scrollToBottom = useCallback(
-    (behavior: ScrollBehavior = 'auto') => {
+  // Sizes the room under the turn sent here; returns where the list stands
+  // with that turn's message at the top, or null when none is kept.
+  const fitTurnRoom = useCallback((): number | null => {
+    const el = containerRef.current;
+    const content = contentRef.current;
+    const room = roomRef.current;
+    const id = anchorIdRef.current;
+    if (!el || !content || !room) return null;
+    const anchor = id ? el.querySelector<HTMLElement>(`[data-mid="${CSS.escape(id)}"]`) : null;
+    if (!anchor) {
+      room.style.height = '0px';
+      return null;
+    }
+    const style = getComputedStyle(el);
+    const paddingTop = parseFloat(style.paddingTop) || 0;
+    // Measured against the content, never the scroll position, which iOS
+    // reports late while a glide or the keyboard is moving.
+    const contentTop = content.getBoundingClientRect().top;
+    const toScroll = (node: HTMLElement) =>
+      node.getBoundingClientRect().top - contentTop + paddingTop;
+    const { room: height, target } = turnRoom({
+      anchorTop: toScroll(anchor),
+      paddingTop,
+      clientHeight: el.clientHeight,
+      lengthWithoutRoom: el.scrollHeight - room.offsetHeight,
+    });
+    if (room.style.height !== `${height}px`) room.style.height = `${height}px`;
+    return target;
+  }, []);
+
+  const scrollToTop = useCallback(
+    (top: number, behavior: ScrollBehavior = 'auto') => {
       const el = containerRef.current;
       if (!el) return;
 
@@ -196,7 +260,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
       programmaticScrollRef.current = true;
       setShowJump(false);
 
-      const target = Math.max(el.scrollHeight - el.clientHeight, 0);
+      const target = Math.max(top, 0);
       try {
         el.scrollTo({ top: target, behavior: normalizeScrollBehavior(behavior) });
       } catch {
@@ -238,6 +302,14 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     [applySnapshot, prefersReducedMotion, readSnapshot],
   );
 
+  const scrollToBottom = useCallback(
+    (behavior: ScrollBehavior = 'auto') => {
+      const el = containerRef.current;
+      if (el) scrollToTop(el.scrollHeight - el.clientHeight, behavior);
+    },
+    [scrollToTop],
+  );
+
   const followToBottom = useCallback(() => {
     if (!followAllowedRef.current) return;
     if (followFrameRef.current !== null) return;
@@ -275,10 +347,16 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     if (!el) return;
 
     const handleWheel = (event: WheelEvent) => {
+      pinnedTargetRef.current = null;
       if (event.deltaY < 0 && hasOverflowRef.current) {
         programmaticScrollRef.current = false;
         lockFollow();
       }
+    };
+
+    // Any press in the list (a tap to edit, the scrollbar) is the person's.
+    const handlePointerDown = () => {
+      pinnedTargetRef.current = null;
     };
 
     const handleTouchStart = (event: TouchEvent) => {
@@ -289,6 +367,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
       const startY = touchStartYRef.current;
       const currentY = event.touches[0]?.clientY;
       if (startY == null || currentY == null) return;
+      if (Math.abs(currentY - startY) > 6) pinnedTargetRef.current = null;
       if (currentY - startY > 6 && hasOverflowRef.current) {
         programmaticScrollRef.current = false;
         lockFollow();
@@ -322,6 +401,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
 
     el.addEventListener('scroll', handleScroll, { passive: true });
     el.addEventListener('wheel', handleWheel, { passive: true });
+    el.addEventListener('pointerdown', handlePointerDown, { passive: true });
     el.addEventListener('touchstart', handleTouchStart, { passive: true });
     el.addEventListener('touchmove', handleTouchMove, { passive: true });
 
@@ -330,6 +410,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     return () => {
       el.removeEventListener('scroll', handleScroll);
       el.removeEventListener('wheel', handleWheel);
+      el.removeEventListener('pointerdown', handlePointerDown);
       el.removeEventListener('touchstart', handleTouchStart);
       el.removeEventListener('touchmove', handleTouchMove);
     };
@@ -341,6 +422,22 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     if (!contentEl || typeof ResizeObserver === 'undefined') return;
 
     const observer = new ResizeObserver((entries) => {
+      // The reply growing takes the room it fills: the list's length, and so
+      // the view, stay put.
+      const target = fitTurnRoom();
+      const pinned = pinnedTargetRef.current;
+      if (el && target !== null && pinned !== null) {
+        const gliding = programmaticScrollRef.current;
+        if (Math.abs(target - pinned) > 1) {
+          pinnedTargetRef.current = target;
+          scrollToTop(target, gliding && !prefersReducedMotion ? 'smooth' : 'auto');
+          return;
+        }
+        if (!gliding && Math.abs(el.scrollTop - target) > 1) {
+          scrollToTop(target, 'auto');
+          return;
+        }
+      }
       // The list itself grew shorter (a phone's keyboard rising, a window
       // resized): an end that was in view stays in view, so a question being
       // answered is not pushed under the composer.
@@ -350,7 +447,8 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
       }
       const settling = settlingRef.current;
       if (settling) restartSettleTimer();
-      if ((autoScrollPreference || settling) && followAllowedRef.current) {
+      const following = autoScrollPreference || followRequestedRef.current || settling;
+      if (following && followAllowedRef.current) {
         followToBottom();
       } else {
         applySnapshot(readSnapshot());
@@ -364,10 +462,13 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     applySnapshot,
     autoScrollPreference,
     containerRef,
+    fitTurnRoom,
     followToBottom,
     readSnapshot,
+    prefersReducedMotion,
     restartSettleTimer,
     scrollToBottom,
+    scrollToTop,
   ]);
 
   useEffect(() => {
@@ -380,11 +481,16 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     touchStartYRef.current = null;
     lastMessageMetaRef.current = undefined;
     settlingRef.current = true;
+    // An opened chat is read from its end, with no room kept under it.
+    anchorIdRef.current = null;
+    pinnedTargetRef.current = null;
+    followRequestedRef.current = false;
+    fitTurnRoom();
     // A chat with nothing left to grow settles too. In a hidden tab the
     // first resize starts the countdown, once the tab is shown.
     if (document.visibilityState === 'visible') restartSettleTimer();
     scrollToBottom('auto');
-  }, [chatId, restartSettleTimer, scrollToBottom]);
+  }, [chatId, fitTurnRoom, restartSettleTimer, scrollToBottom]);
 
   const lastMessageMeta = useMemo<LastMessageMeta | null>(() => {
     const last = messages[messages.length - 1];
@@ -427,7 +533,20 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
 
     const isUserTurn = lastMessageMeta.role === 'user' || lastMessageMeta.placeholder;
     if (isUserTurn) {
-      scrollToBottom('auto');
+      followRequestedRef.current = false;
+      if (autoScrollPreference) {
+        scrollToBottom('auto');
+        return;
+      }
+      // The person's message goes to the top, with room under it for the reply.
+      const sent = [...messages].reverse().find((message) => message.role === 'user');
+      anchorIdRef.current = sent?.id ?? null;
+      const target = fitTurnRoom();
+      pinnedTargetRef.current = target;
+      // A hidden tab never runs a glide, which would stall halfway.
+      const glide = !prefersReducedMotion && document.visibilityState === 'visible';
+      if (target === null) scrollToBottom('auto');
+      else scrollToTop(target, glide ? 'smooth' : 'auto');
       return;
     }
 
@@ -439,21 +558,31 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
   }, [
     applySnapshot,
     autoScrollPreference,
+    fitTurnRoom,
     followToBottom,
     lastMessageMeta,
+    messages,
+    prefersReducedMotion,
     readSnapshot,
     scrollToBottom,
+    scrollToTop,
   ]);
 
+  const wasStreamingRef = useRef(isStreaming);
   useEffect(() => {
+    // A finished reply lets its message go: what changes after is the person's.
+    if (wasStreamingRef.current && !isStreaming) pinnedTargetRef.current = null;
+    wasStreamingRef.current = isStreaming;
     // A reply is not the opened chat settling: one the chat does not follow stays unfollowed.
     if (isStreaming) settlingRef.current = false;
-    if (!isStreaming || !autoScrollPreference || !followAllowedRef.current) return;
-    followToBottom();
+    if (!isStreaming || !followAllowedRef.current) return;
+    if (autoScrollPreference || followRequestedRef.current) followToBottom();
   }, [autoScrollPreference, followToBottom, isStreaming]);
 
   const jumpToLatest = useCallback(() => {
     followAllowedRef.current = true;
+    followRequestedRef.current = true;
+    pinnedTargetRef.current = null;
     scrollToBottom(prefersReducedMotion ? 'auto' : 'smooth');
   }, [prefersReducedMotion, scrollToBottom]);
 
@@ -461,6 +590,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     containerRef,
     contentRef,
     endRef,
+    roomRef,
     atBottom,
     showJump,
     scrollToBottom,
