@@ -50,7 +50,7 @@ export function ApiKeyField(props: {
       <label className="field__label" htmlFor={`key-${keyRef}`}>
         {label}
       </label>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2" data-keyboard-reveal="">
         <input
           id={`key-${keyRef}`}
           type="password"

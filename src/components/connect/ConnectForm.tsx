@@ -168,6 +168,8 @@ export function ConnectForm({
             className="input w-full text-base sm:text-sm"
             type={keyChoice ? 'password' : 'url'}
             autoComplete="off"
+            autoCapitalize="none"
+            autoCorrect="off"
             // A key is not a password to remember: password managers leave it be.
             data-1p-ignore=""
             data-lpignore="true"
