@@ -70,6 +70,25 @@
   background: color-mix(in oklab, var(--color-fg) 6%, transparent);
 }
 
+/* A phone on its side has no height for a list between a fixed head and
+   foot: the chats were squeezed to nothing. There the drawer scrolls as one
+   column instead, the chats in it at their full length. */
+@media (max-height: 499px) {
+  .drawer {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .list {
+    flex: none;
+  }
+  /* Safari never paints a row it skipped while it was out of sight once the
+     sliding drawer itself is what scrolls: draw every row. */
+  .drawer :global(.chat-item),
+  .drawer :global(.folder-row) {
+    content-visibility: visible;
+  }
+}
+
 /* Safari won't let you type into a field whose ancestor refuses selection. */
 .drawer :global(input),
 .drawer :global(textarea) {

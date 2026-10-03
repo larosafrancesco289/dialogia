@@ -61,6 +61,8 @@
       padding: var(--space-2);
       /* The first message stands as far under the header as on a desktop. */
       padding-top: var(--space-4);
+      padding-inline: max(var(--space-2), env(safe-area-inset-left))
+        max(var(--space-2), env(safe-area-inset-right));
       padding-bottom: calc(
         var(--space-6) + var(--composer-height, 0px) + env(safe-area-inset-bottom)
       );
