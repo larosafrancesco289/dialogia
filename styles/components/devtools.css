@@ -37,11 +37,15 @@
     color: var(--color-fg-muted);
     border-radius: var(--radius-editorial);
   }
-  .devtools__toggle:hover .devtools__title {
-    color: color-mix(in oklab, var(--color-rubric) 70%, var(--color-fg));
-  }
-  .devtools__toggle:hover .devtools__rule {
-    border-color: color-mix(in oklab, var(--color-fg) 20%, transparent);
+  /* Only where there is a pointer to hover with: a tap would leave the tint
+     stuck on. */
+  @media (hover: hover) {
+    .devtools__toggle:hover .devtools__title {
+      color: color-mix(in oklab, var(--color-rubric) 70%, var(--color-fg));
+    }
+    .devtools__toggle:hover .devtools__rule {
+      border-color: color-mix(in oklab, var(--color-fg) 20%, transparent);
+    }
   }
 
   /* The same glyph as the reasoning ledger's head: 15px, rubric at rest. */
@@ -234,8 +238,10 @@
     cursor: pointer;
     border-radius: var(--radius-editorial);
   }
-  .tool-log__row:hover .tool-log__name {
-    color: color-mix(in oklab, var(--color-rubric) 70%, var(--color-fg));
+  @media (hover: hover) {
+    .tool-log__row:hover .tool-log__name {
+      color: color-mix(in oklab, var(--color-rubric) 70%, var(--color-fg));
+    }
   }
 
   .tool-log__lead {

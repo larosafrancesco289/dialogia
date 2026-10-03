@@ -49,10 +49,14 @@
       contain-intrinsic-size: 1px 36px;
     }
   }
-  .chat-item:hover {
-    --chat-item-bg: color-mix(in oklab, var(--color-fg) 4%, var(--color-chrome));
-    color: var(--color-fg);
-    background: color-mix(in oklab, var(--color-fg) 4%, transparent);
+  /* Only where there is a pointer to hover with: a tap would leave the tint
+     stuck on. */
+  @media (hover: hover) {
+    .chat-item:hover {
+      --chat-item-bg: color-mix(in oklab, var(--color-fg) 4%, var(--color-chrome));
+      color: var(--color-fg);
+      background: color-mix(in oklab, var(--color-fg) 4%, transparent);
+    }
   }
   .chat-item.selected {
     --chat-item-bg: color-mix(in oklab, var(--color-fg) 7%, var(--color-chrome));
@@ -84,7 +88,12 @@
     );
     transition: opacity var(--duration-fast) var(--ease-standard);
   }
-  .chat-item:hover .chat-item__actions,
+  @media (hover: hover) {
+    .chat-item:hover .chat-item__actions {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
   .chat-item:focus-within .chat-item__actions {
     opacity: 1;
     pointer-events: auto;
@@ -148,10 +157,15 @@
     color: var(--color-fg-muted);
   }
   /* A row being renamed keeps still: no hover tint under the field. */
-  .chat-item.is-editing,
-  .chat-item.is-editing:hover {
+  .chat-item.is-editing {
     background: transparent;
     cursor: text;
+  }
+  @media (hover: hover) {
+    .chat-item.is-editing:hover {
+      background: transparent;
+      cursor: text;
+    }
   }
 
   /* Chats grouped by when they were last touched, like a table of contents:
@@ -186,8 +200,10 @@
     .chat-item .text-sm {
       font-size: 0.9375rem;
     }
-    .chat-item:hover {
-      background: transparent;
+    @media (hover: hover) {
+      .chat-item:hover {
+        background: transparent;
+      }
     }
     .chat-item:active,
     .chat-item.selected {

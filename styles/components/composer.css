@@ -115,9 +115,19 @@
   .composer-btn-memory.is-active {
     color: var(--color-fg);
   }
-  .composer-btn-search[aria-pressed='true']:not(:hover),
-  .composer-btn-memory[aria-pressed='true']:not(:hover) {
-    background: transparent;
+  @media (hover: hover) {
+    .composer-btn-search[aria-pressed='true']:not(:hover),
+    .composer-btn-memory[aria-pressed='true']:not(:hover) {
+      background: transparent;
+    }
+  }
+  /* A tap leaves :hover on the button, so a finger gets the bare look
+     outright. */
+  @media (hover: none) {
+    .composer-btn-search[aria-pressed='true'],
+    .composer-btn-memory[aria-pressed='true'] {
+      background: transparent;
+    }
   }
 
   /* Reasoning effort: a quiet list, the app's ordinary menu, the chosen row
@@ -147,7 +157,15 @@
       background-color var(--duration-fast) var(--ease-standard),
       color var(--duration-fast) var(--ease-standard);
   }
-  .effort-menu__row:hover,
+  /* Only where there is a pointer to hover with: a tap would leave the tint
+     stuck on. */
+  @media (hover: hover) {
+    .effort-menu__row:hover {
+      background: color-mix(in oklab, var(--color-fg) 5%, transparent);
+      color: var(--color-fg);
+      outline: none;
+    }
+  }
   .effort-menu__row:focus-visible {
     background: color-mix(in oklab, var(--color-fg) 5%, transparent);
     color: var(--color-fg);
@@ -261,8 +279,10 @@
     border-color: var(--color-accent);
   }
   /* Hover and press deepen the gold with ink, as .btn does; nothing scales. */
-  .composer-btn-send.has-content:hover::before {
-    background: color-mix(in oklab, var(--color-accent) 88%, var(--color-fg));
+  @media (hover: hover) {
+    .composer-btn-send.has-content:hover::before {
+      background: color-mix(in oklab, var(--color-accent) 88%, var(--color-fg));
+    }
   }
   .composer-btn-send.has-content:active::before {
     background: color-mix(in oklab, var(--color-accent) 80%, var(--color-fg));
@@ -275,11 +295,13 @@
   .composer-btn-stop::before {
     background: color-mix(in oklab, var(--color-fg) 8%, transparent);
   }
-  .composer-btn-stop:hover {
-    color: var(--color-danger);
-  }
-  .composer-btn-stop:hover::before {
-    background: color-mix(in oklab, var(--color-danger) 14%, transparent);
+  @media (hover: hover) {
+    .composer-btn-stop:hover {
+      color: var(--color-danger);
+    }
+    .composer-btn-stop:hover::before {
+      background: color-mix(in oklab, var(--color-danger) 14%, transparent);
+    }
   }
 
   /* Two rows: the text across the full width, the tools beneath it (attach,

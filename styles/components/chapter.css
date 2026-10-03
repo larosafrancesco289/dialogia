@@ -86,10 +86,14 @@
       border-color var(--duration-fast) var(--ease-standard),
       color var(--duration-fast) var(--ease-standard);
   }
-  .chapter-break__action:hover {
-    color: var(--color-fg);
-    border-color: color-mix(in oklab, var(--color-fg) 22%, transparent);
-    background: color-mix(in oklab, var(--color-fg) 4%, transparent);
+  /* Only where there is a pointer to hover with: a tap would leave the tint
+     stuck on. */
+  @media (hover: hover) {
+    .chapter-break__action:hover {
+      color: var(--color-fg);
+      border-color: color-mix(in oklab, var(--color-fg) 22%, transparent);
+      background: color-mix(in oklab, var(--color-fg) 4%, transparent);
+    }
   }
   .chapter-break__action:disabled {
     opacity: 0.5;
@@ -100,9 +104,11 @@
     color: var(--color-fg);
     border-color: color-mix(in oklab, var(--color-accent) 55%, transparent);
   }
-  .chapter-break__action--primary:hover {
-    border-color: var(--color-accent);
-    background: color-mix(in oklab, var(--color-accent) 8%, transparent);
+  @media (hover: hover) {
+    .chapter-break__action--primary:hover {
+      border-color: var(--color-accent);
+      background: color-mix(in oklab, var(--color-accent) 8%, transparent);
+    }
   }
 }
 
@@ -167,9 +173,11 @@
     text-underline-offset: 2px;
     cursor: pointer;
   }
-  .margin-note__more:hover {
-    color: var(--color-fg);
-    text-decoration-color: currentColor;
+  @media (hover: hover) {
+    .margin-note__more:hover {
+      color: var(--color-fg);
+      text-decoration-color: currentColor;
+    }
   }
   .margin-note__more:focus-visible {
     border-radius: 2px;

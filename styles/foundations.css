@@ -68,8 +68,12 @@ html {
     text-decoration-color: color-mix(in oklab, var(--color-rubric) 60%, transparent);
     text-underline-offset: 3px;
   }
-  a:hover {
-    text-decoration-color: var(--color-rubric);
+  /* Only where there is a pointer to hover with: a tap would leave the tint
+     stuck on. */
+  @media (hover: hover) {
+    a:hover {
+      text-decoration-color: var(--color-rubric);
+    }
   }
 }
 
@@ -110,8 +114,10 @@ html {
   color: var(--color-on-accent);
   border: 1px solid transparent;
 }
-.btn:hover {
-  background: color-mix(in oklab, var(--color-accent) 88%, var(--color-fg));
+@media (hover: hover) {
+  .btn:hover {
+    background: color-mix(in oklab, var(--color-accent) 88%, var(--color-fg));
+  }
 }
 .btn:active {
   transform: translateY(0.5px);
@@ -122,9 +128,11 @@ html {
   background: transparent;
   color: var(--color-fg);
 }
-.btn-outline:hover {
-  border-color: color-mix(in oklab, var(--color-fg) 28%, transparent);
-  background: color-mix(in oklab, var(--color-fg) 4%, transparent);
+@media (hover: hover) {
+  .btn-outline:hover {
+    border-color: color-mix(in oklab, var(--color-fg) 28%, transparent);
+    background: color-mix(in oklab, var(--color-fg) 4%, transparent);
+  }
 }
 .btn-outline[aria-pressed='true'] {
   border-color: color-mix(in oklab, var(--color-fg) 40%, transparent);
@@ -136,8 +144,10 @@ html {
   background: transparent;
   color: var(--color-fg);
 }
-.btn-ghost:hover {
-  background: color-mix(in oklab, var(--color-fg) 5%, transparent);
+@media (hover: hover) {
+  .btn-ghost:hover {
+    background: color-mix(in oklab, var(--color-fg) 5%, transparent);
+  }
 }
 /* A label dressed as a button round a hidden file input (Import): the input
    takes the focus, so the label wears the ring every control has. */
@@ -168,8 +178,10 @@ html {
   border-color: transparent;
   color: var(--color-canvas);
 }
-.btn-danger:hover {
-  background: color-mix(in oklab, var(--color-danger) 88%, var(--color-fg));
+@media (hover: hover) {
+  .btn-danger:hover {
+    background: color-mix(in oklab, var(--color-danger) 88%, var(--color-fg));
+  }
 }
 /* Small variant for dense UIs */
 .btn-sm {
@@ -309,9 +321,11 @@ select.input:disabled {
     color var(--duration-fast) var(--ease-standard),
     border-color var(--duration-fast) var(--ease-standard);
 }
-.btn-float:hover {
-  color: var(--color-fg);
-  border-color: color-mix(in oklab, var(--color-fg) 28%, transparent);
+@media (hover: hover) {
+  .btn-float:hover {
+    color: var(--color-fg);
+    border-color: color-mix(in oklab, var(--color-fg) 28%, transparent);
+  }
 }
 
 /* Native checkboxes and radios in ink, like the switches. */
