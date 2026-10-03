@@ -30,6 +30,10 @@
     opacity: 0.5;
     cursor: not-allowed;
   }
+  /* A setting that does nothing yet reads as such, its words with it. */
+  .toggle-switch-wrapper:has(.toggle-switch:disabled) .toggle-switch-content {
+    opacity: 0.5;
+  }
 
   /* Thumb */
   .toggle-switch-thumb {

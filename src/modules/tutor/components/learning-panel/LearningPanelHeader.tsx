@@ -40,11 +40,16 @@ export function LearningPanelHeader({
           className="icon-button learning-panel__close"
           onClick={() => {
             onClose();
-            // The button went with the panel: back to the header's Hub button,
-            // or the composer when the Hub was a proposal's preview.
-            refocusIfDropped(
-              () => document.querySelector('.plan-button'),
-              () => document.querySelector(COMPOSER_FIELD_SELECTOR),
+            // The button goes with the panel: back to the header's Hub button,
+            // or the composer when the Hub was a proposal's preview. Once the
+            // panel has slid away, since the button holds focus until then.
+            window.setTimeout(
+              () =>
+                refocusIfDropped(
+                  () => document.querySelector('.plan-button'),
+                  () => document.querySelector(COMPOSER_FIELD_SELECTOR),
+                ),
+              400,
             );
           }}
           aria-label="Close Learning Hub"
