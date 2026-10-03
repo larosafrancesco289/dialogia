@@ -232,6 +232,13 @@
     border: 1px solid var(--color-border);
     color: var(--color-fg-muted);
   }
+  /* A thumb-sized target around the small badge, which would otherwise
+     cover half of a picture. */
+  .attachment-remove::before {
+    content: '';
+    position: absolute;
+    inset: -11px;
+  }
   @media (hover: hover) {
     .attachment-remove:hover {
       color: var(--color-fg);
