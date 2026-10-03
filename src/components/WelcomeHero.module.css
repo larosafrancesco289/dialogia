@@ -175,8 +175,13 @@
   }
 }
 
-/* A phone on its side: the opening is centred in the room above the
-   composer, not behind it, where the Chat / Learn switch was hidden. */
+/* With the keyboard up, or on a phone on its side, the opening is centred
+   in the room above the composer, not behind it, where a growing composer
+   hid the Chat / Learn switch. */
+:global(html.keyboard-active) .heroMobile:not(.heroMobileConnect) {
+  justify-content: safe center;
+  padding-bottom: calc(var(--space-4) + var(--composer-height, 0px));
+}
 @media (max-height: 499px) and (orientation: landscape) {
   .heroMobile:not(.heroMobileConnect) {
     justify-content: safe center;
