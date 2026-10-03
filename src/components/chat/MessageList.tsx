@@ -319,7 +319,8 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
         <div ref={endRef} className="message-list__bottom-sentinel" aria-hidden="true" />
       </div>
 
-      {showJump && (
+      {/* Not over a message being edited, whose box it covered. */}
+      {showJump && !editingId && (
         <div className="jump-to-latest">
           <button
             className="btn-float motion-rise pointer-events-auto"
