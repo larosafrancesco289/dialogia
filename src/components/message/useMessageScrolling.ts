@@ -181,6 +181,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     const snapshot = readSnapshot();
     if (snapshot) {
       hasOverflowRef.current = snapshot.hasOverflow;
+      atBottomRef.current = snapshot.atBottom;
       setAtBottom((prev) => (prev === snapshot.atBottom ? prev : snapshot.atBottom));
       setShowJump(snapshot.hasOverflow && !snapshot.atBottom);
     }
