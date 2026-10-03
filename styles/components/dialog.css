@@ -50,6 +50,17 @@
     margin-top: var(--space-5);
   }
 
+  /* Where Connect a model stands: at a fixed height, so a fold opening never
+     moves its title. With the keyboard up it rises to just under the status
+     bar and its foot clears the keys, so the whole dialog is in sight. */
+  .setup-scroller {
+    padding: 12vh var(--space-4) calc(var(--space-4) + var(--keyboard-offset, 0px));
+    transition: padding-top var(--duration-med) var(--ease-out-quint);
+  }
+  html.keyboard-active .setup-scroller {
+    padding-top: calc(env(safe-area-inset-top) + var(--space-4));
+  }
+
   /* Form fields inside dialogs and settings */
   .field {
     display: flex;

@@ -37,7 +37,7 @@ export function SetupSheet() {
       <DialogOverlay className="scrim z-[90]" onClose={close}>
         {/* At a fixed height, not centred: a fold opening, or another way to
             connect, never moves the title. */}
-        <div className="fixed inset-0 z-[95] flex items-start justify-center overflow-y-auto p-4 pt-[12vh]">
+        <div className="setup-scroller fixed inset-0 z-[95] flex items-start justify-center overflow-y-auto">
           <motion.div
             ref={surfaceRef}
             className="dialog max-w-md"

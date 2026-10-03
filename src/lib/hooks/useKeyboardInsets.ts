@@ -21,6 +21,15 @@ export type KeyboardTrackerState = {
   lastInnerHeight?: number;
 };
 
+/**
+ * Whether a field sits where the on-screen keyboard will rise over it: the
+ * lower half of the screen, the keys and their bar taking a little under it.
+ * Only there does Safari scroll the whole page to show the field.
+ */
+export function keysWouldCover(rect: Pick<DOMRect, 'bottom'>, innerHeight: number): boolean {
+  return rect.bottom > innerHeight / 2;
+}
+
 export function shouldTrackVirtualKeyboard(win: Window): boolean {
   const nav = win.navigator;
   const hasTouchPoints = typeof nav?.maxTouchPoints === 'number' && nav.maxTouchPoints > 0;
@@ -222,8 +231,20 @@ export function useKeyboardInsets(): KeyboardMetrics {
       const moved =
         !touchStart || !t || Math.hypot(t.clientX - touchStart.x, t.clientY - touchStart.y) > 10;
       if (!field || moved || field.disabled || field === document.activeElement) return;
+      // Words in a field the keys will not reach are left to Safari, which
+      // puts the caret where the finger was; a taken-over tap cannot. An
+      // empty field has no place to put it, and Safari would scroll for it.
+      const placesCaret = Boolean(field.value);
+      if (placesCaret && !keysWouldCover(field.getBoundingClientRect(), window.innerHeight)) {
+        return;
+      }
       event.preventDefault();
       field.focus({ preventScroll: true });
+      // Focused this way the caret lands at the start; words already there
+      // are more likely to be carried on than rewritten from the top.
+      if (field.value && field.selectionStart === 0 && field.selectionEnd === 0) {
+        field.setSelectionRange(field.value.length, field.value.length);
+      }
     };
     const revealFocused = () => {
       const field = document.activeElement;

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   createKeyboardTrackerState,
   computeKeyboardMetrics,
+  keysWouldCover,
   shouldTrackVirtualKeyboard,
   type KeyboardTrackerState,
 } from '@/lib/hooks/useKeyboardInsets';
@@ -84,4 +85,11 @@ test('computeKeyboardMetrics reads a shorter window as a resize, not a keyboard'
   // A keyboard afterwards is still seen against the new height.
   Reflect.set(viewport, 'height', 350);
   assert.equal(computeKeyboardMetrics(state, { window: win, viewport }).offset, 250);
+});
+
+test('keysWouldCover takes over only a tap on a field in the lower half', () => {
+  // The composer at the foot of an 874pt phone: the keys rise over it.
+  assert.equal(keysWouldCover({ bottom: 800 }, 874), true);
+  // A system prompt near the top: Safari places the caret itself.
+  assert.equal(keysWouldCover({ bottom: 310 }, 874), false);
 });
