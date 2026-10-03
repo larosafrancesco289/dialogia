@@ -319,10 +319,11 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
         })}
 
         {/* Typing indicator is now rendered inline within the latest assistant message */}
-        {/* The room under a turn just sent, so its message can stand at the top. */}
-        <div ref={roomRef} aria-hidden="true" style={{ margin: 0 }} />
         <div ref={endRef} className="message-list__bottom-sentinel" aria-hidden="true" />
       </div>
+      {/* The room under a turn just sent, so its message can stand at the top.
+          Outside the content, so sizing it never resizes what is observed. */}
+      <div ref={roomRef} aria-hidden="true" />
 
       {/* Not over a message being edited, whose box it covered. */}
       {showJump && !editingId && (

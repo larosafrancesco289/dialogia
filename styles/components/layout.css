@@ -35,6 +35,8 @@
   }
 
   .message-list__content {
+    /* The measure a sent message's place is read against (offsetTop). */
+    position: relative;
     width: var(--chat-measure);
     margin-inline: auto;
   }
