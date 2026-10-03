@@ -14,8 +14,12 @@
     text-underline-offset: 3px;
     cursor: pointer;
   }
-  .memory-link:hover {
-    text-decoration-color: var(--color-fg);
+  /* Only where there is a pointer to hover with: a tap would leave the tint
+     stuck on. */
+  @media (hover: hover) {
+    .memory-link:hover {
+      text-decoration-color: var(--color-fg);
+    }
   }
   .memory-quiet {
     padding: 0;
@@ -25,10 +29,12 @@
     color: var(--color-fg-muted);
     cursor: pointer;
   }
-  .memory-quiet:hover {
-    color: var(--color-fg);
-    text-decoration: underline;
-    text-underline-offset: 3px;
+  @media (hover: hover) {
+    .memory-quiet:hover {
+      color: var(--color-fg);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
   }
   .memory-hint {
     margin: var(--space-3) 0;
@@ -194,8 +200,10 @@
   .memory-head__line:not(.is-static) {
     cursor: text;
   }
-  .memory-head__line:not(.is-static):hover {
-    color: var(--color-fg);
+  @media (hover: hover) {
+    .memory-head__line:not(.is-static):hover {
+      color: var(--color-fg);
+    }
   }
   .memory-head__field {
     resize: none;
@@ -220,8 +228,10 @@
     border-bottom: 1px solid var(--rule-light);
     border-radius: 0;
   }
-  .memory-note:hover:not(.is-editing) {
-    background: color-mix(in oklab, var(--color-fg) 4%, transparent);
+  @media (hover: hover) {
+    .memory-note:hover:not(.is-editing) {
+      background: color-mix(in oklab, var(--color-fg) 4%, transparent);
+    }
   }
   .memory-note__text,
   .memory-note__field {
@@ -300,8 +310,10 @@
     color: var(--color-fg-muted);
     cursor: pointer;
   }
-  .memory-add:hover {
-    color: var(--color-fg);
+  @media (hover: hover) {
+    .memory-add:hover {
+      color: var(--color-fg);
+    }
   }
   .memory-add__field {
     margin-top: var(--space-3);
@@ -344,10 +356,12 @@
     flex-shrink: 0;
     color: var(--color-fg-muted);
   }
-  .memory-record__title:hover {
-    text-decoration: underline;
-    text-decoration-color: var(--rule-light);
-    text-underline-offset: 3px;
+  @media (hover: hover) {
+    .memory-record__title:hover {
+      text-decoration: underline;
+      text-decoration-color: var(--rule-light);
+      text-underline-offset: 3px;
+    }
   }
   .memory-record__goal {
     margin: 2px 0 0;

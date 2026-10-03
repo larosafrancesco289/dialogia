@@ -48,11 +48,15 @@
     color: var(--color-fg-muted);
     border-radius: var(--radius-editorial);
   }
-  .response-ledger__toggle:hover .response-ledger__title {
-    color: color-mix(in oklab, var(--color-rubric) 70%, var(--color-fg));
-  }
-  .response-ledger__toggle:hover .response-ledger__rule {
-    border-color: color-mix(in oklab, var(--color-fg) 20%, transparent);
+  /* Only where there is a pointer to hover with: a tap would leave the tint
+     stuck on. */
+  @media (hover: hover) {
+    .response-ledger__toggle:hover .response-ledger__title {
+      color: color-mix(in oklab, var(--color-rubric) 70%, var(--color-fg));
+    }
+    .response-ledger__toggle:hover .response-ledger__rule {
+      border-color: color-mix(in oklab, var(--color-fg) 20%, transparent);
+    }
   }
 
   /* The Ionic mark heads the line. At rest it is one rubric stroke, like the
@@ -374,8 +378,10 @@
     border-radius: var(--radius-editorial);
     transition: color var(--duration-fast) var(--ease-standard);
   }
-  .response-ledger__sources-toggle:hover {
-    color: var(--color-fg);
+  @media (hover: hover) {
+    .response-ledger__sources-toggle:hover {
+      color: var(--color-fg);
+    }
   }
   .response-ledger__sources-toggle .response-ledger__chevron {
     align-self: center;

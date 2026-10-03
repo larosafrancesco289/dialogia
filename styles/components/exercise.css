@@ -156,9 +156,13 @@
       border-color var(--duration-fast) var(--ease-standard),
       opacity var(--duration-fast) var(--ease-standard);
   }
-  .choice:hover:not(:disabled) {
-    border-color: color-mix(in oklab, var(--color-fg) 28%, transparent);
-    background: color-mix(in oklab, var(--color-fg) 4%, transparent);
+  /* Only where there is a pointer to hover with: a tap would leave the tint
+     stuck on. */
+  @media (hover: hover) {
+    .choice:hover:not(:disabled) {
+      border-color: color-mix(in oklab, var(--color-fg) 28%, transparent);
+      background: color-mix(in oklab, var(--color-fg) 4%, transparent);
+    }
   }
   .choice:disabled {
     cursor: default;

@@ -77,8 +77,12 @@
   cursor: pointer;
 }
 
-.toggle:hover {
-  color: var(--color-fg);
+/* Only where there is a pointer to hover with: a tap would leave the tint
+   stuck on. */
+@media (hover: hover) {
+  .toggle:hover {
+    color: var(--color-fg);
+  }
 }
 
 .chevron {
@@ -143,8 +147,10 @@
   cursor: pointer;
 }
 
-.other:hover {
-  background: color-mix(in oklab, var(--color-fg) 4%, transparent);
+@media (hover: hover) {
+  .other:hover {
+    background: color-mix(in oklab, var(--color-fg) 4%, transparent);
+  }
 }
 
 .note {

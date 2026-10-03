@@ -72,12 +72,15 @@
     line-height: 1.5;
   }
 
-  /* Hover state - subtle track highlight */
-  .toggle-switch:not(:disabled):hover {
-    --toggle-rule: color-mix(in oklab, var(--color-fg) 70%, transparent);
-  }
+  /* Hover state - subtle track highlight, only where there is a pointer to
+     hover with: a tap would leave the tint stuck on. */
+  @media (hover: hover) {
+    .toggle-switch:not(:disabled):hover {
+      --toggle-rule: color-mix(in oklab, var(--color-fg) 70%, transparent);
+    }
 
-  .toggle-switch[data-checked='true']:not(:disabled):hover {
-    --toggle-track-bg: color-mix(in oklab, var(--color-fg) 85%, var(--color-canvas));
+    .toggle-switch[data-checked='true']:not(:disabled):hover {
+      --toggle-track-bg: color-mix(in oklab, var(--color-fg) 85%, var(--color-canvas));
+    }
   }
 }

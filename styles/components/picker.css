@@ -200,7 +200,13 @@
     flex: none;
     opacity: 0;
   }
-  .model-row:hover .model-row__remove,
+  /* Only where there is a pointer to hover with: a tap would leave it
+     stuck on. */
+  @media (hover: hover) {
+    .model-row:hover .model-row__remove {
+      opacity: 1;
+    }
+  }
   .model-row__remove:focus-visible {
     opacity: 1;
   }
