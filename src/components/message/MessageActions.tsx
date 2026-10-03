@@ -39,11 +39,22 @@ export function MessageEditBar({ onSave, onCancel }: { onSave: () => void; onCan
   // otherwise sit behind the composer.
   const barRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    const reveal = () => barRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     // A frame later, so the field's autofocus has finished its own scroll.
-    const frame = requestAnimationFrame(() =>
-      barRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }),
-    );
-    return () => cancelAnimationFrame(frame);
+    const frame = requestAnimationFrame(reveal);
+    // And again once a phone's keyboard has risen, which left the buttons
+    // under its edge.
+    let timer = 0;
+    const onResize = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(reveal, 320);
+    };
+    window.visualViewport?.addEventListener('resize', onResize);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+      window.visualViewport?.removeEventListener('resize', onResize);
+    };
   }, []);
   return (
     <div ref={barRef} className="message-edit-bar">

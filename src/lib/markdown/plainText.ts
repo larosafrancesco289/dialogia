@@ -97,7 +97,13 @@ export function withoutSplitSurrogate(text: string): string {
 
 /** A one-line opening of the text, for a heading that names a message. */
 export function plainExcerpt(markdown: string, maxChars = 80): string {
-  const text = markdownToPlainText(markdown).replace(/\s+/g, ' ').trim();
+  // Blocks meet at a point, not a bare space: a heading run into its first
+  // paragraph read as one sentence.
+  const text = markdownToPlainText(markdown)
+    .split(/\n\s*\n/)
+    .map((block) => block.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .join(' · ');
   if (text.length <= maxChars) return text;
   const cut = text.slice(0, maxChars);
   const lastSpace = cut.lastIndexOf(' ');

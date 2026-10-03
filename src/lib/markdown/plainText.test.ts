@@ -5,7 +5,7 @@ import { markdownToPlainText, plainExcerpt } from './plainText';
 test('an excerpt is the opening words on one line, without syntax', () => {
   assert.equal(
     plainExcerpt('## Plan\n\n**Step one:** mix the\nbatter.'),
-    'Plan Step one: mix the batter.',
+    'Plan · Step one: mix the batter.',
   );
 });
 
