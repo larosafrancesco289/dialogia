@@ -101,6 +101,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
   // The room under a turn sent here, and the message it keeps at the top.
   const roomRef = useRef<HTMLDivElement>(null);
   const anchorIdRef = useRef<string | null>(null);
+  const anchorElRef = useRef<HTMLElement | null>(null);
   // Held at the top until the person scrolls: anything above it changing
   // height (the last reply giving up its actions, a note arriving) is made
   // up in the same frame, so the message never moves.
@@ -229,20 +230,25 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     const room = roomRef.current;
     const id = anchorIdRef.current;
     if (!el || !content || !room) return null;
-    const anchor = id ? el.querySelector<HTMLElement>(`[data-mid="${CSS.escape(id)}"]`) : null;
-    if (!anchor) {
+    let anchor = anchorElRef.current;
+    if (id && (!anchor?.isConnected || anchor.dataset.mid !== id)) {
+      anchor = el.querySelector<HTMLElement>(`[data-mid="${CSS.escape(id)}"]`);
+      anchorElRef.current = anchor;
+    }
+    if (!id || !anchor) {
       room.style.height = '0px';
       return null;
     }
-    const style = getComputedStyle(el);
-    const paddingTop = parseFloat(style.paddingTop) || 0;
-    // Measured against the content, never the scroll position, which iOS
-    // reports late while a glide or the keyboard is moving.
-    const contentTop = content.getBoundingClientRect().top;
-    const toScroll = (node: HTMLElement) =>
-      node.getBoundingClientRect().top - contentTop + paddingTop;
+    // Where it sits in the layout: not the scroll position, which iOS reports
+    // late while a glide or the keyboard moves, nor its entrance animation.
+    let offset = 0;
+    for (let node: HTMLElement | null = anchor; node && node !== content; ) {
+      offset += node.offsetTop;
+      node = node.offsetParent as HTMLElement | null;
+    }
+    const paddingTop = parseFloat(getComputedStyle(el).paddingTop) || 0;
     const { room: height, target } = turnRoom({
-      anchorTop: toScroll(anchor),
+      anchorTop: paddingTop + offset,
       paddingTop,
       clientHeight: el.clientHeight,
       lengthWithoutRoom: el.scrollHeight - room.offsetHeight,
@@ -389,6 +395,10 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
         return;
       }
 
+      // Moved by the person in any way (keys, find, focus): the message is let go.
+      const pinned = pinnedTargetRef.current;
+      if (pinned !== null && Math.abs(el.scrollTop - pinned) > 1) pinnedTargetRef.current = null;
+
       if (!snapshot.atBottom) {
         if (movedUp) markUserScrolledAway();
         else applySnapshot(snapshot);
@@ -534,7 +544,9 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     const isUserTurn = lastMessageMeta.role === 'user' || lastMessageMeta.placeholder;
     if (isUserTurn) {
       followRequestedRef.current = false;
-      if (autoScrollPreference) {
+      // A chat opened on an unanswered message (a failed reply) is read from
+      // its end like any other: only a turn seen arriving here is set at the top.
+      if (autoScrollPreference || !previous) {
         scrollToBottom('auto');
         return;
       }
@@ -553,6 +565,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     if (autoScrollPreference && followAllowedRef.current) {
       followToBottom();
     } else {
+      fitTurnRoom();
       applySnapshot(readSnapshot());
     }
   }, [
