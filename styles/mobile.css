@@ -17,6 +17,13 @@
     html {
       -webkit-tap-highlight-color: transparent;
     }
+    /* A field brought into view above the keyboard keeps a little paper
+       under it rather than standing on the keys' bar. */
+    input,
+    textarea,
+    [data-keyboard-reveal] {
+      scroll-margin-block: var(--space-4);
+    }
     .icon-button:active,
     .btn-ghost:active {
       background: color-mix(in oklab, var(--color-fg) 7%, transparent);

@@ -82,6 +82,9 @@ function CustomEndpointEditor({
           id={`base-${endpoint.id}`}
           className="input w-full text-base sm:text-sm"
           defaultValue={endpoint.baseUrl ?? ''}
+          type="url"
+          autoCapitalize="none"
+          autoCorrect="off"
           spellCheck={false}
           aria-invalid={urlInvalid || undefined}
           aria-describedby={`base-${endpoint.id}-hint`}
@@ -245,7 +248,8 @@ function AddEndpointForm({ onAdded }: { onAdded: () => void }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
+      {/* With the keyboard up, the fields come into view with their button. */}
+      <div className="flex flex-wrap gap-2" data-keyboard-reveal="">
         <input
           ref={nameRef}
           className="input flex-1 basis-full sm:basis-0 min-w-0 text-base sm:text-sm"
@@ -258,6 +262,10 @@ function AddEndpointForm({ onAdded }: { onAdded: () => void }) {
           className="input flex-1 basis-full sm:basis-0 min-w-0 text-base sm:text-sm"
           placeholder={CONNECT_OPTIONS.local.placeholder}
           value={baseUrl}
+          // A phone's URL keyboard, which does not capitalise the first letter.
+          type="url"
+          autoCapitalize="none"
+          autoCorrect="off"
           spellCheck={false}
           aria-invalid={urlInvalid || undefined}
           aria-describedby="add-endpoint-hint"
