@@ -23,6 +23,8 @@ export function useLongPressSheet(opts: UseLongPressSheetOptions) {
   const onPointerDown = (event: React.PointerEvent) => {
     if (!enabled) return;
     clearTimer();
+    // A press held in a field places the caret or opens the loupe.
+    if ((event.target as Element).closest?.('input, textarea, [contenteditable="true"]')) return;
     // A right or middle press is never a tap, and never a long press.
     fired.current = event.button !== 0;
     if (fired.current) return;

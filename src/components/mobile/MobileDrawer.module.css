@@ -73,7 +73,7 @@
 /* A phone on its side has no height for a list between a fixed head and
    foot: the chats were squeezed to nothing. There the drawer scrolls as one
    column instead, the chats in it at their full length. */
-@media (max-height: 499px) {
+@media (max-height: 499px) and (orientation: landscape) {
   .drawer {
     overflow-y: auto;
     overscroll-behavior: contain;

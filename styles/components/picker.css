@@ -28,6 +28,9 @@
   /* Searching, the sheet takes all the room above the keys and keeps it, so
      the field stays put as the list narrows instead of dropping with it. */
   html.keyboard-active .bottom-sheet:has(.model-picker--sheet) {
+    /* A height cannot ease from auto: the sheet steps onto the keys in one
+       go, its top still, rather than dipping by their height and back. */
+    transition: none;
     height: calc(100% - env(safe-area-inset-top) - var(--space-8) - var(--keyboard-offset, 0px));
   }
   html.keyboard-active .bottom-sheet:has(.model-picker--sheet) .bottom-sheet__body {
@@ -209,6 +212,13 @@
   }
   .model-row__remove:focus-visible {
     opacity: 1;
+  }
+  /* A finger cannot hover it into sight, and an unseen X took the tap meant
+     for the row: favourites are removed in Settings › Models there. */
+  @media (hover: none) {
+    .model-row__remove {
+      display: none;
+    }
   }
 
   /* Model search field (settings): the sidebar's tinted field. */

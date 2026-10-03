@@ -557,7 +557,9 @@
 .settings-panel:has(> .memory-body) {
   display: flex;
   flex-direction: column;
-  /* Clip, not hidden: a hidden box still scrolls to a field focused in it. */
+  /* Clip, not hidden: a hidden box still scrolls to a field focused in it
+     (hidden first for Safari before 16). */
+  overflow: hidden;
   overflow: clip;
 }
 .settings-panel:has(> .memory-body) > .settings-panel__header {
