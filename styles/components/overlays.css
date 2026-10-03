@@ -69,8 +69,18 @@
   .bottom-sheet {
     position: relative;
     width: min(100%, 520px);
-    max-height: calc(100% - env(safe-area-inset-top) - var(--space-8));
+    max-height: calc(
+      100% - env(safe-area-inset-top) - var(--space-8) - var(--keyboard-offset, 0px)
+    );
     margin: 0 auto;
+    /* With the keyboard up the sheet stands on the keys, easing as the shell
+       does, so a search field's results stay in sight. The layer itself
+       stays the whole screen: Safari reads a fixed layer's top for its
+       status bar, and a resized one left the bar dimmed after it closed. */
+    margin-bottom: var(--keyboard-offset, 0px);
+    transition:
+      margin-bottom var(--duration-med) var(--ease-out-quint),
+      max-height var(--duration-med) var(--ease-out-quint);
     display: flex;
     flex-direction: column;
     background: var(--surface-paper);
@@ -80,10 +90,26 @@
     padding-bottom: calc(var(--space-2) + env(safe-area-inset-bottom));
     outline: none;
   }
+  /* Over the keyboard, the home indicator's inset is gone. */
+  html.keyboard-active .bottom-sheet {
+    padding-bottom: var(--space-2);
+  }
+  /* The paper runs on under the keys, so their glass bar shows the sheet
+     rather than the page. */
+  .bottom-sheet::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    height: var(--keyboard-offset, 0px);
+    background: inherit;
+    pointer-events: none;
+  }
   /* A panel rather than a menu: nearly the whole screen, its body a column
      the panel fills and scrolls itself. */
   .bottom-sheet--tall {
-    height: calc(100% - env(safe-area-inset-top) - var(--space-6));
+    height: calc(100% - env(safe-area-inset-top) - var(--space-6) - var(--keyboard-offset, 0px));
     padding-bottom: 0;
     /* The Learning Hub keeps its recessed tone, as beside the chat. */
     background: var(--color-chrome);
