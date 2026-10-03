@@ -31,9 +31,13 @@
       background-color var(--duration-fast) var(--ease-standard),
       color var(--duration-fast) var(--ease-standard);
   }
-  .learning-panel__revise:hover {
-    border-color: color-mix(in oklab, var(--color-fg) 28%, transparent);
-    background: color-mix(in oklab, var(--color-fg) 5%, transparent);
+  /* Only where there is a pointer to hover with: a tap would leave the tint
+     stuck on. */
+  @media (hover: hover) {
+    .learning-panel__revise:hover {
+      border-color: color-mix(in oklab, var(--color-fg) 28%, transparent);
+      background: color-mix(in oklab, var(--color-fg) 5%, transparent);
+    }
   }
   .learning-panel__revise[aria-pressed='true'] {
     background: color-mix(in oklab, var(--color-fg) 7%, transparent);
@@ -172,10 +176,12 @@
     line-height: 1.3;
     text-wrap: pretty;
   }
-  .hub-path__row:not(.is-static):hover .hub-path__name {
-    text-decoration: underline;
-    text-decoration-color: var(--rule-light);
-    text-underline-offset: 3px;
+  @media (hover: hover) {
+    .hub-path__row:not(.is-static):hover .hub-path__name {
+      text-decoration: underline;
+      text-decoration-color: var(--rule-light);
+      text-underline-offset: 3px;
+    }
   }
   .hub-path__step.is-locked .hub-path__name,
   .hub-path__step.is-ready.is-untouched .hub-path__name {

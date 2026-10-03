@@ -213,9 +213,13 @@
       background-color var(--duration-fast) var(--ease-standard),
       color var(--duration-fast) var(--ease-standard);
   }
-  .code-block__action:hover {
-    background: color-mix(in oklab, var(--color-fg) 6%, transparent);
-    color: var(--color-fg);
+  /* Only where there is a pointer to hover with: a tap would leave the tint
+     stuck on. */
+  @media (hover: hover) {
+    .code-block__action:hover {
+      background: color-mix(in oklab, var(--color-fg) 6%, transparent);
+      color: var(--color-fg);
+    }
   }
   /* The shared icon button, fitted to the bar. */
   .code-block__bar .icon-button {
@@ -417,9 +421,11 @@
   border-radius: var(--radius-inner);
   text-decoration: none;
 }
-.markdown a.citation:hover {
-  color: var(--color-rubric);
-  background: color-mix(in oklab, var(--color-rubric) 12%, transparent);
+@media (hover: hover) {
+  .markdown a.citation:hover {
+    color: var(--color-rubric);
+    background: color-mix(in oklab, var(--color-rubric) 12%, transparent);
+  }
 }
 
 /* Heading anchors (rehype-slug + autolink): a heading keeps its rubric and
@@ -428,9 +434,11 @@
   color: inherit;
   text-decoration: none;
 }
-.markdown .heading-anchor:hover {
-  text-decoration: underline;
-  text-decoration-style: dotted;
+@media (hover: hover) {
+  .markdown .heading-anchor:hover {
+    text-decoration: underline;
+    text-decoration-style: dotted;
+  }
 }
 
 /* The <pre> inside a code block. Unlayered because the base pre rule in
