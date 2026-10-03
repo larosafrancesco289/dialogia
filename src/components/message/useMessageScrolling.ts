@@ -552,6 +552,13 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
       }
       // The person's message goes to the top, with room under it for the reply.
       const sent = [...messages].reverse().find((message) => message.role === 'user');
+      // A tutor's ledger line was not typed here: it can arrive while the
+      // person reads further up (a Hub choice, a line queued behind a reply),
+      // so it moves the view only for someone already at the end.
+      if (sent?.ledger && !atBottomRef.current) {
+        applySnapshot(readSnapshot());
+        return;
+      }
       anchorIdRef.current = sent?.id ?? null;
       const target = fitTurnRoom();
       pinnedTargetRef.current = target;
