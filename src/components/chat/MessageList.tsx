@@ -42,9 +42,11 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
       isStreamingHere: selectIsStreamingForChat(chatId)(state),
       repliesInOtherTab: selectRepliesInOtherTab(chatId)(state),
       composerFocused: state.ui.mobile.composerFocused,
+      // Like every chat app: a reply is written under the sent message, which
+      // stays at the top. A tutor chat may follow instead (Settings › Tutor).
       autoScrollPref: selectIsTutorEnabledForChat(chatId)(state)
         ? (state.ui.tutor?.autoScroll ?? false)
-        : true,
+        : false,
       messagesLoaded: selectChatMessagesLoaded(chatId)(state),
       showByDefault: resolveDisplayPreferences(state.ui.chatDefaults).showThinkingByDefault,
     }),
@@ -147,6 +149,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     containerRef,
     contentRef,
     endRef,
+    roomRef,
     atBottom,
     showJump,
     jumpToLatest,
@@ -316,6 +319,8 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
         })}
 
         {/* Typing indicator is now rendered inline within the latest assistant message */}
+        {/* The room under a turn just sent, so its message can stand at the top. */}
+        <div ref={roomRef} aria-hidden="true" style={{ margin: 0 }} />
         <div ref={endRef} className="message-list__bottom-sentinel" aria-hidden="true" />
       </div>
 

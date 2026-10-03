@@ -28,7 +28,7 @@ export function useMessageListWindow(args: {
     pageSize,
     resetKey: chatId,
   });
-  const { containerRef, contentRef, endRef, atBottom, showJump, jumpToLatest } =
+  const { containerRef, contentRef, endRef, roomRef, atBottom, showJump, jumpToLatest } =
     useMessageScrolling({
       messages,
       chatId,
@@ -47,6 +47,7 @@ export function useMessageListWindow(args: {
     containerRef,
     contentRef,
     endRef,
+    roomRef,
     atBottom,
     showJump,
     jumpToLatest,
