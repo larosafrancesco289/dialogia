@@ -2,6 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { useChatStore } from '@/lib/store';
 import { shortDate } from '@/lib/ui/shortDate';
+import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import type { MemoryFolder, MemoryNote } from '@/lib/types';
 
 /** Opens a chat from the Memory page, which steps aside for it. */
@@ -12,6 +14,17 @@ export function useOpenChat() {
     selectChat(chatId);
     setUI({ memoryOpen: false, memoryFolderId: undefined, mobile: { drawerOpen: false } });
   };
+}
+
+/** How an open note is kept or let go. A phone's keyboard has no Escape;
+ * its Done (or a tap elsewhere) keeps the note. */
+function EditHint() {
+  const touch = useMediaQuery(MEDIA_QUERIES.touch);
+  return (
+    <span className="memory-note__meta">
+      {touch ? 'Tap Done to save' : 'Enter to save · Esc to cancel'}
+    </span>
+  );
 }
 
 function Provenance({ note }: { note: MemoryNote }) {
@@ -44,13 +57,16 @@ const focusDropped = () => !document.activeElement || document.activeElement ===
 
 /**
  * When a field closes and takes focus with it, focus goes to what stands in
- * its place, so Tab carries on from there rather than from the top.
+ * its place, so Tab carries on from there rather than from the top. Not on a
+ * touch screen: there is no Tab to carry on with, and after the on-screen
+ * keyboard Safari would ring the button as if it had been tabbed to.
  */
 function useFocusWhenClosed<T extends HTMLElement>(open: boolean) {
   const ref = useRef<T>(null);
   const wasOpen = useRef(open);
   useEffect(() => {
-    if (wasOpen.current && !open && focusDropped()) ref.current?.focus();
+    const touch = window.matchMedia(MEDIA_QUERIES.touch).matches;
+    if (wasOpen.current && !open && focusDropped() && !touch) ref.current?.focus();
     wasOpen.current = open;
   }, [open]);
   return ref;
@@ -109,6 +125,7 @@ function TextField({
       value={draft}
       placeholder={placeholder}
       rows={1}
+      enterKeyHint="done"
       onChange={(e) => setDraft(e.target.value)}
       onBlur={() => (draft.trim() ? onSave(draft) : onCancel())}
       onKeyDown={(e) => {
@@ -156,7 +173,7 @@ function NoteRow({ note }: { note: MemoryNote }) {
       )}
       <div className="memory-note__foot">
         {editing ? (
-          <span className="memory-note__meta">Enter to save · Esc to cancel</span>
+          <EditHint />
         ) : (
           <>
             <Provenance note={note} />
@@ -207,7 +224,7 @@ export function AddNote({ folderId }: { folderId: string }) {
           onCancel={() => setOpen(false)}
         />
         <div className="memory-note__foot">
-          <span className="memory-note__meta">Enter to save · Esc to cancel</span>
+          <EditHint />
         </div>
       </div>
     );

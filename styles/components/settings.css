@@ -403,3 +403,24 @@
     color: var(--color-fg);
   }
 }
+
+/* On a phone the page fills what is visible, as the shell does: with the
+   keyboard up it ends at the keys, so a field low on a page is scrolled into
+   view inside it instead of Safari pushing the whole page, header and all,
+   off the top. Unlayered, to outrank the panel's Tailwind inset. */
+@media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
+  .settings-panel {
+    top: var(--viewport-offset-top, 0px);
+    bottom: auto;
+    height: 100dvh;
+    height: var(--viewport-height, 100dvh);
+    transition:
+      height var(--duration-med) var(--ease-out-quint),
+      top var(--duration-med) var(--ease-out-quint);
+  }
+  /* Its paper runs on under the keys, so their glass bar shows the page
+     rather than the dimmed one behind it. */
+  html.keyboard-active .settings-panel {
+    box-shadow: 0 0 0 100vh var(--color-canvas);
+  }
+}
