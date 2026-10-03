@@ -138,8 +138,12 @@
   cursor: pointer;
 }
 
-.user :global(.message-user-toggle:hover) {
-  text-decoration-color: currentColor;
+/* Only where there is a pointer to hover with: a tap would leave the tint
+   stuck on. */
+@media (hover: hover) {
+  .user :global(.message-user-toggle:hover) {
+    text-decoration-color: currentColor;
+  }
 }
 
 .user :global(.markdown p) {
@@ -235,7 +239,8 @@
   margin-left: var(--space-2);
 }
 
-/* Older replies keep their footer out of the way until hovered. */
+/* Older replies keep their footer out of the way until hovered. Left out of
+   (hover: hover) on purpose: on a touch screen the tap is what shows it. */
 .footOnHover {
   opacity: 0;
   transition: opacity var(--duration-fast) var(--ease-standard);
@@ -293,6 +298,8 @@
     pointer-events: none;
   }
 
+  /* A wide touch screen (a tablet) reaches these by a tap's :hover, so this
+     stays out of (hover: hover). */
   .messageCard:hover .actions,
   .messageCard:focus-within .actions {
     opacity: 1;

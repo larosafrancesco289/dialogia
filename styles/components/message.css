@@ -154,8 +154,12 @@
     line-height: 1.4;
     color: var(--color-fg-muted);
   }
-  .message-sources__toggle:hover {
-    color: var(--color-fg);
+  /* Only where there is a pointer to hover with: a tap would leave the tint
+     stuck on. */
+  @media (hover: hover) {
+    .message-sources__toggle:hover {
+      color: var(--color-fg);
+    }
   }
   .message-sources__toggle .response-ledger__chevron {
     width: 12px;
@@ -228,8 +232,10 @@
     border: 1px solid var(--color-border);
     color: var(--color-fg-muted);
   }
-  .attachment-remove:hover {
-    color: var(--color-fg);
+  @media (hover: hover) {
+    .attachment-remove:hover {
+      color: var(--color-fg);
+    }
   }
 
   /* ===== Image lightbox: a darkroom, whatever the theme ===== */
@@ -253,8 +259,10 @@
     font-size: 0.875rem;
     transition: background-color var(--duration-fast) var(--ease-standard);
   }
-  .lightbox__btn:hover:not(:disabled) {
-    background: color-mix(in oklab, white 10%, transparent);
+  @media (hover: hover) {
+    .lightbox__btn:hover:not(:disabled) {
+      background: color-mix(in oklab, white 10%, transparent);
+    }
   }
   .lightbox__btn:disabled {
     opacity: 0.5;

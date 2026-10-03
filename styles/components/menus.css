@@ -24,8 +24,12 @@
       background-color var(--duration-fast) var(--ease-standard),
       color var(--duration-fast) var(--ease-standard);
   }
-  .segment:hover {
-    color: var(--color-fg);
+  /* Only where there is a pointer to hover with: a tap would leave the tint
+     stuck on. */
+  @media (hover: hover) {
+    .segment:hover {
+      color: var(--color-fg);
+    }
   }
   .segment.is-active {
     background: var(--color-surface);
@@ -76,8 +80,10 @@
     cursor: pointer;
     color: var(--color-fg);
   }
-  .menu-item:hover {
-    background: color-mix(in oklab, var(--color-fg) 5%, transparent);
+  @media (hover: hover) {
+    .menu-item:hover {
+      background: color-mix(in oklab, var(--color-fg) 5%, transparent);
+    }
   }
   .menu-item[aria-checked='true'] {
     background: color-mix(in oklab, var(--color-fg) 7%, transparent);
