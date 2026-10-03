@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 
 /**
  * Rename in place, in the row's own type: the old name is selected so typing
@@ -36,7 +37,11 @@ export function InlineTitleEdit({
     settled.current = true;
     // Enter or Escape leaves focus on the row the field sits in (it takes
     // tabIndex -1 while editing), not dropped on the page with the field.
-    if (fromKeyboard) {
+    // On a touch screen that is the on-screen keyboard's Return, and a ring
+    // left on the row would read as a selection: the keyboard just goes.
+    if (fromKeyboard && window.matchMedia(MEDIA_QUERIES.touch).matches) {
+      inputRef.current?.blur();
+    } else if (fromKeyboard) {
       inputRef.current?.parentElement?.closest<HTMLElement>('[tabindex]')?.focus();
     }
     const next = draft.trim();
