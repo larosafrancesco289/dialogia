@@ -175,6 +175,18 @@
   }
 }
 
+/* A phone on its side: the opening is centred in the room above the
+   composer, not behind it, where the Chat / Learn switch was hidden. */
+@media (max-height: 499px) {
+  .heroMobile:not(.heroMobileConnect) {
+    justify-content: safe center;
+    padding-bottom: calc(var(--space-4) + var(--composer-height, 0px));
+  }
+  .heroMobileMark {
+    display: none;
+  }
+}
+
 .heroMobileContent {
   display: flex;
   flex-direction: column;
