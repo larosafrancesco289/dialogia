@@ -125,7 +125,9 @@ export function linkCitationMarkers(content: string, sources?: MarkdownCitationS
     const linked = markers.map((rawIndex) => {
       const source = sources[Number(rawIndex) - 1];
       if (!source?.url) return undefined;
-      const title = markdownTitle(`Source ${rawIndex}: ${titleForSource(source)}`);
+      const title = markdownTitle(
+        t('sources.citation', { number: rawIndex, title: titleForSource(source) }),
+      );
       return `[${rawIndex}](${markdownUrl(source.url)} ${title})`;
     });
     if (linked.every((link) => link === undefined)) return run;

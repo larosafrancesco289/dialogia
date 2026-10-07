@@ -26,6 +26,7 @@ import {
 } from '@/components/markdown/CodeFrame';
 import { MermaidBlock } from '@/components/markdown/MermaidBlock';
 import { useImageZoom } from '@/components/markdown/useImageZoom';
+import { t } from '@/lib/i18n';
 
 type RehypePlugins = NonNullable<React.ComponentProps<typeof ReactMarkdown>['rehypePlugins']>;
 
@@ -220,7 +221,8 @@ const COMPONENTS: Components = {
     // A citation (`linkCitationMarkers`) shows only its number, set small;
     // its title says which source it is.
     const isCitation =
-      typeof children === 'string' && !!props.title?.startsWith(`Source ${children}: `);
+      typeof children === 'string' &&
+      !!props.title?.startsWith(t('sources.citation', { number: children, title: '' }));
     return (
       <a
         href={href}

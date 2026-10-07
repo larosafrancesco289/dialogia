@@ -36,7 +36,7 @@ export function asTheirIdea(belief: string): string {
   const text = asSentence(belief);
   if (!text || /^you\b/i.test(text)) return text;
   // Already framed in the language shown ("Pensavi che…"): the tutor wrote it so.
-  const frame = t('idea.youThought', { belief: '' }).trim();
+  const frame = t('idea.youThought', { belief: '' }).replace(/[\s:,.]+$/u, '');
   if (fold(text).startsWith(fold(frame))) return text;
   // Lowercase a plain first word ("A", "Vaccines"), never "I" or an acronym like
   // "DNA", nor a German noun, which keeps its capital.

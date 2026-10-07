@@ -29,6 +29,15 @@ const en = {
   'hub.toClearLabel': 'To clear up',
   'hub.gotIt': 'I’ve got this now',
   'hub.startsOnce': 'Starts once you’ve finished {topics}.',
+  'hub.title': 'Learning Hub',
+  'hub.open': 'Open Learning Hub',
+  'hub.close': 'Close Learning Hub',
+  'hub.labelWith': 'Learning Hub: {detail}',
+  'hub.topicsOf': { one: '{done} of {count} topic', other: '{done} of {count} topics' },
+  'hub.editing': 'Editing the plan',
+  'hub.proposed': 'Proposed plan',
+  'hub.done': 'Done',
+  'hub.editPlan': 'Edit plan',
   'why.title': 'Why {percent}',
   'why.starting': 'Starting estimate',
   'why.carriedBefore': 'Carried over from before',
@@ -38,6 +47,7 @@ const en = {
   'why.corrected': 'You corrected it',
   'why.told': 'You told the tutor',
   'why.byTutor': 'Set by the tutor',
+
   // Margin notes and "Why N%": what moved an estimate
   'carried.elsewhere': '{topic} in another learning session',
   'carried.inChat': '{topic} in {title}',
@@ -81,15 +91,7 @@ const en = {
   'learn.forced': 'Every chat is a learning session',
   'learn.tapToLeave': 'In a learning session; tap to leave',
   'learn.start': 'Start a learning session',
-  'hub.title': 'Learning Hub',
-  'hub.open': 'Open Learning Hub',
-  'hub.close': 'Close Learning Hub',
-  'hub.labelWith': 'Learning Hub: {detail}',
-  'hub.topicsOf': { one: '{done} of {count} topic', other: '{done} of {count} topics' },
-  'hub.editing': 'Editing the plan',
-  'hub.proposed': 'Proposed plan',
-  'hub.done': 'Done',
-  'hub.editPlan': 'Edit plan',
+
   // Editing the plan in the Hub
   'revise.hint': 'To add, remove or reorder topics, ask the tutor.',
   'revise.ask': 'Ask the tutor for changes',
@@ -101,6 +103,15 @@ const en = {
   'plan.applying': 'Applying…',
   'plan.approve': 'Approve plan',
   'plan.suggest': 'Suggest changes',
+
+  // A plan proposal
+  'plan.approved': 'Approved',
+  'plan.changesRequested': 'Changes requested',
+  'plan.revisedBelow': 'Revised below',
+  'plan.hours': { one: 'About {count} hour', other: 'About {count} hours' },
+  'plan.recording': 'Recording…',
+  'plan.viewFull': 'View full plan',
+
   // The end of a topic
   'chapter.label': 'End of topic: {name}',
   'chapter.kicker': 'Topic {at} of {count} finished',
@@ -119,6 +130,7 @@ const en = {
   'cards.revisedPlan': 'Revised plan',
   'cards.beforeStart': 'Before we start',
   'cards.exercises': 'Exercises',
+
   // Quizzes and the quick check
   'quiz.question': 'Question {at} of {count}',
   'quiz.questionNumber': 'Question {number}',
@@ -127,6 +139,7 @@ const en = {
   'diagnostic.title': 'A quick check on {topic}',
   'diagnostic.why': 'So the tutor knows where to start.',
   'diagnostic.score': { one: '{right} of {count} right', other: '{right} of {count} right' },
+
   // The opening questions
   'intake.title': 'Tell me about your goals',
   'intake.thanks': 'Thank you. The plan will be shaped around this.',
@@ -138,13 +151,6 @@ const en = {
   'intake.sending': 'Sending…',
   'intake.send': 'Send answers',
 
-  // A plan proposal
-  'plan.approved': 'Approved',
-  'plan.changesRequested': 'Changes requested',
-  'plan.revisedBelow': 'Revised below',
-  'plan.hours': { one: 'About {count} hour', other: 'About {count} hours' },
-  'plan.recording': 'Recording…',
-  'plan.viewFull': 'View full plan',
   // Margin notes beside a reply
   'margin.label': 'What the tutor noted',
   'margin.change': '{from} to {to}',
@@ -178,6 +184,7 @@ const en = {
   'settings.modelHint': 'Every learning session uses this model.',
   'settings.howItWorks':
     'Each learning session drafts a plan from your first message and keeps track of what you know as you go. The tutor moves on to the next topic when you are ready.',
+
   // The tutor's greeting at the top of a learning session
   'welcome.first':
     "Tell me what you want to learn, and why. I'll sketch a plan for us, you can reshape it, and as we work we'll keep track of what you know. If you have notes or readings, add them and I'll work from those too.",
@@ -207,10 +214,8 @@ const en = {
   'ledger.tooHigh': 'Said the estimate felt too high: {topic}',
   'ledger.tooLow': 'Said the estimate felt too low: {topic}',
   'ledger.clearedUp': 'Marked as cleared up: {idea}',
-
   'notice.saveFailed':
     'Tutor progress could not be saved. It holds in this tab and will be retried with the next change.',
-  //@@END
 } as const;
 
 export default en;
