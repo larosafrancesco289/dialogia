@@ -56,6 +56,11 @@ test('fetchModels synthesizes reasoning metadata from effort capabilities', asyn
         },
       },
       {
+        id: 'claude-haiku-5-5',
+        display_name: 'Claude Haiku 5.5',
+        capabilities: { thinking: { supported: true } },
+      },
+      {
         id: 'claude-haiku-4-5-20251001',
         display_name: 'Claude Haiku 4.5',
         capabilities: { thinking: { supported: true } },
@@ -86,7 +91,19 @@ test('fetchModels synthesizes reasoning metadata from effort capabilities', asyn
   assert.equal(fableReasoning.default_enabled, true);
   assert.equal(fableReasoning.mandatory, true);
 
-  const haiku = models.find((m) => m.id.includes('haiku'));
+  const haiku55 = models.find((m) => m.id.endsWith('claude-haiku-5-5'));
+  const haiku55Reasoning = (haiku55?.raw as Record<string, unknown>).reasoning as Record<
+    string,
+    unknown
+  >;
+  // Adaptive by default at medium effort, and thinking may be turned off.
+  assert.deepEqual(haiku55Reasoning.supported_efforts, ['low', 'medium', 'high', 'xhigh', 'max']);
+  assert.equal(haiku55Reasoning.default_effort, 'medium');
+  assert.equal(haiku55Reasoning.default_enabled, true);
+  assert.equal(haiku55Reasoning.mandatory, false);
+  assert.equal(haiku55?.pricing?.prompt, 0.0000001);
+
+  const haiku = models.find((m) => m.id.includes('haiku-4'));
   const haikuReasoning = (haiku?.raw as Record<string, unknown>).reasoning as Record<
     string,
     unknown

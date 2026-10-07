@@ -10,8 +10,10 @@ import { withoutToolHistory } from '@/lib/transport/toolHistory';
 import {
   ANTHROPIC_MIN_ANSWER_TOKENS,
   ANTHROPIC_MIN_THINKING_BUDGET,
+  anthropicThinkingOff,
   defaultAnthropicMaxTokens,
   defaultAnthropicThinkingBudget,
+  documentedAnthropicDefaultEffort,
   normalizeAnthropicModelSlug,
   resolveAnthropicDirectModelId,
   supportsAnthropicAdaptiveThinking,
@@ -94,7 +96,10 @@ function buildThinkingConfig(params: {
   if (!reasoningSupported) return {};
 
   const reasoningDisabled = params.disableReasoning || params.reasoningEffort === 'none';
-  if (reasoningDisabled) return {};
+  if (reasoningDisabled) {
+    const off = anthropicThinkingOff(params.model);
+    return off ? { thinking: off } : {};
+  }
 
   const reasoningRequested =
     (typeof params.reasoningEffort === 'string' && params.reasoningEffort !== 'none') ||
@@ -108,7 +113,10 @@ function buildThinkingConfig(params: {
       params.reasoningEffort && params.reasoningEffort !== 'none'
         ? params.reasoningEffort
         : undefined;
-    const effort = requested === 'minimal' ? 'low' : (requested ?? 'high');
+    const effort =
+      requested === 'minimal'
+        ? 'low'
+        : (requested ?? documentedAnthropicDefaultEffort(params.model));
     return {
       thinking: { type: 'adaptive', display: 'summarized' as const },
       output_config: { effort },

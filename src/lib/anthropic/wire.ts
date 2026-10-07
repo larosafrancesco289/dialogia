@@ -103,6 +103,8 @@ export type AnthropicMessagesRequest = {
   tool_choice?: AnthropicToolChoice;
   thinking?:
     | { type: 'adaptive'; display?: 'summarized' | 'omitted' }
-    | { type: 'enabled'; budget_tokens: number; display?: 'summarized' | 'omitted' };
+    | { type: 'enabled'; budget_tokens: number; display?: 'summarized' | 'omitted' }
+    | { type: 'disabled' }
+    | { type: 'between_tools' };
   output_config?: { effort: 'low' | 'medium' | 'high' | 'xhigh' | 'max' };
 };

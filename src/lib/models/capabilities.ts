@@ -117,10 +117,11 @@ export function getSelectableReasoningEfforts(model?: ModelDescriptor | null): R
 }
 
 // Model authors' documented defaults, which take precedence over a gateway's
-// own default_effort. OpenRouter publishes default_effort "medium" for Claude
-// models, but Anthropic's effort docs state the API default is "high" on all
-// effort-capable models (Fable/Mythos, Opus 4.6+, Sonnet 4.6+, Sonnet 5).
+// own default_effort. OpenRouter has published "medium" for Claude models that
+// Anthropic's effort docs default to "high" (Fable/Mythos, Opus 4.6+, Sonnet
+// 4.6+), and "high" for Opus 5.5, which defaults to "medium" like Haiku 5.5.
 const AUTHOR_DEFAULT_EFFORT_OVERRIDES: Array<{ pattern: RegExp; effort: ReasoningEffort }> = [
+  { pattern: /claude-(opus|haiku)-5[.-]5/, effort: 'medium' },
   { pattern: /claude-(fable|mythos)/, effort: 'high' },
   { pattern: /claude-opus-4[.-][678]/, effort: 'high' },
   { pattern: /claude-sonnet-(5|4[.-]6)/, effort: 'high' },

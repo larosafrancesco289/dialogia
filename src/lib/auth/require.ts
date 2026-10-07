@@ -1,8 +1,12 @@
 import { getKey, isKeyRejected } from '@/lib/keys/store';
 import type { ModelIndex } from '@/lib/models';
 import { buildTransportAuth, type TransportAuth } from '@/lib/auth/transport';
-import { allowsKeylessCalls, type ProviderEndpoint } from '@/lib/transport/endpoints';
-import { resolveModelEndpoint } from '@/lib/transport/endpointRegistry';
+import {
+  allowsKeylessCalls,
+  ANTHROPIC_ENDPOINT_ID,
+  type ProviderEndpoint,
+} from '@/lib/transport/endpoints';
+import { getDefaultEndpoint, resolveModelEndpoint } from '@/lib/transport/endpointRegistry';
 
 export const MISSING_PROVIDER_KEY = 'missing_provider_key';
 
@@ -46,5 +50,18 @@ export function requireEndpointAuth(endpoint: ProviderEndpoint): TransportAuth {
 
 export function requireModelAuth(modelId: string, modelIndex: ModelIndex): TransportAuth {
   const meta = modelIndex.get(modelId);
-  return requireEndpointAuth(resolveModelEndpoint(modelId, meta));
+  const endpoint = resolveModelEndpoint(modelId, meta);
+  // Before the model list loads, OpenRouter's own Claude ids ('anthropic/...',
+  // what new chats start with) read as the Claude API's. Without a Claude key
+  // they go where the loaded list will send them anyway: to OpenRouter.
+  if (
+    !meta &&
+    modelId.startsWith('anthropic/') &&
+    endpoint.id === ANTHROPIC_ENDPOINT_ID &&
+    !isEndpointConnected(endpoint) &&
+    isEndpointConnected(getDefaultEndpoint())
+  ) {
+    return requireEndpointAuth(getDefaultEndpoint());
+  }
+  return requireEndpointAuth(endpoint);
 }

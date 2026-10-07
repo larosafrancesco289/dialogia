@@ -266,3 +266,42 @@ test('a long answer is not cut short by a small default max_tokens', () => {
   });
   assert.equal(older.max_tokens, 8192);
 });
+
+test('reasoning off says so from Claude 5 on, where thinking runs unless refused', () => {
+  const off = (model: string) =>
+    buildAnthropicBody({
+      model: `anthropic-direct/${model}`,
+      messages: [{ role: 'user', content: 'Name this chat.' }],
+      stream: false,
+      disableReasoning: true,
+    });
+  assert.deepEqual(off('claude-haiku-5-5').thinking, { type: 'disabled' });
+  assert.deepEqual(off('claude-sonnet-5').thinking, { type: 'disabled' });
+  assert.deepEqual(off('claude-opus-5').thinking, { type: 'disabled' });
+  // Sonnet 5.5 refuses "disabled"; its lowest setting is between_tools.
+  assert.deepEqual(off('claude-sonnet-5-5').thinking, { type: 'between_tools' });
+  // Before Claude 5 a missing field already means no thinking.
+  assert.equal(off('claude-opus-4-8').thinking, undefined);
+  assert.equal(off('claude-haiku-4-5').thinking, undefined);
+  // Thinking cannot be turned off here, and "disabled" would be a 400.
+  assert.equal(off('claude-opus-5-5').thinking, undefined);
+  assert.equal(off('claude-fable-5-1').thinking, undefined);
+  for (const model of ['claude-haiku-5-5', 'claude-sonnet-5-5']) {
+    assert.equal(off(model).output_config, undefined, model);
+  }
+});
+
+test('thinking without a chosen effort runs at the model’s documented default', () => {
+  const effortOf = (model: string) =>
+    buildAnthropicBody({
+      model: `anthropic-direct/${model}`,
+      messages: [{ role: 'user', content: 'Think.' }],
+      stream: false,
+      reasoningTokens: 2048,
+    }).output_config?.effort;
+  assert.equal(effortOf('claude-haiku-5-5'), 'medium');
+  assert.equal(effortOf('claude-opus-5-5'), 'medium');
+  assert.equal(effortOf('claude-sonnet-5-5'), 'high');
+  assert.equal(effortOf('claude-fable-5-1'), 'high');
+  assert.equal(effortOf('claude-opus-5'), 'high');
+});

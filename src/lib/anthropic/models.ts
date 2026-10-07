@@ -7,6 +7,7 @@ import { anFetchModels } from '@/lib/anthropic/http';
 import { ANTHROPIC_ENDPOINT_ID } from '@/lib/transport/endpoints';
 import { buildAnthropicError, wrapAnthropicClientError } from '@/lib/anthropic/errors';
 import {
+  documentedAnthropicDefaultEffort,
   documentedAnthropicEffortLevels,
   getAnthropicPricing,
   isAnthropicThinkingMandatory,
@@ -46,9 +47,9 @@ const EFFORT_LEVEL_KEYS = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
 /**
  * Normalize Anthropic's `capabilities.effort` flags into the same `reasoning`
  * metadata shape OpenRouter publishes, so the models layer reads one format.
- * The API default effort is `high` and cannot be read from metadata; the
- * effort docs state "omitting the parameter" equals `high` on all supported
- * models. Older manual-thinking models have thinking off by default.
+ * The API default effort cannot be read from metadata; the effort docs give
+ * it (`high`, `medium` on Opus 5.5 and Haiku 5.5). Older manual-thinking
+ * models have thinking off by default.
  */
 function buildAnthropicReasoningMetadata(
   directId: string,
@@ -68,7 +69,7 @@ function buildAnthropicReasoningMetadata(
   return {
     supported_efforts:
       supportedEfforts.length > 0 ? supportedEfforts : documentedAnthropicEffortLevels(directId),
-    default_effort: 'high',
+    default_effort: documentedAnthropicDefaultEffort(directId),
     // Effort-capable models run with reasoning active by default; older
     // manual-thinking models require explicitly enabling thinking.
     default_enabled: effortSupported || mandatory,
