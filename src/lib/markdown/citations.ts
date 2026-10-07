@@ -1,4 +1,5 @@
 // Module: markdown/citations
+import { t } from '@/lib/i18n';
 // Responsibility: Pure text transforms applied before markdown parsing, and the
 // name a cited source goes by. Kept out of the renderer module so callers can
 // use them without pulling react-markdown.
@@ -72,7 +73,7 @@ export function hostname(url?: string) {
 export function titleForSource(source: { title?: string; url?: string }) {
   const host = hostname(source.url);
   const title = source.title?.trim();
-  if (!title) return host || source.url || 'Untitled source';
+  if (!title) return host || source.url || t('sources.untitled');
   const [, page, site] = title.match(/^(.+?)\s+[-|–—·]\s+([^-|–—·]+)$/) ?? [];
   const squash = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g, '');
   const names = host

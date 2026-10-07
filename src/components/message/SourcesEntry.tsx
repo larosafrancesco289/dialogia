@@ -2,9 +2,7 @@ import { useId, useState } from 'react';
 import { ArrowUpRightIcon, ChevronDownIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
 import { hostname, titleForSource, type MarkdownCitationSource } from '@/lib/markdown/citations';
 import type { SearchSourcesData } from '@/lib/ui/responseActivity';
-
-// What the search returned; the model may have read fewer of them.
-const sourcesFound = (count: number) => `${count} source${count === 1 ? '' : 's'} found`;
+import { useT } from '@/lib/i18n';
 
 /** The sources, numbered as the reply's citations cite them. */
 function SourcesList({ sources }: { sources: MarkdownCitationSource[] }) {
@@ -41,6 +39,7 @@ function SourcesList({ sources }: { sources: MarkdownCitationSource[] }) {
  * closed: a quiet line that opens onto the same numbered list.
  */
 export function ReplySources({ sources }: { sources: MarkdownCitationSource[] }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const listId = useId();
   return (
@@ -52,7 +51,8 @@ export function ReplySources({ sources }: { sources: MarkdownCitationSource[] })
         aria-controls={listId}
         onClick={() => setOpen((value) => !value)}
       >
-        {sourcesFound(sources.length)}
+        {/* What the search returned; the model may have read fewer of them. */}
+        {t('sources.found', { count: sources.length })}
         <ChevronDownIcon className={`response-ledger__chevron${open ? ' is-open' : ''}`} />
       </button>
       {open && (
@@ -78,6 +78,7 @@ export function SourcesEntry({
   open: boolean;
   onToggle: () => void;
 }) {
+  const t = useT();
   const sourceItems = sources?.results ?? [];
   const hasSources = sourceItems.length > 0;
   const isSearching = sources?.status === 'loading';
@@ -93,8 +94,10 @@ export function SourcesEntry({
         onClick={onToggle}
       >
         {isSearching
-          ? `Looking for sources${sources?.query ? `: ${sources.query}` : ''}…`
-          : sourcesFound(sourceItems.length)}
+          ? sources?.query
+            ? t('sources.lookingFor', { query: sources.query })
+            : t('sources.looking')
+          : t('sources.found', { count: sourceItems.length })}
         {hasSources && (
           <ChevronDownIcon className={`response-ledger__chevron${open ? ' is-open' : ''}`} />
         )}

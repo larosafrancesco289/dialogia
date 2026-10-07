@@ -16,6 +16,7 @@ import {
   type KeyChoice,
 } from '@/components/connect/useConnectProvider';
 import styles from './ConnectForm.module.css';
+import { useT, type MessageKey, type Translate } from '@/lib/i18n';
 
 // Component: ConnectForm
 // Responsibility: Asking for a key or a server, the same way wherever it is
@@ -26,44 +27,35 @@ export const CONNECT_FIELD_SELECTOR = '[data-connect-field]';
 
 const CHOICES = Object.keys(CONNECT_OPTIONS) as ConnectChoice[];
 
-const LEADS: Record<ConnectChoice, string> = {
-  openrouter:
-    'Paste a key from OpenRouter. One key reaches most models, and you pay OpenRouter only for what you use.',
-  anthropic:
-    'Paste a key from Anthropic to use Claude models. You pay Anthropic only for what you use.',
-  local:
-    'Paste the address of a model server you run, such as Ollama or LM Studio. Most need no key.',
+const LEADS: Record<ConnectChoice, MessageKey> = {
+  openrouter: 'connect.lead.openrouter',
+  anthropic: 'connect.lead.anthropic',
+  local: 'connect.lead.local',
 };
 
-const KEY_STEPS: Record<KeyChoice, ReactNode[]> = {
-  openrouter: [
-    <>
-      <b>Make an account</b> at{' '}
-      <ExternalLink href="https://openrouter.ai">openrouter.ai</ExternalLink>.
-    </>,
-    <>
-      <b>Add a little credit</b> under Credits.
-    </>,
-    <>
-      <b>Create a key</b> under <ExternalLink href={KEY_PAGES.openrouter.href}>Keys</ExternalLink>,
-      copy it, and paste it above.
-    </>,
-  ],
-  anthropic: [
-    <>
-      <b>Make an account</b> at{' '}
-      <ExternalLink href="https://console.anthropic.com">console.anthropic.com</ExternalLink>.
-    </>,
-    <>
-      <b>Add a little credit</b> under Billing.
-    </>,
-    <>
-      <b>Create a key</b> under{' '}
-      <ExternalLink href={KEY_PAGES.anthropic.href}>API keys</ExternalLink>, copy it, and paste it
-      above.
-    </>,
-  ],
+// The provider's own page names (Credits, Keys) stay as its site writes them.
+const KEY_SITES: Record<KeyChoice, { home: string; credit: string; keys: string }> = {
+  openrouter: { home: 'openrouter.ai', credit: 'Credits', keys: 'Keys' },
+  anthropic: { home: 'console.anthropic.com', credit: 'Billing', keys: 'API keys' },
 };
+
+function keySteps(t: Translate, choice: KeyChoice): ReactNode[] {
+  const site = KEY_SITES[choice];
+  return [
+    t.rich('connect.steps.account', {
+      action: <b>{t('connect.steps.accountAction')}</b>,
+      link: <ExternalLink href={`https://${site.home}`}>{site.home}</ExternalLink>,
+    }),
+    t.rich('connect.steps.credit', {
+      action: <b>{t('connect.steps.creditAction')}</b>,
+      page: site.credit,
+    }),
+    t.rich('connect.steps.key', {
+      action: <b>{t('connect.steps.keyAction')}</b>,
+      link: <ExternalLink href={KEY_PAGES[choice].href}>{site.keys}</ExternalLink>,
+    }),
+  ];
+}
 
 type Fold = 'steps' | 'others';
 
@@ -87,6 +79,7 @@ export function ConnectForm({
   inputRef?: RefObject<HTMLInputElement>;
   onConnected?: () => void;
 }) {
+  const t = useT();
   // A key refused since it was saved brings the form back on it, saying so.
   useProviderKeys();
   const refused = refusedKeyChoice();
@@ -137,7 +130,7 @@ export function ConnectForm({
   const keyChoice = choice === 'local' ? null : choice;
   const shownError =
     error ??
-    (keyChoice && keyChoice === refused && !value ? refusedKeyMessage(keyChoice) : undefined);
+    (keyChoice && keyChoice === refused && !value ? refusedKeyMessage(t, keyChoice) : undefined);
   const errorId = `${id}-error`;
 
   return (
@@ -160,7 +153,7 @@ export function ConnectForm({
         <h2 id={`${id}-title`} className={variant === 'box' ? styles.title : 'dialog__title'}>
           {title}
         </h2>
-        <p className={styles.lead}>{lead ?? LEADS[choice]}</p>
+        <p className={styles.lead}>{lead ?? t(LEADS[choice])}</p>
         <div className={styles.row} data-keyboard-reveal="">
           <input
             ref={inputRef}
@@ -176,7 +169,7 @@ export function ConnectForm({
             data-bwignore=""
             data-form-type="other"
             spellCheck={false}
-            aria-label={keyChoice ? CONNECT_OPTIONS[keyChoice].name : 'Server address'}
+            aria-label={t(keyChoice ? CONNECT_OPTIONS[keyChoice].name : 'connect.serverAddress')}
             aria-invalid={shownError ? true : undefined}
             aria-describedby={shownError ? errorId : undefined}
             placeholder={CONNECT_OPTIONS[choice].placeholder}
@@ -187,7 +180,7 @@ export function ConnectForm({
             }}
           />
           <button type="submit" className="btn btn-sm" disabled={!value.trim() || busy}>
-            Connect
+            {t('connect.submit')}
           </button>
         </div>
         {shownError && (
@@ -206,7 +199,7 @@ export function ConnectForm({
               aria-controls={`${id}-steps`}
               onClick={() => setOpen(open === 'steps' ? null : 'steps')}
             >
-              How do I get a key?
+              {t('connect.howToGetKey')}
               <ChevronDownIcon className={styles.chevron} aria-hidden="true" />
             </button>
           )}
@@ -218,7 +211,7 @@ export function ConnectForm({
             aria-controls={`${id}-others`}
             onClick={() => setOpen(open === 'others' ? null : 'others')}
           >
-            Other ways to connect
+            {t('connect.otherWays')}
             <ChevronDownIcon className={styles.chevron} aria-hidden="true" />
           </button>
         </div>
@@ -230,7 +223,7 @@ export function ConnectForm({
               className={`${styles.steps} motion-fade`}
               hidden={open !== 'steps'}
             >
-              {KEY_STEPS[keyChoice].map((step, index) => (
+              {keySteps(t, keyChoice).map((step, index) => (
                 <li key={index}>
                   <span>{step}</span>
                 </li>
@@ -249,8 +242,8 @@ export function ConnectForm({
                 className={styles.other}
                 onClick={() => choose(other)}
               >
-                <span>{CONNECT_OPTIONS[other].name}</span>{' '}
-                <span className={styles.note}>{CONNECT_OPTIONS[other].note}</span>
+                <span>{t(CONNECT_OPTIONS[other].name)}</span>{' '}
+                <span className={styles.note}>{t(CONNECT_OPTIONS[other].note)}</span>
               </button>
             ))}
           </div>
@@ -258,9 +251,7 @@ export function ConnectForm({
       </form>
 
       <p className={styles.privacy}>
-        {keyChoice
-          ? 'Your key and your chats stay in this browser.'
-          : 'Your chats stay in this browser.'}
+        {t(keyChoice ? 'connect.privacy.key' : 'connect.privacy.server')}
       </p>
     </div>
   );

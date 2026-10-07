@@ -11,6 +11,8 @@ import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 import { Markdown } from '@/components/Markdown';
 import { asTheirIdea } from '@/modules/tutor/lib/text';
 import { CarriedOverWords } from './CarriedOverWords';
+import { formatPercent } from '@/lib/i18n/format';
+import { useT } from '@/modules/tutor/i18n';
 
 /**
  * Mastery changes annotated beside the exchange that earned them. The number
@@ -20,6 +22,8 @@ import { CarriedOverWords } from './CarriedOverWords';
  * misconception the tutor noticed is said here too, where it happened, and
  * not only in the Hub.
  */
+const pctText = (value: number) => formatPercent(percent(value) / 100);
+
 export function MarginNotes({
   changes,
   misconceptions = [],
@@ -27,6 +31,7 @@ export function MarginNotes({
   changes: MasteryChange[];
   misconceptions?: NotedMisconception[];
 }) {
+  const t = useT();
   const { state, learningPlan, onContestMastery } = usePlanCallbacks();
   const { correctMastery } = useTutorAffordances();
   const [contesting, setContesting] = useState<string | null>(null);
@@ -53,7 +58,7 @@ export function MarginNotes({
   };
 
   return (
-    <aside className="margin-notes" aria-label="What the tutor noted">
+    <aside className="margin-notes" aria-label={t('margin.label')}>
       {changes.map((change) => {
         const reason = marginReason(change.notes, !!unfolded[change.nodeId]);
         // From the log, so the note keeps its correction after a reload.
@@ -65,13 +70,16 @@ export function MarginNotes({
               <span className="margin-note__topic">{nameOf(change.nodeId)}</span>
               {change.carriedOver ? (
                 // A carried estimate is where the topic starts here, not a gain: the words below say why.
-                <span className="margin-note__delta">{percent(change.to)}%</span>
+                <span className="margin-note__delta">{pctText(change.to)}</span>
               ) : (
                 <span
                   className="margin-note__delta"
-                  aria-label={`${percent(change.from)} to ${percent(change.to)} percent`}
+                  aria-label={t('margin.change', {
+                    from: pctText(change.from),
+                    to: pctText(change.to),
+                  })}
                 >
-                  {percent(change.from)}% <span aria-hidden="true">→</span> {percent(change.to)}%
+                  {pctText(change.from)} <span aria-hidden="true">→</span> {pctText(change.to)}
                 </span>
               )}
             </p>
@@ -95,7 +103,7 @@ export function MarginNotes({
                       className="margin-note__more"
                       onClick={() => setUnfolded((prev) => ({ ...prev, [change.nodeId]: true }))}
                     >
-                      +{reason.more} more
+                      {t('margin.more', { count: reason.more })}
                     </button>
                   </>
                 )}
@@ -106,21 +114,21 @@ export function MarginNotes({
               <p className="margin-note__answer">
                 {saidEstimateFelt(corrected < change.to ? 'high' : 'low')}
                 {current(change.nodeId) === corrected
-                  ? `. Now ${percent(corrected)}%.`
-                  : ` (${percent(corrected)}%).`}
+                  ? `. ${t('margin.now', { percent: pctText(corrected) })}`
+                  : ` (${pctText(corrected)}).`}
               </p>
             ) : answerable ? (
               // The same control as the Learning Hub's, in the same words.
               <div className="margin-note__answer">
-                <span>Seems wrong?</span>
-                <span className="estimate-choices" role="group" aria-label="Correct the estimate">
+                <span>{t('hub.seemsWrong')}</span>
+                <span className="estimate-choices" role="group" aria-label={t('hub.correct')}>
                   <button
                     type="button"
                     className="btn-outline btn-sm"
                     disabled={contesting === change.nodeId}
                     onClick={() => void contest(change.nodeId, 'down')}
                   >
-                    Too high
+                    {t('hub.tooHigh')}
                   </button>
                   <button
                     type="button"
@@ -128,7 +136,7 @@ export function MarginNotes({
                     disabled={contesting === change.nodeId}
                     onClick={() => void contest(change.nodeId, 'up')}
                   >
-                    Too low
+                    {t('hub.tooLow')}
                   </button>
                 </span>
               </div>
@@ -149,12 +157,13 @@ export function MarginNotes({
 }
 
 function ToClearUp({ items }: { items: NotedMisconception[] }) {
+  const t = useT();
   if (!items.length) return null;
   return (
     <>
       {items.map((item, i) => (
         <p key={i} className="margin-note__clear">
-          <span className="margin-note__clear-label">To clear up</span>{' '}
+          <span className="margin-note__clear-label">{t('hub.toClearLabel')}</span>{' '}
           <Markdown inline content={asTheirIdea(item.description)} />
         </p>
       ))}

@@ -1,4 +1,5 @@
 import { AcademicCapIcon } from '@heroicons/react/24/outline';
+import { useT } from '@/modules/tutor/i18n';
 
 export function TutorToggle({
   active,
@@ -9,12 +10,11 @@ export function TutorToggle({
   forceTutorMode: boolean;
   onToggle: () => void | Promise<void>;
 }) {
+  const t = useT();
   // Shown only beside a chat under way, so either choice leaves it in history.
-  const title = forceTutorMode
-    ? 'Every chat is a learning session (Settings › Tutor)'
-    : active
-      ? 'Leave this learning session. It stays in your history, and a new chat opens.'
-      : 'Start a learning session. It opens as a new chat; this one stays in your history.';
+  const title = t(
+    forceTutorMode ? 'learn.forcedHint' : active ? 'learn.leaveHint' : 'learn.startHint',
+  );
 
   return (
     <button
@@ -28,7 +28,7 @@ export function TutorToggle({
       title={title}
     >
       <AcademicCapIcon className="tutor-toggle__icon h-5 w-5" />
-      <span className="tutor-toggle__text">Learn</span>
+      <span className="tutor-toggle__text">{t('learn.label')}</span>
       {/* The session is the live thing on this bar, so it alone is gold. */}
       {active && <span className="tutor-toggle__live" aria-hidden="true" />}
     </button>

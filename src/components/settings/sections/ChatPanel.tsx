@@ -13,6 +13,9 @@ import {
 import type { RenderSection } from '@/components/settings/types';
 import type { ReasoningEffort } from '@/lib/types';
 import { useChatStore } from '@/lib/store';
+import { useT } from '@/lib/i18n';
+
+const EFFORTS: ReasoningEffort[] = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'];
 
 type ChatPanelProps = {
   system: string;
@@ -32,6 +35,7 @@ type ChatPanelProps = {
 };
 
 export function ChatPanel(props: ChatPanelProps) {
+  const t = useT();
   const {
     system,
     setSystem,
@@ -91,33 +95,34 @@ export function ChatPanel(props: ChatPanelProps) {
       {renderSection(
         'chat',
         'general',
-        <SettingsSection title="System prompt">
+        <SettingsSection title={t('settings.section.general')}>
           <div className="field">
             <textarea
               className="textarea w-full"
               rows={5}
               value={system}
-              aria-label="System prompt"
+              aria-label={t('settings.section.general')}
               onChange={(e) => setSystem(e.target.value)}
               onKeyDown={(e) => e.stopPropagation()}
             />
-            <p className="field__hint">
-              What every new chat is told before your first message. A learning session adds its own
-              instructions on top.
-            </p>
+            <p className="field__hint">{t('settings.chat.systemHint')}</p>
           </div>
 
           <div className="field">
-            <span className="field__label">Saved prompts</span>
+            <span className="field__label">{t('settings.chat.savedPrompts')}</span>
             {presetMode === 'save' || presetMode === 'rename' ? (
               <div className="flex flex-wrap items-center gap-2">
                 <input
                   className="input flex-1 min-w-0"
                   value={presetName}
-                  placeholder={presetMode === 'save' ? 'Name this prompt' : 'New name'}
-                  aria-label={
-                    presetMode === 'save' ? 'Name this prompt' : 'New name for this prompt'
-                  }
+                  placeholder={t(
+                    presetMode === 'save' ? 'settings.chat.namePrompt' : 'settings.chat.newName',
+                  )}
+                  aria-label={t(
+                    presetMode === 'save'
+                      ? 'settings.chat.namePrompt'
+                      : 'settings.chat.newNameLabel',
+                  )}
                   autoFocus
                   onChange={(e) => setPresetName(e.target.value)}
                   onKeyDown={(e) => {
@@ -127,24 +132,26 @@ export function ChatPanel(props: ChatPanelProps) {
                   }}
                 />
                 <button className="btn-ghost btn-sm" onClick={finish}>
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   className="btn btn-sm"
                   disabled={!presetName.trim()}
                   onClick={() => void commitPresetName()}
                 >
-                  {presetMode === 'save' ? 'Save' : 'Rename'}
+                  {t(presetMode === 'save' ? 'common.save' : 'chatRow.rename')}
                 </button>
               </div>
             ) : presetMode === 'delete' && selectedPreset ? (
               <div className="flex flex-wrap items-center gap-2">
-                <span className="flex-1 text-sm">Delete “{selectedPreset.name}”?</span>
+                <span className="flex-1 text-sm">
+                  {t('settings.chat.deletePrompt', { name: selectedPreset.name })}
+                </span>
                 <button className="btn-ghost btn-sm" onClick={finish}>
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button className="btn btn-danger btn-sm" onClick={() => void confirmDelete()}>
-                  Delete
+                  {t('common.delete')}
                 </button>
               </div>
             ) : (
@@ -152,11 +159,11 @@ export function ChatPanel(props: ChatPanelProps) {
                 <select
                   className="input flex-1 basis-full sm:basis-0 min-w-0"
                   value={selectedPresetId}
-                  aria-label="Saved prompt"
+                  aria-label={t('settings.chat.savedPrompt')}
                   onChange={(e) => setSelectedPresetId(e.target.value)}
                   onKeyDown={(e) => e.stopPropagation()}
                 >
-                  <option value="">Choose a saved prompt…</option>
+                  <option value="">{t('settings.chat.choosePrompt')}</option>
                   {presets.map((preset) => (
                     <option key={preset.id} value={preset.id}>
                       {preset.name}
@@ -168,15 +175,15 @@ export function ChatPanel(props: ChatPanelProps) {
                   disabled={!selectedPreset}
                   onClick={() => selectedPreset && setSystem(selectedPreset.system)}
                 >
-                  Use
+                  {t('settings.chat.use')}
                 </button>
                 <button className="btn-ghost btn-sm" onClick={() => setPresetMode('save')}>
-                  Save current
+                  {t('settings.chat.saveCurrent')}
                 </button>
                 {selectedPreset && (
                   <>
                     <IconButton
-                      title="Rename prompt"
+                      title={t('settings.chat.renamePrompt')}
                       onClick={() => {
                         setPresetName(selectedPreset.name);
                         setPresetMode('rename');
@@ -184,7 +191,10 @@ export function ChatPanel(props: ChatPanelProps) {
                     >
                       <PencilSquareIcon className="h-4 w-4" />
                     </IconButton>
-                    <IconButton title="Delete prompt" onClick={() => setPresetMode('delete')}>
+                    <IconButton
+                      title={t('settings.chat.deletePromptButton')}
+                      onClick={() => setPresetMode('delete')}
+                    >
                       <TrashIcon className="h-4 w-4" />
                     </IconButton>
                   </>
@@ -196,8 +206,8 @@ export function ChatPanel(props: ChatPanelProps) {
           <ToggleSwitch
             checked={messageTimestamps === true}
             onChange={setMessageTimestamps}
-            label="Message timestamps"
-            description="Tell the model when each message was sent, so it knows the date. Adds a little to each message's cost."
+            label={t('settings.chat.timestamps')}
+            description={t('settings.chat.timestampsHint')}
           />
         </SettingsSection>,
       )}
@@ -207,11 +217,11 @@ export function ChatPanel(props: ChatPanelProps) {
       {renderSection(
         'chat',
         'reasoning',
-        <SettingsSection title="Thinking">
+        <SettingsSection title={t('settings.section.reasoning')}>
           <div className="space-y-3">
             <div className="space-y-1">
               <label className="field__label" htmlFor="settings-reasoning-effort">
-                Thinking effort
+                {t('effort.title')}
               </label>
               <select
                 id="settings-reasoning-effort"
@@ -240,29 +250,24 @@ export function ChatPanel(props: ChatPanelProps) {
                   }
                 }}
               >
-                <option value="">Model default</option>
-                <option value="none">Off</option>
-                <option value="minimal">Minimal</option>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="xhigh">Extra high</option>
-                <option value="max">Max</option>
+                <option value="">{t('settings.chat.modelDefault')}</option>
+                {EFFORTS.map((effort) => (
+                  <option key={effort} value={effort}>
+                    {t(`effort.${effort}`)}
+                  </option>
+                ))}
               </select>
-              <div className="field__hint">
-                How hard new chats think by default. Change it per chat from the composer; a model
-                that lacks a level uses the nearest one it has.
-              </div>
+              <div className="field__hint">{t('settings.chat.effortHint')}</div>
             </div>
             <div className="space-y-1">
               <label className="field__label" htmlFor="settings-reasoning-tokens">
-                Thinking budget
+                {t('settings.chat.budget')}
               </label>
               <input
                 id="settings-reasoning-tokens"
                 className="input w-full"
                 inputMode="numeric"
-                placeholder="Automatic"
+                placeholder={t('settings.chat.automatic')}
                 value={reasoningTokensStr}
                 aria-invalid={tokensInvalid || undefined}
                 aria-describedby="settings-reasoning-tokens-hint"
@@ -292,9 +297,7 @@ export function ChatPanel(props: ChatPanelProps) {
                 className="field__hint"
                 role={tokensInvalid ? 'alert' : undefined}
               >
-                {tokensInvalid
-                  ? 'Enter a whole number above 0, or leave it empty. Not saved.'
-                  : 'The most the model may think, counted in tokens (about three quarters of a word each), for models that accept a limit. Leave it empty to let the model decide.'}
+                {t(tokensInvalid ? 'settings.chat.budgetInvalid' : 'settings.chat.budgetHint')}
               </div>
             </div>
           </div>
@@ -306,23 +309,24 @@ export function ChatPanel(props: ChatPanelProps) {
 
 /** Memory on or off everywhere, said plainly, with the way into the Memory page. */
 function MemorySettings() {
+  const t = useT();
   const enabled = useChatStore((s) => s.ui.memoryEnabled !== false);
   const sensitive = useChatStore((s) => s.ui.memorySensitive !== false);
   const setUI = useChatStore((s) => s.setUI);
   return (
-    <SettingsSection title="Memory">
+    <SettingsSection title={t('settings.section.memory')}>
       <ToggleSwitch
         checked={enabled}
         onChange={(on) => setUI({ memoryEnabled: on })}
-        label="Use memory"
-        description="The model reads your memory with every message and notes what it learns about you. What it reads goes to whichever provider the chat uses. To keep one chat out, switch memory off with the bookmark in its composer."
+        label={t('settings.memory.use')}
+        description={t('settings.memory.useHint')}
       />
       <ToggleSwitch
         checked={sensitive}
         disabled={!enabled}
         onChange={(on) => setUI({ memorySensitive: on })}
-        label="Include sensitive topics"
-        description="Let the model note details like health conditions or religious beliefs without being asked. Memory is kept only in this browser, and goes to the chat's provider like the rest of it. Off, it saves them only when you ask."
+        label={t('settings.memory.sensitive')}
+        description={t('settings.memory.sensitiveHint')}
       />
       <div>
         <button
@@ -330,7 +334,7 @@ function MemorySettings() {
           className="btn-outline btn-sm"
           onClick={() => setUI({ showSettings: false, memoryOpen: true })}
         >
-          Open Memory
+          {t('settings.memory.open')}
         </button>
       </div>
     </SettingsSection>

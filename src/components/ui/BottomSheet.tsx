@@ -4,6 +4,7 @@ import { DialogPortal } from '@/components/ui/Dialog';
 import { motionTransition } from '@/lib/ui/motion';
 import { useBackToClose } from '@/lib/hooks/useBackToClose';
 import { useModalFocus } from '@/lib/hooks/useModalFocus';
+import { useT } from '@/lib/i18n';
 
 type BottomSheetProps = {
   open: boolean;
@@ -36,6 +37,7 @@ export function BottomSheet({
   tall = false,
   returnFocus,
 }: BottomSheetProps) {
+  const t = useT();
   const reducedMotion = useReducedMotion();
   const sheetRef = useRef<HTMLDivElement | null>(null);
   // Pulled down by its head, so a long list in the body still scrolls.
@@ -84,7 +86,7 @@ export function BottomSheet({
                 <button
                   type="button"
                   className="bottom-sheet__handle"
-                  aria-label="Close"
+                  aria-label={t('common.close')}
                   onClick={onClose}
                 >
                   <span aria-hidden="true" />

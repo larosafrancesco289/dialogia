@@ -19,25 +19,26 @@ import { describeSearchFailure } from '@/lib/search/providers/failure';
 import { NOTICE_MISSING_SEARCH_KEY } from '@/lib/store/notices';
 import { OPENROUTER_KEY_REF } from '@/lib/transport/endpoints';
 import { err, ok } from '@/lib/utils/result';
+import { t } from '@/lib/i18n';
 
 // Distinct from 'openrouter', which names provider-native search.
 const OPENROUTER_SEARCH_PROVIDER_ID = 'openrouter-search';
 
 function describeSearchStatus(status: number): string {
   if (status === 401 || status === 403) {
-    return 'OpenRouter did not accept the key. Check it in Settings › Connections.';
+    return t('searchError.openrouter.key');
   }
-  if (status === 402) return 'The OpenRouter account is out of credit.';
-  if (status === 429) return 'OpenRouter is limiting requests right now. Try again in a moment.';
-  if (status >= 500) return 'OpenRouter is having trouble right now. Try again later.';
-  return 'OpenRouter could not run this search.';
+  if (status === 402) return t('searchError.openrouter.credit');
+  if (status === 429) return t('searchError.openrouter.limited');
+  if (status >= 500) return t('searchError.openrouter.trouble');
+  return t('searchError.openrouter.failed');
 }
 
 function describeReadStatus(status: number): string {
-  if (status === 429) return 'The free page reader is busy. Try again in a minute.';
-  if (status === 451) return 'The page reader is not allowed to open this page.';
-  if (status >= 500) return 'The page reader could not open this page.';
-  return 'Could not read this page.';
+  if (status === 429) return t('searchError.reader.busy');
+  if (status === 451) return t('searchError.reader.forbidden');
+  if (status >= 500) return t('searchError.reader.failed');
+  return t('searchError.reader.couldNot');
 }
 
 async function search(args: NormalizedSearchArgs, ctx: SearchContext): Promise<SearchOutcome> {
@@ -53,7 +54,7 @@ async function search(args: NormalizedSearchArgs, ctx: SearchContext): Promise<S
     return err(
       describeSearchFailure(error, {
         describeStatus: describeSearchStatus,
-        unreachable: 'Could not reach OpenRouter.',
+        unreachable: t('searchError.unreachable', { service: 'OpenRouter' }),
       }),
       { results: [] },
     );
@@ -69,7 +70,7 @@ async function fetchPage(args: NormalizedFetchArgs, ctx: SearchContext): Promise
     return err(
       describeSearchFailure(error, {
         describeStatus: describeReadStatus,
-        unreachable: 'Could not reach the page reader.',
+        unreachable: t('searchError.reader.unreachable'),
       }),
       { results: [] },
     );
@@ -78,7 +79,9 @@ async function fetchPage(args: NormalizedFetchArgs, ctx: SearchContext): Promise
 
 export const openRouterSearchProvider: SearchProvider = {
   id: OPENROUTER_SEARCH_PROVIDER_ID,
-  label: 'OpenRouter search',
+  get label() {
+    return t('search.openrouter');
+  },
   requiresKey: true,
   keyRef: OPENROUTER_KEY_REF,
   usesModelKey: true,

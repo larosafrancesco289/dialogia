@@ -6,6 +6,7 @@ import { useMenuKeyboard } from '@/lib/hooks/useMenuKeyboard';
 import { useDismissOnOutside } from '@/lib/hooks/useDismissOnOutside';
 import { buildFolderOptions } from '@/components/MoveChatSheet';
 import { InlineTitleEdit } from '@/components/sidebar/InlineTitleEdit';
+import { useT } from '@/lib/i18n';
 
 const WIDTH = 240;
 
@@ -28,6 +29,7 @@ export function MoveChatMenu({
   onCreateAndMove: (name: string) => void | Promise<void>;
   onClose: () => void;
 }) {
+  const t = useT();
   const options = useMemo(() => buildFolderOptions(folders), [folders]);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const newFolderRef = useRef<HTMLButtonElement | null>(null);
@@ -70,12 +72,12 @@ export function MoveChatMenu({
     <div
       ref={menuRef}
       role="menu"
-      aria-label="Move to folder"
+      aria-label={t('chatRow.move')}
       className="popover fixed z-[90] p-1"
       style={{ left: position.left, top: position.top, width: WIDTH }}
       onKeyDown={onMenuKeyDown}
     >
-      <div className="menu-heading">Move to</div>
+      <div className="menu-heading">{t('move.heading')}</div>
       <button
         type="button"
         role="menuitemradio"
@@ -83,7 +85,7 @@ export function MoveChatMenu({
         className="menu-item w-full text-left text-sm"
         onClick={() => void onMove(undefined)}
       >
-        No folder
+        {t('move.noFolder')}
       </button>
       {options.map((option) => (
         <button
@@ -103,8 +105,8 @@ export function MoveChatMenu({
         <div className="menu-item">
           <InlineTitleEdit
             value=""
-            placeholder="Folder name"
-            ariaLabel="New folder name"
+            placeholder={t('folder.namePlaceholder')}
+            ariaLabel={t('folder.newName')}
             onCommit={(name) => onCreateAndMove(name)}
             onCancel={() => setNaming(false)}
           />
@@ -118,7 +120,7 @@ export function MoveChatMenu({
           onClick={() => setNaming(true)}
         >
           <FolderPlusIcon className="h-4 w-4 text-fg-muted" />
-          New folder…
+          {t('move.newFolder')}
         </button>
       )}
     </div>,

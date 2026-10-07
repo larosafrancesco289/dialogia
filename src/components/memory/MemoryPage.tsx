@@ -22,6 +22,8 @@ import {
 import { AddNote, FolderHead, NoteList, removeRow } from '@/components/memory/MemoryNotes';
 import { LearningRecords } from '@/components/memory/LearningRecords';
 import { ConsolidateAction, ConsolidationReport } from '@/components/memory/Consolidation';
+import { useT } from '@/lib/i18n';
+import { folderName } from '@/lib/ui/memoryFolder';
 
 function FolderPage({
   folder,
@@ -34,6 +36,7 @@ function FolderPage({
   notes: MemoryNote[];
   records: LearningRecord[];
 }) {
+  const t = useT();
   const own = notesIn(notes, folder.id);
   const children = subfoldersOf(folders, folder.id);
   const isLearning = folder.id === MEMORY_LEARNING_FOLDER_ID;
@@ -45,9 +48,7 @@ function FolderPage({
       {isLearning && <LearningRecords records={records} />}
       {empty && (
         <p className="memory-hint">
-          {folder.id === MEMORY_ABOUT_FOLDER_ID
-            ? 'What the model learns about you goes here. You can add a note yourself too.'
-            : 'No notes in this folder yet.'}
+          {t(folder.id === MEMORY_ABOUT_FOLDER_ID ? 'memory.aboutEmpty' : 'memory.folderEmpty')}
         </p>
       )}
       <AddNote folderId={folder.id} />
@@ -63,15 +64,14 @@ function FolderPage({
 }
 
 function ForgottenPage({ notes, folders }: { notes: MemoryNote[]; folders: MemoryFolder[] }) {
+  const t = useT();
   const restoreMemoryNote = useChatStore((s) => s.restoreMemoryNote);
   const forgotten = forgottenNotes(notes);
   return (
     <>
       <div className="memory-head memory-head--1">
-        <h3 className="memory-head__title">Recently forgotten</h3>
-        <p className="memory-head__line is-static">
-          Notes you or the model let go of. Each waits here for 30 days, then is gone for good.
-        </p>
+        <h3 className="memory-head__title">{t('memory.forgotten')}</h3>
+        <p className="memory-head__line is-static">{t('memory.forgottenHint')}</p>
       </div>
       {forgotten.length ? (
         <ul className="memory-notes">
@@ -80,13 +80,18 @@ function ForgottenPage({ notes, folders }: { notes: MemoryNote[]; folders: Memor
               <span className="memory-forgotten__text">{note.text}</span>
               <div className="memory-note__foot">
                 <span className="memory-note__meta">
-                  From {folders.find((f) => f.id === note.folderId)?.name ?? 'a folder'} · forgotten{' '}
-                  {shortDate(note.forgottenAt ?? note.updatedAt)}
+                  {t('memory.forgottenFrom', {
+                    folder: (() => {
+                      const from = folders.find((f) => f.id === note.folderId);
+                      return from ? folderName(from) : t('memory.aFolder');
+                    })(),
+                    date: shortDate(note.forgottenAt ?? note.updatedAt),
+                  })}
                 </span>
                 <button
                   type="button"
                   className="memory-quiet memory-note__restore"
-                  aria-label={`Restore: ${note.text}`}
+                  aria-label={t('memory.restoreNamed', { note: note.text })}
                   onClick={(e) =>
                     void removeRow(
                       e.currentTarget,
@@ -95,14 +100,14 @@ function ForgottenPage({ notes, folders }: { notes: MemoryNote[]; folders: Memor
                     )
                   }
                 >
-                  Restore
+                  {t('memory.restore')}
                 </button>
               </div>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="memory-hint">Nothing forgotten lately.</p>
+        <p className="memory-hint">{t('memory.forgottenEmpty')}</p>
       )}
     </>
   );
@@ -113,6 +118,7 @@ function ForgottenPage({ notes, folders }: { notes: MemoryNote[]; folders: Memor
  * a time, and only the open folder scrolls.
  */
 export function MemoryPage() {
+  const t = useT();
   const { folders, notes } = useChatStore(
     (s) => ({ folders: s.memory.folders, notes: s.memory.notes }),
     shallow,
@@ -173,13 +179,13 @@ export function MemoryPage() {
       closing={closing}
       onClose={close}
       drawerRef={drawerRef}
-      title="Memory"
-      closeLabel="Close memory"
+      title={t('nav.memory')}
+      closeLabel={t('memory.close')}
       actions={<ConsolidateAction />}
     >
       <ConsolidationReport onOpen={setPage} />
       <div className="memory-body">
-        <nav className="memory-nav" aria-label="Memory folders">
+        <nav className="memory-nav" aria-label={t('memory.folders')}>
           {ordered.map(({ folder: f, depth }) => (
             <button
               key={f.id}
@@ -188,7 +194,7 @@ export function MemoryPage() {
               aria-current={f.id === page ? 'page' : undefined}
               onClick={() => setPage(f.id)}
             >
-              <span className="memory-nav__name">{f.name}</span>
+              <span className="memory-nav__name">{folderName(f)}</span>
               <span className="memory-nav__count">{count(f)}</span>
             </button>
           ))}
@@ -198,7 +204,7 @@ export function MemoryPage() {
             aria-current={page === FORGOTTEN_PAGE ? 'page' : undefined}
             onClick={() => setPage(FORGOTTEN_PAGE)}
           >
-            <span className="memory-nav__name">Recently forgotten</span>
+            <span className="memory-nav__name">{t('memory.forgotten')}</span>
             <span className="memory-nav__count">{forgottenCount}</span>
           </button>
         </nav>

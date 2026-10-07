@@ -14,6 +14,8 @@ import { requestFolderRename } from '@/components/sidebar/pendingRename';
 import { useDragAndDrop } from '@/lib/dragDrop';
 import { ChatRowView } from '@/components/sidebar/ChatRowView';
 import { canFocus, neighbourOf, refocusIfDropped } from '@/lib/ui/focus';
+import { useT } from '@/lib/i18n';
+import { displayChatTitle } from '@/lib/ui/chatTitle';
 
 export interface ChatRowContainerProps {
   chat: Chat;
@@ -46,6 +48,8 @@ export function ChatRowContainer({
     }),
     shallow,
   );
+  const t = useT();
+  const shownTitle = displayChatTitle(chat.title);
   const [editing, setEditing] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [showActions, setShowActions] = useState(false);
@@ -130,8 +134,8 @@ export function ChatRowContainer({
 
       <BottomSheet
         open={isMobile && showActions}
-        label={`Actions for ${chat.title}`}
-        title={chat.title}
+        label={t('chatRow.actionsFor', { title: shownTitle })}
+        title={shownTitle}
         onClose={() => setShowActions(false)}
       >
         <SheetItem
@@ -141,7 +145,7 @@ export function ChatRowContainer({
             setEditing(true);
           }}
         >
-          Rename
+          {t('chatRow.rename')}
         </SheetItem>
         <SheetItem
           icon={<FolderOpenIcon />}
@@ -150,7 +154,7 @@ export function ChatRowContainer({
             setShowMoveSheet(true);
           }}
         >
-          Move to folder
+          {t('chatRow.move')}
         </SheetItem>
         <div className="sheet-rule" aria-hidden="true" />
         <SheetItem
@@ -161,16 +165,16 @@ export function ChatRowContainer({
             setShowConfirm(true);
           }}
         >
-          Delete
+          {t('common.delete')}
         </SheetItem>
       </BottomSheet>
 
       <ConfirmDialog
         open={showConfirm}
-        title="Delete this chat?"
-        description={`“${chat.title}” and its messages will be gone for good.`}
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        title={t('chatRow.deleteTitle')}
+        description={t('chatRow.deleteBody', { title: shownTitle })}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
         onCancel={() => setShowConfirm(false)}
         onConfirm={() => {
           setShowConfirm(false);
@@ -187,7 +191,7 @@ export function ChatRowContainer({
             refocusIfDropped(
               () => neighbour,
               () =>
-                Array.from(document.querySelectorAll('button[aria-label="New chat"]')).find(
+                Array.from(document.querySelectorAll('button[data-action="new-chat"]')).find(
                   canFocus,
                 ),
             ),
@@ -197,7 +201,7 @@ export function ChatRowContainer({
 
       <MoveChatSheet
         open={showMoveSheet}
-        chatTitle={chat.title}
+        chatTitle={shownTitle}
         currentFolderId={chat.folderId}
         folders={folders}
         onClose={() => setShowMoveSheet(false)}

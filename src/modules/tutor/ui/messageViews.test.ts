@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { shortDate } from '@/lib/ui/shortDate';
 import {
   CALCULUS,
   QUIZ_ITEMS,
@@ -99,15 +100,16 @@ test('a carried-over start says where it came from, in the note under the approv
   };
   assert.equal(
     carriedOverWords(at, 0.75, 'Limits', 'Learning limits'),
-    'Carried over from Learning limits (84%, 27\u00a0Sep), capped at 75% until you answer two questions here.',
+    // The date as the reader's own English writes it ("27 Sep", "Sep 27").
+    `Carried over from Learning limits (84%, ${shortDate(at.studiedAt)}), capped at 75% until you answer two questions here.`,
   );
   assert.equal(
     carriedOverWords({ ...at, estimate: 0.6 }, 0.6, 'Limits of functions', undefined),
-    'Carried over from Limits in another learning session (60%, 27\u00a0Sep).',
+    `Carried over from Limits in another learning session (60%, ${shortDate(at.studiedAt)}).`,
   );
   assert.equal(
     carriedOverWords({ ...at, estimate: 0.6 }, 0.6, 'Limits of functions', 'Calculus I'),
-    'Carried over from Limits in Calculus I (60%, 27\u00a0Sep).',
+    `Carried over from Limits in Calculus I (60%, ${shortDate(at.studiedAt)}).`,
   );
 });
 

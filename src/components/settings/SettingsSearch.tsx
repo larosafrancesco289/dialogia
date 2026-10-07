@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { useT } from '@/lib/i18n';
 
 export type SettingsSearchProps = {
   value: string;
@@ -10,8 +11,10 @@ export type SettingsSearchProps = {
 export function SettingsSearch({
   value,
   onChange,
-  placeholder = 'Search settings',
+  placeholder: givenPlaceholder,
 }: SettingsSearchProps) {
+  const t = useT();
+  const placeholder = givenPlaceholder ?? t('settings.search');
   const [localValue, setLocalValue] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
@@ -54,7 +57,7 @@ export function SettingsSearch({
         type="text"
         className="settings-search-input"
         placeholder={placeholder}
-        aria-label="Search settings"
+        aria-label={t('settings.search')}
         value={localValue}
         onChange={(e) => handleChange(e.target.value)}
         onKeyDown={(e) => {
@@ -69,7 +72,7 @@ export function SettingsSearch({
           type="button"
           className="settings-search-clear"
           onClick={handleClear}
-          aria-label="Clear search"
+          aria-label={t('settings.clearSearch')}
         >
           <XMarkIcon className="h-3.5 w-3.5" />
         </button>

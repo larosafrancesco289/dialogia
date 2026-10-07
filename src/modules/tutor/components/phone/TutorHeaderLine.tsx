@@ -5,6 +5,7 @@ import { useChatStore } from '@/lib/store';
 import { selectCurrentChat } from '@/lib/store/selectors';
 import { findModelById, formatModelLabel } from '@/lib/models';
 import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
+import { useT } from '@/modules/tutor/i18n';
 
 /**
  * The tutor module's `phoneHeaderLine` slot: the line under the chat's title
@@ -13,6 +14,7 @@ import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
  * model picker.
  */
 export function TutorHeaderLine() {
+  const t = useT();
   const { models, modelId } = useChatStore((s) => {
     const chat = selectCurrentChat(s);
     return {
@@ -36,7 +38,7 @@ export function TutorHeaderLine() {
 
   const canOpen = hasPlan && !!planProgress && !!learningPlan;
   const detail = canOpen
-    ? `${planProgress.completed} of ${learningPlan.nodes.length} ${learningPlan.nodes.length === 1 ? 'topic' : 'topics'}`
+    ? t('hub.topicsOf', { done: planProgress.completed, count: learningPlan.nodes.length })
     : modelLabel;
 
   return (
@@ -45,11 +47,11 @@ export function TutorHeaderLine() {
       className="tutor-header-line"
       onClick={canOpen ? () => onOpenRightPanel() : undefined}
       disabled={!canOpen}
-      aria-label={canOpen ? `Learning Hub: ${detail}` : undefined}
+      aria-label={canOpen ? t('hub.labelWith', { detail }) : undefined}
       aria-haspopup={canOpen ? 'dialog' : undefined}
       aria-expanded={canOpen ? rightPanelOpen : undefined}
     >
-      <span className="tutor-header-line__label">Learn</span>
+      <span className="tutor-header-line__label">{t('learn.label')}</span>
       {/* The session is live, so its dot is gold, as on desktop. */}
       <span className="tutor-header-line__live" aria-hidden="true" />
       {detail && <span className="tutor-header-line__detail">{detail}</span>}

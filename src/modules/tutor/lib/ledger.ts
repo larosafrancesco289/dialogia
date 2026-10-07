@@ -3,25 +3,28 @@
 // transcript. Pure, so the UI and the simulation harness send exactly the same lines.
 
 import { asTheirIdea } from '@/modules/tutor/lib/text';
+import { t } from '@/modules/tutor/i18n';
 
 // A topic's name is a title the tutor wrote ("Trace the search steps", "Bayes'
 // rule"), so it follows a colon rather than being bent to fit mid-sentence.
 
-const score = (right: number, total: number) => `${right} of ${total} right`;
+// The lines are the learner's own words in the transcript, so they are written
+// in the language shown when the action is taken (and the tutor reads them so).
+const score = (right: number, total: number) => t('ledger.score', { right, count: total });
 
 export const LEDGER = {
-  intakeAnswered: () => 'Answered the opening questions',
-  quizFinished: (right: number, total: number) => `Answered the quiz: ${score(right, total)}`,
+  intakeAnswered: () => t('ledger.intake'),
+  quizFinished: (right: number, total: number) => t('ledger.quiz', { score: score(right, total) }),
   diagnosticFinished: (right: number, total: number) =>
-    `Finished the quick check: ${score(right, total)}`,
-  planApproved: () => 'Approved the plan',
-  planDeclined: (feedback: string) => `Asked for changes to the plan: ${feedback.trim()}`,
-  goingOn: (topic: string) => `Going on: ${topic}`,
-  morePractice: (topic: string) => `Asked for more practice: ${topic}`,
-  startedTopic: (topic: string) => `Chose what comes next: ${topic}`,
-  reopenedTopic: (topic: string) => `Took a topic up again: ${topic}`,
-  markedKnown: (topic: string) => `Marked as known: ${topic}`,
+    t('ledger.diagnostic', { score: score(right, total) }),
+  planApproved: () => t('ledger.approved'),
+  planDeclined: (feedback: string) => t('ledger.declined', { feedback: feedback.trim() }),
+  goingOn: (topic: string) => t('ledger.goingOn', { topic }),
+  morePractice: (topic: string) => t('ledger.morePractice', { topic }),
+  startedTopic: (topic: string) => t('ledger.started', { topic }),
+  reopenedTopic: (topic: string) => t('ledger.reopened', { topic }),
+  markedKnown: (topic: string) => t('ledger.markedKnown', { topic }),
   contested: (direction: 'high' | 'low', topic: string) =>
-    `Said the estimate felt too ${direction}: ${topic}`,
-  clearedUp: (belief: string) => `Marked as cleared up: ${asTheirIdea(belief)}`,
+    t(direction === 'high' ? 'ledger.tooHigh' : 'ledger.tooLow', { topic }),
+  clearedUp: (belief: string) => t('ledger.clearedUp', { idea: asTheirIdea(belief) }),
 } as const;

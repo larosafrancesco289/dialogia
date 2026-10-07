@@ -1,6 +1,8 @@
 import { fetchZdrLists } from '@/lib/openrouter';
 import { findModelEndpoint } from '@/lib/transport/endpointRegistry';
 import type { ProviderEndpoint } from '@/lib/transport/endpoints';
+import { t } from '@/lib/i18n';
+import en from '@/lib/i18n/messages/en';
 
 export type ZdrLists = {
   modelIds: Set<string>;
@@ -129,8 +131,8 @@ export function toZdrState(
 }
 
 export function getZdrBlockNotice(modelName: string): string {
-  return `${modelName} does not promise zero data retention. Pick another model, or turn off Zero data retention only in Settings › Models.`;
+  return t('zdr.blocked', { model: modelName });
 }
 
-export const ZDR_UNAVAILABLE_NOTICE =
-  'Could not check which providers keep no data. Check your connection, or turn off Zero data retention only in Settings › Models.';
+/** English words, compared and passed on; `resolveNotice` says them in the language shown. */
+export const ZDR_UNAVAILABLE_NOTICE = en['zdr.unavailable'];

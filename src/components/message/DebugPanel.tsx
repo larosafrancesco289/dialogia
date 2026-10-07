@@ -8,6 +8,7 @@ import type { ToolCallLogEntry } from '@/lib/types';
 import { ToolCallLog } from '@/components/message/ToolCallLog';
 import { parseDebugBody } from '@/lib/agent/debug/parseDebugBody';
 import { CopyButton } from '@/components/markdown/CopyButton';
+import { useT } from '@/lib/i18n';
 
 export function DebugPanel({
   body,
@@ -26,6 +27,7 @@ export function DebugPanel({
   expanded: boolean;
   onToggle: () => void;
 }) {
+  const t = useT();
   const bodyId = useId();
   const hasBody = typeof body === 'string' && body.trim().length > 0;
   const hasToolCalls = showToolCalls && Array.isArray(toolCalls) && toolCalls.length > 0;
@@ -42,7 +44,7 @@ export function DebugPanel({
 
   if (!hasBody && !hasToolCalls) return null;
 
-  const headerLabel = hasBody ? 'Debug request' : 'Tool activity';
+  const headerLabel = t(hasBody ? 'debug.request' : 'debug.toolActivity');
   const Glyph = hasBody ? CodeBracketIcon : WrenchScrewdriverIcon;
 
   return (
@@ -67,7 +69,7 @@ export function DebugPanel({
           {summaryItems.length > 0 && (
             <div>
               <div className="devtools__section-head">
-                <span className="devtools__label">Overview</span>
+                <span className="devtools__label">{t('debug.overview')}</span>
               </div>
               <dl className="devtools__facts">
                 {summaryItems.map((item) => (
@@ -83,7 +85,7 @@ export function DebugPanel({
           {toolNames.length > 0 && (
             <div>
               <div className="devtools__section-head">
-                <span className="devtools__label">Tool definitions</span>
+                <span className="devtools__label">{t('debug.toolDefinitions')}</span>
               </div>
               <ul className="devtools__names">
                 {toolNames.map((name) => (
@@ -98,7 +100,7 @@ export function DebugPanel({
           {pluginNames.length > 0 && (
             <div>
               <div className="devtools__section-head">
-                <span className="devtools__label">Plugins</span>
+                <span className="devtools__label">{t('debug.plugins')}</span>
               </div>
               <ul className="devtools__names">
                 {pluginNames.map((name) => (
@@ -113,7 +115,7 @@ export function DebugPanel({
           {messageItems.length > 0 && (
             <div>
               <div className="devtools__section-head">
-                <span className="devtools__label">Messages</span>
+                <span className="devtools__label">{t('debug.messages')}</span>
               </div>
               <ol className="devtools__messages">
                 {messageItems.map((msg, index) => (
@@ -125,10 +127,12 @@ export function DebugPanel({
                     {msg.snippet ? (
                       <p className="devtools__quote">{msg.snippet}</p>
                     ) : (
-                      <p className="devtools__note">No visible content</p>
+                      <p className="devtools__note">{t('debug.noContent')}</p>
                     )}
                     {msg.toolCalls && (
-                      <p className="devtools__note">Tool calls: {msg.toolCalls.join(', ')}</p>
+                      <p className="devtools__note">
+                        {t('debug.toolCalls', { names: msg.toolCalls.join(', ') })}
+                      </p>
                     )}
                   </li>
                 ))}
@@ -150,10 +154,10 @@ export function DebugPanel({
           {showRawJson && hasBody && rawJson && (
             <div>
               <div className="devtools__section-head">
-                <span className="devtools__label">Raw request JSON</span>
+                <span className="devtools__label">{t('debug.rawJson')}</span>
                 <CopyButton
                   text={rawJson}
-                  label="Copy request"
+                  label={t('debug.copyRequest')}
                   className="icon-button icon-button--sm"
                 />
               </div>

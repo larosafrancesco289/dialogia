@@ -4,11 +4,11 @@ import { useChatStore } from '@/lib/store';
 import { isKeyRejected, setKey } from '@/lib/keys/store';
 import {
   ANTHROPIC_ENDPOINT,
-  INVALID_BASE_URL_MESSAGE,
   isValidBaseUrl,
   normalizeBaseUrl,
   OPENROUTER_ENDPOINT,
 } from '@/lib/transport/endpoints';
+import { useT, type MessageKey, type Translate } from '@/lib/i18n';
 
 // Hook: useConnectProvider
 // Responsibility: The one way a key or a server gets connected, shared by the
@@ -20,13 +20,21 @@ export type KeyChoice = Exclude<ConnectChoice, 'local'>;
 /** What each way to connect is called, wherever it is offered. */
 export const CONNECT_OPTIONS: Record<
   ConnectChoice,
-  { name: string; note: string; placeholder: string }
+  { name: MessageKey; note: MessageKey; placeholder: string }
 > = {
-  openrouter: { name: 'OpenRouter key', note: 'Most models, one key', placeholder: 'sk-or-…' },
-  anthropic: { name: 'Anthropic key', note: 'Claude models only', placeholder: 'sk-ant-…' },
+  openrouter: {
+    name: 'connect.option.openrouter',
+    note: 'connect.option.openrouterNote',
+    placeholder: 'sk-or-…',
+  },
+  anthropic: {
+    name: 'connect.option.anthropic',
+    note: 'connect.option.anthropicNote',
+    placeholder: 'sk-ant-…',
+  },
   local: {
-    name: 'Your own server',
-    note: 'Ollama, LM Studio and similar',
+    name: 'connect.option.local',
+    note: 'connect.option.localNote',
     placeholder: 'http://localhost:11434/v1',
   },
 };
@@ -64,14 +72,10 @@ export function refusedKeyChoice(): KeyChoice | undefined {
   return (Object.keys(KEY_REFS) as KeyChoice[]).find((choice) => isKeyRejected(KEY_REFS[choice]));
 }
 
-export function refusedKeyMessage(choice: KeyChoice): string {
+export function refusedKeyMessage(t: Translate, choice: KeyChoice): string {
   const provider = choice === 'anthropic' ? 'Anthropic' : 'OpenRouter';
-  return `${provider} did not accept that key. Check that you copied all of it, or create a new one.`;
+  return t('connect.keyRefused', { provider });
 }
-
-const SERVER_SILENT = 'Could not get any models from that address. Is the server running?';
-const KEY_NOT_SAVED =
-  'This browser could not save your key, so it works only until you close this page.';
 
 export function useConnectProvider() {
   const { loadModels, probeServer, addEndpoint, setNotice } = useChatStore(
@@ -83,6 +87,7 @@ export function useConnectProvider() {
     }),
     shallow,
   );
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   // Set at once: a second press can land before the render that disables it.
@@ -101,7 +106,7 @@ export function useConnectProvider() {
   const connect = async (choice: ConnectChoice, value: string): Promise<boolean> => {
     if (!value.trim() || busyRef.current) return false;
     if (choice === 'local' && !isValidBaseUrl(value)) {
-      setError(INVALID_BASE_URL_MESSAGE);
+      setError(t('connect.invalidAddress'));
       return false;
     }
     busyRef.current = true;
@@ -113,7 +118,7 @@ export function useConnectProvider() {
         // said in the box, never kept to fail again on every visit.
         const baseUrl = normalizeBaseUrl(value);
         if (!(await probeServer(baseUrl))) {
-          setError(SERVER_SILENT);
+          setError(t('connect.serverSilent'));
           return false;
         }
         saveServer(baseUrl);
@@ -124,7 +129,7 @@ export function useConnectProvider() {
         await setKey(KEY_REFS[choice], value);
       } catch {
         // The key is held for this page, so it still connects.
-        setNotice(KEY_NOT_SAVED);
+        setNotice(t('connect.keyNotSaved'));
       }
       await loadModels();
       return !isKeyRejected(KEY_REFS[choice]);

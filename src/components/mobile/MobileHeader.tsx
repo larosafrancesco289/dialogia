@@ -11,6 +11,8 @@ import {
 } from '@/lib/store/selectors';
 import { useAnyModelOffered } from '@/lib/hooks/useProviderKeys';
 import styles from './MobileHeader.module.css';
+import { useT } from '@/lib/i18n';
+import { displayChatTitle } from '@/lib/ui/chatTitle';
 
 /**
  * MobileHeader: the phone's running head. The chats button on the left, the
@@ -28,6 +30,7 @@ export function MobileHeader({
   onNewChat: () => void;
   menuButtonRef?: Ref<HTMLButtonElement>;
 }) {
+  const t = useT();
   const { hydrated, onWelcome, title, isStreaming, tutorActive } = useChatStore(
     (s) => ({
       hydrated: s.hydrated,
@@ -53,7 +56,7 @@ export function MobileHeader({
         type="button"
         className={`icon-button icon-button--lg ${styles.iconButton}`}
         onClick={onOpenDrawer}
-        aria-label="Open chats"
+        aria-label={t('drawer.open')}
         aria-expanded={drawerOpen}
       >
         <Bars2Icon className="h-5 w-5" aria-hidden="true" />
@@ -62,7 +65,13 @@ export function MobileHeader({
       <div className={styles.center}>
         {/* Nothing until the chats are read, so a reload never flashes "New chat". */}
         <h1 className={styles.title}>
-          {hydrated ? title || (firstRun ? 'Dialogia' : 'New chat') : ''}
+          {hydrated
+            ? title
+              ? displayChatTitle(title)
+              : firstRun
+                ? 'Dialogia'
+                : t('chat.untitled')
+            : ''}
         </h1>
 
         {/* While a session is on, the module says what drives the chat. */}
@@ -81,7 +90,8 @@ export function MobileHeader({
           type="button"
           className={`icon-button icon-button--lg ${styles.iconButton}`}
           onClick={onNewChat}
-          aria-label="New chat"
+          aria-label={t('sidebar.newChat')}
+          data-action="new-chat"
         >
           <DocumentPlusIcon className="h-5 w-5" aria-hidden="true" />
         </button>

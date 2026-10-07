@@ -4,6 +4,7 @@ import { SidebarIcon } from '@/components/ui/icons';
 import { HeaderDivider } from '@/components/top-header/HeaderDivider';
 import { ModelPickerTrigger } from '@/components/top-header/ModelPickerTrigger';
 import type { TopHeaderState } from '@/components/top-header/useTopHeaderState';
+import { useT } from '@/lib/i18n';
 
 export function TopHeaderView({
   collapsed,
@@ -16,6 +17,7 @@ export function TopHeaderView({
   onToggleMemory,
   onNewChat,
 }: TopHeaderState) {
+  const t = useT();
   const headerClass = 'app-header top-header';
 
   return (
@@ -25,10 +27,10 @@ export function TopHeaderView({
         {/* Sidebar toggle */}
         <button
           className="icon-button icon-button--lg"
-          aria-label="Toggle sidebar"
+          aria-label={t('header.toggleSidebar')}
           aria-expanded={!collapsed}
           onClick={onToggleSidebar}
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={t(collapsed ? 'header.expandSidebar' : 'header.collapseSidebar')}
         >
           <SidebarIcon className="h-5 w-5" />
         </button>
@@ -51,8 +53,9 @@ export function TopHeaderView({
           {collapsed && (
             <button
               className="icon-button icon-button--lg hide-on-mobile"
-              aria-label="New chat"
-              title="New chat"
+              aria-label={t('sidebar.newChat')}
+              title={t('sidebar.newChat')}
+              data-action="new-chat"
               onClick={onNewChat}
             >
               <DocumentPlusIcon className="h-5 w-5" />
@@ -60,8 +63,8 @@ export function TopHeaderView({
           )}
           <button
             className="icon-button icon-button--lg hide-on-mobile"
-            aria-label="Open memory"
-            title="Memory"
+            aria-label={t('header.openMemory')}
+            title={t('nav.memory')}
             aria-pressed={isMemoryOpen}
             onClick={onToggleMemory}
             onMouseEnter={() => {
@@ -75,7 +78,8 @@ export function TopHeaderView({
           </button>
           <button
             className="icon-button icon-button--lg hide-on-mobile"
-            aria-label="Open settings"
+            aria-label={t('header.openSettings')}
+            title={t('nav.settings')}
             aria-pressed={isSettingsOpen}
             onClick={onToggleSettings}
             onMouseEnter={() => {

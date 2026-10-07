@@ -24,6 +24,7 @@ import { tabbableIn, trapTarget } from '@/lib/ui/focus';
 import { useChatStore } from '@/lib/store';
 import { useAnyModelOffered } from '@/lib/hooks/useProviderKeys';
 import { CONNECT_FIELD_SELECTOR } from '@/components/connect/ConnectForm';
+import { useT } from '@/lib/i18n';
 
 export type ModelPickerVariant = 'auto' | 'sheet';
 
@@ -80,6 +81,7 @@ export function ModelPicker({
   const availableModels = useAvailableModels();
   const isMobile = useMediaQuery(MEDIA_QUERIES.mobile);
 
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
@@ -118,7 +120,7 @@ export function ModelPicker({
       });
       return [
         {
-          title: 'Results',
+          title: t('picker.results'),
           rows: results.map((result) => ({ id: result.id, name: result.displayName, result })),
         },
       ];
@@ -145,11 +147,11 @@ export function ModelPicker({
         result: buildModelSearchResult(model, zdrOpts),
       }));
     return [
-      { title: 'Recommended', rows: recommended },
-      { title: 'Your favorites', rows: favorites },
-      { title: 'Your servers', rows: ownServer },
+      { title: t('picker.recommended'), rows: recommended },
+      { title: t('picker.favorites'), rows: favorites },
+      { title: t('picker.servers'), rows: ownServer },
     ].filter((section) => section.rows.length > 0);
-  }, [queryWords, availableModels, zdrOpts, curatedModels, favoriteModelIds, describe]);
+  }, [queryWords, availableModels, zdrOpts, curatedModels, favoriteModelIds, describe, t]);
 
   const flatRows = useMemo(() => sections.flatMap((section) => section.rows), [sections]);
 
@@ -264,7 +266,7 @@ export function ModelPicker({
   // only one to connect.
   const modelOffered = useAnyModelOffered() !== false;
   const label = !modelOffered
-    ? 'Connect a model'
+    ? t('setup.title')
     : current
       ? formatModelLabel({
           model: modelMap.get(current.id),
@@ -272,12 +274,12 @@ export function ModelPicker({
           fallbackName: current.name,
           among: availableModels,
         })
-      : 'Choose a model';
+      : t('picker.choose');
 
   const triggerProps: ModelPickerTriggerProps = {
     label,
     // Only what the label cannot say: a tooltip repeating it is noise.
-    tooltip: currentUnavailable ? `${label}: not available while zero data retention is on` : '',
+    tooltip: currentUnavailable ? t('picker.unavailableZdr', { model: label }) : '',
     isOpen: open,
     onClick: () => (!modelOffered ? connect() : open ? close() : setOpen(true)),
   };
@@ -289,7 +291,7 @@ export function ModelPicker({
       className={isMobile ? 'model-picker model-picker--sheet' : 'model-picker popover'}
       style={isMobile || !anchor ? undefined : { left: anchor.left, top: anchor.top }}
       role={isMobile ? undefined : 'dialog'}
-      aria-label={isMobile ? undefined : 'Choose a model'}
+      aria-label={isMobile ? undefined : t('picker.choose')}
       onKeyDown={onKeyDown}
     >
       <div className="model-picker__search">
@@ -297,11 +299,11 @@ export function ModelPicker({
         <input
           ref={inputRef}
           className="model-picker__input"
-          placeholder="Search models"
+          placeholder={t('picker.search')}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           role="combobox"
-          aria-label="Search models"
+          aria-label={t('picker.search')}
           aria-expanded="true"
           aria-controls="model-picker-list"
           aria-autocomplete="list"
@@ -313,15 +315,15 @@ export function ModelPicker({
       {/* Outside the listbox, which may hold only options. */}
       {flatRows.length === 0 && !queryWords.length && (
         <div className="model-picker__empty">
-          <p className="m-0">No models yet. Connect a provider to choose from its models.</p>
+          <p className="m-0">{t('picker.empty')}</p>
           <button type="button" className="btn btn-sm mt-3" onClick={connect}>
-            Connect a model
+            {t('setup.title')}
           </button>
         </div>
       )}
       <div ref={listRef} id="model-picker-list" className="model-picker__list" role="listbox">
         {flatRows.length === 0 && queryWords.length > 0 && (
-          <p className="model-picker__empty">No model matches that.</p>
+          <p className="model-picker__empty">{t('picker.noMatch')}</p>
         )}
         {sections
           .filter((section) => section.rows.length > 0)
@@ -349,15 +351,15 @@ export function ModelPicker({
                       note={row.note}
                       result={row.result}
                     />
-                    {isSelected && <span className="sr-only">, in use</span>}
+                    {isSelected && <span className="sr-only">{t('picker.inUse')}</span>}
                     {/* The rubric tick marks the model in use; the removable
                         favourite keeps its button while it is not in use. */}
                     {!isSelected && row.removable ? (
                       <button
                         type="button"
                         className="icon-button icon-button--sm model-row__remove"
-                        title="Remove from favorites"
-                        aria-label={`Remove ${row.name} from favorites`}
+                        title={t('picker.removeFavorite')}
+                        aria-label={t('picker.removeFavoriteNamed', { model: row.name })}
                         onClick={(event) => {
                           event.stopPropagation();
                           // The button goes with its row; keep focus in the picker.
@@ -399,7 +401,7 @@ export function ModelPicker({
       )}
 
       {isMobile ? (
-        <BottomSheet open={open} label="Choose a model" onClose={close}>
+        <BottomSheet open={open} label={t('picker.choose')} onClose={close}>
           {panel}
         </BottomSheet>
       ) : (

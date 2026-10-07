@@ -5,6 +5,7 @@ import { ChatSidebar } from '@/components/sidebar/ChatSidebar';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { ModuleSlot } from '@/components/ModuleSlot';
 import styles from './MobileDrawer.module.css';
+import { useT } from '@/lib/i18n';
 
 /**
  * The phone's chat list: the desktop sidebar, drawn in from the left edge.
@@ -29,6 +30,7 @@ export function MobileDrawer({
   /** The button that opens the drawer, where focus goes when it is put away. */
   returnFocusRef: RefObject<HTMLElement | null>;
 }) {
+  const t = useT();
   const ref = useRef<HTMLElement | null>(null);
   const x = useTransform(offset, (v) => v - width);
   // Fully shut, it is gone: nothing to tab into, nothing peeking at the edge.
@@ -74,7 +76,7 @@ export function MobileDrawer({
       ref={ref}
       className={styles.drawer}
       style={{ width, x, visibility }}
-      aria-label="Chats"
+      aria-label={t('drawer.chats')}
       aria-hidden={!open}
       tabIndex={-1}
       onClick={(event) => {
@@ -102,11 +104,11 @@ export function MobileDrawer({
       <div className={styles.foot}>
         <button type="button" className={styles.footItem} onClick={onOpenMemory}>
           <BookmarkIcon className="h-5 w-5" aria-hidden="true" />
-          <span>Memory</span>
+          <span>{t('nav.memory')}</span>
         </button>
         <button type="button" className={styles.footItem} onClick={onOpenSettings}>
           <Cog6ToothIcon className="h-5 w-5" aria-hidden="true" />
-          <span>Settings</span>
+          <span>{t('nav.settings')}</span>
         </button>
       </div>
     </motion.nav>

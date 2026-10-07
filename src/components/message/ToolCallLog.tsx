@@ -8,6 +8,8 @@ import {
 } from '@heroicons/react/24/outline';
 import type { ToolCallLogEntry } from '@/lib/types';
 import { CopyButton } from '@/components/markdown/CopyButton';
+import { t, useT, type MessageKey } from '@/lib/i18n';
+import { formatDate } from '@/lib/i18n/format';
 
 type ToolCallLogMode = 'compact' | 'full';
 type ToolCallBadge = { id: string; label: string };
@@ -25,7 +27,7 @@ export type ToolCallLogProps = {
 
 function formatTimestamp(timestamp: number) {
   try {
-    return new Date(timestamp).toLocaleTimeString([], {
+    return formatDate(timestamp, {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
@@ -55,12 +57,12 @@ function formatMetadataValue(value: unknown): string {
   }
 }
 
-const CATEGORY_LABEL: Record<NonNullable<ToolCallLogEntry['category']>, string> = {
-  search: 'Search',
-  tutor: 'Tutor',
-  planning: 'Planning',
-  system: 'System',
-  other: 'Other',
+const CATEGORY_LABEL: Record<NonNullable<ToolCallLogEntry['category']>, MessageKey> = {
+  search: 'toolLog.category.search',
+  tutor: 'toolLog.category.tutor',
+  planning: 'toolLog.category.planning',
+  system: 'toolLog.category.system',
+  other: 'toolLog.category.other',
 };
 
 const PROVIDER_LABEL: Record<string, string> = {
@@ -76,18 +78,19 @@ function summaryForCall(call: ToolCallLogEntry): string {
       const resultsPreview = output?.resultsPreview;
       const resultsCount = Array.isArray(resultsPreview) ? resultsPreview.length : undefined;
       if (ok === true) {
-        const count = resultsCount ?? 0;
-        return `Web search (${count} ${count === 1 ? 'result' : 'results'})`;
+        return t('toolLog.searchResults', { count: resultsCount ?? 0 });
       }
-      if (ok === false) return 'Web search error';
-      return 'Web search';
+      if (ok === false) return t('toolLog.searchError');
+      return t('search.title');
     }
     default:
-      return call.status === 'success'
-        ? 'Completed'
-        : call.status === 'error'
-          ? 'Failed'
-          : 'Pending';
+      return t(
+        call.status === 'success'
+          ? 'toolLog.completed'
+          : call.status === 'error'
+            ? 'activity.failed'
+            : 'toolLog.pending',
+      );
   }
 }
 
@@ -115,7 +118,7 @@ function stringify(value: unknown) {
 function collectBadges(call: ToolCallLogEntry): ToolCallBadge[] {
   const badges: ToolCallBadge[] = [];
   if (call.category && CATEGORY_LABEL[call.category]) {
-    badges.push({ id: `category-${call.category}`, label: CATEGORY_LABEL[call.category] });
+    badges.push({ id: `category-${call.category}`, label: t(CATEGORY_LABEL[call.category]) });
   }
   const meta = call.metadata;
   if (meta) {
@@ -127,22 +130,22 @@ function collectBadges(call: ToolCallLogEntry): ToolCallBadge[] {
       });
     }
     if (typeof meta.round === 'number' && Number.isFinite(meta.round)) {
-      badges.push({ id: `round-${meta.round}`, label: `Round ${meta.round}` });
+      badges.push({ id: `round-${meta.round}`, label: t('toolLog.round', { round: meta.round }) });
     }
     if (meta.cached === true) {
-      badges.push({ id: 'cached', label: 'Cached result' });
+      badges.push({ id: 'cached', label: t('toolLog.cached') });
     }
     if (typeof meta.modelUsed === 'string' && meta.modelUsed) {
       badges.push({ id: `model-${meta.modelUsed}`, label: meta.modelUsed });
     }
     if (meta.usedContent === true) {
-      badges.push({ id: 'used-content', label: 'Used in reply' });
+      badges.push({ id: 'used-content', label: t('toolLog.usedInReply') });
     }
     if (meta.modelUpdated === true) {
-      badges.push({ id: 'model-updated', label: 'Learner model updated' });
+      badges.push({ id: 'model-updated', label: t('toolLog.learnerUpdated') });
     }
     if (meta.planUpdated === true) {
-      badges.push({ id: 'plan-updated', label: 'Plan updated' });
+      badges.push({ id: 'plan-updated', label: t('toolLog.planUpdated') });
     }
   }
   return badges;
@@ -159,14 +162,15 @@ function metadataEntries(metadata: ToolCallLogEntry['metadata']): Array<[string,
   return entries;
 }
 
-function JsonBlock({ label, value }: { label: 'Input' | 'Output'; value: unknown }) {
+function JsonBlock({ label, value }: { label: 'input' | 'output'; value: unknown }) {
+  const t = useT();
   return (
     <div>
       <div className="devtools__section-head">
-        <span className="devtools__label">{label}</span>
+        <span className="devtools__label">{t(`toolLog.${label}`)}</span>
         <CopyButton
           text={stringify(value)}
-          label={`Copy ${label.toLowerCase()} JSON`}
+          label={t(`toolLog.copy.${label}`)}
           className="icon-button icon-button--sm"
         />
       </div>
@@ -187,6 +191,7 @@ export function ToolCallLog({
   onToolClick,
   className,
 }: ToolCallLogProps) {
+  const t = useT();
   const [expanded, setExpanded] = useState(defaultExpanded || mode === 'full');
   const [expandedCalls, setExpandedCalls] = useState<Record<string, boolean>>({});
 
@@ -198,7 +203,9 @@ export function ToolCallLog({
 
   const toggleCall = (id: string) => setExpandedCalls((prev) => ({ ...prev, [id]: !prev[id] }));
 
-  const heading = <span className="devtools__label">Tool calls ({sortedCalls.length})</span>;
+  const heading = (
+    <span className="devtools__label">{t('toolLog.heading', { count: sortedCalls.length })}</span>
+  );
 
   return (
     <div className={['tool-log', className].filter(Boolean).join(' ')}>
@@ -264,9 +271,9 @@ export function ToolCallLog({
                 </button>
                 {isExpanded && (
                   <div className="tool-log__detail">
-                    <JsonBlock label="Input" value={call.input} />
+                    <JsonBlock label="input" value={call.input} />
 
-                    {call.output && <JsonBlock label="Output" value={call.output} />}
+                    {call.output && <JsonBlock label="output" value={call.output} />}
 
                     {call.error && (
                       <p className="tool-log__error">
@@ -278,7 +285,7 @@ export function ToolCallLog({
                     {metadataPairs.length > 0 && (
                       <div>
                         <div className="devtools__section-head">
-                          <span className="devtools__label">Metadata</span>
+                          <span className="devtools__label">{t('toolLog.metadata')}</span>
                         </div>
                         <dl className="tool-log__metadata">
                           {metadataPairs.map(([key, value]) => (

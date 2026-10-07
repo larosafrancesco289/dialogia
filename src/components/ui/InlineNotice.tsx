@@ -5,6 +5,7 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import type { NoticeTone } from '@/lib/contracts/ui';
+import { useT } from '@/lib/i18n';
 
 export type InlineNoticeProps = {
   message: string;
@@ -21,6 +22,7 @@ const ICONS = {
 
 /** A toast: a slip of paper with a hairline, its tone ruled down the left edge. */
 export function InlineNotice({ message, onDismiss, tone = 'info', className }: InlineNoticeProps) {
+  const t = useT();
   if (!message) return null;
   const isAlert = tone === 'error';
   const Icon = ICONS[tone];
@@ -38,8 +40,8 @@ export function InlineNotice({ message, onDismiss, tone = 'info', className }: I
           className="icon-button icon-button--sm"
           onClick={onDismiss}
           type="button"
-          aria-label="Dismiss"
-          title="Dismiss"
+          aria-label={t('common.dismiss')}
+          title={t('common.dismiss')}
         >
           <XMarkIcon />
         </button>

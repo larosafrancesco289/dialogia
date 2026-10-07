@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import type { DragEvent as ReactDragEvent } from 'react';
 import { useChatStore } from '@/lib/store';
+import { t } from '@/lib/i18n';
 
 export interface DragData {
   id: string;
@@ -58,7 +59,7 @@ export function useDragAndDrop() {
         await moveChatToFolder(data.id, target.folderId);
         return undefined;
       }
-      const folder = await createFolder('New folder');
+      const folder = await createFolder(t('folder.newDefault'));
       await moveChatToFolder(target.id, folder.id);
       await moveChatToFolder(data.id, folder.id);
       return folder.id;

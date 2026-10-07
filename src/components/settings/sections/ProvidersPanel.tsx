@@ -13,7 +13,6 @@ import {
   allowsKeylessCalls,
   endpointCapabilities,
   endpointKeyRef,
-  INVALID_BASE_URL_MESSAGE,
   isBuiltInEndpointId,
   isValidBaseUrl,
   type ProviderEndpoint,
@@ -22,27 +21,29 @@ import { listEndpoints } from '@/lib/transport/endpointRegistry';
 import type { RenderSection } from '@/components/settings/types';
 import { refocusIfDropped } from '@/lib/ui/focus';
 import { CONNECT_OPTIONS } from '@/components/connect/useConnectProvider';
+import { useT } from '@/lib/i18n';
 
 function EndpointStatus({ endpoint }: { endpoint: ProviderEndpoint }) {
+  const t = useT();
   const { hasKey, isKeyRejected } = useProviderKeys();
   if (isKeyRejected(endpoint.apiKeyRef)) {
     return (
       <span className="text-xs" style={{ color: 'var(--color-danger)' }}>
-        The provider rejected this key. Paste a new one.
+        {t('providers.rejected')}
       </span>
     );
   }
   if (hasKey(endpoint.apiKeyRef)) {
-    return <span className="text-xs text-fg-muted">Using your key</span>;
+    return <span className="text-xs text-fg-muted">{t('providers.usingKey')}</span>;
   }
   if (endpoint.kind === 'openai-compatible') {
     return (
       <span className="text-xs text-fg-muted">
-        {allowsKeylessCalls(endpoint) ? 'Ready (no key needed)' : 'Needs an address'}
+        {t(allowsKeylessCalls(endpoint) ? 'providers.readyNoKey' : 'providers.needsAddress')}
       </span>
     );
   }
-  return <span className="text-xs text-fg-muted">Needs a key</span>;
+  return <span className="text-xs text-fg-muted">{t('providers.needsKey')}</span>;
 }
 
 function CustomEndpointEditor({
@@ -52,6 +53,7 @@ function CustomEndpointEditor({
   endpoint: ProviderEndpoint;
   onChanged: () => void;
 }) {
+  const t = useT();
   const { updateEndpoint, removeEndpoint } = useChatStore(
     (s) => ({ updateEndpoint: s.updateEndpoint, removeEndpoint: s.removeEndpoint }),
     shallow,
@@ -64,9 +66,9 @@ function CustomEndpointEditor({
     <div className="space-y-3">
       <ConfirmDialog
         open={confirmRemove}
-        title={`Remove ${endpoint.label}?`}
-        description="Its address, key and settings go. Chats that used its models keep their messages."
-        confirmLabel="Remove"
+        title={t('servers.removeTitle', { name: endpoint.label })}
+        description={t('servers.removeBody')}
+        confirmLabel={t('attachments.remove')}
         onCancel={() => setConfirmRemove(false)}
         onConfirm={() => {
           setConfirmRemove(false);
@@ -76,7 +78,7 @@ function CustomEndpointEditor({
       />
       <div className="space-y-2">
         <label className="field__label" htmlFor={`base-${endpoint.id}`}>
-          Server address
+          {t('connect.serverAddress')}
         </label>
         <input
           id={`base-${endpoint.id}`}
@@ -110,14 +112,14 @@ function CustomEndpointEditor({
           role={urlInvalid ? 'alert' : undefined}
         >
           {urlInvalid
-            ? `${INVALID_BASE_URL_MESSAGE} Not saved.`
-            : "The server's address, e.g. http://localhost:11434/v1 for Ollama."}
+            ? `${t('connect.invalidAddress')} ${t('servers.notSaved')}`
+            : t('servers.addressHint')}
         </p>
       </div>
 
       <div className="space-y-2">
         <label className="field__label" htmlFor={`models-${endpoint.id}`}>
-          Model names
+          {t('servers.modelNames')}
         </label>
         <input
           id={`models-${endpoint.id}`}
@@ -136,15 +138,13 @@ function CustomEndpointEditor({
             onChanged();
           }}
         />
-        <p className="field__hint">
-          Comma-separated. Whatever this server lists at /models is added automatically.
-        </p>
+        <p className="field__hint">{t('servers.modelNamesHint')}</p>
       </div>
 
       <ApiKeyField
         keyRef={endpoint.apiKeyRef ?? endpointKeyRef(endpoint.id)}
-        label="Key (optional)"
-        placeholder="Most local servers need none"
+        label={t('servers.keyOptional')}
+        placeholder={t('servers.keyPlaceholder')}
         onChanged={onChanged}
       />
 
@@ -157,11 +157,8 @@ function CustomEndpointEditor({
       />
 
       <fieldset className="space-y-2">
-        <legend className="field__label">What this server supports</legend>
-        <p className="field__hint">
-          Nothing unchecked is ever sent. A strict server rejects the whole request over one field
-          it does not know.
-        </p>
+        <legend className="field__label">{t('servers.supports')}</legend>
+        <p className="field__hint">{t('servers.supportsHint')}</p>
         {CAPABILITY_LABELS.map(({ key, label, hint }) => (
           <label key={key} className="flex items-start gap-2 text-sm">
             <input
@@ -176,8 +173,8 @@ function CustomEndpointEditor({
               }}
             />
             <span>
-              {label}
-              <span className="block text-xs text-fg-muted">{hint}</span>
+              {t(label)}
+              <span className="block text-xs text-fg-muted">{t(hint)}</span>
             </span>
           </label>
         ))}
@@ -185,7 +182,7 @@ function CustomEndpointEditor({
 
       <div className="space-y-2">
         <label className="field__label" htmlFor={`title-${endpoint.id}`}>
-          Chat titles
+          {t('servers.titles')}
         </label>
         <select
           id={`title-${endpoint.id}`}
@@ -198,19 +195,20 @@ function CustomEndpointEditor({
             onChanged();
           }}
         >
-          <option value="chat-model">Use the chat&apos;s own model</option>
-          <option value="off">Do not generate titles</option>
+          <option value="chat-model">{t('servers.titlesChatModel')}</option>
+          <option value="off">{t('servers.titlesOff')}</option>
         </select>
       </div>
 
       <button className="btn-ghost btn-sm" onClick={() => setConfirmRemove(true)}>
-        Remove this server
+        {t('servers.remove')}
       </button>
     </div>
   );
 }
 
 function AddEndpointForm({ onAdded }: { onAdded: () => void }) {
+  const t = useT();
   const addEndpoint = useChatStore((s) => s.addEndpoint);
   const [label, setLabel] = useState('');
   const [baseUrl, setBaseUrl] = useState('');
@@ -253,10 +251,10 @@ function AddEndpointForm({ onAdded }: { onAdded: () => void }) {
         <input
           ref={nameRef}
           className="input flex-1 basis-full sm:basis-0 min-w-0 text-base sm:text-sm"
-          placeholder="Name, e.g. Ollama"
+          placeholder={t('servers.namePlaceholder')}
           value={label}
           onChange={(event) => setLabel(event.target.value)}
-          aria-label="Server name"
+          aria-label={t('servers.name')}
         />
         <input
           className="input flex-1 basis-full sm:basis-0 min-w-0 text-base sm:text-sm"
@@ -278,16 +276,14 @@ function AddEndpointForm({ onAdded }: { onAdded: () => void }) {
             event.preventDefault();
             add();
           }}
-          aria-label="Server address"
+          aria-label={t('connect.serverAddress')}
         />
         <button className="btn btn-sm" disabled={!canAdd} onClick={add}>
-          Add
+          {t('servers.add')}
         </button>
       </div>
       <p id="add-endpoint-hint" className="field__hint" role={urlInvalid ? 'alert' : undefined}>
-        {urlInvalid
-          ? INVALID_BASE_URL_MESSAGE
-          : 'Works with Ollama, LM Studio, llama.cpp and vLLM. Capabilities start off and are yours to turn on.'}
+        {urlInvalid ? t('connect.invalidAddress') : t('servers.addHint')}
       </p>
     </div>
   );
@@ -299,6 +295,7 @@ type ProvidersPanelProps = {
 };
 
 export function ProvidersPanel({ renderSection, loadModels }: ProvidersPanelProps) {
+  const t = useT();
   const customEndpoints = useChatStore((s) => s.customEndpoints);
   const refresh = () => {
     void loadModels();
@@ -309,7 +306,7 @@ export function ProvidersPanel({ renderSection, loadModels }: ProvidersPanelProp
       {renderSection(
         'connections',
         'providers',
-        <SettingsSection title="Providers">
+        <SettingsSection title={t('settings.section.providers')}>
           <div className="space-y-4">
             {/* Read through the registry, not the raw constants: it is what
                 carries the user's own endpoints. */}
@@ -326,14 +323,14 @@ export function ProvidersPanel({ renderSection, loadModels }: ProvidersPanelProp
                     </div>
                     <ApiKeyField
                       keyRef={endpoint.apiKeyRef ?? endpoint.id}
-                      label={option.name}
+                      label={t(option.name)}
                       placeholder={option.placeholder}
                       onChanged={refresh}
                     />
                   </div>
                 );
               })}
-            <p className="field__hint">Keys stay in this browser and are never exported.</p>
+            <p className="field__hint">{t('providers.keysStay')}</p>
           </div>
         </SettingsSection>,
       )}
@@ -341,12 +338,12 @@ export function ProvidersPanel({ renderSection, loadModels }: ProvidersPanelProp
       {renderSection(
         'connections',
         'endpoints',
-        <SettingsSection title="Your servers">
+        <SettingsSection title={t('settings.section.endpoints')}>
           <div className="space-y-3">
             {customEndpoints.map((endpoint) => (
               <div key={endpoint.id} data-endpoint-id={endpoint.id}>
                 <CollapsibleSection
-                  title={`${endpoint.label} · ${endpoint.baseUrl ?? 'no address'}`}
+                  title={`${endpoint.label} · ${endpoint.baseUrl ?? t('servers.noAddress')}`}
                 >
                   <CustomEndpointEditor endpoint={endpoint} onChanged={refresh} />
                 </CollapsibleSection>
@@ -360,21 +357,16 @@ export function ProvidersPanel({ renderSection, loadModels }: ProvidersPanelProp
       {renderSection(
         'connections',
         'web-search',
-        <SettingsSection title="Web search">
+        <SettingsSection title={t('settings.section.web-search')}>
           <div className="space-y-3">
-            <p className="field__hint">
-              Search built into the model provider needs no extra key and is the default. With an
-              OpenRouter key you can also pick OpenRouter search in the composer: the model searches
-              when it needs to, on your OpenRouter credit, and pages are read through Jina Reader.
-              Your searches go to OpenRouter&apos;s search partner, and page addresses to Jina.
-            </p>
+            <p className="field__hint">{t('webSearch.hint')}</p>
             {listSearchProviders()
               .filter((provider) => !provider.usesModelKey)
               .map((provider) => (
                 <ApiKeyField
                   key={provider.id}
                   keyRef={searchProviderKeyRef(provider)}
-                  label={`${provider.label} key`}
+                  label={t('webSearch.keyLabel', { provider: provider.label })}
                   placeholder="tvly-…"
                   onChanged={refresh}
                 />

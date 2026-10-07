@@ -1,7 +1,10 @@
+import type { MessageKey } from '@/lib/i18n';
+
 type CuratedModel = {
   id: string;
   name: string;
-  description: string;
+  /** What it is good for, in the language shown (`models.curated.*`). */
+  description: MessageKey;
 };
 
 // Most picks are model families ('~vendor/family-latest', OpenRouter's own
@@ -11,13 +14,13 @@ type CuratedModel = {
 export const DEFAULT_CHAT_MODEL: CuratedModel = {
   id: '~anthropic/claude-haiku-latest',
   name: 'Claude Haiku',
-  description: 'Fast, inexpensive and a strong writer; new chats start here',
+  description: 'models.curated.claudeHaiku',
 };
 
 const GPT_LUNA: CuratedModel = {
   id: '~openai/gpt-luna-latest',
   name: 'GPT Luna',
-  description: 'Fast, inexpensive and brief; good with tools',
+  description: 'models.curated.gptLuna',
 };
 
 // Pinned, not a family: the tutor's prompt and its simulator checks are tuned
@@ -27,7 +30,7 @@ const GPT_LUNA: CuratedModel = {
 export const DEFAULT_TUTOR_MODEL: CuratedModel = {
   id: 'anthropic/claude-haiku-5.5',
   name: 'Claude Haiku 5.5',
-  description: 'Fast, inexpensive and a warm, patient teacher; the tutor by default',
+  description: 'models.curated.tutor',
 };
 
 export const DEFAULT_MODEL_ID = DEFAULT_CHAT_MODEL.id;
@@ -57,37 +60,37 @@ export const CURATED_MODELS: CuratedModel[] = [
   {
     id: '~openai/gpt-sol-latest',
     name: 'GPT Sol',
-    description: "OpenAI's mainline tier, for harder reasoning and writing",
+    description: 'models.curated.gptSol',
   },
   {
     id: '~anthropic/claude-opus-latest',
     name: 'Claude Opus',
-    description: 'Careful, long-running work; Anthropic’s recommended default',
+    description: 'models.curated.claudeOpus',
   },
   {
     id: '~anthropic/claude-fable-latest',
     name: 'Claude Fable',
-    description: 'The most capable Claude, for the hardest problems; the priciest',
+    description: 'models.curated.claudeFable',
   },
   {
     id: '~google/gemini-flash-latest',
     name: 'Gemini Flash',
-    description: 'Google’s newest; fast across images and very long documents',
+    description: 'models.curated.geminiFlash',
   },
   {
     id: '~moonshotai/kimi-latest',
     name: 'Kimi',
-    description: 'Open weights, strong at code, good value',
+    description: 'models.curated.kimi',
   },
   {
     id: '~x-ai/grok-latest',
     name: 'Grok',
-    description: 'The newest Grok, for long agentic runs',
+    description: 'models.curated.grok',
   },
   {
     id: 'openai/gpt-5.4-image-2',
     name: 'GPT-5.4 Image 2',
-    description: 'Makes and edits images',
+    description: 'models.curated.image',
   },
 ];
 

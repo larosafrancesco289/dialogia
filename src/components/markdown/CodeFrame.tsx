@@ -1,5 +1,6 @@
 import React, { Children, useEffect, useMemo, useRef, useState } from 'react';
 import { CopyButton } from '@/components/markdown/CopyButton';
+import { useT } from '@/lib/i18n';
 
 const WRAP_STORAGE_KEY = 'dialogia:code-wrap';
 const WRAP_EVENT = 'dialogia:code-wrap-change';
@@ -58,6 +59,7 @@ export function CodeFrame(
     rawText?: string;
   },
 ) {
+  const t = useT();
   const preRef = useRef<HTMLPreElement>(null);
   // Expand by default; allow optional line wrapping toggle
   const [expanded, setExpanded] = useState(true);
@@ -126,21 +128,21 @@ export function CodeFrame(
                 return next;
               });
             }}
-            title={wrap ? 'Disable wrap' : 'Enable wrap'}
+            title={t(wrap ? 'code.disableWrap' : 'code.enableWrap')}
           >
-            {wrap ? 'Unwrap' : 'Wrap'}
+            {t(wrap ? 'code.unwrap' : 'code.wrap')}
           </button>
           {isOverflowing && (
             <button
               type="button"
               className="code-block__action"
               onClick={() => setExpanded((v) => !v)}
-              title={expanded ? 'Collapse' : 'Expand'}
+              title={t(expanded ? 'code.collapse' : 'code.expand')}
             >
-              {expanded ? 'Collapse' : 'Expand'}
+              {t(expanded ? 'code.collapse' : 'code.expand')}
             </button>
           )}
-          <CopyButton text={codeText} />
+          <CopyButton text={codeText} label={t('code.copy')} />
         </div>
       </div>
       <pre

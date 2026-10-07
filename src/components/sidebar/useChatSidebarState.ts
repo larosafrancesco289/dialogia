@@ -11,6 +11,7 @@ import {
   type FolderTreeIndex,
 } from '@/lib/ui/sidebar/folderTree';
 import type { Chat, Folder } from '@/lib/types';
+import { displayChatTitle } from '@/lib/ui/chatTitle';
 
 type ChatSidebarStateInput = {
   collapsed?: boolean;
@@ -91,7 +92,9 @@ export function useChatSidebarState({
         return true;
       }
       const subFolders = childFoldersById.get(folderId) ?? [];
-      const hasChat = (chatsByFolderId.get(folderId) ?? []).some((c) => matchText(c.title));
+      const hasChat = (chatsByFolderId.get(folderId) ?? []).some((c) =>
+        matchText(displayChatTitle(c.title)),
+      );
       const matches = hasChat || subFolders.some((sf) => folderMatches(sf.id));
       folderMatchCache.set(folderId, matches);
       return matches;
@@ -103,7 +106,7 @@ export function useChatSidebarState({
     const q = query.trim().toLowerCase();
     if (!q) return rootChats;
     const matchText = (text?: string) => (text || '').toLowerCase().includes(q);
-    return rootChats.filter((chat) => matchText(chat.title));
+    return rootChats.filter((chat) => matchText(displayChatTitle(chat.title)));
   }, [query, rootChats]);
 
   // The name field's row goes once the name is settled, and focus with it:

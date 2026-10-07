@@ -1,5 +1,6 @@
 import type { PersistedAttachment } from '@/lib/types';
 import { PdfChip } from '@/components/AttachmentPreviewList';
+import { useT } from '@/lib/i18n';
 
 export type MessageAttachmentsProps = {
   attachments: PersistedAttachment[];
@@ -23,6 +24,7 @@ export function MessageAttachments({
   onOpenLightbox,
   variant = 'default',
 }: MessageAttachmentsProps) {
+  const t = useT();
   if (!Array.isArray(attachments) || attachments.length === 0) return null;
 
   const imageAttachments = attachments.filter(
@@ -49,14 +51,14 @@ export function MessageAttachments({
           key={attachment.id}
           className="p-0 m-0 border-none bg-transparent"
           onClick={() => handleOpenLightbox(index, array)}
-          title="Open larger"
+          title={t('attachments.openLarger')}
           type="button"
         >
           {/* The whole image at one height, its width following its shape (square
               until it loads): a square crop cut off part of what was sent. */}
           <img
             src={attachment.dataURL}
-            alt={attachment.name || 'image'}
+            alt={attachment.name || t('attachments.image')}
             width={144}
             height={144}
             loading="lazy"
@@ -73,11 +75,14 @@ export function MessageAttachments({
           {attachment.dataURL ? (
             <audio controls preload="none" src={attachment.dataURL} className="h-10" />
           ) : (
-            <span className="text-xs">Audio attached</span>
+            <span className="text-xs">{t('attachments.audioAttached')}</span>
           )}
           <div className="min-w-0">
-            <div className="text-xs font-medium truncate" title={attachment.name || 'Audio'}>
-              {attachment.name || 'Audio'}
+            <div
+              className="text-xs font-medium truncate"
+              title={attachment.name || t('attachments.audio')}
+            >
+              {attachment.name || t('attachments.audio')}
             </div>
           </div>
         </div>
@@ -87,9 +92,7 @@ export function MessageAttachments({
           key={attachment.id}
           name={attachment.name}
           detail={
-            attachment.pageCount
-              ? `${attachment.pageCount} ${attachment.pageCount === 1 ? 'page' : 'pages'}`
-              : 'PDF'
+            attachment.pageCount ? t('attachments.pages', { count: attachment.pageCount }) : 'PDF'
           }
         />
       ))}

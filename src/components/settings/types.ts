@@ -14,6 +14,7 @@ export type SectionId =
   | 'reasoning'
   | 'tutor'
   | 'theme'
+  | 'language'
   | 'display'
   | 'developer'
   | 'data';

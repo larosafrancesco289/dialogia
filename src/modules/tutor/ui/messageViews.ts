@@ -19,6 +19,8 @@ import {
 } from '@/modules/tutor/engine';
 import type { TutorSession } from '@/modules/tutor/store/tutorSlice';
 import { countWord, joinSentences } from '@/modules/tutor/lib/text';
+import { formatPercent } from '@/lib/i18n/format';
+import { t } from '@/modules/tutor/i18n';
 
 export type ProposalView = {
   proposalId: string;
@@ -131,15 +133,21 @@ export function carriedOverWords(
 ): string {
   const sameTopic = carried.topic.trim().toLowerCase() === topic.trim().toLowerCase();
   const from = !title
-    ? `${carried.topic} in another learning session`
+    ? t('carried.elsewhere', { topic: carried.topic })
     : sameTopic
       ? title
-      : `${carried.topic} in ${title}`;
-  const capped =
-    percent(setTo) < percent(carried.estimate)
-      ? `, capped at ${percent(setTo)}% until you answer ${countWord(MASTERY_EVIDENCE_MIN)} questions here`
-      : '';
-  return `Carried over from ${from} (${percent(carried.estimate)}%, ${shortDate(carried.studiedAt)})${capped}.`;
+      : t('carried.inChat', { topic: carried.topic, title });
+  const estimate = formatPercent(percent(carried.estimate) / 100);
+  const date = shortDate(carried.studiedAt);
+  return percent(setTo) < percent(carried.estimate)
+    ? t('carried.capped', {
+        from,
+        estimate,
+        date,
+        cap: formatPercent(percent(setTo) / 100),
+        questions: countWord(MASTERY_EVIDENCE_MIN),
+      })
+    : t('carried.plain', { from, estimate, date });
 }
 
 /**
@@ -159,14 +167,16 @@ const REASONS_SHOWN = 2;
 // tutor reads it as it is; the learner is shown it in words.
 const GRADED = /^(Quiz|Diagnostic), (right|wrong): "([\s\S]*)"$/;
 
-const cardWord = (kind: string) => (kind === 'Quiz' ? 'quiz' : 'quick check');
+const isQuiz = (kind: string) => kind === 'Quiz';
 
 // Notes the engine words for the tutor, and how the learner reads them: the
 // Hub already labels a starting estimate, and speaks to the learner as "you".
-const FOR_LEARNER: [RegExp, string][] = [
-  [/^Starting estimate from the diagnostic: /, ''],
-  [/^From what the learner said before the plan$/, 'From what you said before the plan'],
-  [/^(Learner|Student) /, 'You '],
+// Anything else in a note is the tutor's own words, shown as written.
+const FOR_LEARNER: [RegExp, () => string][] = [
+  [/^Starting estimate from the diagnostic: /, () => ''],
+  [/^From what the learner said before the plan$/, () => t('note.fromBefore')],
+  [/^Marked as already known\.$/, () => t('note.markedKnown')],
+  [/^(Learner|Student) /, () => t('note.you')],
 ];
 
 /** An evidence note as the learner reads it, one line of "Why N%". */
@@ -176,21 +186,22 @@ export function readableNote(note: string): string {
   const [, kind, verdict, rawQuestion] = graded;
   // Notes written before cuts ended at a word still end in three dots.
   const question = rawQuestion.replace(/\.\.\.$/, '…');
-  const what = `a ${cardWord(kind)} question`;
-  return verdict === 'right'
-    ? `You answered ${what} correctly: “${question}”`
-    : `You missed ${what}: “${question}”`;
+  if (verdict === 'right') {
+    return t(isQuiz(kind) ? 'note.quizRight' : 'note.checkRight', { question });
+  }
+  return t(isQuiz(kind) ? 'note.quizWrong' : 'note.checkWrong', { question });
 }
 
 /** Graded answers in one reply, counted: the card itself is just above. */
 function gradedSummary(graded: RegExpExecArray[]): string | undefined {
   if (!graded.length) return undefined;
-  const word = cardWord(graded[0][1]);
+  const quiz = isQuiz(graded[0][1]);
   const right = graded.filter((g) => g[2] === 'right').length;
   if (graded.length === 1) {
-    return right ? `Got the ${word} question right` : `Missed the ${word} question`;
+    if (quiz) return t(right ? 'note.quizOneRight' : 'note.quizOneMissed');
+    return t(right ? 'note.checkOneRight' : 'note.checkOneMissed');
   }
-  return `Got ${right} of ${graded.length} ${word} questions right`;
+  return t(quiz ? 'note.quizScore' : 'note.checkScore', { right, count: graded.length });
 }
 
 /**
@@ -212,7 +223,8 @@ export function marginReason(notes: string[], unfolded: boolean): { text: string
  * A learner's "Too high" or "Too low", told back to them in one wording
  * wherever it shows: the margin note it answered, and the Hub's "Why".
  */
-export const saidEstimateFelt = (felt: 'high' | 'low') => `You said the estimate felt too ${felt}`;
+export const saidEstimateFelt = (felt: 'high' | 'low') =>
+  t(felt === 'high' ? 'note.feltHigh' : 'note.feltLow');
 
 /** A topic the message's events completed, and what the learner made of it at that seam. */
 export type Completion = {

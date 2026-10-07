@@ -9,6 +9,7 @@ import { formatModelLabel } from '@/lib/models';
 import { useChatStore } from '@/lib/store';
 import { refocusIfDropped } from '@/lib/ui/focus';
 import type { ConsolidationLine } from '@/lib/types';
+import { useT, type Translate } from '@/lib/i18n';
 
 /** The Memory page holding a control, looked up on the click, before the control goes. */
 const pageOf = (control: unknown) =>
@@ -35,6 +36,7 @@ const sameDay = (at: number) => new Date(at).toDateString() === new Date().toDat
  * last pass beside the button, and the live mark while a pass runs.
  */
 export function ConsolidateAction() {
+  const t = useT();
   const { notes, pass, consolidating } = useChatStore(
     (s) => ({
       notes: s.memory.notes,
@@ -48,7 +50,7 @@ export function ConsolidateAction() {
     return (
       <span className="memory-running" role="status" tabIndex={-1}>
         <LogoMark live className="memory-running__mark" />
-        Consolidating…
+        {t('memory.consolidating')}
       </span>
     );
   const empty = !notes.some((n) => n.forgottenAt === undefined);
@@ -58,8 +60,10 @@ export function ConsolidateAction() {
     !pass || pass.shown
       ? null
       : fresh
-        ? `${fresh} new since ${sameDay(pass.at) ? 'earlier today' : shortDate(pass.at)}`
-        : 'Up to date';
+        ? sameDay(pass.at)
+          ? t('memory.newToday', { count: fresh })
+          : t('memory.newSince', { count: fresh, date: shortDate(pass.at) })
+        : t('memory.upToDate');
   return (
     <>
       {nudge && <span className="memory-nudge">{nudge}</span>}
@@ -67,7 +71,11 @@ export function ConsolidateAction() {
         type="button"
         className="btn-outline btn-sm memory-consolidate"
         disabled={empty}
-        title={empty ? 'Add a note first' : `Tidies memory with ${consolidationModelLabel()}`}
+        title={
+          empty
+            ? t('memory.addFirst')
+            : t('memory.consolidateHint', { model: consolidationModelLabel() })
+        }
         onClick={(e) => {
           // The button turns into the running line, and comes back when the pass ends.
           const page = pageOf(e.currentTarget);
@@ -75,19 +83,15 @@ export function ConsolidateAction() {
           void consolidateMemory().then(() => refocusOnPage(page));
         }}
       >
-        Consolidate
+        {t('memory.consolidate')}
       </button>
     </>
   );
 }
 
 /** What became of proposed changes the rules would not let the pass make. */
-const skippedLine = (skipped: number, made: number) =>
-  made
-    ? `Skipped ${skipped === 1 ? 'a proposed change' : `${skipped} proposed changes`} that could not be made.`
-    : skipped === 1
-      ? 'The model proposed a change, but it could not be made.'
-      : `The model proposed ${skipped} changes, but none could be made.`;
+const skippedLine = (t: Translate, skipped: number, made: number) =>
+  made ? t('memory.skippedSome', { count: skipped }) : t('memory.skippedAll', { count: skipped });
 
 /**
  * What the last pass did, in the person's words, above every folder since it
@@ -95,6 +99,7 @@ const skippedLine = (skipped: number, made: number) =>
  * opens the note or folder it changed, where it is now.
  */
 export function ConsolidationReport({ onOpen }: { onOpen: (page: string) => void }) {
+  const t = useT();
   const { pass, folders, notes } = useChatStore(
     (s) => ({ pass: s.memory.pass, folders: s.memory.folders, notes: s.memory.notes }),
     shallow,
@@ -110,14 +115,12 @@ export function ConsolidationReport({ onOpen }: { onOpen: (page: string) => void
         ? folderId
         : undefined;
   return (
-    <section className="memory-report motion-drop" aria-label="What consolidation changed">
+    <section className="memory-report motion-drop" aria-label={t('memory.reportLabel')}>
       <div className="memory-report__head">
         <span className="memory-report__title">
           {pass.lines.length
-            ? `Consolidated ${shortDate(pass.at)}`
-            : skipped
-              ? 'Nothing changed'
-              : 'Already tidy'}
+            ? t('memory.consolidatedOn', { date: shortDate(pass.at) })
+            : t(skipped ? 'memory.nothingChanged' : 'memory.alreadyTidy')}
         </span>
         {pass.undo && (
           <button
@@ -128,12 +131,12 @@ export function ConsolidationReport({ onOpen }: { onOpen: (page: string) => void
               void undoConsolidation().then(() => refocusOnPage(page));
             }}
           >
-            Undo
+            {t('memory.undo')}
           </button>
         )}
         <IconButton
           size="sm"
-          title="Dismiss"
+          title={t('common.dismiss')}
           onClick={(e) => {
             const page = pageOf(e?.currentTarget);
             void dismissConsolidation().then(() => refocusOnPage(page));
@@ -152,7 +155,7 @@ export function ConsolidationReport({ onOpen }: { onOpen: (page: string) => void
                   <button
                     type="button"
                     className="memory-link"
-                    title="Open in Memory"
+                    title={t('memory.openInMemory')}
                     onClick={() => onOpen(page)}
                   >
                     {line.say}
@@ -166,9 +169,9 @@ export function ConsolidationReport({ onOpen }: { onOpen: (page: string) => void
         </ul>
       )}
       {skipped > 0 ? (
-        <p className="memory-report__quiet">{skippedLine(skipped, pass.lines.length)}</p>
+        <p className="memory-report__quiet">{skippedLine(t, skipped, pass.lines.length)}</p>
       ) : (
-        !pass.lines.length && <p className="memory-report__quiet">Nothing needed changing.</p>
+        !pass.lines.length && <p className="memory-report__quiet">{t('memory.nothingNeeded')}</p>
       )}
     </section>
   );

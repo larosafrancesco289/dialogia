@@ -8,6 +8,8 @@ import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
 import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 import { seamChoices } from '@/modules/tutor/ui/tutorFlags';
 import { Markdown } from '@/components/Markdown';
+import { formatPercent } from '@/lib/i18n/format';
+import { useT } from '@/modules/tutor/i18n';
 
 /**
  * The seam at the end of a topic. Negotiating the plan here, rather than in
@@ -27,6 +29,7 @@ export function ChapterBreak({
   message: Message;
   completion: Completion;
 }) {
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const isLatest = useChatStore((s) => {
     const messages = selectMessagesForCurrentChat(s);
@@ -58,8 +61,9 @@ export function ChapterBreak({
   const live = atSeam && (canGoOn || canNegotiate);
 
   // The interface speaks here, not the tutor: the number, plainly; the question is the plan's.
-  const estimate = percent == null ? null : `You’re at ${percent}% on this topic.`;
-  const question = canGoOn ? 'Ready to move on?' : 'That was the last topic in the plan.';
+  const shown = percent == null ? null : formatPercent(percent / 100);
+  const estimate = shown == null ? null : t('chapter.estimate', { percent: shown });
+  const question = t(canGoOn ? 'chapter.ready' : 'chapter.last');
 
   const run = (fn: () => Promise<void>) => {
     setBusy(true);
@@ -69,10 +73,10 @@ export function ChapterBreak({
   return (
     <section
       className={`chapter-break${live ? ' is-live' : ''}`}
-      aria-label={`End of topic: ${node.name}`}
+      aria-label={t('chapter.label', { name: node.name })}
     >
       <p className="chapter-break__kicker">
-        Topic {index + 1} of {learningPlan!.nodes.length} finished
+        {t('chapter.kicker', { at: index + 1, count: learningPlan!.nodes.length })}
       </p>
       <h3 className="chapter-break__title">
         <Markdown inline content={node.name} />
@@ -91,7 +95,7 @@ export function ChapterBreak({
                 disabled={busy}
                 onClick={() => run(() => onGoOn(next.id))}
               >
-                Go on: <Markdown inline content={next.name} />
+                {t.rich('chapter.goOn', { topic: <Markdown inline content={next.name} /> })}
               </button>
             )}
             {canNegotiate && (
@@ -102,14 +106,14 @@ export function ChapterBreak({
                   disabled={busy}
                   onClick={() => run(() => onRequestMorePractice(completion.nodeId))}
                 >
-                  More practice first
+                  {t('chapter.morePractice')}
                 </button>
                 <button
                   type="button"
                   className="chapter-break__action"
                   onClick={() => setUI({ plan: { rightPanelOpen: true, revising: true } })}
                 >
-                  Edit plan
+                  {t('hub.editPlan')}
                 </button>
               </>
             )}
@@ -118,14 +122,14 @@ export function ChapterBreak({
       ) : (
         <p className="chapter-break__settled">
           {reopened
-            ? 'Back for more practice'
-            : percent != null
-              ? `Finished at ${percent}%`
-              : 'Finished'}
+            ? t('chapter.back')
+            : shown != null
+              ? t('chapter.finishedAt', { percent: shown })
+              : t('chapter.finished')}
           {!reopened && started && (
             <>
-              {' · Next: '}
-              <Markdown inline content={started.name} />
+              {' · '}
+              {t.rich('chapter.next', { topic: <Markdown inline content={started.name} /> })}
             </>
           )}
         </p>

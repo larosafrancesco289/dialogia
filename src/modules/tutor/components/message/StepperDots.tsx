@@ -1,4 +1,5 @@
 import type { StepStatus } from '@/modules/tutor/components/message/shared';
+import { useT } from '@/modules/tutor/i18n';
 
 export function StepperDots<T>({
   items,
@@ -11,6 +12,7 @@ export function StepperDots<T>({
   resolveStatus: (item: T, index: number) => StepStatus;
   onSelect: (index: number) => void;
 }) {
+  const t = useT();
   if (!Array.isArray(items) || items.length === 0) return null;
   return (
     <div className="step-dots">
@@ -25,7 +27,7 @@ export function StepperDots<T>({
             key={idx}
             className={classes.join(' ')}
             onClick={() => onSelect(idx)}
-            aria-label={`Question ${idx + 1}`}
+            aria-label={t('quiz.questionNumber', { number: idx + 1 })}
             aria-current={idx === activeIndex ? 'step' : undefined}
           />
         );

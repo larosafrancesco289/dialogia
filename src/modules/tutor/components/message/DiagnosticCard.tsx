@@ -6,6 +6,7 @@ import { McqCard, type McqAttempts } from '@/modules/tutor/components/message/Mc
 import { LEDGER } from '@/modules/tutor/lib/ledger';
 import { useLedger } from '@/modules/tutor/ui/ledger';
 import { Markdown } from '@/components/Markdown';
+import { useT } from '@/modules/tutor/i18n';
 
 /**
  * A diagnostic: answers are held here until every item has one, then go to
@@ -20,6 +21,7 @@ export function DiagnosticCard({
   messageId: string;
   diagnostic: DiagnosticRecord;
 }) {
+  const t = useT();
   const dispatchTutor = useChatStore((s) => s.dispatchTutor);
   const ledger = useLedger();
   const [draft, setDraft] = useState<Record<string, number>>({});
@@ -71,9 +73,9 @@ export function DiagnosticCard({
     <div className="exercise">
       <div>
         <h4 className="exercise__title">
-          <Markdown inline content={`A quick check on ${diagnostic.topic}`} />
+          <Markdown inline content={t('diagnostic.title', { topic: diagnostic.topic })} />
         </h4>
-        <p className="exercise__meta">So the tutor knows where to start.</p>
+        <p className="exercise__meta">{t('diagnostic.why')}</p>
       </div>
 
       <McqCard items={diagnostic.items} attempts={attempts} onAnswer={onAnswer} />
@@ -81,7 +83,7 @@ export function DiagnosticCard({
       {answered === total && total > 0 && (
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
           <p className="exercise__kicker">
-            {right} of {scored.length} right
+            {t('diagnostic.score', { right, count: scored.length })}
           </p>
         </motion.div>
       )}

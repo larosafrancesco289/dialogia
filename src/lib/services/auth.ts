@@ -15,6 +15,7 @@ import { isUnknownEndpointError } from '@/lib/transport/endpointRegistry';
 import { NOTICE_UNKNOWN_ENDPOINT } from '@/lib/store/notices';
 import { notify } from '@/lib/store/notify';
 import { guardZdrOrNotifyCached } from '@/lib/policy/zdr/cache';
+import { t } from '@/lib/i18n';
 
 export type ModelAuth = TransportAuth;
 
@@ -52,10 +53,7 @@ const reportAuthFailure = (
   const missing = (error as MissingProviderKeyError)?.code === MISSING_PROVIDER_KEY;
   const provider = missing ? (error as MissingProviderKeyError).endpointLabel : undefined;
   const name = formatModelLabel({ model: modelIndex.get(modelId), fallbackId: modelId });
-  promptForSetup(
-    set,
-    provider ? `${name} runs on ${provider}. Add your ${provider} key to use it.` : undefined,
-  );
+  promptForSetup(set, provider ? t('setup.needsKey', { model: name, provider }) : undefined);
 };
 
 export const createModelAuthResolver = ({

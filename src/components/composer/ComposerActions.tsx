@@ -11,6 +11,7 @@ import type { ReasoningEffort } from '@/lib/types';
 import type { ProviderEndpoint } from '@/lib/transport/endpoints';
 import { ReasoningEffortControl } from '@/components/composer/ReasoningEffortControl';
 import { SearchModeControl } from '@/components/composer/SearchModeControl';
+import { useT } from '@/lib/i18n';
 
 export type ComposerActionsProps = {
   isStreaming: boolean;
@@ -62,6 +63,7 @@ export function ComposerActions({
   memoryOn,
   toggleMemory,
 }: ComposerActionsProps) {
+  const t = useT();
   if (isStreaming) {
     return (
       <div className="composer-tools composer-tools--swap">
@@ -69,8 +71,8 @@ export function ComposerActions({
           type="button"
           className="composer-btn-stop"
           onClick={onStop}
-          aria-label="Stop the reply"
-          title="Stop the reply"
+          aria-label={t('composer.stop')}
+          title={t('composer.stop')}
         >
           <StopIcon className="h-4 w-4" />
         </button>
@@ -81,7 +83,7 @@ export function ComposerActions({
   if (writingInOtherTab) {
     return (
       <div className="composer-tools composer-tools--swap" role="status">
-        <span className="composer-tools__status">Writing in another tab…</span>
+        <span className="composer-tools__status">{t('composer.writingElsewhere')}</span>
       </div>
     );
   }
@@ -92,8 +94,8 @@ export function ComposerActions({
         <button
           type="button"
           className="icon-button composer-btn-attach"
-          aria-label="Attach files"
-          title={attachmentsHint || 'Attach files'}
+          aria-label={t('composer.attach')}
+          title={attachmentsHint || t('composer.attach')}
           onClick={openFilePicker}
         >
           <PaperClipIcon className="h-4 w-4" />
@@ -117,12 +119,8 @@ export function ComposerActions({
             type="button"
             className={`icon-button composer-btn-memory${memoryOn ? '' : ' is-active'}`}
             aria-pressed={!memoryOn}
-            aria-label="Keep this chat out of memory"
-            title={
-              memoryOn
-                ? 'Memory: on in this chat. Turn off to keep it out of memory.'
-                : 'Memory: off in this chat. Nothing is read or remembered.'
-            }
+            aria-label={t('composer.memory.label')}
+            title={t(memoryOn ? 'composer.memory.on' : 'composer.memory.off')}
             onClick={toggleMemory}
           >
             {memoryOn ? (
@@ -130,7 +128,7 @@ export function ComposerActions({
             ) : (
               <BookmarkSlashIcon className="h-4 w-4" aria-hidden="true" />
             )}
-            <ComposerToolLabel text={memoryOn ? null : 'Memory off'} />
+            <ComposerToolLabel text={memoryOn ? null : t('composer.memory.offLabel')} />
           </button>
         )}
 
@@ -149,8 +147,8 @@ export function ComposerActions({
         className={`composer-btn-send ${hasContent ? 'has-content' : ''}`}
         onMouseDown={(e) => e.preventDefault()}
         onClick={onSend}
-        aria-label="Send message"
-        title="Send"
+        aria-label={t('composer.sendLabel')}
+        title={t('composer.send')}
         disabled={!hasContent}
       >
         <ArrowUpIcon className="h-4 w-4" />

@@ -6,12 +6,57 @@ import { useThemeMode, type ThemeMode } from '@/lib/hooks/useThemeMode';
 import type { RenderSection } from '@/components/settings/types';
 import { indexForKey } from '@/lib/ui/focus';
 import { cn } from '@/lib/ui/cn';
+import { useT, type MessageKey } from '@/lib/i18n';
+import { isLanguagePreference, LOCALES, nativeName, resolveLanguage } from '@/lib/i18n/locales';
+import { useChatStore } from '@/lib/store';
 
 const SCHEMES = [
-  { mode: 'light', label: 'Light', Icon: SunIcon },
-  { mode: 'dark', label: 'Dark', Icon: MoonIcon },
-  { mode: 'auto', label: 'Auto', Icon: ComputerDesktopIcon },
-] as const satisfies ReadonlyArray<{ mode: ThemeMode; label: string; Icon: unknown }>;
+  { mode: 'light', label: 'appearance.light', Icon: SunIcon },
+  { mode: 'dark', label: 'appearance.dark', Icon: MoonIcon },
+  { mode: 'auto', label: 'appearance.auto', Icon: ComputerDesktopIcon },
+] as const satisfies ReadonlyArray<{ mode: ThemeMode; label: MessageKey; Icon: unknown }>;
+
+/**
+ * The app's language. Each is offered in its own words, so it can be found by
+ * someone who reads none of the others; Auto says which one it chose.
+ */
+function LanguageSetting() {
+  const t = useT();
+  const preference = useChatStore((s) => s.ui.language ?? 'auto');
+  const setUI = useChatStore((s) => s.setUI);
+  return (
+    <div className="settings-row">
+      <div className="settings-row-label">
+        <label className="settings-row-label-text" htmlFor="settings-language">
+          {t('appearance.language')}
+        </label>
+        <div className="settings-row-label-description">{t('appearance.languageHint')}</div>
+      </div>
+      <div className="settings-row-control">
+        <select
+          id="settings-language"
+          className="input"
+          value={preference}
+          onChange={(event) => {
+            const value = event.target.value;
+            if (isLanguagePreference(value)) setUI({ language: value });
+          }}
+        >
+          <option value="auto">
+            {t('appearance.languageAuto', {
+              language: nativeName(resolveLanguage('auto')),
+            })}
+          </option>
+          {LOCALES.map(({ code, name }) => (
+            <option key={code} value={code} lang={code}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
 
 type AppearancePanelProps = {
   renderSection: RenderSection;
@@ -44,6 +89,7 @@ export function AppearancePanel(props: AppearancePanelProps) {
     setShowDebugRawJson,
   } = props;
 
+  const t = useT();
   // Shared theme state — stays in sync with the header and mobile toggles
   const [themeMode, setThemeMode] = useThemeMode();
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -62,16 +108,14 @@ export function AppearancePanel(props: AppearancePanelProps) {
       {renderSection(
         'appearance',
         'theme',
-        <SettingsSection title="Theme">
+        <SettingsSection title={t('settings.section.theme')}>
           <div className="settings-row">
             <div className="settings-row-label">
-              <div className="settings-row-label-text">Color scheme</div>
-              <div className="settings-row-label-description">
-                Light, dark, or following your system.
-              </div>
+              <div className="settings-row-label-text">{t('appearance.scheme')}</div>
+              <div className="settings-row-label-description">{t('appearance.schemeHint')}</div>
             </div>
             <div className="settings-row-control">
-              <div className="segmented" role="radiogroup" aria-label="Color scheme">
+              <div className="segmented" role="radiogroup" aria-label={t('appearance.scheme')}>
                 {SCHEMES.map(({ mode, label, Icon }, index) => (
                   <button
                     key={mode}
@@ -90,7 +134,7 @@ export function AppearancePanel(props: AppearancePanelProps) {
                     onKeyDown={(event) => onSchemeKeyDown(event, index)}
                   >
                     <Icon className="h-4 w-4" aria-hidden="true" />
-                    {label}
+                    {t(label)}
                   </button>
                 ))}
               </div>
@@ -101,19 +145,27 @@ export function AppearancePanel(props: AppearancePanelProps) {
 
       {renderSection(
         'appearance',
+        'language',
+        <SettingsSection title={t('settings.section.language')}>
+          <LanguageSetting />
+        </SettingsSection>,
+      )}
+
+      {renderSection(
+        'appearance',
         'display',
-        <SettingsSection title="Display">
+        <SettingsSection title={t('settings.section.display')}>
           <ToggleSwitch
             checked={showThinking}
             onChange={setShowThinking}
-            label="Show thinking by default"
-            description="Show what the model thought on every reply, including earlier ones."
+            label={t('appearance.showThinking')}
+            description={t('appearance.showThinkingHint')}
           />
           <ToggleSwitch
             checked={showStats}
             onChange={setShowStats}
-            label="Show reply details"
-            description="A line under each reply: which model wrote it, how fast, and what it cost."
+            label={t('appearance.showStats')}
+            description={t('appearance.showStatsHint')}
           />
         </SettingsSection>,
       )}
@@ -121,25 +173,25 @@ export function AppearancePanel(props: AppearancePanelProps) {
       {renderSection(
         'appearance',
         'developer',
-        <SettingsSection title="Developer">
+        <SettingsSection title={t('settings.section.developer')}>
           <ToggleSwitch
             checked={showToolCallLog}
             onChange={setShowToolCallLog}
-            label="Tool-call log"
-            description="Above each reply that used tools, every call with its arguments and result."
+            label={t('appearance.toolLog')}
+            description={t('appearance.toolLogHint')}
           />
           <ToggleSwitch
             checked={debugMode}
             onChange={setDebugMode}
-            label="Request view"
-            description="Above each reply, the request that produced it. Captured from now on and kept until you reload."
+            label={t('appearance.requestView')}
+            description={t('appearance.requestViewHint')}
           />
           <ToggleSwitch
             checked={showDebugRawJson}
             onChange={setShowDebugRawJson}
             disabled={!debugMode}
-            label="Include the raw JSON"
-            description="The request exactly as sent, ready to copy."
+            label={t('appearance.rawJson')}
+            description={t('appearance.rawJsonHint')}
           />
         </SettingsSection>,
       )}

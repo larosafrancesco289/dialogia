@@ -7,6 +7,7 @@ import { IconButton } from '@/components/ui/IconButton';
 import { DocumentPlusIcon, FolderPlusIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { InlineTitleEdit } from '@/components/sidebar/InlineTitleEdit';
 import type { ChatSidebarState } from '@/components/sidebar/useChatSidebarState';
+import { useT } from '@/lib/i18n';
 
 export function ChatSidebarView({
   embedded = false,
@@ -29,6 +30,7 @@ export function ChatSidebarView({
   handleDragOver,
   handleRootDrop,
 }: ChatSidebarState & { embedded?: boolean }) {
+  const t = useT();
   return (
     <div className={'h-full flex flex-col w-full'}>
       {!embedded && (
@@ -38,13 +40,18 @@ export function ChatSidebarView({
             {!collapsed && <span className="brand__name">Dialogia</span>}
           </div>
           <div className="flex items-center gap-2">
-            <IconButton onClick={onNewChat} title="New chat" className="w-11 h-11 sm:w-9 sm:h-9">
+            <IconButton
+              onClick={onNewChat}
+              title={t('sidebar.newChat')}
+              action="new-chat"
+              className="w-11 h-11 sm:w-9 sm:h-9"
+            >
               <DocumentPlusIcon className="h-5 w-5" />
             </IconButton>
             {!collapsed && (
               <IconButton
                 onClick={onStartCreateFolder}
-                title="Create folder"
+                title={t('sidebar.createFolder')}
                 className="w-11 h-11 sm:w-9 sm:h-9"
               >
                 <FolderPlusIcon className="h-5 w-5" />
@@ -60,7 +67,7 @@ export function ChatSidebarView({
         collapsed={collapsed}
         action={
           embedded ? (
-            <IconButton onClick={onStartCreateFolder} title="Create folder">
+            <IconButton onClick={onStartCreateFolder} title={t('sidebar.createFolder')}>
               <FolderPlusIcon className="h-5 w-5" />
             </IconButton>
           ) : undefined
@@ -73,8 +80,8 @@ export function ChatSidebarView({
         onDrop={handleRootDrop}
       >
         {(filteredRootFolders.length > 0 || (showCreateFolder && !collapsed)) && (
-          <section className="sidebar-group" aria-label="Folders">
-            {!collapsed && <h3 className="sidebar-group__label">Folders</h3>}
+          <section className="sidebar-group" aria-label={t('sidebar.folders')}>
+            {!collapsed && <h3 className="sidebar-group__label">{t('sidebar.folders')}</h3>}
             {showCreateFolder && !collapsed && (
               // tabIndex -1, as an editing row has: Enter or Escape leaves focus
               // here, not on whatever holds the list, until the row is gone.
@@ -85,8 +92,8 @@ export function ChatSidebarView({
                 <ChevronRightIcon className="folder-row__chevron" aria-hidden="true" />
                 <InlineTitleEdit
                   value=""
-                  placeholder="Folder name"
-                  ariaLabel="New folder name"
+                  placeholder={t('folder.namePlaceholder')}
+                  ariaLabel={t('folder.newName')}
                   onCommit={onCreateFolder}
                   onCancel={onCancelCreateFolder}
                 />
@@ -125,7 +132,7 @@ export function ChatSidebarView({
           query.trim() &&
           filteredRootFolders.length === 0 &&
           filteredRootChats.length === 0 && (
-            <p className="sidebar-empty">No chats match “{query.trim()}”.</p>
+            <p className="sidebar-empty">{t('sidebar.noMatch', { query: query.trim() })}</p>
           )}
       </div>
     </div>

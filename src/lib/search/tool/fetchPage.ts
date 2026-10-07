@@ -4,6 +4,7 @@ import type { FetchOutcome, SearchMode } from '@/lib/search/providers/types';
 import type { WebFetchArgs } from '@/lib/search/args';
 import { err } from '@/lib/utils/result';
 import { TOOL_CALL_STOPPED } from '@/lib/constants';
+import { t } from '@/lib/i18n';
 
 export async function performWebFetchTool(opts: {
   args: WebFetchArgs;
@@ -30,7 +31,7 @@ export async function performWebFetchTool(opts: {
       if (outcome.ok) return outcome;
       // An abort says why it ended, not the browser's "signal is aborted".
       if (opts.controller.signal.aborted) return err(TOOL_CALL_STOPPED, { results: [] });
-      if (timedOut) return err('The page took too long to load.', { results: [] });
+      if (timedOut) return err(t('searchError.pageTooLong'), { results: [] });
       return outcome;
     } finally {
       clearTimeout(timeout);

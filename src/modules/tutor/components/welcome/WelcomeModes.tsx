@@ -1,5 +1,6 @@
 import { AcademicCapIcon, ChatBubbleOvalLeftIcon } from '@heroicons/react/24/outline';
 import { useTutorToggle } from '@/modules/tutor/ui/useTutorToggle';
+import { useT } from '@/modules/tutor/i18n';
 
 /**
  * The tutor module's `welcomeModes` slot: Chat or Learn, above the composer on
@@ -7,19 +8,20 @@ import { useTutorToggle } from '@/modules/tutor/ui/useTutorToggle';
  * begins rather than found in the header.
  */
 export function WelcomeModes() {
+  const t = useT();
   const tutor = useTutorToggle();
   // Enforced in Settings, there is nothing to choose.
   if (!tutor.available || tutor.forced) return null;
 
   const modes = [
-    { label: 'Chat', Icon: ChatBubbleOvalLeftIcon, on: !tutor.active },
-    { label: 'Learn', Icon: AcademicCapIcon, on: tutor.active },
+    { id: 'chat', label: t('learn.chat'), Icon: ChatBubbleOvalLeftIcon, on: !tutor.active },
+    { id: 'learn', label: t('learn.label'), Icon: AcademicCapIcon, on: tutor.active },
   ];
   return (
-    <div className="segmented welcome-modes" role="group" aria-label="Mode">
-      {modes.map(({ label, Icon, on }) => (
+    <div className="segmented welcome-modes" role="group" aria-label={t('learn.mode')}>
+      {modes.map(({ id, label, Icon, on }) => (
         <button
-          key={label}
+          key={id}
           type="button"
           className={`segment${on ? ' is-active' : ''}`}
           aria-pressed={on}

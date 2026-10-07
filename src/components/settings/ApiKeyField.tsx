@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { deleteKey, setKey } from '@/lib/keys/store';
 import { useProviderKeys } from '@/lib/hooks/useProviderKeys';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useT } from '@/lib/i18n';
 
 // Component: ApiKeyField
 // Responsibility: Paste, replace, or remove one stored key. The stored value is
@@ -15,6 +16,7 @@ export function ApiKeyField(props: {
   onChanged?: () => void;
 }) {
   const { keyRef, label, placeholder, helpText, onChanged } = props;
+  const t = useT();
   const { hasKey, describeKey } = useProviderKeys();
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
@@ -58,7 +60,7 @@ export function ApiKeyField(props: {
           className="input flex-1 basis-full sm:basis-0 min-w-0 text-base sm:text-sm"
           autoComplete="off"
           spellCheck={false}
-          placeholder={stored ? `Saved ${describeKey(keyRef)}. Paste to replace` : placeholder}
+          placeholder={stored ? t('apiKey.saved', { key: describeKey(keyRef) ?? '' }) : placeholder}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
@@ -66,25 +68,25 @@ export function ApiKeyField(props: {
           }}
         />
         <button className="btn btn-sm" disabled={busy || !draft.trim()} onClick={() => void save()}>
-          {stored ? 'Replace' : 'Connect'}
+          {t(stored ? 'apiKey.replace' : 'connect.submit')}
         </button>
         {stored && (
           <button
             className="btn-ghost btn-sm"
             disabled={busy}
             onClick={() => setConfirmingRemove(true)}
-            aria-label={`Remove the ${label}`}
+            aria-label={t('apiKey.removeNamed', { label })}
           >
-            Remove
+            {t('attachments.remove')}
           </button>
         )}
       </div>
       {helpText && <p className="field__hint">{helpText}</p>}
       <ConfirmDialog
         open={confirmingRemove}
-        title={`Remove the ${label}?`}
-        description="It is deleted from this browser. To use it later, paste it in again."
-        confirmLabel="Remove"
+        title={t('apiKey.removeTitle', { label })}
+        description={t('apiKey.removeBody')}
+        confirmLabel={t('attachments.remove')}
         onConfirm={() => void remove()}
         onCancel={() => setConfirmingRemove(false)}
       />

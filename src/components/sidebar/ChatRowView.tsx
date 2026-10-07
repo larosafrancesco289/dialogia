@@ -7,8 +7,9 @@ import {
   FolderArrowDownIcon,
 } from '@heroicons/react/24/outline';
 import { InlineTitleEdit } from '@/components/sidebar/InlineTitleEdit';
-import { BRANCH_TITLE_SUFFIX } from '@/lib/services/chatService';
 import { cn } from '@/lib/ui/cn';
+import { useT } from '@/lib/i18n';
+import { displayChatTitle, splitBranchTitle } from '@/lib/ui/chatTitle';
 
 export type ChatRowViewProps = {
   chatId: string;
@@ -69,6 +70,7 @@ export function ChatRowView({
   onPointerCancel,
   onContextMenu,
 }: ChatRowViewProps) {
+  const t = useT();
   // The title it was drawn with. A later one (the generated title arriving,
   // a rename) fades in; the list's first paint does not.
   const firstTitle = useRef(title);
@@ -76,8 +78,8 @@ export function ChatRowView({
   const showTitle = !collapsed || isEditing;
   // A branch shares its chat's title: the marker that tells them apart is kept
   // out of the truncation, which would otherwise cut it first.
-  const branch = title.endsWith(BRANCH_TITLE_SUFFIX);
-  const name = branch ? title.slice(0, -BRANCH_TITLE_SUFFIX.length) : title;
+  const { name, branch } = splitBranchTitle(title);
+  const shownTitle = displayChatTitle(title);
   const allowActions = !collapsed && !isEditing;
 
   return (
@@ -87,7 +89,7 @@ export function ChatRowView({
       }${isEditing ? ' is-editing' : ''}${isDragOver ? ' is-drag-over' : ''}`}
       data-chat-id={chatId}
       // The row truncates a long title; hovering reads it whole.
-      title={isEditing ? undefined : title}
+      title={isEditing ? undefined : shownTitle}
       style={depth ? { marginLeft: `${depth * ROW_INDENT}px` } : undefined}
       draggable={!isMobile && !isEditing}
       onDragStart={() => {
@@ -122,7 +124,7 @@ export function ChatRowView({
       {isEditing ? (
         <InlineTitleEdit
           value={title}
-          ariaLabel="Chat name"
+          ariaLabel={t('chatRow.name')}
           onCommit={onCommitEdit}
           onCancel={onCancelEdit}
         />
@@ -133,9 +135,9 @@ export function ChatRowView({
             key={title}
             className={cn('flex flex-1 min-w-0 text-sm', retitled && 'chat-item__title--new')}
           >
-            {isTutor && <span className="sr-only">Tutoring: </span>}
+            {isTutor && <span className="sr-only">{t('chatRow.tutoring')} </span>}
             <span className="truncate">{name}</span>
-            {branch && <span className="chat-item__branch">{BRANCH_TITLE_SUFFIX.trim()}</span>}
+            {branch && <span className="chat-item__branch">{t('chat.branchMark')}</span>}
           </div>
         </>
       ) : null}
@@ -148,8 +150,8 @@ export function ChatRowView({
               e?.stopPropagation();
               onStartEdit();
             }}
-            title="Rename"
-            ariaLabel={`Rename “${title}”`}
+            title={t('chatRow.rename')}
+            ariaLabel={t('chatRow.renameNamed', { title: shownTitle })}
           >
             <PencilSquareIcon />
           </IconButton>
@@ -160,8 +162,8 @@ export function ChatRowView({
               const target = e?.currentTarget as HTMLElement | undefined;
               if (target) onMove(target.getBoundingClientRect());
             }}
-            title="Move to folder"
-            ariaLabel={`Move “${title}” to a folder`}
+            title={t('chatRow.move')}
+            ariaLabel={t('chatRow.moveNamed', { title: shownTitle })}
           >
             <FolderArrowDownIcon />
           </IconButton>
@@ -171,8 +173,8 @@ export function ChatRowView({
               e?.stopPropagation();
               onDelete();
             }}
-            title="Delete"
-            ariaLabel={`Delete “${title}”`}
+            title={t('common.delete')}
+            ariaLabel={t('chatRow.deleteNamed', { title: shownTitle })}
           >
             <TrashIcon />
           </IconButton>

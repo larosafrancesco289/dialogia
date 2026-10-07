@@ -1,5 +1,6 @@
 import { PencilSquareIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { COMPOSER_FIELD_SELECTOR, refocusIfDropped } from '@/lib/ui/focus';
+import { useT } from '@/modules/tutor/i18n';
 
 export function LearningPanelHeader({
   revising,
@@ -14,11 +15,12 @@ export function LearningPanelHeader({
   onToggleRevise: () => void;
   onClose: () => void;
 }) {
+  const t = useT();
   return (
     <div className="learning-panel__header">
       <div className="learning-panel__title-row">
         <span className="learning-panel__title">
-          {revising ? 'Editing the plan' : previewing ? 'Proposed plan' : 'Learning Hub'}
+          {t(revising ? 'hub.editing' : previewing ? 'hub.proposed' : 'hub.title')}
         </span>
         {/* Always visible while the plan can change: the option to edit is
             worth more than its use, so it must never be hard to find. */}
@@ -30,7 +32,7 @@ export function LearningPanelHeader({
             onClick={onToggleRevise}
           >
             {!revising && <PencilSquareIcon className="h-4 w-4" aria-hidden="true" />}
-            {revising ? 'Done' : 'Edit plan'}
+            {t(revising ? 'hub.done' : 'hub.editPlan')}
           </button>
         )}
         {/* Opened from a proposal's "View full plan", the Hub has no badge
@@ -52,8 +54,8 @@ export function LearningPanelHeader({
               400,
             );
           }}
-          aria-label="Close Learning Hub"
-          title="Close"
+          aria-label={t('hub.close')}
+          title={t('common.close')}
         >
           <XMarkIcon className="h-5 w-5" aria-hidden="true" />
         </button>

@@ -8,6 +8,7 @@ import { useBackToClose } from '@/lib/hooks/useBackToClose';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { useModalFocus } from '@/lib/hooks/useModalFocus';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
+import { useT } from '@/lib/i18n';
 
 // Component: SetupSheet
 // Responsibility: Connecting a provider when asked for (Connect a model, a send
@@ -15,6 +16,7 @@ import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 // composer's place, with the same form.
 
 export function SetupSheet() {
+  const t = useT();
   const setUI = useChatStore((s) => s.setUI);
   const reason = useChatStore((s) => s.ui.setupReason);
   const surfaceRef = useRef<HTMLDivElement>(null);
@@ -52,7 +54,7 @@ export function SetupSheet() {
           >
             <ConnectForm
               id="setup"
-              title="Connect a model"
+              title={t('setup.title')}
               lead={reason}
               variant="dialog"
               inputRef={fieldRef}
@@ -60,7 +62,7 @@ export function SetupSheet() {
             />
             <div className="dialog__actions">
               <button className="btn-ghost btn-sm" onClick={close}>
-                Not now
+                {t('common.notNow')}
               </button>
             </div>
           </motion.div>

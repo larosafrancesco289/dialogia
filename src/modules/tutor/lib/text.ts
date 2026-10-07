@@ -1,4 +1,7 @@
 // Module: tutor lib text
+import { getLocale } from '@/lib/i18n/state';
+import { t } from '@/modules/tutor/i18n';
+import { formatNumber } from '@/lib/i18n/format';
 // Responsibility: joining the tutor's own words (goals, notes, reasons) into the interface's
 // sentences, so text that already ends in punctuation never ends twice.
 
@@ -32,10 +35,23 @@ export function joinSentences(...parts: Array<string | undefined | null | false>
 export function asTheirIdea(belief: string): string {
   const text = asSentence(belief);
   if (!text || /^you\b/i.test(text)) return text;
-  // Lowercase a plain first word ("A", "Vaccines"), never "I" or an acronym like "DNA".
-  const lower = /^(?!I\b)[A-Z](?![A-Z])/.test(text);
-  return `You thought ${lower ? text.charAt(0).toLowerCase() + text.slice(1) : text}`;
+  // Already framed in the language shown ("Pensavi che…"): the tutor wrote it so.
+  const frame = t('idea.youThought', { belief: '' }).trim();
+  if (fold(text).startsWith(fold(frame))) return text;
+  // Lowercase a plain first word ("A", "Vaccines"), never "I" or an acronym like
+  // "DNA", nor a German noun, which keeps its capital.
+  const lower = getLocale() !== 'de' && /^(?!I\b)\p{Lu}(?!\p{Lu})/u.test(text);
+  return t('idea.youThought', {
+    belief: lower ? text.charAt(0).toLocaleLowerCase() + text.slice(1) : text,
+  });
 }
+
+/** Lower case without accents, for comparing words written either way. */
+const fold = (text: string) =>
+  text
+    .normalize('NFD')
+    .replace(/\p{M}+/gu, '')
+    .toLowerCase();
 
 const NUMBER_WORDS = [
   'one',
@@ -61,5 +77,8 @@ const NUMBER_WORDS = [
 ];
 
 /** A count in words, as prose sets small numbers: "four", then digits past twenty. */
+/** "two" in English, where the app spells small numbers out; a numeral in any other language. */
 export const countWord = (n: number) =>
-  n >= 1 && n <= NUMBER_WORDS.length ? NUMBER_WORDS[n - 1] : String(n);
+  getLocale() === 'en' && n >= 1 && n <= NUMBER_WORDS.length
+    ? NUMBER_WORDS[n - 1]
+    : formatNumber(n);

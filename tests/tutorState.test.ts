@@ -18,7 +18,7 @@ import { buildTutorComposeContribution } from '@/modules/tutor/agent/compose';
 import { STARTING_ESTIMATE_MAX, remainingBudgets } from '@/modules/tutor/engine';
 import { CALCULUS, MASTERY_ITEMS, QUIZ_ITEMS } from '@/modules/tutor/engine/testSupport';
 import { cardsForMessage } from '@/modules/tutor/ui/messageViews';
-import { TUTOR_SAVE_FAILED_NOTICE } from '@/modules/tutor/store/tutorSlice';
+import { tutorSaveFailedNotice } from '@/modules/tutor/store/tutorSlice';
 import { makeChat } from './helpers/makeChat';
 import { createTestStore } from './helpers/createTestStoreState';
 
@@ -855,7 +855,7 @@ test('a failed write is sent again with the next one, so the disk never has a ho
     assert.equal((await flag(true)).ok, true, 'the change stands in memory');
     assert.equal(store.getState().ui.notice, undefined, 'one failure is not worth a notice');
     assert.equal((await flag(false)).ok, true);
-    assert.equal(store.getState().ui.notice, TUTOR_SAVE_FAILED_NOTICE, 'a failed retry is');
+    assert.equal(store.getState().ui.notice, tutorSaveFailedNotice(), 'a failed retry is');
 
     // The next write carries both unsaved ones ahead of its own.
     await dispatchTutor(

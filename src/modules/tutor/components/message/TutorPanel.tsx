@@ -6,6 +6,7 @@ import { PlanProposalCard } from '@/modules/tutor/components/message/PlanProposa
 import { DiagnosticCard } from '@/modules/tutor/components/message/DiagnosticCard';
 import { QuizCard } from '@/modules/tutor/components/message/McqCard';
 import type { MessageCards } from '@/modules/tutor/ui/messageViews';
+import { useT } from '@/modules/tutor/i18n';
 
 // Mastery changes from assessments are not shown here: the margin notes
 // under the message state them once, with their reasons.
@@ -15,6 +16,7 @@ export function TutorPanel(props: {
   cards: MessageCards;
   isLatestAssistant?: boolean;
 }) {
+  const t = useT();
   const reduceMotion = useReducedMotion();
   const { chatId, messageId, cards, isLatestAssistant } = props;
   const { intake, diagnostic, quiz, proposal } = cards;
@@ -27,8 +29,8 @@ export function TutorPanel(props: {
   const title =
     quiz?.title ??
     intake?.title ??
-    (proposal ? (proposal.revision ? 'Revised plan' : 'Learning plan') : undefined) ??
-    (diagnostic ? 'Before we start' : undefined);
+    (proposal ? t(proposal.revision ? 'cards.revisedPlan' : 'cards.plan') : undefined) ??
+    (diagnostic ? t('cards.beforeStart') : undefined);
 
   return (
     <MotionConfig reducedMotion={shouldAnimate ? 'never' : 'always'}>
@@ -41,7 +43,7 @@ export function TutorPanel(props: {
         >
           <div className="exercise-sheet__head">
             <AcademicCapIcon aria-hidden="true" />
-            <span className="truncate">{title || 'Exercises'}</span>
+            <span className="truncate">{title || t('cards.exercises')}</span>
           </div>
           <div className="exercise-sheet__body">
             {intake && intake.questions.length ? (

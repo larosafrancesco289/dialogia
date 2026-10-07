@@ -89,9 +89,7 @@ function MessageCardComponent({
       if (!active || active === document.body) {
         document
           .querySelector(`[data-mid="${CSS.escape(messageId)}"]`)
-          ?.querySelector<HTMLElement>(
-            'button[aria-label="Edit message"], button[aria-label="Edit reply"]',
-          )
+          ?.querySelector<HTMLElement>('button[data-action="edit"]')
           ?.focus({ preventScroll: true });
       }
     }

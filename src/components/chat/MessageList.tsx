@@ -23,11 +23,13 @@ import { replyInProgress } from '@/lib/ui/streaming';
 import { replyOutcomeAnnouncement } from '@/lib/ui/replyEnding';
 import { focusComposer, refocusIfDropped } from '@/lib/ui/focus';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useT } from '@/lib/i18n';
 
 const EMPTY_MESSAGES: Message[] = [];
 const JUST_WRITTEN_MS = 1500;
 
 export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilter?: string }) {
+  const t = useT();
   const {
     allMessages,
     isStreamingHere,
@@ -267,13 +269,13 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
           // Most chats arrive in a few milliseconds; the line only shows
           // itself (CSS delay) when a read is actually slow.
           <p className="message-list__loading" role="status">
-            Opening the chat…
+            {t('chat.opening')}
           </p>
         )}
         {hiddenCount > 0 && (
           <div className="flex justify-center py-2">
             <button type="button" className="btn-ghost btn-sm" onClick={showMore}>
-              Show earlier messages ({hiddenCount})
+              {t('chat.showEarlier', { count: hiddenCount })}
             </button>
           </div>
         )}
@@ -330,8 +332,8 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
         <div className="jump-to-latest">
           <button
             className="btn-float motion-rise pointer-events-auto"
-            aria-label="Scroll to bottom"
-            title="Scroll to bottom"
+            aria-label={t('chat.scrollToBottom')}
+            title={t('chat.scrollToBottom')}
             onClick={() => {
               jumpToLatest();
               // Intentionally not setting setShowJump(false) here; let the scroll handler do it
@@ -363,8 +365,8 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
       />
       <ConfirmDialog
         open={!!versionToDelete}
-        title="Delete this version?"
-        description="This version will be gone for good. The reply stays, showing another version."
+        title={t('versions.deleteTitle')}
+        description={t('versions.deleteBody')}
         onCancel={() => setVersionToDelete(null)}
         onConfirm={() => {
           const id = versionToDelete;
@@ -374,8 +376,8 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
           // The switch goes with the second-last version: focus stays on the reply.
           const reply = () => document.querySelector(`[data-mid="${CSS.escape(id)}"]`);
           refocusIfDropped(
-            () => reply()?.querySelector('button[aria-label="Delete this version"]'),
-            () => reply()?.querySelector('button[aria-label="Copy message"]'),
+            () => reply()?.querySelector('button[data-action="delete-version"]'),
+            () => reply()?.querySelector('button[data-action="copy"]'),
           );
         }}
       />

@@ -4,6 +4,7 @@ import { buildPersistedState, mergePersistedState } from '@/lib/store/persistenc
 import { migrate } from '@/lib/store/migrations';
 import { STORE_MIGRATION_VERSION } from '@/lib/store/versions';
 import { err, ok, type Result } from '@/lib/utils/result';
+import { t } from '@/lib/i18n';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -54,14 +55,10 @@ export async function buildChatExport(): Promise<
       ),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'The export failed. Try again.';
+    const message = error instanceof Error ? error.message : t('data.exportFailed');
     return err(message);
   }
 }
-
-const NOTHING_TO_IMPORT = 'This file has no Dialogia chats or settings.';
-
-const chatCount = (n: number) => `${n} ${n === 1 ? 'chat' : 'chats'}`;
 
 /** @internal What an import brought in, in words; `undefined` when it brought in nothing. */
 export function describeImport({
@@ -74,10 +71,14 @@ export function describeImport({
   settings: boolean;
 }): string | undefined {
   if (chats === 0 && !settings) return undefined;
-  const imported = chats > 0 ? `Imported ${chatCount(chats)}.` : 'Imported your settings.';
+  const imported =
+    chats > 0 ? t('data.imported.chats', { count: chats }) : t('data.imported.settings');
   if (skippedChats === 0) return imported;
-  const skipped = chats > 0 ? `${skippedChats}` : chatCount(skippedChats);
-  return `${imported} ${skipped} could not be read.`;
+  const skipped =
+    chats > 0
+      ? t('data.skipped.some', { count: skippedChats })
+      : t('data.skipped.chats', { count: skippedChats });
+  return `${imported} ${skipped}`;
 }
 
 export async function importChatExport(
@@ -87,13 +88,13 @@ export async function importChatExport(
   try {
     data = JSON.parse(payload);
   } catch {
-    return err('That file is not a Dialogia export: it is not valid JSON.');
+    return err(t('data.notJson'));
   }
   const hasSettings = isRecord(data) && isRecord(data.persistedStore);
   const hasChats = isRecord(data) && Array.isArray(data.chats) && data.chats.length > 0;
   // Any JSON parses; one with nothing of ours in it is said to be so, not
   // reported as a success that changed nothing.
-  if (!hasSettings && !hasChats) return err(NOTHING_TO_IMPORT);
+  if (!hasSettings && !hasChats) return err(t('data.nothing'));
   const version =
     isRecord(data) && typeof data.persistedStoreVersion === 'number'
       ? data.persistedStoreVersion
@@ -101,9 +102,7 @@ export async function importChatExport(
   // Checked before anything is written: a newer build's settings are not ours
   // to guess at, and half an import is worse than none.
   if (version > STORE_MIGRATION_VERSION) {
-    return err(
-      'This backup was made by a newer version of Dialogia. Reload to update the app, then import it again.',
-    );
+    return err(t('data.newerVersion'));
   }
   try {
     const counts = await importAll(data as Parameters<typeof importAll>[0]);
@@ -115,10 +114,10 @@ export async function importChatExport(
     }
 
     const notice = describeImport({ ...counts, settings: hasSettings });
-    if (!notice) return err('None of the chats in this file could be read.');
+    if (!notice) return err(t('data.noneRead'));
     return ok({ notice });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'The import failed. Try again.';
+    const message = error instanceof Error ? error.message : t('data.importFailed');
     return err(message);
   }
 }

@@ -28,6 +28,7 @@ import { penIsLive, toolCallInFlight } from '@/lib/ui/streaming';
 import { replyEndingNote } from '@/lib/ui/replyEnding';
 import { silentWaitLine } from '@/lib/ui/responseActivity';
 import styles from './MessageCard.module.css';
+import { useT } from '@/lib/i18n';
 
 export type AssistantMessageProps = {
   message: Message;
@@ -88,6 +89,7 @@ function SilentWait({ since, className = '' }: { since?: number; className?: str
     const tick = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(tick);
   }, []);
+  useT();
   const line = silentWaitLine(now - startedAt);
   if (!line) return null;
   return (
@@ -148,6 +150,7 @@ export function AssistantMessage({
   tutorPanelNode,
   citationSources,
 }: AssistantMessageProps) {
+  const t = useT();
   const displayContent = message.content;
   // A reply whose content is a module's (a card) is not empty, words or not.
   const hasModuleContent = useChatStore((s) => messageHasModuleContent(s, message));
@@ -188,7 +191,7 @@ export function AssistantMessage({
             setDraft('');
           }
         }}
-        placeholder="Edit the reply…"
+        placeholder={t('message.editReplyPlaceholder')}
         autoFocus
       />
     );
@@ -196,7 +199,7 @@ export function AssistantMessage({
     // The mark, answering: set where the first word will land, in the reply's
     // own paragraph, so the text arrives exactly where it waited.
     messageBody = (
-      <div className="markdown" role="status" aria-label="Writing a reply">
+      <div className="markdown" role="status" aria-label={t('message.writing')}>
         <p className={styles.waiting}>
           <LogoMark className={`${styles.pen} ${styles.penWaiting}`} live />
           <SilentWait />
@@ -228,7 +231,7 @@ export function AssistantMessage({
             written or run (a card, a search), or the model works on its next
             round. The mark answers where what comes next lands. */}
         {penLive && (
-          <div className="markdown" role="status" aria-label="Still working">
+          <div className="markdown" role="status" aria-label={t('message.stillWorking')}>
             <p>
               <LogoMark className={styles.pen} live />
               {quietSince !== undefined && !toolCallInFlight(message) && (
@@ -295,13 +298,17 @@ export function AssistantMessage({
               />
               <div className="min-w-0 flex-1 space-y-1">
                 <p className="text-sm font-semibold" style={{ color: 'var(--color-danger)' }}>
-                  Declined by the model&rsquo;s safety filter
+                  {t('message.filtered.title')}
                 </p>
                 <p className="text-xs text-fg-muted">
-                  {displayContent.trim()
-                    ? "The reply was cut short by the provider's safety filter."
-                    : 'A safety classifier blocked this request before the model could answer.'}
-                  {message.stopPolicy ? ` Reason given: ${message.stopPolicy}.` : ''}
+                  {t(
+                    displayContent.trim()
+                      ? 'message.filtered.cutShort'
+                      : 'message.filtered.blocked',
+                  )}
+                  {message.stopPolicy
+                    ? ` ${t('message.filtered.reason', { reason: message.stopPolicy })}`
+                    : ''}
                 </p>
               </div>
             </div>
@@ -309,11 +316,11 @@ export function AssistantMessage({
               <div className="mt-2.5 flex flex-wrap items-center gap-2 pl-6">
                 <button className="btn btn-sm" onClick={onEditPreviousUserMessage}>
                   <PencilSquareIcon className="h-3.5 w-3.5" />
-                  Edit message
+                  {t('message.editMessage')}
                 </button>
                 <button className="btn-ghost btn-sm" onClick={() => onChooseRegenerateModel()}>
                   <ArrowPathIcon className="h-3.5 w-3.5" />
-                  Try again
+                  {t('message.tryAgain')}
                 </button>
               </div>
             )}
@@ -331,7 +338,7 @@ export function AssistantMessage({
           <div className="px-4 pb-2">
             <button className="btn-outline btn-sm" onClick={() => onChooseRegenerateModel()}>
               <ArrowPathIcon className="h-3.5 w-3.5" />
-              Try again
+              {t('message.tryAgain')}
             </button>
           </div>
         )}
@@ -369,8 +376,9 @@ export function AssistantMessage({
                       <ClipboardIcon className="h-4 w-4" />
                     )
                   }
-                  title={copiedId === message.id ? 'Copied' : 'Copy'}
-                  ariaLabel="Copy message"
+                  title={t(copiedId === message.id ? 'message.copied' : 'message.copy')}
+                  ariaLabel={t('message.copyLabel')}
+                  action="copy"
                   onClick={copyMessage}
                   showFeedback={copiedId === message.id}
                 />
@@ -384,8 +392,7 @@ export function AssistantMessage({
                 {!canned && (
                   <ActionButton
                     icon={<ArrowUturnRightIcon className="h-4 w-4" />}
-                    title="Branch in a new chat"
-                    ariaLabel="Branch in a new chat"
+                    title={t('message.branch')}
                     onClick={branchFromMessage}
                     disabled={isChatStreaming}
                   />
@@ -393,8 +400,9 @@ export function AssistantMessage({
                 {!isChatStreaming && !canned && (
                   <ActionButton
                     icon={<PencilSquareIcon className="h-4 w-4" />}
-                    title="Edit"
-                    ariaLabel="Edit reply"
+                    title={t('message.edit')}
+                    ariaLabel={t('message.editReply')}
+                    action="edit"
                     onClick={startEditingMessage}
                   />
                 )}

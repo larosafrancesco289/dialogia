@@ -13,7 +13,8 @@ import {
 import { fileToDataUrl } from '@/lib/attachments/readers';
 import { detectAudioFormatFromFile } from '@/lib/attachments/audio';
 import { extractTextFromPdf } from '@/lib/attachments/pdf';
-import { listInProse } from '@/lib/utils/text';
+import { t } from '@/lib/i18n';
+import { formatList } from '@/lib/i18n/format';
 
 const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 const MB = 1024 * 1024;
@@ -27,10 +28,10 @@ const isAudio = (file: File) =>
 
 /** The kinds of file a model takes, for the attach hint and the left-out notice. */
 export function acceptedKinds(canVision: boolean, canAudio: boolean): string {
-  if (canVision && canAudio) return 'images, audio (mp3/wav) or PDFs';
-  if (canVision) return 'images or PDFs';
-  if (canAudio) return 'audio (mp3/wav) or PDFs';
-  return 'PDFs';
+  if (canVision && canAudio) return t('attach.kinds.all');
+  if (canVision) return t('attach.kinds.images');
+  if (canAudio) return t('attach.kinds.audio');
+  return t('attach.kinds.pdf');
 }
 
 export type AttachmentPick = {
@@ -57,15 +58,16 @@ export function sortAttachmentPick(
   const pick: AttachmentPick = { pdfs: [], images: [], audio: [] };
   const skipped = new Map<string, string[]>();
   const skip = (file: File, reason: string) =>
-    skipped.set(reason, [...(skipped.get(reason) ?? []), file.name || 'a file']);
+    skipped.set(reason, [...(skipped.get(reason) ?? []), file.name || t('attach.aFile')]);
   const take = (
     file: File,
     into: File[],
     limit: { count: number; perMessage: string; maxMb: number },
   ) => {
-    if (file.size > limit.maxMb * MB) skip(file, `too large, max ${limit.maxMb} MB`);
-    else if (into.length >= limit.count) skip(file, `only ${limit.perMessage} per message`);
-    else into.push(file);
+    if (file.size > limit.maxMb * MB) skip(file, t('attach.tooLarge', { max: limit.maxMb }));
+    else if (into.length >= limit.count) {
+      skip(file, t('attach.perMessage', { limit: limit.perMessage }));
+    } else into.push(file);
   };
   const room = (max: number, used: number) => Math.max(0, max - used);
 
@@ -73,33 +75,33 @@ export function sortAttachmentPick(
     if (isPdf(file)) {
       take(file, pick.pdfs, {
         count: room(MAX_PDFS_PER_MESSAGE, opts.existing.pdf),
-        perMessage: `${MAX_PDFS_PER_MESSAGE} PDFs`,
+        perMessage: t('attach.pdfs', { count: MAX_PDFS_PER_MESSAGE }),
         maxMb: MAX_PDF_SIZE_MB,
       });
     } else if (opts.canVision && isImage(file)) {
-      if (!IMAGE_TYPES.includes(file.type)) skip(file, 'only PNG, JPEG, WebP or GIF images');
+      if (!IMAGE_TYPES.includes(file.type)) skip(file, t('attach.imageTypes'));
       else
         take(file, pick.images, {
           count: room(MAX_IMAGES_PER_MESSAGE, opts.existing.image),
-          perMessage: `${MAX_IMAGES_PER_MESSAGE} images`,
+          perMessage: t('attach.images', { count: MAX_IMAGES_PER_MESSAGE }),
           maxMb: MAX_IMAGE_SIZE_MB,
         });
     } else if (opts.canAudio && !isImage(file) && isAudio(file)) {
-      if (!detectAudioFormatFromFile(file)) skip(file, 'only mp3 or wav audio');
+      if (!detectAudioFormatFromFile(file)) skip(file, t('attach.audioTypes'));
       else
         take(file, pick.audio, {
           count: room(MAX_AUDIO_PER_MESSAGE, opts.existing.audio),
-          perMessage: `${MAX_AUDIO_PER_MESSAGE} audio file`,
+          perMessage: t('attach.audioFiles', { count: MAX_AUDIO_PER_MESSAGE }),
           maxMb: MAX_AUDIO_SIZE_MB,
         });
     } else {
-      skip(file, `this model takes ${acceptedKinds(opts.canVision, opts.canAudio)}`);
+      skip(file, t('attach.modelTakes', { kinds: acceptedKinds(opts.canVision, opts.canAudio) }));
     }
   }
 
   if (skipped.size > 0) {
-    const parts = [...skipped].map(([reason, names]) => `${listInProse(names)} (${reason})`);
-    pick.notice = `Not attached: ${parts.join('; ')}.`;
+    const parts = [...skipped].map(([reason, names]) => `${formatList(names)} (${reason})`);
+    pick.notice = t('attach.notAttached', { files: parts.join('; ') });
   }
   return pick;
 }

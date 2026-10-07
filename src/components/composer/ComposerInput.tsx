@@ -8,6 +8,7 @@ import {
 } from '@/lib/slash';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
+import { useT } from '@/lib/i18n';
 
 export type ComposerInputProps = {
   value: string;
@@ -33,13 +34,16 @@ export function ComposerInput({
   onPaste,
   onFocusChange,
 }: ComposerInputProps) {
+  const t = useT();
   const [isFocused, setIsFocused] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const touchKeyboard = useMediaQuery(MEDIA_QUERIES.touch);
 
   const suggestions = useMemo<SlashSuggestion[]>(
+    // `t`: the descriptions are in the language shown.
     () => getSlashSuggestions(value, models),
-    [value, models],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [value, models, t],
   );
 
   // Escape puts the list away until the text changes.
@@ -58,7 +62,7 @@ export function ComposerInput({
         enterKeyHint={touchKeyboard ? 'enter' : 'send'}
         className="composer-field focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none"
         rows={1}
-        placeholder="Ask anything"
+        placeholder={t('composer.placeholder')}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         style={{ maxHeight: `${maxHeight}px` }}
@@ -126,7 +130,7 @@ export function ComposerInput({
           id="slash-suggestions"
           role="listbox"
           className="absolute right-3 bottom-full mb-2 z-40 p-1 popover popover--up max-w-sm"
-          aria-label="Slash command suggestions"
+          aria-label={t('composer.slashSuggestions')}
         >
           <div className="max-h-60 overflow-auto">
             {suggestions.map((suggestion, index) => (

@@ -1,10 +1,16 @@
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+import { formatDate } from '@/lib/i18n/format';
 
-/** "27 Sep", with the year when it is not this one; held together, so it never breaks across lines. */
+/**
+ * "27 Sep" (or "Sep 27", "27 set", as the language writes it), with the year
+ * when it is not this one; held together, so it never breaks across lines.
+ */
 export function shortDate(at: number): string {
-  const date = new Date(at);
-  const day = `${date.getDate()}\u00a0${MONTHS[date.getMonth()]}`;
-  return date.getFullYear() === new Date().getFullYear()
-    ? day
-    : `${day}\u00a0${date.getFullYear()}`;
+  const thisYear = new Date(at).getFullYear() === new Date().getFullYear();
+  const text = formatDate(
+    at,
+    thisYear
+      ? { day: 'numeric', month: 'short' }
+      : { day: 'numeric', month: 'short', year: 'numeric' },
+  );
+  return text.replace(/ /g, ' ');
 }

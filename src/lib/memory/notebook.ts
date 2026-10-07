@@ -31,7 +31,7 @@ export const memoryOnInChat = (
 /** How long a forgotten note waits in Recently forgotten before it is gone. */
 export const FORGOTTEN_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
-const BUILT_IN_FOLDERS: Pick<MemoryFolder, 'id' | 'name' | 'description'>[] = [
+export const BUILT_IN_FOLDERS: Pick<MemoryFolder, 'id' | 'name' | 'description'>[] = [
   {
     id: MEMORY_ABOUT_FOLDER_ID,
     name: 'About you',

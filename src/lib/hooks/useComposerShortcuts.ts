@@ -18,6 +18,7 @@ import type { UiNextOverrides } from '@/lib/contracts/ui';
 import type { UIState } from '@/lib/store/types';
 import type { ReasoningEffort } from '@/lib/types';
 import { ReasoningEffortEnum } from '@/lib/types';
+import { t } from '@/lib/i18n';
 
 type Effort = ReasoningEffort;
 
@@ -59,12 +60,12 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
     if (applyToChat && ctx.chat) {
       const next = enabled == null ? !ctx.chat.settings.features.search.enabled : enabled;
       await ctx.updateChatSettings({ features: { search: { enabled: next } } });
-      ctx.setNotice(`Web search is ${next ? 'on' : 'off'} in this chat.`, 'success');
+      ctx.setNotice(t(next ? 'slash.searchOn' : 'slash.searchOff'), 'success');
     } else {
       const prev = !!ctx.nextOverrides.search?.enabled;
       const next = enabled == null ? !prev : enabled;
       ctx.setUI({ overrides: { search: { enabled: next } } });
-      ctx.setNotice(`Web search will be ${next ? 'on' : 'off'} in the next chat.`, 'success');
+      ctx.setNotice(t(next ? 'slash.searchOnNext' : 'slash.searchOffNext'), 'success');
     }
     return true;
   }
@@ -75,15 +76,12 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
     if (!allowed.includes(effort)) return false;
     ctx.accept();
     if (!isReasoningSupported(currentModel)) {
-      ctx.setNotice(
-        'This model answers without thinking first, so there is nothing to set.',
-        'info',
-      );
+      ctx.setNotice(t('slash.noThinking'), 'info');
       return true;
     }
     const selectable = getSelectableReasoningEfforts(currentModel);
     if (selectable.length > 0 && !selectable.includes(effort)) {
-      ctx.setNotice(`This model does not offer ${effort} effort.`, 'info');
+      ctx.setNotice(t('slash.effortUnavailable', { level: t(`effort.${effort}`) }), 'info');
       return true;
     }
     if (applyToChat) {
@@ -103,7 +101,7 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
         },
       });
     }
-    ctx.setNotice(`Thinking effort set to ${effort}.`, 'success');
+    ctx.setNotice(t('slash.effortSet', { level: t(`effort.${effort}`) }), 'success');
     return true;
   }
 
@@ -115,7 +113,7 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
     const chosen = byId || byName;
     if (!chosen) {
       // Handled, not sent, and left in the composer so a typo can be fixed.
-      ctx.setNotice(`No model is called ${id}.`);
+      ctx.setNotice(t('slash.noSuchModel', { name: id }));
       return true;
     }
     ctx.accept();
@@ -124,16 +122,13 @@ async function runSlashCommand(input: string, ctx: SlashCommandContext): Promise
     } else {
       ctx.setUI({ overrides: { modelId: chosen.id } });
     }
-    ctx.setNotice(`Now answering with ${chosen.name || chosen.id}.`, 'success');
+    ctx.setNotice(t('slash.modelSet', { name: chosen.name || chosen.id }), 'success');
     return true;
   }
 
   if (command === 'help') {
     ctx.accept();
-    ctx.setNotice(
-      'Type /model and a name to change model, /search on or off for web search, and /reasoning with a level such as low or high.',
-      'info',
-    );
+    ctx.setNotice(t('slash.helpText'), 'info');
     return true;
   }
 

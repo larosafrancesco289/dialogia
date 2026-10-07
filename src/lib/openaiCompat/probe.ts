@@ -12,6 +12,7 @@ import type { OpenRouterChatRequest } from '@/lib/openrouter/types';
 import type { ModelMessage, ToolDefinition } from '@/lib/transport/contracts';
 import type { EndpointCapabilities } from '@/lib/transport/endpoints';
 import { isRecord } from '@/lib/utils/guards';
+import { t } from '@/lib/i18n';
 
 export type ProbeCapability = keyof EndpointCapabilities;
 
@@ -131,7 +132,7 @@ const CAPABILITY_BODIES: Record<ProbeCapability, (model: string) => OpenRouterCh
 };
 
 function abortError(): Error {
-  return new DOMException('The connection test was canceled.', 'AbortError');
+  return new DOMException(t('probe.canceled'), 'AbortError');
 }
 
 function isAbortError(error: unknown): boolean {
@@ -153,9 +154,9 @@ async function describeFailure(res: Response): Promise<string> {
 }
 
 function describeThrown(error: unknown, timeoutMs: number): string {
-  if (isAbortError(error)) return `No answer within ${Math.round(timeoutMs / 1000)} s.`;
+  if (isAbortError(error)) return t('probe.timeout', { seconds: Math.round(timeoutMs / 1000) });
   const message = truncate(error instanceof Error ? error.message : String(error));
-  if (!message) return 'The request failed before the server answered.';
+  if (!message) return t('probe.failedEarly');
   return /[.!?]$/.test(message) ? message : `${message}.`;
 }
 
@@ -268,16 +269,13 @@ export async function probeEndpoint(
 
   if (models.verdict === 'unreachable' || models.verdict === 'not-api') {
     const detail =
-      models.verdict === 'unreachable'
-        ? 'The server could not be reached.'
-        : 'No OpenAI-compatible server answered at this address.';
+      models.verdict === 'unreachable' ? t('probe.detail.unreachable') : t('probe.detail.notApi');
     return { models, chat: { verdict: 'skipped', detail }, capabilities: skipped(detail) };
   }
 
   const modelId = options.modelId ?? auth.endpoint.modelIds?.[0] ?? discovered[0];
   if (!modelId) {
-    const detail =
-      'No model to test with. Type a model name above, or check what the server lists.';
+    const detail = t('probe.detail.noModel');
     return { models, chat: { verdict: 'skipped', detail }, capabilities: skipped(detail) };
   }
 
@@ -298,7 +296,7 @@ export async function probeEndpoint(
       } else {
         chat = {
           verdict: 'no',
-          detail: 'Answered, but not as a token stream. Dialogia streams every reply.',
+          detail: t('probe.detail.notStream'),
         };
       }
     }
@@ -312,14 +310,14 @@ export async function probeEndpoint(
       models,
       modelId,
       chat,
-      capabilities: skipped('Skipped because the first message did not get through.'),
+      capabilities: skipped(t('probe.detail.firstFailed')),
     };
   }
 
   const capabilities = {} as Record<ProbeCapability, ProbeCheck>;
   for (const capability of PROBED_CAPABILITIES) {
     if (capability === 'parallelToolCalls' && capabilities.tools.verdict !== 'ok') {
-      capabilities[capability] = { verdict: 'skipped', detail: 'Needs tool calls.' };
+      capabilities[capability] = { verdict: 'skipped', detail: t('probe.detail.needsTools') };
       continue;
     }
     options.onStep?.(capability);
@@ -333,7 +331,7 @@ export async function probeEndpoint(
         const reported = chunks.some((chunk) => isRecord(chunk) && isRecord(chunk.usage));
         capabilities[capability] = reported
           ? { verdict: 'ok' }
-          : { verdict: 'no', detail: 'The server took the field but sent no usage back.' };
+          : { verdict: 'no', detail: t('probe.detail.noUsage') };
       } else {
         capabilities[capability] = { verdict: 'ok' };
       }

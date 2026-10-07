@@ -5,7 +5,7 @@ import { ChevronRightIcon } from '@heroicons/react/24/outline';
 import {
   TAB_LIST,
   TAB_SECTIONS,
-  SECTION_TITLES,
+  sectionTitle,
   sectionMatches,
 } from '@/components/settings/sections/config';
 import { SettingsDrawerShell } from '@/components/settings/SettingsDrawerShell';
@@ -16,6 +16,7 @@ import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import type { TabId } from '@/components/settings/types';
 import { useSaveNotice } from '@/components/settings/useSaveNotice';
 import type { SettingsDrawerState } from '@/components/settings/hooks/useSettingsDrawerState';
+import { useT, type MessageKey, type Translate } from '@/lib/i18n';
 
 const staggerContainer = {
   hidden: { opacity: 0 },
@@ -28,14 +29,17 @@ const staggerContainer = {
 };
 
 // A page with one section named like the page says what it holds instead.
-const TAB_SUMMARY_FALLBACK: Partial<Record<TabId, string>> = {
-  tutor: 'Learning sessions and their model',
+const TAB_SUMMARY_FALLBACK: Partial<Record<TabId, MessageKey>> = {
+  tutor: 'settings.tutorSummary',
 };
 
 /** "Providers · Your servers · Web search": what a Settings page holds. */
-function tabSummary(tabId: TabId, label: string): string | null {
-  const titles = TAB_SECTIONS[tabId].map((id) => SECTION_TITLES[id]);
-  if (titles.length === 1 && titles[0] === label) return TAB_SUMMARY_FALLBACK[tabId] ?? null;
+function tabSummary(t: Translate, tabId: TabId, label: string): string | null {
+  const titles = TAB_SECTIONS[tabId].map((id) => sectionTitle(id));
+  if (titles.length === 1 && titles[0] === label) {
+    const fallback = TAB_SUMMARY_FALLBACK[tabId];
+    return fallback ? t(fallback) : null;
+  }
   return titles.join(' · ');
 }
 
@@ -60,6 +64,7 @@ function SettingsPhoneView({
   tabContent,
   closeWithAnim,
 }: SettingsDrawerState) {
+  const t = useT();
   const [page, setPage] = useState<'list' | 'tab'>('list');
   const reducedMotion = useReducedMotion();
   const searching = searchQuery.trim().length > 0;
@@ -73,7 +78,8 @@ function SettingsPhoneView({
   useBackToClose(!closing, closeWithAnim);
   useBackToClose(onPage, () => setPage('list'));
   useBackToClose(searching, () => setSearchQuery(''));
-  const tabLabel = TAB_LIST.find((tab) => tab.id === activeTab)?.label ?? 'Settings';
+  const activeLabel = TAB_LIST.find((tab) => tab.id === activeTab)?.label;
+  const tabLabel = activeLabel ? t(activeLabel) : t('nav.settings');
 
   // Each page opens at its top, holding focus: the row or Back that opened it
   // is gone, and focus dropped on the page would leave Escape nowhere to go.
@@ -111,7 +117,7 @@ function SettingsPhoneView({
         closing={closing}
         onClose={closeWithAnim}
         drawerRef={drawerRef}
-        title={onPage ? tabLabel : 'Settings'}
+        title={onPage ? tabLabel : t('nav.settings')}
         onBack={onPage ? () => setPage('list') : undefined}
       >
         {onPage ? (
@@ -126,7 +132,7 @@ function SettingsPhoneView({
               <SettingsSearch
                 value={searchQuery}
                 onChange={setSearchQuery}
-                placeholder="Search settings"
+                placeholder={t('settings.search')}
               />
             </div>
             {searching ? (
@@ -134,14 +140,14 @@ function SettingsPhoneView({
                 {tabContent}
                 {!hasResults && (
                   <p className="settings-empty py-6">
-                    Nothing in settings matches “{searchQuery}”.
+                    {t('settings.noMatch', { query: searchQuery })}
                   </p>
                 )}
               </motion.div>
             ) : (
-              <nav className="settings-phone-list" aria-label="Settings pages">
+              <nav className="settings-phone-list" aria-label={t('settings.pages')}>
                 {TAB_LIST.map((tab) => {
-                  const summary = tabSummary(tab.id, tab.label);
+                  const summary = tabSummary(t, tab.id, t(tab.label));
                   return (
                     <button
                       key={tab.id}
@@ -154,7 +160,7 @@ function SettingsPhoneView({
                       }}
                     >
                       <span className="settings-phone-row__text">
-                        <span className="settings-phone-row__label">{tab.label}</span>
+                        <span className="settings-phone-row__label">{t(tab.label)}</span>
                         {summary && <span className="settings-phone-row__summary">{summary}</span>}
                       </span>
                       <ChevronRightIcon className="settings-phone-row__chevron" aria-hidden />
@@ -183,6 +189,7 @@ function SettingsWideView({
   tabContent,
   closeWithAnim,
 }: SettingsDrawerState) {
+  const t = useT();
   const searching = searchQuery.trim().length > 0;
   const hasResults =
     !searching ||
@@ -204,7 +211,7 @@ function SettingsWideView({
           <nav
             ref={sidebarRef}
             className="settings-nav hidden md:flex flex-col w-48 shrink-0 p-3 sticky top-[var(--chrome-height)] h-[calc(100dvh-var(--chrome-height))] overflow-y-auto"
-            aria-label="Settings navigation"
+            aria-label={t('settings.navigation')}
             role="tablist"
             aria-orientation="vertical"
           >
@@ -224,7 +231,7 @@ function SettingsWideView({
                   }}
                   onKeyDown={(e) => handleSidebarKeyNav(e, index)}
                 >
-                  {tab.label}
+                  {t(tab.label)}
                 </button>
               ))}
             </div>
@@ -249,7 +256,7 @@ function SettingsWideView({
                 {tabContent}
                 {!hasResults && (
                   <p className="settings-empty py-6">
-                    Nothing in settings matches “{searchQuery}”.
+                    {t('settings.noMatch', { query: searchQuery })}
                   </p>
                 )}
               </motion.div>

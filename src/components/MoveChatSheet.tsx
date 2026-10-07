@@ -3,6 +3,7 @@ import { FolderPlusIcon } from '@heroicons/react/24/outline';
 import type { Folder } from '@/lib/types';
 import { BottomSheet, SheetItem } from '@/components/ui/BottomSheet';
 import { InlineTitleEdit } from '@/components/sidebar/InlineTitleEdit';
+import { useT } from '@/lib/i18n';
 
 export type MoveChatSheetProps = {
   open: boolean;
@@ -47,18 +48,19 @@ export function MoveChatSheet({
   onCreateAndMove,
   onClose,
 }: MoveChatSheetProps) {
+  const t = useT();
   const options = useMemo(() => buildFolderOptions(folders), [folders]);
   const [naming, setNaming] = useState(false);
 
   return (
     <BottomSheet
       open={open}
-      label={`Move ${chatTitle} to folder`}
-      title={`Move “${chatTitle}”`}
+      label={t('move.label', { title: chatTitle })}
+      title={t('move.title', { title: chatTitle })}
       onClose={onClose}
     >
       <SheetItem selected={!currentFolderId} onClick={() => onMove(undefined)}>
-        No folder
+        {t('move.noFolder')}
       </SheetItem>
       {options.map((option) => (
         <SheetItem
@@ -74,15 +76,15 @@ export function MoveChatSheet({
         <div className="sheet-item">
           <InlineTitleEdit
             value=""
-            placeholder="Folder name"
-            ariaLabel="New folder name"
+            placeholder={t('folder.namePlaceholder')}
+            ariaLabel={t('folder.newName')}
             onCommit={(name) => onCreateAndMove(name)}
             onCancel={() => setNaming(false)}
           />
         </div>
       ) : (
         <SheetItem icon={<FolderPlusIcon className="h-5 w-5" />} onClick={() => setNaming(true)}>
-          New folder…
+          {t('move.newFolder')}
         </SheetItem>
       )}
     </BottomSheet>

@@ -6,6 +6,7 @@ import { SettingsSearch } from '@/components/settings/SettingsSearch';
 import { motionTransition } from '@/lib/ui/motion';
 import { DialogOverlay, DialogPortal } from '@/components/ui/Dialog';
 import { useModalFocus } from '@/lib/hooks/useModalFocus';
+import { useT } from '@/lib/i18n';
 
 const SLIDE_FROM_RIGHT = {
   initial: { x: '100%' },
@@ -37,11 +38,14 @@ export function SettingsDrawerShell({
   children,
   searchQuery = '',
   onSearchChange,
-  title = 'Settings',
+  title: givenTitle,
   onBack,
-  closeLabel = 'Close settings',
+  closeLabel: givenCloseLabel,
   actions,
 }: SettingsDrawerShellProps) {
+  const t = useT();
+  const title = givenTitle ?? t('nav.settings');
+  const closeLabel = givenCloseLabel ?? t('settings.close');
   // A field that uses Escape (clearing a search, closing its list) marks it
   // handled; only a free Escape closes the drawer, wherever focus fell.
   useModalFocus(!closing, drawerRef, { onEscape: onClose });
@@ -88,7 +92,7 @@ export function SettingsDrawerShell({
                     type="button"
                     className="settings-panel__back"
                     onClick={onBack}
-                    aria-label="Back to Settings"
+                    aria-label={t('settings.back')}
                   >
                     <ChevronLeftIcon className="h-5 w-5" aria-hidden="true" />
                   </button>
@@ -101,7 +105,7 @@ export function SettingsDrawerShell({
                   <SettingsSearch
                     value={searchQuery}
                     onChange={onSearchChange}
-                    placeholder="Search settings"
+                    placeholder={t('settings.search')}
                   />
                 )}
 

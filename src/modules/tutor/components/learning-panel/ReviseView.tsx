@@ -3,6 +3,8 @@ import type { LearningPlan, LearningPlanNode, TopicMastery } from '@/lib/types';
 import { shownPercent, statusWords } from '@/modules/tutor/lib/topicStatus';
 import { Meter, PathStep, stepState, waitingOn, type StepState } from './PlanPath';
 import { Markdown } from '@/components/Markdown';
+import { formatPercent } from '@/lib/i18n/format';
+import { useT } from '@/modules/tutor/i18n';
 
 export type PlanRevisions = {
   onSkip: (nodeId: string) => Promise<unknown> | void;
@@ -28,6 +30,7 @@ export function ReviseView({
   mastery?: Record<string, TopicMastery>;
   revisions: PlanRevisions;
 }) {
+  const t = useT();
   const [confirming, setConfirming] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -64,9 +67,9 @@ export function ReviseView({
       </ol>
 
       <div className="hub-revise__discuss">
-        <p>To add, remove or reorder topics, ask the tutor.</p>
+        <p>{t('revise.hint')}</p>
         <button type="button" className="btn-outline btn-sm" onClick={revisions.onDiscuss}>
-          Ask the tutor for changes
+          {t('revise.ask')}
         </button>
       </div>
     </div>
@@ -100,6 +103,7 @@ function ReviseItem({
   onStartNext: () => void;
   onReopen: () => void;
 }) {
+  const t = useT();
   const percent = shownPercent(state, mastery);
 
   return (
@@ -108,7 +112,7 @@ function ReviseItem({
         <span className="hub-path__name">
           <Markdown inline content={node.name} />
         </span>
-        {percent != null && <span className="hub-path__pct">{percent}%</span>}
+        {percent != null && <span className="hub-path__pct">{formatPercent(percent / 100)}</span>}
         <span className="hub-path__sub">
           {percent != null && <Meter value={mastery!.confidence} />}
           <span className="hub-path__status">
@@ -119,12 +123,12 @@ function ReviseItem({
 
       {confirming ? (
         <div className="hub-revise__actions">
-          <span className="hub-revise__ask">Mark it done and move on?</span>
+          <span className="hub-revise__ask">{t('revise.confirm')}</span>
           <button type="button" className="btn-outline btn-sm" disabled={busy} onClick={onSkip}>
-            Skip it
+            {t('revise.skip')}
           </button>
           <button type="button" className="btn-ghost btn-sm" onClick={onCancel}>
-            Cancel
+            {t('common.cancel')}
           </button>
         </div>
       ) : (
@@ -136,7 +140,7 @@ function ReviseItem({
               disabled={busy}
               onClick={onStartNext}
             >
-              Do this next
+              {t('revise.next')}
             </button>
           )}
           {(state === 'ready' || state === 'current') && (
@@ -146,12 +150,12 @@ function ReviseItem({
               disabled={busy}
               onClick={onConfirm}
             >
-              I know this
+              {t('revise.known')}
             </button>
           )}
           {state === 'done' && (
             <button type="button" className="btn-outline btn-sm" disabled={busy} onClick={onReopen}>
-              Take it up again
+              {t('revise.reopen')}
             </button>
           )}
         </div>

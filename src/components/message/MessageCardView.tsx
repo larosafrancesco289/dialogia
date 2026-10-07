@@ -8,6 +8,7 @@ import type { MessagePanelState } from '@/components/message/hooks/useMessagePan
 import { cn } from '@/lib/ui/cn';
 import { resolveMessageSources } from '@/lib/ui/messageSources';
 import styles from './MessageCard.module.css';
+import { useT } from '@/lib/i18n';
 
 export type MessageCardViewData = MessageCardViewModel & {
   chatId: string;
@@ -48,6 +49,7 @@ export type MessageCardViewData = MessageCardViewModel & {
 };
 
 export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData }) {
+  const t = useT();
   const {
     message,
     chat,
@@ -110,7 +112,7 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
         data-mid={message.id}
       >
         <p className={styles.ledgerLine}>
-          <span className="sr-only">You: </span>
+          <span className="sr-only">{t('message.youSaid')} </span>
           {message.content}
         </p>
       </div>
@@ -166,7 +168,7 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
     <div
       className={messageClassName}
       data-mid={message.id}
-      aria-label={message.role === 'assistant' ? 'Reply' : 'Your message'}
+      aria-label={t(message.role === 'assistant' ? 'message.sheet.reply' : 'message.sheet.yours')}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

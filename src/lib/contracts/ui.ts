@@ -1,4 +1,5 @@
 import type { LearningPlan, ReasoningEffort } from '@/lib/types';
+import type { LanguagePreference } from '@/lib/i18n/locales';
 
 export type UiFlagsSnapshot = {
   experimentalTutor?: boolean;
@@ -90,6 +91,8 @@ export type UiSnapshot = {
   overrides?: UiNextOverrides;
   zdrOnly?: boolean;
   messageTimestamps?: boolean;
+  /** The app's language: "auto" follows the browser's languages; absent means auto. */
+  language?: LanguagePreference;
   /** Long-term memory is read and written in chats; absent means on. */
   memoryEnabled?: boolean;
   /** The model may save sensitive details (health, beliefs) unasked; absent means on. */

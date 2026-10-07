@@ -4,6 +4,7 @@
 
 import type { PersistedUiState, UIState } from '@/lib/store/uiTypes';
 import { mergeChatDefaults, upgradeChatDefaults } from '@/lib/settings/chatDefaults';
+import { isLanguagePreference } from '@/lib/i18n/locales';
 
 export function buildPersistedUiState(ui: UIState): PersistedUiState {
   return {
@@ -13,6 +14,7 @@ export function buildPersistedUiState(ui: UIState): PersistedUiState {
     sidebarCollapsed: ui.sidebarFoldedByLayout ? false : ui.sidebarCollapsed,
     zdrOnly: ui.zdrOnly,
     messageTimestamps: ui.messageTimestamps,
+    language: ui.language,
     memoryEnabled: ui.memoryEnabled,
     memorySensitive: ui.memorySensitive,
     dynamicDefaultResolutions: ui.dynamicDefaultResolutions,
@@ -39,6 +41,8 @@ export function mergePersistedUiState(
     // Still written (the key is part of the persisted shape), never restored:
     // a load, or another tab's last write, must not open Settings by itself.
     showSettings: current.showSettings,
+    // A language this build does not speak (a newer build's backup) is Auto.
+    language: isLanguagePreference(persisted.language) ? persisted.language : current.language,
     chatDefaults: mergeChatDefaults(
       current.chatDefaults,
       upgradeChatDefaults(persisted.chatDefaults),

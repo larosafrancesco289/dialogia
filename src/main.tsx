@@ -4,6 +4,8 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from '@tanstack/react-router';
 import { router } from './router';
 import { initThemeMode } from '@/lib/hooks/useThemeMode';
+import { useChatStore } from '@/lib/store';
+import { applyLanguagePreference } from '@/lib/i18n/preference';
 
 const container = document.getElementById('root');
 if (!container) throw new Error('Missing #root element');
@@ -28,8 +30,20 @@ window.addEventListener('vite:preloadError', (event) => {
   window.location.reload();
 });
 
-createRoot(container).render(
-  <StrictMode>
-    <RouterProvider router={router} />
-  </StrictMode>,
+// The language is chosen before the first render, so a page in Italian never
+// opens in English first: English is bundled, any other is one small chunk.
+// The setting follows from then on (and from other tabs, through the store).
+const languageReady = applyLanguagePreference(useChatStore.getState().ui.language);
+useChatStore.subscribe((state, previous) => {
+  if (state.ui.language !== previous.ui.language) {
+    void applyLanguagePreference(state.ui.language);
+  }
+});
+
+void languageReady.finally(() =>
+  createRoot(container).render(
+    <StrictMode>
+      <RouterProvider router={router} />
+    </StrictMode>,
+  ),
 );

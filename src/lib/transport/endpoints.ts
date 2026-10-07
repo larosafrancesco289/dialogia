@@ -190,6 +190,3 @@ export function isValidBaseUrl(value: string): boolean {
     return false;
   }
 }
-
-export const INVALID_BASE_URL_MESSAGE =
-  'Enter the full address, such as http://localhost:11434/v1, with http:// or https:// at the start.';

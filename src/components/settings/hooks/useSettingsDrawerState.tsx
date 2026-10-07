@@ -27,6 +27,7 @@ import { DataPanel } from '@/components/settings/sections/DataPanel';
 import { TAB_LIST } from '@/components/settings/sections/config';
 import { NOTICE_EXPORTED_CHATS } from '@/lib/store/notices';
 import { buildChatExport, importChatExport } from '@/lib/settings/transfer';
+import { t } from '@/lib/i18n';
 
 export type SettingsDrawerState = {
   closing: boolean;
@@ -136,7 +137,7 @@ export function useSettingsDrawerState(): SettingsDrawerState {
   const onExport = async () => {
     const exportResult = await buildChatExport();
     if (!exportResult.ok) {
-      setNotice(exportResult.error || 'The export failed. Try again.');
+      setNotice(exportResult.error || t('data.exportFailed'));
       return;
     }
     try {
@@ -152,7 +153,7 @@ export function useSettingsDrawerState(): SettingsDrawerState {
       URL.revokeObjectURL(url);
       setNotice(NOTICE_EXPORTED_CHATS, 'success');
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'The export failed. Try again.';
+      const message = e instanceof Error ? e.message : t('data.exportFailed');
       setNotice(message);
     }
   };
@@ -163,13 +164,13 @@ export function useSettingsDrawerState(): SettingsDrawerState {
       const text = await file.text();
       const importResult = await importChatExport(text);
       if (!importResult.ok) {
-        setNotice(importResult.error || 'The import failed. Try again.');
+        setNotice(importResult.error || t('data.importFailed'));
         return;
       }
       await initializeApp();
       setNotice(importResult.notice, 'success');
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'The import failed. Try again.';
+      const message = e instanceof Error ? e.message : t('data.importFailed');
       setNotice(message);
     }
   };
