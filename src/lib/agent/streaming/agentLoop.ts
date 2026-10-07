@@ -5,8 +5,9 @@
 // and the next round streams. The loop ends when the model stops calling tools,
 // when a handler says the turn ends (a card now waits for the user; a handler
 // ending it 'after_text' in a turn with no words yet gets one more round, with
-// tool_choice 'none', to introduce the card), or at the round cap, whose last
-// round is sent with tool_choice 'none'. Between rounds the tools are read
+// tool_choice 'none', to introduce the card), when a round wrote text and its
+// calls only kept records (the reply is written), or at the round cap, whose
+// last round is sent with tool_choice 'none'. Between rounds the tools are read
 // again when a module can refresh them, so a call that changed what is
 // possible (starting a topic) opens the tools that follow from it. There is no
 // draft clearing and no follow-up nudge here.
@@ -81,7 +82,7 @@ export async function runAgentLoop(session: TurnSession): Promise<StreamingTurnR
       if (lastRound || capture.toolCalls.length === 0) break;
 
       let outcomes = repeats.check(session.convo, await runToolRound(session, round, capture));
-      const ending = turnEnding(outcomes);
+      const ending = turnEnding(outcomes, text, capture.toolCalls.length);
       introducing = ending === 'after_text' && !texts.some(Boolean);
       if (introducing) outcomes = askForIntroduction(session.convo, outcomes);
       replay.record(text, outcomes);
@@ -191,11 +192,20 @@ async function runToolRound(
 
 // ── Ending the turn ─────────────────────────────────────────────────────────
 
-/** How the round's calls end the turn: now, once it has text, or not at all. */
-function turnEnding(outcomes: ToolCallOutcome[]): 'now' | 'after_text' | undefined {
+/**
+ * How the round's calls end the turn: now, once it has text, or not at all. A
+ * round that wrote its text and made only quiet calls, all run, has replied:
+ * asking again would only invite the same reply a second time.
+ */
+function turnEnding(
+  outcomes: ToolCallOutcome[],
+  text: string,
+  calls: number,
+): 'now' | 'after_text' | undefined {
   if (outcomes.some((outcome) => outcome.endsTurn === true)) return 'now';
   if (outcomes.some((outcome) => outcome.endsTurn === 'after_text')) return 'after_text';
-  return undefined;
+  const replied = text !== '' && outcomes.length === calls && outcomes.every((o) => o.quiet);
+  return replied ? 'now' : undefined;
 }
 
 /**

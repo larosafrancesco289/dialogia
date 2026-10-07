@@ -15,6 +15,8 @@ export type ToolCallOutcome = {
   endsTurn: boolean | 'after_text';
   /** With `endsTurn: 'after_text'`: the content to read instead when the turn has no text yet. */
   contentBeforeText?: string;
+  /** The call succeeded and only kept a record. */
+  quiet?: boolean;
   replay?: PlanningToolExecutionResult['replay'];
 };
 
@@ -108,6 +110,7 @@ export async function applyToolExecutions(args: {
       ...(execution.endsTurn === 'after_text' && execution.resultBeforeText
         ? { contentBeforeText: JSON.stringify(execution.resultBeforeText) }
         : {}),
+      ...(execution.quiet ? { quiet: true } : {}),
       replay: execution.replay,
     });
     next.aggregatedResults = execution.aggregatedResults ?? next.aggregatedResults;

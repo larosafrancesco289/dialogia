@@ -38,6 +38,7 @@ const TOOL_STRICT = 'agent_test_strict';
 const TOOL_LOOKUP = 'agent_test_lookup';
 const TOOL_STOP = 'agent_test_stop';
 const TOOL_SHOWN = 'agent_test_shown';
+const TOOL_KEPT = 'agent_test_kept';
 
 let stopController: AbortController | undefined;
 
@@ -86,6 +87,12 @@ before(async () => {
     result: { ok: true, shown: 'card' },
     endsTurn: 'after_text',
     resultBeforeText: { ok: true, shown: 'card', note: 'Introduce it.' },
+  }));
+  register(TOOL_KEPT, true, () => ({
+    usedTool: true,
+    usedContentTool: false,
+    result: { ok: true, kept: true },
+    quiet: true,
   }));
   register(TOOL_STOP, true, () => {
     stopController?.abort();
@@ -194,7 +201,15 @@ async function runAgentTurn(
     { role: 'user', content: 'Go.' },
   ];
   const tools = (
-    options.tools ?? [TOOL_NOTE, TOOL_CARD, TOOL_STRICT, TOOL_LOOKUP, TOOL_STOP, TOOL_SHOWN]
+    options.tools ?? [
+      TOOL_NOTE,
+      TOOL_CARD,
+      TOOL_STRICT,
+      TOOL_LOOKUP,
+      TOOL_STOP,
+      TOOL_SHOWN,
+      TOOL_KEPT,
+    ]
   ).map(definition);
   const { refreshTools } = options;
   const run = options.viaRunTurn
@@ -358,6 +373,30 @@ test('a card after an earlier round with words ends the turn without an introduc
 
   assert.equal(turn.requests.length, 2);
   assert.equal(turn.message()?.content, 'Noted.');
+});
+
+test('a round that wrote its reply and only kept records ends the turn', async () => {
+  const replied = await runAgentTurn((round, callbacks) => {
+    if (round === 1) return reply(callbacks, 'Right. Now try 2x = 8.', [call(TOOL_KEPT)]);
+    return reply(callbacks, 'Right. Now try 2x = 8.');
+  });
+  await replied.run;
+  assert.equal(replied.requests.length, 1);
+  assert.equal(replied.message()?.content, 'Right. Now try 2x = 8.');
+  assert.equal(replied.persisted.at(-1)?.toolRounds?.[0]?.text, 'Right. Now try 2x = 8.');
+
+  // No words yet, or a call that did more than keep a record: the model goes on.
+  for (const first of [
+    (callbacks: StreamCallbacks | undefined) => reply(callbacks, '', [call(TOOL_KEPT)]),
+    (callbacks: StreamCallbacks | undefined) =>
+      reply(callbacks, 'Right.', [call(TOOL_KEPT), call(TOOL_NOTE)]),
+  ]) {
+    const turn = await runAgentTurn((round, callbacks) =>
+      round === 1 ? first(callbacks) : reply(callbacks, 'Now try 2x = 8.'),
+    );
+    await turn.run;
+    assert.equal(turn.requests.length, 2);
+  }
 });
 
 test('agent loop caps its rounds and forbids tools on the last one', async () => {

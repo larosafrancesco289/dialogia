@@ -48,6 +48,8 @@ export type RequestRecord = {
   /** Replayed tool calls from earlier turns that still carry an answer key. */
   answerKeyLeaks: number;
   messageCount: number;
+  /** What the round wrote, as it streamed. */
+  text?: string;
 };
 
 export type TurnRecord = {
@@ -150,8 +152,19 @@ export class HeadlessTutorSession {
       ...(options.pipeline ? { chatCompletion: options.pipeline.chatCompletion } : {}),
       streamChatCompletion: (params) => {
         this.dropped.push(...droppedIn(params));
-        this.requests.push(recordRequest(params, this.requests.length + 1));
-        return stream(params);
+        const record = { ...recordRequest(params, this.requests.length + 1), text: '' };
+        this.requests.push(record);
+        const onToken = params.callbacks?.onToken;
+        return stream({
+          ...params,
+          callbacks: {
+            ...params.callbacks,
+            onToken: (delta) => {
+              record.text += delta;
+              onToken?.(delta);
+            },
+          },
+        });
       },
     });
   }

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   emptyTutorState,
   TOOL_ENDS_TURN,
+  TOOL_KEEPS_RECORD,
   TUTOR_TOOLS,
   TUTOR_TOOL_NAMES,
   availableTutorTools,
@@ -181,7 +182,14 @@ test('definitions are JSON-schema function tools with usage rules', () => {
       description.length > 60 && description.length < 700,
       `${name}: ${description.length}`,
     );
-    assert.match(description, TOOL_ENDS_TURN[name] ? /Ends your turn/ : /Does not end your turn/);
+    assert.match(
+      description,
+      TOOL_ENDS_TURN[name]
+        ? /Ends your turn/
+        : TOOL_KEEPS_RECORD[name]
+          ? /Ends your turn when it comes after your reply\./
+          : /Does not end your turn/,
+    );
     const params = def.function.parameters as Record<string, unknown>;
     assert.equal(params.type, 'object');
     assert.equal(params.additionalProperties, false);

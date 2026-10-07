@@ -45,6 +45,22 @@ export const TOOL_ENDS_TURN: Record<TutorToolName, boolean> = {
   start_topic: false,
 };
 
+/**
+ * Tools that only keep the record: success needs no words. A response with the
+ * reply and only these calls ends the turn after them, so the reply is written once.
+ */
+export const TOOL_KEEPS_RECORD: Record<TutorToolName, boolean> = {
+  ask_intake: false,
+  give_diagnostic: false,
+  propose_plan: false,
+  give_quiz: false,
+  record_evidence: true,
+  note_misconception: true,
+  resolve_misconception: true,
+  complete_topic: false,
+  start_topic: false,
+};
+
 const signed = (weight: number) => (weight > 0 ? `+${weight}` : String(weight));
 
 const topicId = z.string().describe('Topic id exactly as shown in [brackets] in the tutor state.');
@@ -231,9 +247,9 @@ const DESCRIPTIONS: Record<TutorToolName, string> = {
   give_diagnostic: `Show a short multiple-choice pre-assessment (${LIMITS.diagnosticItems.min}-${LIMITS.diagnosticItems.max} items) to check prior knowledge before planning, or before the next topic at a chapter break. The engine scores it and records the evidence. Use when the learner's level is unclear; skip it when they have told you plainly. At most ${BUDGETS.diagnosticsPerSession} per session. Ends your turn.`,
   propose_plan: `Propose a learning plan, or a revision: the goal and ${LIMITS.planNodes.min}-${LIMITS.planNodes.max} topics in teaching order, each with objectives and prerequisites. startingEstimate only for a topic the learner said they know or a diagnostic tested, not for knowing its prerequisites (at most ${percent(STARTING_ESTIMATE_SAID_MAX)}% on their word, ${percent(STARTING_ESTIMATE_MAX)}% after a diagnostic); on approval it becomes evidence they can contest. Closes an unanswered intake, so propose when they would rather skip the questions. The learner approves or declines the card; nothing changes until they approve. In a revision, reuse topic ids to keep their progress. Propose at seams (after intake, at a chapter break, when the plan is done, or when asked), not mid-explanation. Ends your turn.`,
   give_quiz: `Show a multiple-choice quiz (${LIMITS.quizItems.min}-${LIMITS.quizItems.max} items) on the current topic. The engine grades each answer and updates mastery; do not record quiz results yourself. Use after teaching a piece of the topic to check it has landed. At most ${BUDGETS.quizzesPerTopic} per topic. Ends your turn.`,
-  record_evidence: `Record what the conversation showed about the learner's grasp of a topic, judged from their own words: struggled (an answer with an error in it, even if part was right, or stuck), partial (right as far as it went, but incomplete), applied (used it correctly), explained (explained it back), insight (went beyond what was taught). helped: when your last message told them the move they made; not when you only asked. One call per topic per reply, summing up the exchange; a reply that notes a misconception on a topic gains nothing on it. Source "learner_said" when they tell you about their own understanding. Not for quiz or diagnostic answers. Does not end your turn.`,
-  note_misconception: `Note a specific mistaken belief the learner showed (not a slip). It is shown to the learner, as what they thought ("You thought …"), and blocks completing the topic as mastered until resolved. Noting the same description again counts another occurrence. Say which answer showed it: the latest one earns nothing on the topic this reply; an earlier one, already recorded as a mistake, leaves the latest answer's credit standing. Does not end your turn.`,
-  resolve_misconception: `Mark an open misconception resolved once the learner has shown the correct understanding. Does not end your turn.`,
+  record_evidence: `Record what the conversation showed about the learner's grasp of a topic, judged from their own words: struggled (an answer with an error in it, even if part was right, or stuck), partial (right as far as it went, but incomplete), applied (used it correctly), explained (explained it back), insight (went beyond what was taught). helped: when your last message told them the move they made; not when you only asked. One call per topic per reply, summing up the exchange; a reply that notes a misconception on a topic gains nothing on it. Source "learner_said" when they tell you about their own understanding. Not for quiz or diagnostic answers. Ends your turn when it comes after your reply.`,
+  note_misconception: `Note a specific mistaken belief the learner showed (not a slip). It is shown to the learner, as what they thought ("You thought …"), and blocks completing the topic as mastered until resolved. Noting the same description again counts another occurrence. Say which answer showed it: the latest one earns nothing on the topic this reply; an earlier one, already recorded as a mistake, leaves the latest answer's credit standing. Ends your turn when it comes after your reply.`,
+  resolve_misconception: `Mark an open misconception resolved once the learner has shown the correct understanding. Ends your turn when it comes after your reply.`,
   complete_topic: `Finish the current topic. With how "mastered" it needs mastery of at least ${percent(READY)}%, at least ${MASTERY_EVIDENCE_MIN} pieces of evidence from the learner's work this session (quiz or diagnostic answers, or your observations; a starting estimate does not count), and no open misconceptions. It does not start the next topic: the learner sees a chapter break and chooses what comes next, so do not call start_topic in the same reply. Use when the topic's objectives are met; do not use to move on while evidence is thin. Does not end your turn.`,
   start_topic: `Start a topic whose prerequisites are done. Use at a chapter break, in a later reply than the one that completed the topic, when the learner says in chat that they want to go on (they may also press Go on themselves). Returns the topic's objectives. Does not end your turn.`,
 };
