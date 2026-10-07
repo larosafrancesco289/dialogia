@@ -43,7 +43,8 @@ export function WelcomeHero({ keyboardMetrics }: { keyboardMetrics: KeyboardMetr
     ? t.rich('welcome.headline.first', { name: emphasis('Dialogia') })
     : tutorActive
       ? // No longer than "Begin a new dialogue", so switching modes never
-        // rewraps the headline and moves the switch from under the pointer.
+        // rewraps the headline and moves the switch from under the pointer
+        // (each language keeps its pair of headlines to one phone line).
         t.rich('welcome.headline.learn', { word: emphasis(t('welcome.headline.learnWord')) })
       : t.rich('welcome.headline.chat', { word: emphasis(t('welcome.headline.chatWord')) });
   // Said once, on the page that asks for a key.

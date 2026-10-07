@@ -6,6 +6,12 @@
 const en = {
   // Shared
   'common.notNow': 'Not now',
+  'common.off': 'Off',
+  'common.cancel': 'Cancel',
+  'common.save': 'Save',
+  'common.delete': 'Delete',
+  'common.close': 'Close',
+  'common.dismiss': 'Dismiss',
 
   // Welcome and first run
   'welcome.headline.first': 'Welcome to {name}',
@@ -18,6 +24,7 @@ const en = {
   'welcome.connectTitle': 'First, connect a model',
   'welcome.connected': 'Connected',
   'setup.title': 'Connect a model',
+  'setup.needsKey': '{model} runs on {provider}. Add your {provider} key to use it.',
   'connect.lead.openrouter':
     'Paste a key from OpenRouter. One key reaches most models, and you pay OpenRouter only for what you use.',
   'connect.lead.anthropic':
@@ -49,7 +56,6 @@ const en = {
     'This browser could not save your key, so it works only until you close this page.',
   'connect.invalidAddress':
     'Enter the full address, such as http://localhost:11434/v1, with http:// or https:// at the start.',
-  'common.off': 'Off',
 
   // Composer
   'composer.placeholder': 'Ask anything',
@@ -94,6 +100,7 @@ const en = {
   'search.builtIn': 'Built-in',
   'search.builtInDescription': "The model provider's own search",
   'search.toolDescription': 'Searches when it needs to, and reads the pages it finds',
+  'search.openrouter': 'OpenRouter search',
 
   // Slash commands (the commands themselves stay in English)
   'slash.model': 'Answer with another model',
@@ -112,8 +119,6 @@ const en = {
   'slash.modelSet': 'Now answering with {name}.',
   'slash.helpText':
     'Type /model and a name to change model, /search on or off for web search, and /reasoning with a level such as low or high.',
-  'common.cancel': 'Cancel',
-  'common.save': 'Save',
 
   // Chat
   'chat.opening': 'Opening the chat…',
@@ -122,6 +127,10 @@ const en = {
     other: 'Show earlier messages ({count})',
   },
   'chat.scrollToBottom': 'Scroll to bottom',
+
+  // Sidebar and chats
+  'chat.untitled': 'New chat',
+  'chat.branchMark': '(branch)',
 
   // A message and its actions
   'message.saveShortcut': '{key} Enter to save',
@@ -150,6 +159,7 @@ const en = {
   'message.filtered.blocked':
     'A safety classifier blocked this request before the model could answer.',
   'message.filtered.reason': 'Reason given: {reason}.',
+  'message.youSaid': 'You:',
 
   // A reply's versions (Try again keeps the old one)
   'versions.label': 'Version {at} of {count}',
@@ -163,6 +173,7 @@ const en = {
   'versions.deleteTitle': 'Delete this version?',
   'versions.deleteBody':
     'This version will be gone for good. The reply stays, showing another version.',
+
   // The reasoning ledger: what the model thought and which tools it used
   'activity.thinking': 'Thinking',
   'activity.thought': 'Thought',
@@ -188,9 +199,14 @@ const en = {
   'activity.failed': 'Failed',
   'activity.noResults': 'No results',
   'activity.copyThinking': 'Copy thinking',
+  'activity.turnFailed': 'The turn failed before this call ran',
   'sources.found': { one: '{count} source found', other: '{count} sources found' },
   'sources.looking': 'Looking for sources…',
   'sources.lookingFor': 'Looking for sources: {query}…',
+  'sources.untitled': 'Untitled source',
+
+  // Ends with {title} in every language: the renderer knows a citation by the words before it.
+  'sources.citation': 'Source {number}: {title}',
 
   // How a reply ended
   'ending.stopped': 'Stopped before the end.',
@@ -217,7 +233,11 @@ const en = {
   'attachments.audio': 'Audio',
   'attachments.audioAttached': 'Audio attached',
   'attachments.pages': { one: '{count} page', other: '{count} pages' },
-  'message.youSaid': 'You:',
+  'attachments.attachment': 'attachment',
+  'attachments.remove': 'Remove',
+  'attachments.removeNamed': 'Remove {name}',
+  'attachments.attachedAudio': 'Attached (mp3/wav)',
+  'attachments.attachedPdf': 'Attached (read in your browser)',
 
   // Developer views (Settings › Appearance › Developer)
   'debug.request': 'Debug request',
@@ -253,6 +273,7 @@ const en = {
   'toolLog.usedInReply': 'Used in reply',
   'toolLog.learnerUpdated': 'Learner model updated',
   'toolLog.planUpdated': 'Plan updated',
+
   // Models
   'models.caps.reasoning': 'Thinks before answering',
   'models.caps.vision': 'Reads images',
@@ -271,6 +292,26 @@ const en = {
   'models.curated.kimi': 'Open weights, strong at code, good value',
   'models.curated.grok': 'The newest Grok, for long agentic runs',
   'models.curated.image': 'Makes and edits images',
+
+  // Settings › Models
+  'models.default.follows': 'New chats follow the model you last chose.',
+  'models.default.startsHere': 'New chats start here until you choose a model in a chat.',
+  'models.default.reset': 'Reset',
+  'models.default.refresh': 'Refresh list',
+  'models.favorites.hint': 'The models the picker offers beside its recommendations.',
+  'models.favorites.empty': 'No favorites yet.',
+  'models.favorites.add': 'Add a model',
+  'models.zdr': 'Zero data retention only',
+  'models.zdrHint': 'Offer only models from providers that do not keep your prompts.',
+  'models.familyMoved': '{family} is now {model}: new chats use it, chats under way keep theirs.',
+  'models.defaultMissing':
+    '{model} is not offered by your providers, so new chats start with {fallback}.',
+  'models.hiddenZdr':
+    '{server} models are hidden: zero data retention is on, and only OpenRouter can promise it.',
+  'models.unavailableKey': '{server} models unavailable: the key was rejected.',
+  'models.unavailableLimited': '{server} models unavailable: rate limited.',
+  'models.unreachable': 'Could not reach {server}.',
+  'models.unavailable': '{server} models unavailable right now.',
   'pricing.free': 'Free',
   'pricing.in': 'in {rate}/M',
   'pricing.out': 'out {rate}/M',
@@ -294,11 +335,6 @@ const en = {
   'regenerate.with': 'Try again with',
   'regenerate.withAnother': 'Try again with another model',
   'regenerate.sameModel': 'same model',
-  'common.delete': 'Delete',
-
-  // Sidebar and chats
-  'chat.untitled': 'New chat',
-  'chat.branchMark': '(branch)',
   'sidebar.newChat': 'New chat',
   'sidebar.createFolder': 'Create folder',
   'sidebar.folders': 'Folders',
@@ -320,11 +356,6 @@ const en = {
   'chatRow.deleteBody': '“{title}” and its messages will be gone for good.',
   'folder.namePlaceholder': 'Folder name',
   'folder.newName': 'New folder name',
-  'move.label': 'Move {title} to folder',
-  'move.title': 'Move “{title}”',
-  'move.noFolder': 'No folder',
-  'move.newFolder': 'New folder…',
-  'move.heading': 'Move to',
   'folder.actionsFor': 'Folder actions for {name}',
   'folder.rename': 'Rename folder',
   'folder.delete': 'Delete folder',
@@ -332,8 +363,12 @@ const en = {
   'folder.deleteBodyChats': 'The chats in “{name}” stay; they move out of the folder.',
   'folder.deleteBodyEmpty': '“{name}” is empty.',
   'folder.count': { one: '{count} chat', other: '{count} chats' },
-  'common.close': 'Close',
-  'common.dismiss': 'Dismiss',
+  'folder.newDefault': 'New folder',
+  'move.label': 'Move {title} to folder',
+  'move.title': 'Move “{title}”',
+  'move.noFolder': 'No folder',
+  'move.newFolder': 'New folder…',
+  'move.heading': 'Move to',
 
   // Header, drawer and pages
   'nav.memory': 'Memory',
@@ -351,11 +386,7 @@ const en = {
   'lightbox.download': 'Download',
   'lightbox.previous': 'Previous',
   'lightbox.next': 'Next',
-  'attachments.attachment': 'attachment',
-  'attachments.remove': 'Remove',
-  'attachments.removeNamed': 'Remove {name}',
-  'attachments.attachedAudio': 'Attached (mp3/wav)',
-  'attachments.attachedPdf': 'Attached (read in your browser)',
+
   // Settings › Chat
   'settings.chat.systemHint':
     'What every new chat is told before your first message. A learning session adds its own instructions on top.',
@@ -388,6 +419,65 @@ const en = {
   'settings.memory.sensitiveHint':
     'Let the model note details like health conditions or religious beliefs without being asked. Memory is kept only in this browser, and goes to the chat’s provider like the rest of it. Off, it saves them only when you ask.',
   'settings.memory.open': 'Open Memory',
+
+  // Settings: pages and sections
+  'settings.tab.connections': 'Connections',
+  'settings.tab.models': 'Models',
+  'settings.tab.chat': 'Chat',
+  'settings.tab.tutor': 'Tutor',
+  'settings.tab.appearance': 'Appearance',
+  'settings.tab.data': 'Data',
+  'settings.section.providers': 'Providers',
+  'settings.section.endpoints': 'Your servers',
+  'settings.section.web-search': 'Web search',
+  'settings.section.default-model': 'Default model',
+  'settings.section.favorites': 'Favorites',
+  'settings.section.privacy': 'Privacy',
+  'settings.section.general': 'System prompt',
+  'settings.section.memory': 'Memory',
+  'settings.section.reasoning': 'Thinking',
+  'settings.section.tutor': 'Tutor',
+  'settings.section.theme': 'Theme',
+  'settings.section.language': 'Language',
+  'settings.section.display': 'Display',
+  'settings.section.developer': 'Developer',
+  'settings.section.data': 'Import and export',
+
+  // What each section shows and is about, so search finds it by the words on
+  // screen as well as by its title. English words always find it too.
+  'settings.keywords.providers': 'openrouter key anthropic key api provider connect replace remove',
+  'settings.keywords.endpoints':
+    'your own server local ollama lm studio llama.cpp vllm server address base url custom endpoint openai compatible key api model names test connection tools images thinking effort reply costs prompt caching chat titles remove self-hosted',
+  'settings.keywords.web-search': 'tavily key search browse web openrouter search jina reader',
+  'settings.keywords.default-model': 'new chat default model reset refresh list',
+  'settings.keywords.favorites': 'favorite favourite star models remove picker',
+  'settings.keywords.privacy': 'zero data retention only zdr privacy providers prompts',
+  'settings.keywords.general':
+    'system prompt saved prompts choose a saved prompt preset save current rename delete message timestamps date time',
+  'settings.keywords.memory':
+    'use memory remember forget notes about you learning include sensitive topics private health open memory bookmark',
+  'settings.keywords.reasoning':
+    'thinking effort thinking budget reasoning tokens level model default',
+  'settings.keywords.tutor':
+    'tutor mode always tutor follow the tutor scroll tutor model learning plan learner teaching',
+  'settings.keywords.theme': 'theme color colour scheme light dark auto system',
+  'settings.keywords.language':
+    'language translation auto english italiano français español deutsch português ελληνικά',
+  'settings.keywords.display':
+    'show thinking by default show reply details model speed cost stats colophon display',
+  'settings.keywords.developer':
+    'developer tool-call log request view include the raw json each reply debug inspect arguments result',
+  'settings.keywords.data': 'import and export chats and settings json file backup data',
+  'settings.tutorSummary': 'Learning sessions and their model',
+  'settings.search': 'Search settings',
+  'settings.clearSearch': 'Clear search',
+  'settings.noMatch': 'Nothing in settings matches “{query}”.',
+  'settings.pages': 'Settings pages',
+  'settings.navigation': 'Settings navigation',
+  'settings.close': 'Close settings',
+  'settings.back': 'Back to Settings',
+  'settings.saveFailed': 'Settings could not be saved. Try the change again.',
+
   // Settings › Connections
   'providers.rejected': 'The provider rejected this key. Paste a new one.',
   'providers.usingKey': 'Using your key',
@@ -476,73 +566,19 @@ const en = {
   'probe.apply': 'Apply to the checkboxes below',
   'probe.applyHint': 'Turns on what was accepted and off what was rejected.',
   'probe.alreadyMatch': 'The checkboxes below already match what this server accepted.',
-  // Settings: pages and sections
-  'settings.tab.connections': 'Connections',
-  'settings.tab.models': 'Models',
-  'settings.tab.chat': 'Chat',
-  'settings.tab.tutor': 'Tutor',
-  'settings.tab.appearance': 'Appearance',
-  'settings.tab.data': 'Data',
-  'settings.section.providers': 'Providers',
-  'settings.section.endpoints': 'Your servers',
-  'settings.section.web-search': 'Web search',
-  'settings.section.default-model': 'Default model',
-  'settings.section.favorites': 'Favorites',
-  'settings.section.privacy': 'Privacy',
-  'settings.section.general': 'System prompt',
-  'settings.section.memory': 'Memory',
-  'settings.section.reasoning': 'Thinking',
-  'settings.section.tutor': 'Tutor',
-  'settings.section.theme': 'Theme',
-  'settings.section.language': 'Language',
-  'settings.section.display': 'Display',
-  'settings.section.developer': 'Developer',
-  'settings.section.data': 'Import and export',
-  // What each section shows and is about, so search finds it by the words on
-  // screen as well as by its title. English words always find it too.
-  'settings.keywords.providers': 'openrouter key anthropic key api provider connect replace remove',
-  'settings.keywords.endpoints':
-    'your own server local ollama lm studio llama.cpp vllm server address base url custom endpoint openai compatible key api model names test connection tools images thinking effort reply costs prompt caching chat titles remove self-hosted',
-  'settings.keywords.web-search': 'tavily key search browse web openrouter search jina reader',
-  'settings.keywords.default-model': 'new chat default model reset refresh list',
-  'settings.keywords.favorites': 'favorite favourite star models remove picker',
-  'settings.keywords.privacy': 'zero data retention only zdr privacy providers prompts',
-  'settings.keywords.general':
-    'system prompt saved prompts choose a saved prompt preset save current rename delete message timestamps date time',
-  'settings.keywords.memory':
-    'use memory remember forget notes about you learning include sensitive topics private health open memory bookmark',
-  'settings.keywords.reasoning':
-    'thinking effort thinking budget reasoning tokens level model default',
-  'settings.keywords.tutor':
-    'tutor mode always tutor follow the tutor scroll tutor model learning plan learner teaching',
-  'settings.keywords.theme': 'theme color colour scheme light dark auto system',
-  'settings.keywords.language':
-    'language translation auto english italiano français español deutsch português ελληνικά',
-  'settings.keywords.display':
-    'show thinking by default show reply details model speed cost stats colophon display',
-  'settings.keywords.developer':
-    'developer tool-call log request view include the raw json each reply debug inspect arguments result',
-  'settings.keywords.data': 'import and export chats and settings json file backup data',
-  'settings.tutorSummary': 'Learning sessions and their model',
-  'settings.search': 'Search settings',
-  'settings.clearSearch': 'Clear search',
-  'settings.noMatch': 'Nothing in settings matches “{query}”.',
-  'settings.pages': 'Settings pages',
-  'settings.navigation': 'Settings navigation',
-  'settings.close': 'Close settings',
-  'settings.back': 'Back to Settings',
-  'settings.saveFailed': 'Settings could not be saved. Try the change again.',
 
-  // Settings › Models
-  'models.default.follows': 'New chats follow the model you last chose.',
-  'models.default.startsHere': 'New chats start here until you choose a model in a chat.',
-  'models.default.reset': 'Reset',
-  'models.default.refresh': 'Refresh list',
-  'models.favorites.hint': 'The models the picker offers beside its recommendations.',
-  'models.favorites.empty': 'No favorites yet.',
-  'models.favorites.add': 'Add a model',
-  'models.zdr': 'Zero data retention only',
-  'models.zdrHint': 'Offer only models from providers that do not keep your prompts.',
+  // Testing a server (the details under each line)
+  'probe.canceled': 'The connection test was canceled.',
+  'probe.timeout': 'No answer within {seconds} s.',
+  'probe.failedEarly': 'The request failed before the server answered.',
+  'probe.detail.unreachable': 'The server could not be reached.',
+  'probe.detail.notApi': 'No OpenAI-compatible server answered at this address.',
+  'probe.detail.noModel':
+    'No model to test with. Type a model name above, or check what the server lists.',
+  'probe.detail.notStream': 'Answered, but not as a token stream. Dialogia streams every reply.',
+  'probe.detail.firstFailed': 'Skipped because the first message did not get through.',
+  'probe.detail.needsTools': 'Needs tool calls.',
+  'probe.detail.noUsage': 'The server took the field but sent no usage back.',
 
   // Settings › Data
   'data.label': 'Chats and settings',
@@ -567,6 +603,7 @@ const en = {
     one: '{count} chat could not be read.',
     other: '{count} chats could not be read.',
   },
+
   // Settings › Appearance
   'appearance.scheme': 'Color scheme',
   'appearance.schemeHint': 'Light, dark, or following your system.',
@@ -590,6 +627,7 @@ const en = {
     'Above each reply, the request that produced it. Captured from now on and kept until you reload.',
   'appearance.rawJson': 'Include the raw JSON',
   'appearance.rawJsonHint': 'The request exactly as sent, ready to copy.',
+
   // Code blocks and diagrams in replies
   'code.copy': 'Copy code',
   'code.wrap': 'Wrap',
@@ -599,6 +637,7 @@ const en = {
   'code.expand': 'Expand',
   'code.collapse': 'Collapse',
   'code.diagramFailed': 'This diagram could not be drawn.',
+
   // Memory
   'memory.close': 'Close memory',
   'memory.folders': 'Memory folders',
@@ -670,6 +709,7 @@ const en = {
     'Learning sessions appear here on their own, with their progress read live from the chat.',
   'memory.record.finished': 'Finished {date}',
   'memory.record.progress': '{done} of {count} done · last studied {date}',
+
   // Notices: the toasts that say something went right or wrong
   'notice.invalidKey': 'That key was rejected. Check it in Settings › Connections.',
   'notice.expiredKey': 'That key has expired. Add a new one in Settings › Connections.',
@@ -715,19 +755,6 @@ const en = {
   'notice.droppedOne': '{list} was left out: this model does not accept them.',
   'notice.droppedMany': '{list} were left out: this model does not accept them.',
   'notice.noModelsOffered': '{servers} offered no models.',
-  'activity.turnFailed': 'The turn failed before this call ran',
-  'folder.newDefault': 'New folder',
-  'sources.untitled': 'Untitled source',
-  'setup.needsKey': '{model} runs on {provider}. Add your {provider} key to use it.',
-  'models.familyMoved': '{family} is now {model}: new chats use it, chats under way keep theirs.',
-  'models.defaultMissing':
-    '{model} is not offered by your providers, so new chats start with {fallback}.',
-  'models.hiddenZdr':
-    '{server} models are hidden: zero data retention is on, and only OpenRouter can promise it.',
-  'models.unavailableKey': '{server} models unavailable: the key was rejected.',
-  'models.unavailableLimited': '{server} models unavailable: rate limited.',
-  'models.unreachable': 'Could not reach {server}.',
-  'models.unavailable': '{server} models unavailable right now.',
   'zdr.blocked':
     '{model} does not promise zero data retention. Pick another model, or turn off Zero data retention only in Settings › Models.',
   'zdr.unavailable':
@@ -748,22 +775,9 @@ const en = {
   'attach.audioTypes': 'only mp3 or wav audio',
   'attach.modelTakes': 'this model takes {kinds}',
   'attach.notAttached': 'Not attached: {files}.',
-
-  // Testing a server (the details under each line)
-  'probe.canceled': 'The connection test was canceled.',
-  'probe.timeout': 'No answer within {seconds} s.',
-  'probe.failedEarly': 'The request failed before the server answered.',
-  'probe.detail.unreachable': 'The server could not be reached.',
-  'probe.detail.notApi': 'No OpenAI-compatible server answered at this address.',
-  'probe.detail.noModel':
-    'No model to test with. Type a model name above, or check what the server lists.',
-  'probe.detail.notStream': 'Answered, but not as a token stream. Dialogia streams every reply.',
-  'probe.detail.firstFailed': 'Skipped because the first message did not get through.',
-  'probe.detail.needsTools': 'Needs tool calls.',
-  'probe.detail.noUsage': 'The server took the field but sent no usage back.',
+  'attach.hint': 'Attach {kinds}',
 
   // Search errors, as the reasoning line shows them
-  'search.openrouter': 'OpenRouter search',
   'searchError.failed': 'The search failed.',
   'searchError.tooLong': 'The search took too long.',
   'searchError.pageTooLong': 'The page took too long to load.',
@@ -787,7 +801,6 @@ const en = {
   'searchError.tavily.trouble': 'Tavily is having trouble right now. Try again later.',
   'searchError.tavily.search': 'Tavily could not run this search.',
   'searchError.tavily.fetch': 'Tavily could not fetch this page.',
-  //@@END
 } as const;
 
 export default en;

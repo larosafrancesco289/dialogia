@@ -8,6 +8,7 @@ import {
   toPdfAttachment,
   toAudioAttachment,
 } from '@/lib/attachments/ui';
+import { t } from '@/lib/i18n';
 
 type UseComposerAttachmentsOptions = {
   canVision: boolean;
@@ -104,7 +105,7 @@ export function useComposerAttachments({
     [setAttachments],
   );
 
-  const attachmentsHint = `Attach ${acceptedKinds(canVision, canAudio)}`;
+  const attachmentsHint = t('attach.hint', { kinds: acceptedKinds(canVision, canAudio) });
 
   const openFilePicker = useCallback(() => {
     fileInputRef.current?.click();
