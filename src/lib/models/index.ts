@@ -80,7 +80,11 @@ export {
   isDynamicModelId,
   resolveDynamicModelId,
 } from '@/lib/models/dynamicDefaults';
-export { resolveDefaultModelId, resolveTutorModelId } from '@/lib/models/defaultModels';
+export {
+  resolveDefaultModelId,
+  resolveTutorModelId,
+  tutorDefaultEffort,
+} from '@/lib/models/defaultModels';
 export {
   clampReasoningEffort,
   getDefaultReasoningEffort,

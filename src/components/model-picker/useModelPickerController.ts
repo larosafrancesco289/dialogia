@@ -91,7 +91,7 @@ export function useModelPickerController(): ModelPickerController {
 
   const allOptions = useMemo(() => {
     const defaultCurated = curated.find((m) => m.id === defaultModelId);
-    // With no model list yet (no key), "GPT-6 Luna", not the bare id.
+    // With no model list yet (no key), "Claude Haiku 5.5", not the bare id.
     const defaultName = defaultCurated?.name || formatModelLabel({ fallbackId: defaultModelId });
     const injectedDefault = [{ id: defaultModelId, name: defaultName }];
     return [...injectedDefault, ...curated, ...customOptions].reduce(

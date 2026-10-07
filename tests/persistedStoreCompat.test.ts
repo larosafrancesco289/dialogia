@@ -71,6 +71,29 @@ test('a pre-refactor persisted blob survives migrate + merge', () => {
   assert.ok(merged.ui.search);
 });
 
+test('a saved tutor model of GPT-6 Luna, the old default, becomes Claude Haiku 5.5 and nothing else moves', () => {
+  // Every v8 state holds the tutor model, because the UI defaults write it.
+  const saved = (defaultModelId: string) => ({
+    ...preRefactorBlob,
+    ui: { ...preRefactorBlob.ui, tutor: { defaultModelId, forceMode: true, autoScroll: true } },
+  });
+  const luna = mergePersistedState(freshState(), migrate(saved('openai/gpt-6-luna'), 8) as never);
+  assert.equal(luna.ui.tutor?.defaultModelId, 'anthropic/claude-haiku-5.5');
+  assert.equal(luna.ui.tutor?.forceMode, true);
+  assert.equal(luna.selectedChatId, 'chat-42');
+
+  // A model the learner chose stays, and so does Luna's newest under its family id.
+  for (const chosen of ['openai/gpt-6-sol', '~openai/gpt-luna-latest', 'openai/gpt-6-luna-pro']) {
+    const kept = mergePersistedState(freshState(), migrate(saved(chosen), 8) as never);
+    assert.equal(kept.ui.tutor?.defaultModelId, chosen);
+  }
+  // A state already at v9 is not migrated again.
+  assert.equal(
+    migrate(saved('openai/gpt-6-luna'), 9).ui?.tutor?.defaultModelId,
+    'openai/gpt-6-luna',
+  );
+});
+
 test('partialize emits the same key set the pre-refactor build wrote', () => {
   const merged = mergePersistedState(freshState(), migrate(preRefactorBlob, 6) as never);
   const persisted = buildPersistedState(merged as StoreState);

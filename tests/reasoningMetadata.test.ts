@@ -245,9 +245,15 @@ test('new chats start with Claude Haiku on either key, and GPT Luna where Haiku 
     'anthropic-direct/claude-haiku-5-5',
   );
   assert.equal(resolveDefaultModelId([or('openai/gpt-6-luna')]), 'openai/gpt-6-luna');
-  // The tutor keeps its own pinned model.
+  // The tutor is pinned to Claude Haiku 5.5, takes Haiku's newest on a Claude
+  // key, and falls back to GPT Luna where no Haiku is served.
   assert.equal(
     resolveTutorModelId(undefined, [or('openai/gpt-6-luna'), or('anthropic/claude-haiku-5.5')]),
-    'openai/gpt-6-luna',
+    'anthropic/claude-haiku-5.5',
   );
+  assert.equal(
+    resolveTutorModelId(undefined, [direct('anthropic-direct/claude-haiku-5-5')]),
+    'anthropic-direct/claude-haiku-5-5',
+  );
+  assert.equal(resolveTutorModelId(undefined, [or('openai/gpt-6-luna')]), 'openai/gpt-6-luna');
 });

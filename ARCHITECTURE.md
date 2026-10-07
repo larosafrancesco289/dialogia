@@ -262,8 +262,10 @@ id, so pricing, capabilities, ZDR and prompt caching describe the real model and
 never changes model underneath itself. When a family moves, `loadModels` says so once: new chats
 take the new model, chats under way keep theirs. New chats start with the first family in
 `DEFAULT_MODEL_PREFERENCE` that the user's providers serve (Claude Haiku, on OpenRouter or a Claude
-API key, then GPT Luna). The tutor stays pinned to the model its prompt was tuned on, and falls back through
-`TUTOR_MODEL_PREFERENCE` if it disappears. Neither default ever falls back to a model on the user's
+API key, then GPT Luna). The tutor stays pinned to the model its prompt was tuned on, Claude Haiku
+5.5, which it runs at high effort unless the learner chose one, and falls back through
+`TUTOR_MODEL_PREFERENCE` if it disappears. The tutor model is one setting for every learning
+session, so changing it moves tutor chats under way too. Neither default ever falls back to a model on the user's
 own server while a built-in provider can serve one. Claude capabilities (adaptive thinking, effort
 levels, caching) are likewise read from the id's generation, not from a list of ids.
 
