@@ -16,8 +16,10 @@
     "tutor:simulate": "tsx src/modules/tutor/tooling/simulate.ts"
   },
   "dependencies": {
+    "@fontsource-variable/manrope": "^5.3.0",
     "@fontsource-variable/newsreader": "^5.3.0",
     "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
+    "@fontsource-variable/source-serif-4": "^5.3.0",
     "@heroicons/react": "^2.1.5",
     "@tanstack/react-router": "^1.170.18",
     "dexie": "^4.0.8",

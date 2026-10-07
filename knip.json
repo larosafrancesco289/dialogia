@@ -9,8 +9,10 @@
   "project": ["src/**/*.{ts,tsx}!", "!src/lib/html.ts!", "!src/**/testSupport.ts!", "*.{ts,js}"],
   "ignoreExportsUsedInFile": true,
   "ignoreDependencies": [
+    "@fontsource-variable/manrope",
     "@fontsource-variable/newsreader",
     "@fontsource-variable/plus-jakarta-sans",
+    "@fontsource-variable/source-serif-4",
     "tailwindcss"
   ]
 }
