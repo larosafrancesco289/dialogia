@@ -289,9 +289,10 @@ const messages: Translation<typeof en> = {
   'models.caps.zdr': 'Non conserva nessun tuo dato (conservazione zero)',
   'models.contextHint': 'Quanto riesce a leggere in una volta',
   'models.contextTokens': { one: '{count} token', other: '{count} token' },
-  'models.curated.gptLuna':
-    'Veloce, economico e bravo con gli strumenti; le nuove chat partono da qui',
-  'models.curated.tutor': 'Veloce, economico e affidabile con gli strumenti; il tutor di partenza',
+  'models.curated.claudeHaiku': 'Veloce, economico e scrive bene; le nuove chat partono da qui',
+  'models.curated.gptLuna': 'Veloce, economico e sintetico; bravo con gli strumenti',
+  'models.curated.tutor':
+    'Veloce, economico e un insegnante paziente e caloroso; il tutor di partenza',
   'models.curated.gptSol': 'La linea principale di OpenAI, per ragionamenti e testi più difficili',
   'models.curated.claudeOpus':
     'Lavoro accurato e di lunga durata; il predefinito consigliato da Anthropic',
