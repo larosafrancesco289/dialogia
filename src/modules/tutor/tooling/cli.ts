@@ -14,6 +14,7 @@ import { getOpenRouterKeyFallback } from '@/lib/env/keys';
 import { fetchModels } from '@/lib/openrouter';
 import { OPENROUTER_ENDPOINT } from '@/lib/transport/endpoints';
 import type { Chat, ModelDescriptor } from '@/lib/types';
+import { ReasoningEffortEnum, type ReasoningEffort } from '@/lib/types/enums';
 import { resolveTutorFlags, type TutorFlags } from '@/modules/tutor/engine';
 import { checkRun, DEFAULT_CHECK_OPTIONS } from '@/modules/tutor/tooling/check';
 import { judgeSession, type Judgement } from '@/modules/tutor/tooling/judge';
@@ -34,6 +35,7 @@ with an LLM playing the student. Needs OPENROUTER_API_KEY (read from .env.local 
   --scenario <id>          Scenario to play (default linear_equations); --list shows them
   --turns <n>              Exchanges: student message + tutor turn (default: the scenario's)
   --tutor-model <id>       Tutor model (default ${DEFAULT_TUTOR_MODEL_ID})
+  --tutor-effort <level>   The tutor chat's reasoning effort (none … max; default: the app's own)
   --student-model <id>     Student model (default ${DEFAULT_STUDENT_MODEL_ID})
   --plan-editable=<bool>   Study condition flags (default true); false turns the control off
   --model-visible=<bool>
@@ -71,6 +73,16 @@ function bool(args: ArgMap, key: string): boolean | undefined {
   if (value === undefined) return undefined;
   if (value === true) return true;
   return !['false', '0', 'no', 'off'].includes(String(value).toLowerCase());
+}
+
+function effort(args: ArgMap): ReasoningEffort | undefined {
+  const value = str(args, 'tutor-effort');
+  if (value === undefined) return undefined;
+  const levels: string[] = Object.values(ReasoningEffortEnum);
+  if (!levels.includes(value)) {
+    throw new Error(`Unknown --tutor-effort "${value}". Try: ${levels.join(', ')}`);
+  }
+  return value as ReasoningEffort;
 }
 
 function stubModel(id: string): ModelDescriptor {
@@ -113,7 +125,11 @@ function completionLLM(
   };
 }
 
-function tutorChat(tutorModel: string, flags: TutorFlags): Chat {
+function tutorChat(
+  tutorModel: string,
+  flags: TutorFlags,
+  reasoningEffort: ReasoningEffort | undefined,
+): Chat {
   const now = Date.now();
   return {
     id: `sim_${uuidv4()}`,
@@ -123,7 +139,7 @@ function tutorChat(tutorModel: string, flags: TutorFlags): Chat {
     settings: {
       system: '',
       modelId: tutorModel,
-      generation: {},
+      generation: reasoningEffort ? { reasoningEffort } : {},
       ui: {
         showThinkingByDefault: false,
         showStats: false,
@@ -191,6 +207,7 @@ export async function runTutorSimulationCli(argv: string[], deps: CliDeps = {}):
   const auth = buildTransportAuth({ endpoint: OPENROUTER_ENDPOINT, apiKey: key });
 
   const tutorModel = str(args, 'tutor-model') ?? DEFAULT_TUTOR_MODEL_ID;
+  const tutorEffort = effort(args);
   const studentModel = str(args, 'student-model') ?? DEFAULT_STUDENT_MODEL_ID;
   const judgeModel = args.judge ? (str(args, 'judge') ?? studentModel) : undefined;
   const flags = resolveTutorFlags({
@@ -204,7 +221,7 @@ export async function runTutorSimulationCli(argv: string[], deps: CliDeps = {}):
   const models = await describeModels([tutorModel], auth, !!deps.pipeline);
   const spend = { cost: 0 };
   const session = new HeadlessTutorSession({
-    chat: tutorChat(tutorModel, flags),
+    chat: tutorChat(tutorModel, flags, tutorEffort),
     models,
     resolveAuth: () => auth,
     ...(deps.pipeline ? { pipeline: deps.pipeline } : {}),
@@ -216,7 +233,7 @@ export async function runTutorSimulationCli(argv: string[], deps: CliDeps = {}):
   });
 
   log(
-    `Simulating ${scenario.id}: ${exchanges} exchanges, tutor ${tutorModel}, student ${studentModel}`,
+    `Simulating ${scenario.id}: ${exchanges} exchanges, tutor ${tutorModel}${tutorEffort ? ` (${tutorEffort} effort)` : ''}, student ${studentModel}`,
   );
   const run = await runSimulation({
     session,
@@ -225,7 +242,7 @@ export async function runTutorSimulationCli(argv: string[], deps: CliDeps = {}):
     flags,
     learnerEdits: !!args['learner-edits'],
     maxDeclines: int(args, 'max-declines', 1),
-    meta: { tutorModel, studentModel, seed },
+    meta: { tutorModel, ...(tutorEffort ? { tutorEffort } : {}), studentModel, seed },
     ...(args.quiet ? {} : { onExchange: (x: ExchangeRecord) => log(progressLine(x)) }),
   });
 

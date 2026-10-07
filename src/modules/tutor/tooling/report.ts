@@ -132,7 +132,9 @@ export function renderReport(run: SimulationRun, options: ReportOptions = {}): s
   const sum = totals(run);
   const out: string[] = [];
   out.push(`Tutor simulation: ${meta.title} (${meta.scenario})`);
-  out.push(`Tutor ${meta.tutorModel} · student ${meta.studentModel} · seed ${meta.seed}`);
+  out.push(
+    `Tutor ${meta.tutorModel}${meta.tutorEffort ? ` (${meta.tutorEffort} effort)` : ''} · student ${meta.studentModel} · seed ${meta.seed}`,
+  );
   out.push(`Conditions: ${flags.join(', ')}`);
   out.push(
     `${meta.exchanges} exchanges in ${Math.round(meta.durationMs / 1000)}s · ${sum.calls} tool calls (${sum.failed} failed) · tutor tokens ${sum.prompt} in / ${sum.completion} out${sum.cost ? ` · $${sum.cost.toFixed(4)}` : ''}`,
