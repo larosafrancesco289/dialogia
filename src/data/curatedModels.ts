@@ -9,9 +9,15 @@ type CuratedModel = {
 // name today (src/lib/models/dynamicDefaults.ts). A new chat pins the model
 // its family resolved to; the family only moves what new chats start with.
 export const DEFAULT_CHAT_MODEL: CuratedModel = {
+  id: '~anthropic/claude-haiku-latest',
+  name: 'Claude Haiku',
+  description: 'Fast, inexpensive and a strong writer; new chats start here',
+};
+
+const GPT_LUNA: CuratedModel = {
   id: '~openai/gpt-luna-latest',
   name: 'GPT Luna',
-  description: 'Fast, inexpensive and good with tools; new chats start here',
+  description: 'Fast, inexpensive and brief; good with tools',
 };
 
 // Pinned, not a family: the tutor's prompt and its simulator checks are tuned
@@ -27,23 +33,25 @@ export const DEFAULT_TUTOR_MODEL_ID = DEFAULT_TUTOR_MODEL.id;
 
 /**
  * What new chats start with, in order of preference: the first one the user's
- * providers can serve wins. A Claude API key alone starts with Claude Opus,
- * Anthropic's own recommended default.
+ * providers can serve wins. Claude Haiku is served on OpenRouter and on a
+ * Claude API key alike, so either key starts with the same model.
  */
 export const DEFAULT_MODEL_PREFERENCE: readonly string[] = [
   DEFAULT_MODEL_ID,
+  GPT_LUNA.id,
   '~anthropic/claude-opus-latest',
 ];
 
 /** The tutor's fallbacks when its pinned model is gone. */
 export const TUTOR_MODEL_PREFERENCE: readonly string[] = [
   DEFAULT_TUTOR_MODEL_ID,
-  '~openai/gpt-luna-latest',
+  GPT_LUNA.id,
   ...DEFAULT_MODEL_PREFERENCE,
 ];
 
 export const CURATED_MODELS: CuratedModel[] = [
   DEFAULT_CHAT_MODEL,
+  GPT_LUNA,
   {
     id: '~openai/gpt-sol-latest',
     name: 'GPT Sol',

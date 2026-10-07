@@ -1,7 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  anthropicThinkingOff,
+  documentedAnthropicDefaultEffort,
   documentedAnthropicEffortLevels,
+  getAnthropicPricing,
   isAnthropicThinkingMandatory,
   resolveAnthropicDirectModelId,
   supportsAnthropicPromptCaching,
@@ -33,6 +36,26 @@ test('capabilities follow the generation in the id, not a list of ids', () => {
   assert.equal(isAnthropicThinkingMandatory('claude-opus-5-5'), true);
   assert.equal(isAnthropicThinkingMandatory('claude-opus-5'), false);
   assert.equal(isAnthropicThinkingMandatory('claude-sonnet-5'), false);
+  assert.equal(isAnthropicThinkingMandatory('claude-haiku-5-5'), false);
+  assert.deepEqual(documentedAnthropicEffortLevels('claude-haiku-5-5'), [
+    'low',
+    'medium',
+    'high',
+    'xhigh',
+    'max',
+  ]);
+  assert.equal(supportsAnthropicPromptCaching('claude-haiku-5-5'), true);
+  assert.deepEqual(anthropicThinkingOff('claude-haiku-5-5'), { type: 'disabled' });
+});
+
+test('Claude Haiku 5.5 runs at medium effort by default and has a price', () => {
+  assert.equal(documentedAnthropicDefaultEffort('claude-haiku-5-5'), 'medium');
+  assert.equal(documentedAnthropicDefaultEffort('anthropic/claude-haiku-5.5'), 'medium');
+  assert.equal(documentedAnthropicDefaultEffort('claude-opus-5-5'), 'medium');
+  assert.equal(documentedAnthropicDefaultEffort('claude-sonnet-5-5'), 'high');
+  assert.equal(documentedAnthropicDefaultEffort('claude-haiku-4-5'), 'high');
+  assert.equal(getAnthropicPricing('anthropic-direct/claude-haiku-5-5')?.prompt, 0.0000001);
+  assert.equal(getAnthropicPricing('claude-haiku-5-5')?.completion, 0.0000005);
 });
 
 test('resolveAnthropicDirectModelId applies each of its rules', () => {

@@ -7,7 +7,7 @@ import { resolveFirstAvailableModelId } from '@/lib/models/dynamicDefaults';
 import { isBuiltInEndpointId } from '@/lib/transport/endpoints';
 import type { ModelDescriptor } from '@/lib/types';
 
-/** GPT Luna where OpenRouter serves it, Claude Opus on a Claude API key alone. */
+/** Claude Haiku, on OpenRouter or a Claude API key; GPT Luna where Haiku is not served. */
 export function resolveDefaultModelId(models: ModelDescriptor[]): string {
   return resolveFirstAvailableModelId(DEFAULT_MODEL_PREFERENCE, models, isBuiltInEndpointId);
 }

@@ -39,7 +39,7 @@ export const MODEL_FAMILIES: ModelFamily[] = [
   {
     id: '~anthropic/claude-haiku-latest',
     label: 'Claude Haiku',
-    pin: 'anthropic/claude-haiku-4.5',
+    pin: 'anthropic/claude-haiku-5.5',
   },
   {
     id: '~google/gemini-flash-latest',

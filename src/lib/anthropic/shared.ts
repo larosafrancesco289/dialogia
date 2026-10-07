@@ -71,6 +71,11 @@ const isThinkingAlwaysOn = (gen: ClaudeGeneration | undefined): boolean =>
   !!gen &&
   (gen.name === 'fable' || gen.name === 'mythos' || (gen.name === 'opus' && gen.version >= 5.5));
 
+// From Claude 5 on, adaptive thinking runs when a request leaves `thinking`
+// out; before it, thinking is off unless asked for (Anthropic's thinking table).
+const isThinkingOnByDefault = (gen: ClaudeGeneration | undefined): boolean =>
+  !!gen && gen.version >= 5;
+
 const KNOWN_ANTHROPIC_PRICING: Record<
   string,
   {
@@ -93,6 +98,21 @@ const KNOWN_ANTHROPIC_PRICING: Record<
     completion: 0.00002,
     inputCacheRead: 0.0000002,
     inputCacheWrite: 0.000005,
+    currency: 'usd',
+  },
+  'claude-sonnet-5-5': {
+    prompt: 0.000002,
+    completion: 0.00001,
+    inputCacheRead: 0.0000001,
+    inputCacheWrite: 0.0000025,
+    currency: 'usd',
+  },
+  // Prompts over 100k tokens cost five times this; the table holds one rate.
+  'claude-haiku-5-5': {
+    prompt: 0.0000001,
+    completion: 0.0000005,
+    inputCacheRead: 0.00000001,
+    inputCacheWrite: 0.000000125,
     currency: 'usd',
   },
   'claude-opus-5': {
@@ -204,6 +224,33 @@ export function supportsAnthropicAdaptiveThinking(model: string): boolean {
 
 export function isAnthropicThinkingMandatory(model: string): boolean {
   return isMythosPreview(model) || isThinkingAlwaysOn(claudeGeneration(normalizeSlug(model)));
+}
+
+/**
+ * How a request turns thinking off, or undefined when leaving `thinking` out
+ * already does (before Claude 5) or nothing can (Fable, Mythos, Opus 5.5).
+ * Claude Sonnet 5.5 refuses "disabled" and takes "between_tools" instead.
+ */
+export function anthropicThinkingOff(
+  model: string,
+): { type: 'disabled' } | { type: 'between_tools' } | undefined {
+  if (isAnthropicThinkingMandatory(model)) return undefined;
+  const gen = claudeGeneration(normalizeSlug(model));
+  if (!isThinkingOnByDefault(gen)) return undefined;
+  if (gen?.name === 'sonnet' && gen.version >= 5.5) return { type: 'between_tools' };
+  return { type: 'disabled' };
+}
+
+/**
+ * The effort the API runs at when a request omits it: "high" on every
+ * effort-capable model except Claude Opus 5.5 and Claude Haiku 5.5, which
+ * default to "medium" (Anthropic's effort docs).
+ */
+export function documentedAnthropicDefaultEffort(model: string): 'medium' | 'high' {
+  const gen = claudeGeneration(normalizeSlug(model));
+  const mediumByDefault =
+    !!gen && (gen.name === 'opus' || gen.name === 'haiku') && gen.version >= 5.5;
+  return mediumByDefault ? 'medium' : 'high';
 }
 
 /**

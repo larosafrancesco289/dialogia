@@ -7,6 +7,7 @@ import {
   getSelectableReasoningEfforts,
 } from '@/lib/models/capabilities';
 import { resolveDynamicModelId, resolveFirstAvailableModelId } from '@/lib/models/dynamicDefaults';
+import { resolveDefaultModelId, resolveTutorModelId } from '@/lib/models/defaultModels';
 import type { ModelDescriptor } from '@/lib/types';
 
 const buildModel = (id: string, raw: Record<string, unknown>): ModelDescriptor => ({
@@ -89,6 +90,23 @@ test("Anthropic's documented default (high) beats OpenRouter's gateway medium", 
     },
   });
   assert.equal(getDefaultReasoningEffort(fableGatewayMedium), 'high');
+});
+
+test('Opus 5.5 and Haiku 5.5 default to medium, whatever the gateway says', () => {
+  const gateway = (id: string, effort: string) =>
+    buildModel(id, {
+      reasoning: {
+        supported_efforts: ['max', 'xhigh', 'high', 'medium', 'low'],
+        default_effort: effort,
+      },
+    });
+  // OpenRouter publishes "high" for Opus 5.5; Anthropic documents "medium".
+  assert.equal(getDefaultReasoningEffort(gateway('anthropic/claude-opus-5.5', 'high')), 'medium');
+  assert.equal(
+    getDefaultReasoningEffort(gateway('anthropic/claude-haiku-5.5', 'medium')),
+    'medium',
+  );
+  assert.equal(getDefaultReasoningEffort(gateway('anthropic/claude-sonnet-5.5', 'high')), 'high');
 });
 
 test('clampReasoningEffort steps to the nearest supported level', () => {
@@ -202,5 +220,34 @@ test('the first available preference wins, and a custom server is the last resor
   assert.equal(
     resolveFirstAvailableModelId(['~openai/gpt-luna-latest'], [custom], builtIn),
     'mine/local',
+  );
+});
+
+test('new chats start with Claude Haiku on either key, and GPT Luna where Haiku is missing', () => {
+  const or = (id: string) => ({ ...orModel(id), endpointId: 'openrouter' });
+  const direct = (id: string) => ({ ...orModel(id), endpointId: 'anthropic' });
+  assert.equal(
+    resolveDefaultModelId([
+      or('openai/gpt-6-luna'),
+      or('anthropic/claude-haiku-5.5'),
+      {
+        ...alias('~anthropic/claude-haiku-latest', 'anthropic/claude-haiku-5.5'),
+        endpointId: 'openrouter',
+      },
+    ]),
+    'anthropic/claude-haiku-5.5',
+  );
+  assert.equal(
+    resolveDefaultModelId([
+      direct('anthropic-direct/claude-opus-5-5'),
+      direct('anthropic-direct/claude-haiku-5-5'),
+    ]),
+    'anthropic-direct/claude-haiku-5-5',
+  );
+  assert.equal(resolveDefaultModelId([or('openai/gpt-6-luna')]), 'openai/gpt-6-luna');
+  // The tutor keeps its own pinned model.
+  assert.equal(
+    resolveTutorModelId(undefined, [or('openai/gpt-6-luna'), or('anthropic/claude-haiku-5.5')]),
+    'openai/gpt-6-luna',
   );
 });

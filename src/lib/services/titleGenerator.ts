@@ -26,7 +26,7 @@ const BUILT_IN_TITLE_MODELS: Record<string, { family: string; pin: string }> = {
   [OPENROUTER_ENDPOINT_ID]: { family: '~openai/gpt-luna-latest', pin: 'openai/gpt-6-luna' },
   [ANTHROPIC_ENDPOINT_ID]: {
     family: '~anthropic/claude-haiku-latest',
-    pin: 'anthropic-direct/claude-haiku-4-5',
+    pin: 'anthropic-direct/claude-haiku-5-5',
   },
 };
 
