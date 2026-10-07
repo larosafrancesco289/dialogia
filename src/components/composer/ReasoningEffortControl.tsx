@@ -9,9 +9,9 @@ import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import { EffortMeterIcon } from '@/components/ui/icons';
 import { BottomSheet, SheetItem } from '@/components/ui/BottomSheet';
 import { ComposerToolLabel } from '@/components/composer/ComposerToolLabel';
+import { useT, type Translate } from '@/lib/i18n';
 
-const effortLabel = (e: ReasoningEffort) =>
-  e === 'none' ? 'Off' : e === 'xhigh' ? 'Extra high' : e.charAt(0).toUpperCase() + e.slice(1);
+const effortLabel = (t: Translate, e: ReasoningEffort) => t(`effort.${e}`);
 
 const DEFAULT_EFFORTS: ReasoningEffort[] = ['none', 'low', 'medium', 'high'];
 
@@ -24,15 +24,7 @@ const DEFAULT_EFFORTS: ReasoningEffort[] = ['none', 'low', 'medium', 'high'];
 // walk the list.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const EFFORT_HINT: Record<ReasoningEffort, string> = {
-  none: 'Answer straight away',
-  minimal: 'The lightest thought',
-  low: 'A quick think first',
-  medium: 'Think it through',
-  high: 'Think hard',
-  xhigh: 'Think very hard',
-  max: 'Take all the time it needs',
-};
+const effortHint = (t: Translate, e: ReasoningEffort) => t(`effort.hint.${e}`);
 
 /** The levels drawn top-down, from the most thought to none, each with its place in `efforts`. */
 const topDown = (efforts: ReasoningEffort[]) => efforts.map((e, index) => ({ e, index })).reverse();
@@ -59,6 +51,7 @@ function ReasoningMenu({
   onClose,
   menuRef,
 }: ReasoningMenuProps) {
+  const t = useT();
   const currentIndex = Math.max(0, efforts.indexOf(currentEffort ?? 'none'));
   const [focusIndex, setFocusIndex] = useState(currentIndex);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
@@ -93,7 +86,7 @@ function ReasoningMenu({
     <motion.div
       ref={menuRef}
       role="radiogroup"
-      aria-label="Thinking effort"
+      aria-label={t('effort.title')}
       className="popover popover--motion effort-menu absolute bottom-full left-0 z-30 mb-2"
       style={{ translate: `${shift}px 0` }}
       initial={{ opacity: 0, y: 4 }}
@@ -128,7 +121,7 @@ function ReasoningMenu({
       onMouseLeave={() => setPreviewIndex(null)}
     >
       <p className="effort-menu__hint" aria-live="polite">
-        {EFFORT_HINT[shown]}
+        {effortHint(t, shown)}
       </p>
       {rows.map(({ e, index }) => (
         <Fragment key={e}>
@@ -145,7 +138,11 @@ function ReasoningMenu({
             aria-checked={index === currentIndex}
             tabIndex={index === focusIndex ? 0 : -1}
             className="effort-menu__row"
-            aria-label={defaultEffort === e ? `${effortLabel(e)} (model default)` : effortLabel(e)}
+            aria-label={
+              defaultEffort === e
+                ? t('effort.modelDefault', { level: effortLabel(t, e) })
+                : effortLabel(t, e)
+            }
             onMouseEnter={() => setPreviewIndex(index)}
             onFocus={() => setPreviewIndex(index)}
             onClick={() => {
@@ -153,8 +150,10 @@ function ReasoningMenu({
               onClose();
             }}
           >
-            <span>{effortLabel(e)}</span>
-            {defaultEffort === e && <span className="effort-menu__default">default</span>}
+            <span>{effortLabel(t, e)}</span>
+            {defaultEffort === e && (
+              <span className="effort-menu__default">{t('effort.default')}</span>
+            )}
           </button>
         </Fragment>
       ))}
@@ -176,15 +175,16 @@ function ReasoningSheet({
   currentEffort: ReasoningEffort;
   returnFocus: () => HTMLElement | null;
 }) {
+  const t = useT();
   return (
     <BottomSheet
       open={open}
-      label="Thinking effort"
-      title="Thinking effort"
+      label={t('effort.title')}
+      title={t('effort.title')}
       onClose={onClose}
       returnFocus={returnFocus}
     >
-      <p className="effort-menu__hint">{EFFORT_HINT[currentEffort]}</p>
+      <p className="effort-menu__hint">{effortHint(t, currentEffort)}</p>
       {topDown(efforts).map(({ e }) => (
         <Fragment key={e}>
           {e === 'none' && efforts.length > 1 && <div className="sheet-rule" aria-hidden="true" />}
@@ -196,8 +196,10 @@ function ReasoningSheet({
             }}
           >
             <span className="flex items-baseline justify-between gap-3">
-              <span>{effortLabel(e)}</span>
-              {defaultEffort === e && <span className="effort-menu__default">default</span>}
+              <span>{effortLabel(t, e)}</span>
+              {defaultEffort === e && (
+                <span className="effort-menu__default">{t('effort.default')}</span>
+              )}
             </span>
           </SheetItem>
         </Fragment>
@@ -218,6 +220,7 @@ export function ReasoningEffortControl({
   currentEffort?: ReasoningEffort;
   onSelectEffort: (effort: ReasoningEffort) => Promise<void> | void;
 }) {
+  const t = useT();
   const [reasoningOpen, setReasoningOpen] = useState(false);
   const reasoningButtonRef = useRef<HTMLButtonElement | null>(null);
   const reasoningMenuRef = useRef<HTMLDivElement | null>(null);
@@ -249,8 +252,12 @@ export function ReasoningEffortControl({
         data-effort={effort}
         aria-haspopup="true"
         aria-expanded={reasoningOpen}
-        aria-label="Thinking effort"
-        title={reasoningActive ? `Thinking: ${effortLabel(effort)}` : 'Thinking effort'}
+        aria-label={t('effort.title')}
+        title={
+          reasoningActive
+            ? t('effort.buttonTitle', { level: effortLabel(t, effort) })
+            : t('effort.title')
+        }
         onClick={() => setReasoningOpen((v) => !v)}
       >
         {/* A level meter filled to the effort; the word beside it names it. */}
@@ -259,7 +266,7 @@ export function ReasoningEffortControl({
           levels={levels.length}
           filled={effortRank(levels, effort)}
         />
-        <ComposerToolLabel text={reasoningActive ? effortLabel(effort) : null} />
+        <ComposerToolLabel text={reasoningActive ? effortLabel(t, effort) : null} />
       </button>
       {isMobile ? (
         <ReasoningSheet

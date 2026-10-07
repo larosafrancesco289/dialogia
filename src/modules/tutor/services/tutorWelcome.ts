@@ -11,32 +11,33 @@ import { getMessagesForChat, setMessagesForChat } from '@/lib/messages/indexing'
 import { createTutorWelcomeMessage } from '@/lib/messages/createMessage';
 import { isTutorRuntimeEnabled } from '@/lib/policy/runtime';
 import { joinSentences, withoutEnd } from '@/modules/tutor/lib/text';
+import { t } from '@/modules/tutor/i18n';
 
 export const buildPlanWelcomeMessage = (plan?: LearningPlan): string => {
   if (!plan || !Array.isArray(plan.nodes) || plan.nodes.length === 0) {
-    return "Tell me what you want to learn, and why. I'll sketch a plan for us, you can reshape it, and as we work we'll keep track of what you know. If you have notes or readings, add them and I'll work from those too.";
+    return t('welcome.first');
   }
 
-  const goal = `"${withoutEnd(plan.goal)}"`;
+  const goal = t('welcome.goal', { goal: withoutEnd(plan.goal) });
   const nextNode = plan.nodes.find((n) => n.status === 'in_progress') ?? nextReadyNode(plan);
   if (!nextNode) {
     return joinSentences(
-      'Welcome back',
-      `We've finished the plan for ${goal}`,
-      'We can go back over any part of it, or set a new goal',
-      'New notes or readings are welcome too',
+      t('welcome.back'),
+      t('welcome.finished', { goal }),
+      t('welcome.goBack'),
+      t('welcome.notesWelcome'),
     );
   }
 
   const description = nextNode.description?.trim();
   return joinSentences(
-    'Welcome back',
-    `We're working toward ${goal}`,
+    t('welcome.back'),
+    t('welcome.workingToward', { goal }),
     description
-      ? `Our next focus is ${nextNode.name}: ${description}`
-      : `Our next focus is ${nextNode.name}`,
-    "Ask a question, or ask for practice, whenever you're ready",
-    'You can add notes or readings at any point',
+      ? t('welcome.nextWithDescription', { topic: nextNode.name, description })
+      : t('welcome.next', { topic: nextNode.name }),
+    t('welcome.ask'),
+    t('welcome.addNotes'),
   );
 };
 

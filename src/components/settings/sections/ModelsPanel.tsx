@@ -9,6 +9,7 @@ import { findModelById, formatModelLabel } from '@/lib/models';
 import { getModelProviderLabel } from '@/lib/providers';
 import { useChatStore } from '@/lib/store';
 import { useDefaultModelId } from '@/lib/hooks/useModelCatalog';
+import { useT } from '@/lib/i18n';
 
 type ModelsPanelProps = {
   favoriteModelIds?: string[];
@@ -27,6 +28,7 @@ type ModelsPanelProps = {
  * which providers are allowed at all.
  */
 export function ModelsPanel(props: ModelsPanelProps) {
+  const t = useT();
   const {
     favoriteModelIds = [],
     toggleFavoriteModel,
@@ -49,16 +51,14 @@ export function ModelsPanel(props: ModelsPanelProps) {
       {renderSection(
         'models',
         'default-model',
-        <SettingsSection title="Default model">
+        <SettingsSection title={t('settings.section.default-model')}>
           <div className="settings-row">
             <div className="settings-row-label">
               <div className="settings-row-label-text">
                 {nameOf(chosenModelId || defaultModelId)}
               </div>
               <div className="settings-row-label-description">
-                {chosenModelId
-                  ? 'New chats follow the model you last chose.'
-                  : 'New chats start here until you choose a model in a chat.'}
+                {t(chosenModelId ? 'models.default.follows' : 'models.default.startsHere')}
               </div>
             </div>
             <div className="settings-row-control flex gap-2">
@@ -67,11 +67,11 @@ export function ModelsPanel(props: ModelsPanelProps) {
                   className="btn-outline btn-sm"
                   onClick={() => setUI({ chatDefaults: { modelId: undefined } })}
                 >
-                  Reset
+                  {t('models.default.reset')}
                 </button>
               )}
               <button className="btn-ghost btn-sm" onClick={() => loadModels({ showErrors: true })}>
-                Refresh list
+                {t('models.default.refresh')}
               </button>
             </div>
           </div>
@@ -81,10 +81,8 @@ export function ModelsPanel(props: ModelsPanelProps) {
       {renderSection(
         'models',
         'favorites',
-        <SettingsSection title="Favorites">
-          <p className="field__hint -mt-2">
-            The models the picker offers beside its recommendations.
-          </p>
+        <SettingsSection title={t('settings.section.favorites')}>
+          <p className="field__hint -mt-2">{t('models.favorites.hint')}</p>
           {favoriteModelIds.length > 0 ? (
             <ul className="settings-list">
               {favoriteModelIds.map((id) => {
@@ -100,8 +98,8 @@ export function ModelsPanel(props: ModelsPanelProps) {
                     <button
                       type="button"
                       className="icon-button icon-button--sm"
-                      title="Remove from favorites"
-                      aria-label={`Remove ${nameOf(id)} from favorites`}
+                      title={t('picker.removeFavorite')}
+                      aria-label={t('picker.removeFavoriteNamed', { model: nameOf(id) })}
                       onClick={() => toggleFavoriteModel(id)}
                     >
                       <XMarkIcon />
@@ -111,11 +109,11 @@ export function ModelsPanel(props: ModelsPanelProps) {
               })}
             </ul>
           ) : (
-            <p className="settings-empty">No favorites yet.</p>
+            <p className="settings-empty">{t('models.favorites.empty')}</p>
           )}
           <ModelSearch
             ref={modelSearchRef}
-            placeholder="Add a model"
+            placeholder={t('models.favorites.add')}
             selectedIds={favoriteModelIds}
             clearOnSelect
             onSelect={(result) => {
@@ -128,15 +126,15 @@ export function ModelsPanel(props: ModelsPanelProps) {
       {renderSection(
         'models',
         'privacy',
-        <SettingsSection title="Privacy">
+        <SettingsSection title={t('settings.section.privacy')}>
           <ToggleSwitch
             checked={zdrOnly === true}
             onChange={(checked) => {
               setZdrOnly(checked);
               void loadModels();
             }}
-            label="Zero data retention only"
-            description="Offer only models from providers that do not keep your prompts."
+            label={t('models.zdr')}
+            description={t('models.zdrHint')}
           />
         </SettingsSection>,
       )}

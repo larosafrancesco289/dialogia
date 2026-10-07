@@ -14,6 +14,7 @@ import { useHaptics } from '@/lib/hooks/useHaptics';
 import { useBackToClose } from '@/lib/hooks/useBackToClose';
 import { lazyClient } from '@/lib/ui/lazy';
 import styles from './MobileShell.module.css';
+import { useT } from '@/lib/i18n';
 
 // The settings page is heavy and opened rarely; the same one as the desktop's.
 const SettingsDrawer = lazyClient(() =>
@@ -38,6 +39,7 @@ const SetupSheet = lazyClient(() =>
  * the finger, with Settings at its foot.
  */
 export function MobileShell() {
+  const t = useT();
   const {
     settingsOpen,
     memoryOpen,
@@ -168,7 +170,7 @@ export function MobileShell() {
 
       <BottomSheet
         open={rightPanelOpen && hasPanelContent}
-        label="Learning Hub"
+        label={t('nav.learningHub')}
         onClose={closePanel}
         tall
       >

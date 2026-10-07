@@ -1,6 +1,8 @@
 import { ANTHROPIC_ENDPOINT_ID } from '@/lib/transport/endpoints';
 import type { ModelDescriptor } from '@/lib/types';
 import type { Usage } from '@/lib/api/normalizers';
+import { t } from '@/lib/i18n';
+import { formatNumber } from '@/lib/i18n/format';
 
 function usageNumber(value: unknown): number | undefined {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -85,9 +87,10 @@ export function computeCost(opts: {
 // A per-million rate as dollars: cents above a cent, and two significant
 // digits below it, where cents would round a real price down to $0.00.
 function formatRate(amount: number): string {
-  if (amount >= 0.01) return `$${amount.toFixed(2)}`;
+  const usd = { style: 'currency', currency: 'USD', currencyDisplay: 'narrowSymbol' } as const;
+  if (amount >= 0.01) return formatNumber(amount, { ...usd, minimumFractionDigits: 2 });
   const digits = Math.min(10, 1 - Math.floor(Math.log10(amount)));
-  return `$${amount.toFixed(digits).replace(/0+$/, '')}`;
+  return formatNumber(amount, { ...usd, minimumFractionDigits: 0, maximumFractionDigits: digits });
 }
 
 // Normalize potentially string pricing fields from OpenRouter to numbers (per token)
@@ -114,8 +117,12 @@ export function describeModelPricing(model?: ModelDescriptor | null): string | u
     (entry): entry is [string, number] => typeof entry[1] === 'number' && entry[1] >= 0,
   );
   if (known.length === 0) return undefined;
-  if (known.every(([, rate]) => rate === 0)) return 'Free';
+  if (known.every(([, rate]) => rate === 0)) return t('pricing.free');
   return known
-    .map(([side, rate]) => (rate === 0 ? `${side} free` : `${side} ${formatRate(rate)}/M`))
+    .map(([side, rate]) =>
+      rate === 0
+        ? t(side === 'in' ? 'pricing.inFree' : 'pricing.outFree')
+        : t(side === 'in' ? 'pricing.in' : 'pricing.out', { rate: formatRate(rate) }),
+    )
     .join(' · ');
 }

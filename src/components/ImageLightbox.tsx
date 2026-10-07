@@ -2,6 +2,7 @@ import { createPortal } from 'react-dom';
 import { useEffect, useRef, useState } from 'react';
 import { logger } from '@/lib/logger';
 import { useModalFocus } from '@/lib/hooks/useModalFocus';
+import { useT } from '@/lib/i18n';
 
 type Img = { src: string; name?: string };
 
@@ -14,6 +15,7 @@ export function ImageLightbox({
   initialIndex?: number;
   onClose: () => void;
 }) {
+  const t = useT();
   const [index, setIndex] = useState(
     Math.min(Math.max(0, initialIndex), Math.max(0, images.length - 1)),
   );
@@ -56,7 +58,7 @@ export function ImageLightbox({
       className="lightbox fixed inset-0 z-[100] flex flex-col"
       role="dialog"
       aria-modal="true"
-      aria-label="Image viewer"
+      aria-label={t('lightbox.label')}
       tabIndex={-1}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -69,11 +71,11 @@ export function ImageLightbox({
             .join(' · ')}
         </div>
         <div className="flex items-center gap-2">
-          <button className="lightbox__btn" onClick={download} title="Download">
-            Download
+          <button className="lightbox__btn" onClick={download}>
+            {t('lightbox.download')}
           </button>
-          <button className="lightbox__btn" onClick={onClose} title="Close">
-            Close
+          <button className="lightbox__btn" onClick={onClose}>
+            {t('common.close')}
           </button>
         </div>
       </div>
@@ -89,7 +91,7 @@ export function ImageLightbox({
             className="lightbox__btn lightbox__nav mr-3"
             onClick={() => setIndex((i) => Math.max(0, i - 1))}
             disabled={index <= 0}
-            aria-label="Previous"
+            aria-label={t('lightbox.previous')}
           >
             ‹
           </button>
@@ -97,7 +99,7 @@ export function ImageLightbox({
         {/* Fits the screen but never grows past its own size, which would blur it. */}
         <img
           src={current.src}
-          alt={current.name || 'image'}
+          alt={current.name || t('attachments.image')}
           className="max-h-[85vh] max-w-[85vw] min-w-0 object-contain"
         />
         {images.length > 1 && (
@@ -105,7 +107,7 @@ export function ImageLightbox({
             className="lightbox__btn lightbox__nav ml-3"
             onClick={() => setIndex((i) => Math.min(images.length - 1, i + 1))}
             disabled={index >= images.length - 1}
-            aria-label="Next"
+            aria-label={t('lightbox.next')}
           >
             ›
           </button>

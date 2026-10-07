@@ -9,6 +9,7 @@ import type { ProviderEndpoint } from '@/lib/transport/endpoints';
 import { useProviderKeys } from '@/lib/hooks/useProviderKeys';
 import { useDismissOnOutside } from '@/lib/hooks/useDismissOnOutside';
 import { ComposerToolLabel } from '@/components/composer/ComposerToolLabel';
+import { useT } from '@/lib/i18n';
 
 /**
  * The composer's web search button: a plain on/off toggle, or a menu of
@@ -29,6 +30,7 @@ export function SearchModeControl({
   /** Where the chosen model's requests go; undefined offers every mode. */
   endpoint?: ProviderEndpoint;
 }) {
+  const t = useT();
   const [searchMenuOpen, setSearchMenuOpen] = useState(false);
   const searchButtonRef = useRef<HTMLButtonElement | null>(null);
   const searchMenuRef = useRef<HTMLDivElement | null>(null);
@@ -55,7 +57,9 @@ export function SearchModeControl({
   const hasSearchChoice = !(searchModes.length === 1 && isNativeSearchMode(searchModes[0].mode));
 
   if (searchModes.length === 0) return null;
-  const stateLabel = `Web search: ${searchEnabled ? 'on' : 'off'} (${providerLabel})`;
+  const stateLabel = t(searchEnabled ? 'search.state.on' : 'search.state.off', {
+    provider: providerLabel,
+  });
 
   return (
     <div>
@@ -73,7 +77,11 @@ export function SearchModeControl({
         {/* Which search, when there is a choice: Built-in reads as plain Search. */}
         <ComposerToolLabel
           text={
-            searchEnabled ? (isNativeSearchMode(searchProvider) ? 'Search' : providerLabel) : null
+            searchEnabled
+              ? isNativeSearchMode(searchProvider)
+                ? t('search.short')
+                : providerLabel
+              : null
           }
         />
       </button>
@@ -82,7 +90,7 @@ export function SearchModeControl({
           <motion.div
             ref={searchMenuRef}
             role="menu"
-            aria-label="Web search"
+            aria-label={t('search.title')}
             className="popover popover--motion absolute bottom-full left-0 z-30 mb-2 w-56 p-1"
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
@@ -99,7 +107,7 @@ export function SearchModeControl({
                 setSearchMenuOpen(false);
               }}
             >
-              Off
+              {t('common.off')}
             </button>
             {searchModes.map((option) => (
               <button

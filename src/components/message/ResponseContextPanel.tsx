@@ -13,6 +13,7 @@ import { SourcesEntry } from '@/components/message/SourcesEntry';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { thinkingNow } from '@/lib/ui/streaming';
 import { useRevealOnOpen } from '@/lib/hooks/useRevealOnOpen';
+import { useT } from '@/lib/i18n';
 
 type ResponseContextPanelProps = {
   reasoning: string;
@@ -37,6 +38,7 @@ export function ResponseContextPanel({
   isStreaming = false,
   answering = false,
 }: ResponseContextPanelProps) {
+  const t = useT();
   const bodyId = useId();
   const revealClass = useRevealOnOpen(expanded);
   const [copied, setCopied] = useState(false);
@@ -105,7 +107,7 @@ export function ResponseContextPanel({
   // seconds". A reply that never thought has a summary that speaks alone
   // ("1 search", or the search's failure).
   const hasThought = hasReasoning || orderedActivity.some((item) => item.type === 'reasoning');
-  const title = isLive ? 'Thinking' : hasThought ? 'Thought' : null;
+  const title = isLive ? t('activity.thinking') : hasThought ? t('activity.thought') : null;
 
   return (
     <section
@@ -160,8 +162,8 @@ export function ResponseContextPanel({
                 <button
                   type="button"
                   className={`icon-button response-ledger__copy${copied ? ' is-success' : ''}`}
-                  aria-label={copied ? 'Copied' : 'Copy thinking'}
-                  title={copied ? 'Copied' : 'Copy thinking'}
+                  aria-label={t(copied ? 'message.copied' : 'activity.copyThinking')}
+                  title={t(copied ? 'message.copied' : 'activity.copyThinking')}
                   onClick={copyReasoning}
                 >
                   {copied ? (

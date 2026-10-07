@@ -6,6 +6,7 @@ import { findModelById, formatModelLabel, isDynamicModelId } from '@/lib/models'
 import { getModelProviderLabel } from '@/lib/providers';
 import type { StoreState } from '@/lib/store/types';
 import type { RenderSection } from '@/components/settings/types';
+import { useT } from '@/modules/tutor/i18n';
 
 type TutorPanelProps = {
   renderSection: RenderSection;
@@ -18,6 +19,7 @@ type TutorPanelProps = {
 };
 
 export function TutorPanel(props: TutorPanelProps) {
+  const t = useT();
   const {
     renderSection,
     experimentalTutor,
@@ -33,7 +35,7 @@ export function TutorPanel(props: TutorPanelProps) {
   const modelMeta = findModelById(models, tutorDefaultModel);
   const modelName = formatModelLabel({ model: modelMeta, fallbackId: tutorDefaultModel });
   const modelDetail = isDynamicModelId(tutorDefaultModel)
-    ? 'Always the newest release'
+    ? t('settings.newest')
     : modelMeta
       ? getModelProviderLabel(modelMeta)
       : tutorDefaultModel;
@@ -43,12 +45,12 @@ export function TutorPanel(props: TutorPanelProps) {
       {renderSection(
         'tutor',
         'tutor',
-        <SettingsSection title="Tutor">
+        <SettingsSection title={t('settings.title')}>
           <ToggleSwitch
             checked={experimentalTutor}
             onChange={(checked) => setUI({ flags: { experimentalTutor: checked } })}
-            label="Offer Learn"
-            description="Learn sits beside Chat: a tutor plans a short course with you, teaches it, and checks what you know with quick questions."
+            label={t('settings.offer')}
+            description={t('settings.offerHint')}
           />
           {experimentalTutor && (
             <>
@@ -57,34 +59,31 @@ export function TutorPanel(props: TutorPanelProps) {
                 onChange={(checked) => {
                   void onForceTutorModeChange(checked);
                 }}
-                label="Always learn"
-                description="Every chat is a learning session. Chat is not offered."
+                label={t('settings.always')}
+                description={t('settings.alwaysHint')}
               />
               <ToggleSwitch
                 checked={!!ui?.tutor?.autoScroll}
                 onChange={(checked) => setUI({ tutor: { autoScroll: checked } })}
-                label="Follow the tutor"
-                description="Scroll to the latest message while the tutor responds."
+                label={t('settings.follow')}
+                description={t('settings.followHint')}
               />
               <div className="field">
-                <span className="field__label">Tutor model</span>
+                <span className="field__label">{t('settings.model')}</span>
                 <div>
                   <span className="settings-list__name">{modelName}</span>
                   <span className="settings-list__meta">{modelDetail}</span>
                 </div>
                 <ModelSearch
-                  placeholder="Search for another model"
-                  ariaLabel="Search for a tutor model"
+                  placeholder={t('settings.searchModel')}
+                  ariaLabel={t('settings.searchModelLabel')}
                   selectedIds={tutorDefaultModel ? [tutorDefaultModel] : []}
                   clearOnSelect
                   onSelect={(result) => setTutorDefaultModel(result.id)}
                 />
-                <p className="field__hint">Every learning session uses this model.</p>
+                <p className="field__hint">{t('settings.modelHint')}</p>
               </div>
-              <p className="field__hint">
-                Each learning session drafts a plan from your first message and keeps track of what
-                you know as you go. The tutor moves on to the next topic when you are ready.
-              </p>
+              <p className="field__hint">{t('settings.howItWorks')}</p>
             </>
           )}
         </SettingsSection>,

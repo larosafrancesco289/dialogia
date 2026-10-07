@@ -15,6 +15,7 @@ import { shownVersionIndex, versionCount } from '@/lib/messages/versions';
 import { BottomSheet, SheetItem } from '@/components/ui/BottomSheet';
 import { Markdown } from '@/components/Markdown';
 import { plainExcerpt } from '@/lib/markdown/plainText';
+import { useT } from '@/lib/i18n';
 
 export type MessageActionSheetProps = {
   isMobile: boolean;
@@ -54,6 +55,7 @@ export function MessageActionSheet({
   canSwitchVersion,
   onDeleteVersion,
 }: MessageActionSheetProps) {
+  const t = useT();
   const [selecting, setSelecting] = useState<Message | null>(null);
   const showReplyVersion = useChatStore((s) => s.showReplyVersion);
   const openedOn = useRef<string | null>(null);
@@ -89,7 +91,7 @@ export function MessageActionSheet({
   const excerpt = message?.content ? plainExcerpt(message.content) : '';
   const title = (
     <span className={isAssistant ? undefined : 'bottom-sheet__title--voice'}>
-      {excerpt || (isAssistant ? 'Reply' : 'Your message')}
+      {excerpt || t(isAssistant ? 'message.sheet.reply' : 'message.sheet.yours')}
     </span>
   );
   // The sheet stays up while the versions turn, its title following the words.
@@ -100,7 +102,7 @@ export function MessageActionSheet({
     <>
       <BottomSheet
         open={!!mobileSheet && !selecting}
-        label={isAssistant ? 'Reply actions' : 'Message actions'}
+        label={t(isAssistant ? 'message.sheet.replyActions' : 'message.sheet.messageActions')}
         title={title}
         onClose={onClose}
         returnFocus={backToMessage}
@@ -113,11 +115,11 @@ export function MessageActionSheet({
             onClose();
           }}
         >
-          Copy
+          {t('message.copy')}
         </SheetItem>
         {message?.content && (
           <SheetItem icon={<CursorArrowRaysIcon />} onClick={() => setSelecting(message)}>
-            Select text
+            {t('message.selectText')}
           </SheetItem>
         )}
         {/* Editing a reply's text reruns nothing; editing a user message reruns its reply. */}
@@ -130,7 +132,7 @@ export function MessageActionSheet({
               onClose();
             }}
           >
-            {isEditingThis ? 'Editing…' : 'Edit'}
+            {t(isEditingThis ? 'message.editing' : 'message.edit')}
           </SheetItem>
         )}
         {isAssistant && mobileSheet && !canned && (
@@ -143,7 +145,7 @@ export function MessageActionSheet({
                   onClose();
                 }}
               >
-                Try again
+                {t('message.tryAgain')}
               </SheetItem>
             )}
             <SheetItem
@@ -154,7 +156,7 @@ export function MessageActionSheet({
                 onClose();
               }}
             >
-              Branch in a new chat
+              {t('message.branch')}
             </SheetItem>
             {versions > 1 && (
               <>
@@ -163,14 +165,14 @@ export function MessageActionSheet({
                   disabled={isStreaming || shown === 0}
                   onClick={() => void showReplyVersion(mobileSheet.id, shown - 1)}
                 >
-                  Previous version
+                  {t('versions.previous')}
                 </SheetItem>
                 <SheetItem
                   icon={<ChevronRightIcon />}
                   disabled={isStreaming || shown === versions - 1}
                   onClick={() => void showReplyVersion(mobileSheet.id, shown + 1)}
                 >
-                  Next version
+                  {t('versions.next')}
                 </SheetItem>
                 <SheetItem
                   icon={<TrashIcon />}
@@ -181,7 +183,7 @@ export function MessageActionSheet({
                     onClose();
                   }}
                 >
-                  Delete version {shown + 1} of {versions}
+                  {t('versions.deleteNumbered', { at: shown + 1, count: versions })}
                 </SheetItem>
               </>
             )}
@@ -191,8 +193,8 @@ export function MessageActionSheet({
 
       <BottomSheet
         open={!!selecting}
-        label="Select text"
-        title="Select text"
+        label={t('message.selectText')}
+        title={t('message.selectText')}
         returnFocus={backToMessage}
         onClose={() => {
           setSelecting(null);

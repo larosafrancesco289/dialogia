@@ -3,18 +3,20 @@
 // reads as finished mid-sentence, or as an empty block with nothing to say why.
 
 import type { Message } from '@/lib/types';
+import { t, type MessageKey } from '@/lib/i18n';
+import { resolveNotice } from '@/lib/store/notices';
 
-const CUT_OFF_NOTES: Record<NonNullable<Message['cutOff']>, string> = {
-  stopped: 'Stopped before the end.',
-  failed: 'Cut off by an error before the end.',
-  interrupted: 'Cut off: the page closed while this was being written.',
+const CUT_OFF_NOTES: Record<NonNullable<Message['cutOff']>, MessageKey> = {
+  stopped: 'ending.stopped',
+  failed: 'ending.failed',
+  interrupted: 'ending.interrupted',
 };
 
 // The same endings for a reply that never got its first word out.
-const NOTHING_WRITTEN_NOTES: Record<NonNullable<Message['cutOff']>, string> = {
-  stopped: 'Stopped before the reply began.',
-  failed: 'This reply failed.',
-  interrupted: 'The page closed before this reply began.',
+const NOTHING_WRITTEN_NOTES: Record<NonNullable<Message['cutOff']>, MessageKey> = {
+  stopped: 'ending.nothing.stopped',
+  failed: 'ending.nothing.failed',
+  interrupted: 'ending.nothing.interrupted',
 };
 
 /**
@@ -25,15 +27,15 @@ export function replyEndingNote(
   message: Pick<Message, 'content' | 'cutOff' | 'cutOffReason' | 'finishReason'>,
   hasModuleContent = false,
 ): string | undefined {
-  const withReason = (note: string) =>
-    message.cutOffReason ? `${note} ${message.cutOffReason}` : note;
+  const withReason = (key: MessageKey) =>
+    message.cutOffReason ? `${t(key)} ${resolveNotice(message.cutOffReason)}` : t(key);
   if (!message.content.trim()) {
     return message.cutOff && !hasModuleContent
       ? withReason(NOTHING_WRITTEN_NOTES[message.cutOff])
       : undefined;
   }
   if (message.cutOff) return withReason(CUT_OFF_NOTES[message.cutOff]);
-  if (message.finishReason === 'length') return 'Stopped at the length limit.';
+  if (message.finishReason === 'length') return t('ending.length');
   return undefined;
 }
 
@@ -41,8 +43,8 @@ export function replyEndingNote(
 export function replyOutcomeAnnouncement(
   message?: Pick<Message, 'cutOff' | 'finishReason'>,
 ): string {
-  if (message?.cutOff === 'stopped') return 'Reply stopped';
-  if (message?.cutOff) return 'Reply failed';
-  if (message?.finishReason === 'length') return 'Reply stopped at the length limit';
-  return 'Reply finished';
+  if (message?.cutOff === 'stopped') return t('ending.announce.stopped');
+  if (message?.cutOff) return t('ending.announce.failed');
+  if (message?.finishReason === 'length') return t('ending.announce.length');
+  return t('ending.announce.finished');
 }

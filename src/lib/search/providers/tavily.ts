@@ -20,25 +20,24 @@ import type {
 import { describeSearchFailure } from '@/lib/search/providers/failure';
 import { NOTICE_MISSING_SEARCH_KEY } from '@/lib/store/notices';
 import { err, ok } from '@/lib/utils/result';
+import { t } from '@/lib/i18n';
 
 export const TAVILY_PROVIDER_ID = 'tavily';
 
 // Tavily's statuses, in the words the ledger shows. 432 and 433 are its plan
 // and pay-as-you-go limits.
-function describeStatus(status: number, attempt: string): string {
-  if (status === 401 || status === 403) {
-    return 'Tavily did not accept the search key. Check it in Settings › Connections.';
-  }
-  if (status === 429) return 'Tavily is limiting searches right now. Try again in a moment.';
-  if (status === 432 || status === 433) return 'The Tavily plan has reached its search limit.';
-  if (status >= 500) return 'Tavily is having trouble right now. Try again later.';
-  return `Tavily could not ${attempt}.`;
+function describeStatus(status: number, attempt: 'search' | 'fetch'): string {
+  if (status === 401 || status === 403) return t('searchError.tavily.key');
+  if (status === 429) return t('searchError.tavily.limited');
+  if (status === 432 || status === 433) return t('searchError.tavily.plan');
+  if (status >= 500) return t('searchError.tavily.trouble');
+  return t(attempt === 'search' ? 'searchError.tavily.search' : 'searchError.tavily.fetch');
 }
 
-function describeFailure(error: unknown, attempt: string): string | undefined {
+function describeFailure(error: unknown, attempt: 'search' | 'fetch'): string | undefined {
   return describeSearchFailure(error, {
     describeStatus: (status) => describeStatus(status, attempt),
-    unreachable: 'Could not reach Tavily.',
+    unreachable: t('searchError.unreachable', { service: 'Tavily' }),
   });
 }
 
@@ -52,7 +51,7 @@ async function search(args: NormalizedSearchArgs, ctx: SearchContext): Promise<S
     });
     return ok({ results });
   } catch (error: unknown) {
-    return err(describeFailure(error, 'run this search'), { results: [] });
+    return err(describeFailure(error, 'search'), { results: [] });
   }
 }
 
@@ -66,7 +65,7 @@ async function fetchPage(args: NormalizedFetchArgs, ctx: SearchContext): Promise
     });
     return ok({ results });
   } catch (error: unknown) {
-    return err(describeFailure(error, 'fetch this page'), { results: [] });
+    return err(describeFailure(error, 'fetch'), { results: [] });
   }
 }
 

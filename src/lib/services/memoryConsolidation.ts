@@ -5,6 +5,7 @@
 
 import { getChatCompletion } from '@/lib/agent/pipelineClient';
 import { requireModelAuth } from '@/lib/auth/require';
+import { appLanguageForModel } from '@/lib/i18n/state';
 import type { MemorySnapshot } from '@/lib/db/repository';
 import {
   applyOperations,
@@ -29,6 +30,14 @@ const CONSOLIDATION_TIMEOUT_MS = 120_000;
  * answer, and with `UNREADABLE_PLAN` when the answer is no plan, including
  * one cut off before its end.
  */
+/** The pass's "say" lines are read in the app, so they come in its language. */
+function consolidationSystemPrompt(): string {
+  const language = appLanguageForModel();
+  return language
+    ? `${CONSOLIDATION_SYSTEM_PROMPT}\n\nThe person's app is in ${language}: write every "say" in ${language}. Notes keep the language they are written in.`
+    : CONSOLIDATION_SYSTEM_PROMPT;
+}
+
 export async function planConsolidation(
   set: StoreSetter,
   get: StoreGetter,
@@ -47,7 +56,7 @@ export async function planConsolidation(
       auth,
       model: modelId,
       messages: [
-        { role: 'system', content: CONSOLIDATION_SYSTEM_PROMPT },
+        { role: 'system', content: consolidationSystemPrompt() },
         { role: 'user', content: consolidationRequest(before) },
       ],
       maxTokens: CONSOLIDATION_MAX_TOKENS,

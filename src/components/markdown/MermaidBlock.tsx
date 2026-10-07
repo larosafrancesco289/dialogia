@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
+import { t } from '@/lib/i18n';
 
 // Wide diagrams shrink to fit only this far; below it they keep their size
 // and scroll sideways, so a phone does not get 4px labels.
@@ -106,7 +107,7 @@ export function MermaidBlock({ code, streaming }: { code: string; streaming?: bo
       } catch {
         // ignore
         if (!cancelled && ref.current) {
-          ref.current.innerText = 'This diagram could not be drawn.';
+          ref.current.innerText = t('code.diagramFailed');
         }
       }
     }, 300);

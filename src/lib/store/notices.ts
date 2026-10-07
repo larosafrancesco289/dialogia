@@ -4,66 +4,81 @@
 import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
 import type { Message } from '@/lib/types';
 import { isRecord } from '@/lib/utils/guards';
-import { listInProse } from '@/lib/utils/text';
+import { t, type MessageKey } from '@/lib/i18n';
+import { capitalize, formatList } from '@/lib/i18n/format';
+import en from '@/lib/i18n/messages/en';
 
-export const NOTICE_CATALOG = {
-  invalidKey: 'That key was rejected. Check it in Settings › Connections.',
-  expiredKey: 'That key has expired. Add a new one in Settings › Connections.',
-  rateLimited: 'The provider is limiting requests. Wait a moment, then try again.',
-  missingSearchKey: 'This search needs a key. Add one in Settings › Connections.',
-  searchUnavailable: 'Web search is unavailable for this chat; answering without it.',
-  unknownEndpoint:
-    'This chat uses a server that no longer exists. Add it again in Settings › Connections, or pick another model.',
-  exportedChats: 'Your chats were exported.',
-  planApplyFailed: 'The plan could not be applied. Try again.',
-  planChangesFailed: 'Your suggestion could not be sent. Try again.',
-  copyFailed: 'Could not copy: the browser blocked clipboard access.',
-  replyInOtherTab:
-    'Another tab is writing a reply in this chat. Send once it has finished, so both tabs show the same chat.',
-  saveFailed:
-    'The reply could not be saved to this browser. It is on screen now, but may be cut short after a reload.',
-  consolidationFailed:
-    'Memory could not be consolidated. Nothing was changed; try again in a moment.',
-  consolidationUnreadable:
-    'This model could not suggest changes. Nothing was changed. Try another model.',
-  consolidationUndone: 'Consolidation undone.',
-  consolidationStale:
-    'Memory changed while it was being consolidated, so nothing was changed. Consolidate again.',
-  consolidationPartlyUndone:
-    'Consolidation was undone, apart from what has changed since, which was left as it is.',
-  memoryChangedSince: 'This note has changed since. Edit it on the Memory page.',
-  memoryAlreadyForgotten:
-    'This note is already forgotten. It waits in Recently forgotten on the Memory page.',
-  consolidationNoModel: 'Connect a model in Settings › Connections to consolidate memory.',
-  replacedReplyChangedMemory:
-    'The reply you replaced had changed your memory. Those notes stay as they are; review them on the Memory page.',
-} as const;
+// Each notice is said in the language shown when it is shown. The constants
+// below are its English words, which code may compare and pass around (a tool
+// error, a reply's stored cut-off reason); `resolveNotice` turns an id or those
+// words into the language shown.
+const NOTICE_KEYS = {
+  invalidKey: 'notice.invalidKey',
+  expiredKey: 'notice.expiredKey',
+  rateLimited: 'notice.rateLimited',
+  missingSearchKey: 'notice.missingSearchKey',
+  searchUnavailable: 'notice.searchUnavailable',
+  unknownEndpoint: 'notice.unknownEndpoint',
+  exportedChats: 'notice.exportedChats',
+  planApplyFailed: 'notice.planApplyFailed',
+  planChangesFailed: 'notice.planChangesFailed',
+  copyFailed: 'notice.copyFailed',
+  replyInOtherTab: 'notice.replyInOtherTab',
+  saveFailed: 'notice.saveFailed',
+  consolidationFailed: 'notice.consolidationFailed',
+  consolidationUnreadable: 'notice.consolidationUnreadable',
+  consolidationUndone: 'notice.consolidationUndone',
+  consolidationStale: 'notice.consolidationStale',
+  consolidationPartlyUndone: 'notice.consolidationPartlyUndone',
+  memoryChangedSince: 'notice.memoryChangedSince',
+  memoryAlreadyForgotten: 'notice.memoryAlreadyForgotten',
+  consolidationNoModel: 'notice.consolidationNoModel',
+  replacedReplyChangedMemory: 'notice.replacedReplyChangedMemory',
+  unreachable: 'notice.unreachable',
+  timedOut: 'notice.timedOut',
+  unknownError: 'notice.unknownError',
+  zdrUnavailable: 'zdr.unavailable',
+} as const satisfies Record<string, MessageKey>;
 
-export type NoticeId = keyof typeof NOTICE_CATALOG;
+export type NoticeId = keyof typeof NOTICE_KEYS;
 
-const ATTACHMENT_KIND_LABELS: Record<string, string> = {
-  image: 'images',
-  audio: 'audio',
-  pdf: 'PDFs',
+/** Each notice's English words, by id. */
+export const NOTICE_CATALOG = Object.fromEntries(
+  Object.entries(NOTICE_KEYS).map(([id, key]) => [id, en[key]]),
+) as { readonly [Id in NoticeId]: (typeof en)[(typeof NOTICE_KEYS)[Id]] };
+
+const KEY_BY_ENGLISH = new Map<string, MessageKey>(
+  Object.values(NOTICE_KEYS).map((key) => [en[key], key]),
+);
+
+const ATTACHMENT_KIND_LABELS: Record<string, MessageKey> = {
+  image: 'notice.kind.image',
+  audio: 'notice.kind.audio',
+  pdf: 'notice.kind.pdf',
 };
 
 /** Attachments the chosen model cannot read are removed; say so rather than silently sending less. */
 export function describeDroppedAttachments(kinds: string[]): string {
-  const labels = kinds.map((kind) => ATTACHMENT_KIND_LABELS[kind] ?? kind);
-  const list = listInProse(labels);
+  const labels = kinds.map((kind) => {
+    const key = ATTACHMENT_KIND_LABELS[kind];
+    return key ? t(key) : kind;
+  });
+  const list = formatList(labels);
   // Audio alone is one thing; every other kind, and any list, is several.
-  const verb = labels.length === 1 && kinds[0] === 'audio' ? 'was' : 'were';
-  return `${list.charAt(0).toUpperCase()}${list.slice(1)} ${verb} left out: this model does not accept them.`;
+  const one = labels.length === 1 && kinds[0] === 'audio';
+  return capitalize(t(one ? 'notice.droppedOne' : 'notice.droppedMany', { list }));
 }
 
 /** An empty model list names where it was asked for, so the person knows which server to check. */
 export function describeNoModelsOffered(labels: string[]): string {
-  return `${listInProse(labels)} offered no models.`;
+  return t('notice.noModelsOffered', { servers: formatList(labels) });
 }
 
+/** A notice in the language shown: by its id, by its English words, or as given. */
 export function resolveNotice(notice?: NoticeId | string): string | undefined {
   if (!notice) return undefined;
-  return NOTICE_CATALOG[notice as NoticeId] ?? notice;
+  const key = NOTICE_KEYS[notice as NoticeId] ?? KEY_BY_ENGLISH.get(notice);
+  return key ? t(key) : notice;
 }
 
 const MAX_NOTICE_LENGTH = 200;
@@ -107,12 +122,12 @@ export function describeErrorNotice(error: unknown): string | undefined {
   if (fromBody) return clip(fromBody);
   const message = error instanceof Error ? error.message : '';
   if (/failed to fetch|load failed|networkerror|network request failed/i.test(message)) {
-    return 'Could not reach the provider. Check your connection, or that your local server is running.';
+    return NOTICE_CATALOG.unreachable;
   }
   if (/timed? ?out/i.test(message)) {
-    return 'The request timed out. Try again.';
+    return NOTICE_CATALOG.timedOut;
   }
-  if (!message.trim()) return 'Something went wrong, and the provider did not say what.';
+  if (!message.trim()) return NOTICE_CATALOG.unknownError;
   return clip(readable(message));
 }
 
@@ -134,7 +149,7 @@ function httpErrorNotice(error: unknown): string | undefined {
   const head = readable(error.message.slice(0, at + statusMark.length));
   const said = providerErrorText(error.detail);
   if (said) return `${head}: ${said}`;
-  return error.status >= 500 ? `${head}. Try again in a moment.` : `${head}.`;
+  return error.status >= 500 ? `${head}. ${t('notice.tryAgainSoon')}` : `${head}.`;
 }
 
 const MAX_BODY_DEPTH = 4;
@@ -181,15 +196,15 @@ function providerErrorText(body: unknown, depth = 0): string | undefined {
 
 // Transport errors read "openrouter_chat_failed (400): detail"; a person
 // should see what happened, with the provider's own words after it.
-const CODE_PREFIXES: Array<[RegExp, string]> = [
-  [/^(openrouter|provider)_chat_failed\b/, 'The model provider returned an error'],
-  [/^(openrouter|provider)_models_failed\b/, 'Could not load the model list'],
-  [/^stream_missing_body\b/, 'The provider sent an empty response'],
+const CODE_PREFIXES: Array<[RegExp, MessageKey]> = [
+  [/^(openrouter|provider)_chat_failed\b/, 'notice.providerError'],
+  [/^(openrouter|provider)_models_failed\b/, 'notice.modelListFailed'],
+  [/^stream_missing_body\b/, 'notice.emptyResponse'],
 ];
 
 function readable(message: string): string {
-  for (const [pattern, text] of CODE_PREFIXES) {
-    if (pattern.test(message)) return message.replace(pattern, text);
+  for (const [pattern, key] of CODE_PREFIXES) {
+    if (pattern.test(message)) return message.replace(pattern, t(key));
   }
   return message;
 }

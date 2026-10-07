@@ -14,6 +14,7 @@ import { useStepper } from '@/modules/tutor/components/message/hooks/useStepper'
 import { Markdown } from '@/components/Markdown';
 import { LEDGER } from '@/modules/tutor/lib/ledger';
 import { useLedger } from '@/modules/tutor/ui/ledger';
+import { useT } from '@/modules/tutor/i18n';
 
 export type McqItem = Omit<QuizItem, 'correct'> & { correct?: number };
 export type McqAttempts = Record<string, { choice: number; correct: boolean }>;
@@ -55,6 +56,7 @@ export function McqCard({
   attempts: McqAttempts;
   onAnswer: (itemId: string, choice: number) => void | Promise<void>;
 }) {
+  const t = useT();
   const isPending = useCallback((item: McqItem) => !attempts[item.id], [attempts]);
   const { total, activeIndex, goToIndex, goPrevious, goNext, activeItem } = useStepper(
     items,
@@ -81,7 +83,7 @@ export function McqCard({
       {!single && (
         <div className="exercise__bar">
           <span className="exercise__kicker">
-            Question {activeIndex + 1} of {total}
+            {t('quiz.question', { at: activeIndex + 1, count: total })}
           </span>
           <StepperDots
             items={items}
@@ -160,11 +162,11 @@ export function McqCard({
                     <p className="exercise-feedback__verdict">
                       {picked === correctIdx ? (
                         <>
-                          <CheckIcon /> Correct
+                          <CheckIcon /> {t('quiz.correct')}
                         </>
                       ) : (
                         <>
-                          <XMarkIcon /> Not quite
+                          <XMarkIcon /> {t('quiz.notQuite')}
                         </>
                       )}
                     </p>
@@ -189,7 +191,7 @@ export function McqCard({
             onClick={goPrevious}
             disabled={activeIndex === 0}
           >
-            <ChevronLeftIcon className="h-3.5 w-3.5" /> Previous
+            <ChevronLeftIcon className="h-3.5 w-3.5" /> {t('common.previous')}
           </button>
           <button
             type="button"
@@ -197,7 +199,7 @@ export function McqCard({
             onClick={goNext}
             disabled={activeIndex >= total - 1}
           >
-            Next <ChevronRightIcon className="h-3.5 w-3.5" />
+            {t('common.next')} <ChevronRightIcon className="h-3.5 w-3.5" />
           </button>
         </div>
       )}

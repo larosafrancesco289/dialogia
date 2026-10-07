@@ -1,5 +1,6 @@
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
 import { ModelPicker, type ModelPickerTriggerProps } from '@/components/ModelPicker';
+import { useT } from '@/lib/i18n';
 
 type ModelPickerTriggerComponentProps = {
   /** When true, shows tutor model as read-only */
@@ -17,11 +18,12 @@ export function ModelPickerTrigger({
   tutorActive,
   tutorModelLabel,
 }: ModelPickerTriggerComponentProps) {
+  const t = useT();
   if (tutorActive) {
     return (
       <div
         className="model-picker-trigger model-picker-trigger--tutor"
-        title={`Tutor model: ${tutorModelLabel}. Set it in Settings.`}
+        title={t('header.tutorModel', { model: tutorModelLabel ?? '' })}
       >
         <span className="model-picker-trigger__name truncate">{tutorModelLabel}</span>
       </div>

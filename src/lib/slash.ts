@@ -1,4 +1,5 @@
 import type { ModelDescriptor } from '@/lib/types';
+import { t } from '@/lib/i18n';
 
 export type SlashSuggestion = {
   title: string;
@@ -24,17 +25,13 @@ export function getSlashSuggestions(input: string, models: ModelDescriptor[]): S
   const startsWith = (candidate: string, prefix: string) => candidate.startsWith(prefix);
 
   // A command that takes an argument is offered with a space after it, ready for one.
+  // The commands are typed in English in every language; what they do is said in the one shown.
   const baseCommands: Array<{ key: string; label: string; help?: string; takesArgument: boolean }> =
     [
-      { key: 'model', label: 'model', help: 'Answer with another model', takesArgument: true },
-      { key: 'search', label: 'search', help: 'Turn web search on or off', takesArgument: true },
-      {
-        key: 'reasoning',
-        label: 'reasoning',
-        help: 'How long the model thinks',
-        takesArgument: true,
-      },
-      { key: 'help', label: 'help', help: 'What these commands do', takesArgument: false },
+      { key: 'model', label: 'model', help: t('slash.model'), takesArgument: true },
+      { key: 'search', label: 'search', help: t('slash.search'), takesArgument: true },
+      { key: 'reasoning', label: 'reasoning', help: t('slash.reasoning'), takesArgument: true },
+      { key: 'help', label: 'help', help: t('slash.help'), takesArgument: false },
     ];
   const pushCommand = (command: (typeof baseCommands)[number]) =>
     push(`/${command.label}`, `/${command.key}${command.takesArgument ? ' ' : ''}`, command.help);
@@ -79,7 +76,7 @@ export function getSlashSuggestions(input: string, models: ModelDescriptor[]): S
     for (const choice of choices) {
       push(choice.name || choice.id, `/model ${choice.id}`, choice.id);
     }
-    if (suggestions.length === 0 && arg === '') push('Type a model name…', `/model `);
+    if (suggestions.length === 0 && arg === '') push(t('slash.typeModel'), `/model `);
     return suggestions;
   }
 

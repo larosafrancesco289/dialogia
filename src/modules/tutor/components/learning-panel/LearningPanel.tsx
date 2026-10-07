@@ -15,6 +15,7 @@ import {
   PlanFeedbackModal,
   type PlanFeedbackContext,
 } from '@/modules/tutor/components/plan/PlanFeedbackModal';
+import { useT } from '@/modules/tutor/i18n';
 
 /**
  * The Learning Hub. At rest it is the contents: the plan to read and the
@@ -23,6 +24,7 @@ import {
  * study flags that allow it.
  */
 export function LearningPanel() {
+  const t = useT();
   const {
     learningPlan,
     state,
@@ -112,7 +114,7 @@ export function LearningPanel() {
               void approvePlan(pending).finally(() => setApproving(false));
             }}
           >
-            {approving ? 'Applying…' : 'Approve plan'}
+            {t(approving ? 'plan.applying' : 'plan.approve')}
           </button>
           {affordances.revisePlan && (
             <button
@@ -121,7 +123,7 @@ export function LearningPanel() {
               disabled={approving}
               onClick={() => setFeedbackContext({ type: 'plan_proposal' })}
             >
-              Suggest changes
+              {t('plan.suggest')}
             </button>
           )}
         </div>

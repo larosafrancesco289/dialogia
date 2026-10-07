@@ -3,12 +3,16 @@ import { shortDate } from '@/lib/ui/shortDate';
 import { useChatStore } from '@/lib/store';
 import type { LearningRecord } from '@/lib/types';
 import { useOpenChat } from '@/components/memory/MemoryNotes';
+import { useT } from '@/lib/i18n';
+import { formatPercent } from '@/lib/i18n/format';
+import { displayChatTitle } from '@/lib/ui/chatTitle';
 
 /**
  * A tutor chat in memory's Learning folder: its goal and a small copy of the
  * Hub's path, read live from the chat, so it can never disagree with the Hub.
  */
 function RecordView({ record }: { record: LearningRecord }) {
+  const t = useT();
   const title = useChatStore((s) => s.chats.find((chat) => chat.id === record.chatId)?.title);
   const openChat = useOpenChat();
   const done = record.topics.filter((topic) => topic.state === 'done').length;
@@ -19,14 +23,18 @@ function RecordView({ record }: { record: LearningRecord }) {
         className="memory-record__title"
         onClick={() => openChat(record.chatId)}
       >
-        {title || record.goal}
+        {title ? displayChatTitle(title) : record.goal}
         <ArrowUpRightIcon className="h-3.5 w-3.5" aria-hidden="true" />
       </button>
       {record.goal && title && <p className="memory-record__goal">{record.goal}</p>}
       <p className="memory-record__meta">
         {record.finished
-          ? `Finished ${shortDate(record.studiedAt)}`
-          : `${done} of ${record.topics.length} done · last studied ${shortDate(record.studiedAt)}`}
+          ? t('memory.record.finished', { date: shortDate(record.studiedAt) })
+          : t('memory.record.progress', {
+              done,
+              count: record.topics.length,
+              date: shortDate(record.studiedAt),
+            })}
       </p>
       <ol className="memory-path">
         {record.topics.map((topic, index) => (
@@ -46,7 +54,8 @@ function RecordView({ record }: { record: LearningRecord }) {
                   <span style={{ transform: `scaleX(${topic.percent / 100})` }} />
                 </span>
                 <span className="memory-path__pct">
-                  {topic.percent}%<span className="sr-only">, {topic.status}</span>
+                  {formatPercent(topic.percent / 100)}
+                  <span className="sr-only">, {topic.status}</span>
                 </span>
               </>
             )}
@@ -73,12 +82,11 @@ function bySubject(records: LearningRecord[]): { subject?: string; records: Lear
 }
 
 export function LearningRecords({ records }: { records: LearningRecord[] }) {
+  const t = useT();
   if (!records.length) return null;
   return (
-    <section className="memory-records" aria-label="Learning sessions">
-      <p className="memory-hint">
-        Learning sessions appear here on their own, with their progress read live from the chat.
-      </p>
+    <section className="memory-records" aria-label={t('memory.records')}>
+      <p className="memory-hint">{t('memory.recordsHint')}</p>
       {bySubject(records).map((group, i) => (
         <div key={group.subject ?? `alone-${i}`} className="memory-subject">
           {group.subject && <h4 className="memory-subject__name">{group.subject}</h4>}

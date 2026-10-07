@@ -16,6 +16,7 @@ import {
   resolveDynamicModelId,
 } from '@/lib/models';
 import { hasAnyEndpoint, isModelEndpointAvailable } from '@/lib/policy/providerAvailability';
+import { useT } from '@/lib/i18n';
 
 /**
  * Every loaded model whose endpoint is still configured. A provider's own
@@ -35,6 +36,7 @@ export function useAvailableModels() {
  * currently name so "latest" is never a mystery.
  */
 export function useCuratedModels() {
+  const t = useT();
   const allModels = useChatStore((s) => s.models);
   const zdrOnly = useChatStore((s) => s.ui.zdrOnly === true);
 
@@ -43,7 +45,7 @@ export function useCuratedModels() {
     const availableIds = new Set((allModels || []).map((model) => model.id));
     if (availableIds.size === 0) return [];
     const resolved = CURATED_MODELS.map((entry) => {
-      if (!isDynamicModelId(entry.id)) return entry;
+      if (!isDynamicModelId(entry.id)) return { ...entry, description: t(entry.description) };
       const concreteId = resolveDynamicModelId(entry.id, allModels || []);
       const concrete = findModelById(allModels || [], concreteId);
       const currentName = formatModelLabel({ model: concrete, fallbackId: concreteId });
@@ -53,7 +55,7 @@ export function useCuratedModels() {
         // What it names today leads: a long description is cut at the end.
         // Zero data retention may leave only an older model of the family, which
         // the family's description does not describe: it goes by its name alone.
-        description: zdrOnly ? currentName : `${currentName} · ${entry.description}`,
+        description: zdrOnly ? currentName : `${currentName} · ${t(entry.description)}`,
       };
     });
     // A family can resolve to a model that is also listed by name; the list
@@ -61,7 +63,7 @@ export function useCuratedModels() {
     const seen = new Set<string>();
     const unique = resolved.filter((entry) => !seen.has(entry.id) && !!seen.add(entry.id));
     return filterCuratedModelsByAvailability(unique, availableIds);
-  }, [allModels, zdrOnly]);
+  }, [allModels, zdrOnly, t]);
 }
 
 /** The concrete model a new chat starts with. */

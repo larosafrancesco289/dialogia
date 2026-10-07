@@ -18,6 +18,7 @@ export function buildDefaultUIState(overrides?: Partial<UIState>): UIState {
     activeTurnByChatId: {},
     notice: undefined,
     sidebarCollapsed: false,
+    language: 'auto',
     ...EPHEMERAL_DEFAULTS,
     zdrOnly: getDefaultZdrOnly(),
     chatDefaults: undefined,

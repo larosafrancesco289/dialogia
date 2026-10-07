@@ -28,6 +28,7 @@ import {
 import { buildLegacyImport } from '@/modules/tutor/store/legacyImport';
 import { isSharedTutorChat } from '@/modules/tutor/store/selectors';
 import { prepareTutorWelcomeMessage as prepareTutorWelcomeMessageService } from '@/modules/tutor/services/tutorWelcome';
+import { t } from '@/modules/tutor/i18n';
 
 export type TutorSession = {
   /** The chat's log in seq order. */
@@ -126,8 +127,7 @@ async function legacyMessages(state: StoreState, chatId: string): Promise<Messag
 }
 
 /** Shown when a retry of an unsaved write fails too: the change holds only in this tab. */
-export const TUTOR_SAVE_FAILED_NOTICE =
-  'Tutor progress could not be saved. It holds in this tab and will be retried with the next change.';
+export const tutorSaveFailedNotice = () => t('notice.saveFailed');
 
 const GONE: TutorError = {
   code: 'chat_deleted',
@@ -209,7 +209,7 @@ export function createTutorSlice(
       unsaved.set(chatId, batch);
       const count = (failures.get(chatId) ?? 0) + 1;
       failures.set(chatId, count);
-      if (count === 2) notify(get, TUTOR_SAVE_FAILED_NOTICE);
+      if (count === 2) notify(get, tutorSaveFailedNotice());
       return 'unsaved';
     }
   };

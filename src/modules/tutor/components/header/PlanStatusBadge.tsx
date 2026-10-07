@@ -1,5 +1,6 @@
 import { BookOpenIcon } from '@heroicons/react/24/outline';
 import type { LearningPlan } from '@/lib/types';
+import { useT } from '@/modules/tutor/i18n';
 
 type PlanProgress = {
   completed: number;
@@ -19,6 +20,7 @@ export function PlanStatusBadge({
   panelOpen?: boolean;
   onToggleRightPanel: () => void;
 }) {
+  const t = useT();
   if (!hasPlan || !planProgress || !learningPlan) return null;
 
   return (
@@ -26,8 +28,8 @@ export function PlanStatusBadge({
       type="button"
       className="plan-button"
       onClick={onToggleRightPanel}
-      title={panelOpen ? 'Close Learning Hub' : 'Open Learning Hub'}
-      aria-label={panelOpen ? 'Close Learning Hub' : 'Open Learning Hub'}
+      title={t(panelOpen ? 'hub.close' : 'hub.open')}
+      aria-label={t(panelOpen ? 'hub.close' : 'hub.open')}
       aria-pressed={panelOpen}
     >
       <BookOpenIcon className="plan-button__icon h-5 w-5" />
@@ -35,7 +37,10 @@ export function PlanStatusBadge({
           mastery and disagreed with the Learning Hub. */}
       <span
         className="plan-button__progress"
-        aria-label={`${planProgress.completed} of ${learningPlan.nodes.length} ${learningPlan.nodes.length === 1 ? 'topic' : 'topics'} done`}
+        aria-label={t('hub.topicsDone', {
+          done: planProgress.completed,
+          count: learningPlan.nodes.length,
+        })}
       >
         {planProgress.completed}/{learningPlan.nodes.length}
       </span>

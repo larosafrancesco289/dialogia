@@ -2,6 +2,7 @@ import type { RefObject } from 'react';
 import { XMarkIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import type { DraftAttachment } from '@/lib/types';
 import { neighbourOf, refocusIfDropped } from '@/lib/ui/focus';
+import { useT, type Translate } from '@/lib/i18n';
 
 export type AttachmentPreviewListProps = {
   attachments: DraftAttachment[];
@@ -15,18 +16,21 @@ export function AttachmentPreviewList({
   onRemove,
   fieldRef,
 }: AttachmentPreviewListProps) {
+  const t = useT();
   if (!attachments.length) return null;
 
   return (
     <div className="composer-attachments">
       {attachments.map((attachment) => (
         <div key={attachment.id} className="relative">
-          {renderPreview(attachment)}
+          {renderPreview(t, attachment)}
           <button
             type="button"
             className="attachment-remove"
-            aria-label={`Remove ${attachment.name || 'attachment'}`}
-            title="Remove"
+            aria-label={t('attachments.removeNamed', {
+              name: attachment.name || t('attachments.attachment'),
+            })}
+            title={t('attachments.remove')}
             onClick={(event) => {
               // Focus goes to the next chip's ×, else the one before, else the field.
               const button = event.currentTarget;
@@ -50,12 +54,12 @@ export function AttachmentPreviewList({
   );
 }
 
-function renderPreview(attachment: DraftAttachment) {
+function renderPreview(t: Translate, attachment: DraftAttachment) {
   if (attachment.kind === 'image' && attachment.dataURL) {
     return (
       <img
         src={attachment.dataURL}
-        alt={attachment.name || 'attachment'}
+        alt={attachment.name || t('attachments.attachment')}
         width={64}
         height={64}
         loading="lazy"
@@ -70,16 +74,19 @@ function renderPreview(attachment: DraftAttachment) {
       <div className="h-16 min-w-40 sm:min-w-48 max-w-72 px-3 py-2 attachment-chip flex items-center gap-2">
         <audio controls preload="none" src={attachment.dataURL} className="h-10" />
         <div className="min-w-0">
-          <div className="text-xs font-medium truncate" title={attachment.name || 'Audio'}>
-            {attachment.name || 'Audio'}
+          <div
+            className="text-xs font-medium truncate"
+            title={attachment.name || t('attachments.audio')}
+          >
+            {attachment.name || t('attachments.audio')}
           </div>
-          <div className="text-[11px] text-fg-muted">Attached (mp3/wav)</div>
+          <div className="text-[11px] text-fg-muted">{t('attachments.attachedAudio')}</div>
         </div>
       </div>
     );
   }
 
-  return <PdfChip name={attachment.name} detail="Attached (read in your browser)" />;
+  return <PdfChip name={attachment.name} detail={t('attachments.attachedPdf')} />;
 }
 
 /** A PDF as a chip: the document glyph, its name, and a line under it. */

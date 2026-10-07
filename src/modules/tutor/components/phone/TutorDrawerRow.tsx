@@ -1,6 +1,7 @@
 import { AcademicCapIcon } from '@heroicons/react/24/outline';
 import { useChatStore } from '@/lib/store';
 import { useTutorToggle } from '@/modules/tutor/ui/useTutorToggle';
+import { useT } from '@/modules/tutor/i18n';
 
 /**
  * The tutor module's `phoneDrawer` slot: the phone's Learn button, as a row
@@ -8,15 +9,12 @@ import { useTutorToggle } from '@/modules/tutor/ui/useTutorToggle';
  * here, so only its dot is gold.
  */
 export function TutorDrawerRow() {
+  const t = useT();
   const tutor = useTutorToggle();
   const setUI = useChatStore((s) => s.setUI);
   if (!tutor.inChrome) return null;
 
-  const hint = tutor.forced
-    ? 'Every chat is a learning session'
-    : tutor.active
-      ? 'In a learning session; tap to leave'
-      : 'Start a learning session';
+  const hint = t(tutor.forced ? 'learn.forced' : tutor.active ? 'learn.tapToLeave' : 'learn.start');
 
   return (
     <button
@@ -32,7 +30,7 @@ export function TutorDrawerRow() {
     >
       <AcademicCapIcon className="tutor-drawer-row__icon" aria-hidden="true" />
       <span className="tutor-drawer-row__text">
-        <span className="tutor-drawer-row__label">Learn</span>
+        <span className="tutor-drawer-row__label">{t('learn.label')}</span>
         <span className="tutor-drawer-row__hint">{hint}</span>
       </span>
       {tutor.active && <span className="tutor-drawer-row__live" aria-hidden="true" />}

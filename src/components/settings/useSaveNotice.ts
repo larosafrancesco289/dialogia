@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useChatStore } from '@/lib/store';
 import type { AutoSaveStatus } from '@/components/settings/hooks/useAutoSave';
+import { t } from '@/lib/i18n';
 
 /**
  * Settings save as you go, and the control's own state already shows the
@@ -10,6 +11,6 @@ import type { AutoSaveStatus } from '@/components/settings/hooks/useAutoSave';
 export function useSaveNotice(status: AutoSaveStatus) {
   const setNotice = useChatStore((s) => s.setNotice);
   useEffect(() => {
-    if (status === 'error') setNotice('Settings could not be saved. Try the change again.');
+    if (status === 'error') setNotice(t('settings.saveFailed'));
   }, [status, setNotice]);
 }

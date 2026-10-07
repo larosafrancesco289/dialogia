@@ -3,7 +3,8 @@ import type { LearningPlan, LearningPlanNode, TopicMastery } from '@/lib/types';
 import { isMeasured, nextReadyNode, type TopicExplanation } from '@/modules/tutor/engine';
 import type { TutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 import { readableNote } from '@/modules/tutor/ui/messageViews';
-import { listInProse } from '@/lib/utils/text';
+import { formatList, formatPercent } from '@/lib/i18n/format';
+import { useT, type TutorTranslate } from '@/modules/tutor/i18n';
 import { Meter, PathStep, stepState, waitingOn, type StepState } from './PlanPath';
 import { pct, shownPercent, statusWords } from '@/modules/tutor/lib/topicStatus';
 import { Markdown } from '@/components/Markdown';
@@ -41,6 +42,7 @@ export function ContentsView({
   affordances: TutorAffordances;
   corrections: ContentsCorrections;
 }) {
+  const t = useT();
   const currentId = plan.nodes.find((n) => n.status === 'in_progress')?.id ?? null;
   const [openId, setOpenId] = useState<string | null>(currentId);
   // When the plan moves on, the open topic follows it.
@@ -58,15 +60,15 @@ export function ContentsView({
       <div className="hub-contents__intro">
         {plan.goal && (
           <>
-            <p className="hub-label">Your goal</p>
+            <p className="hub-label">{t('hub.goal')}</p>
             <p className="hub-contents__goal">
               <Markdown inline content={plan.goal} />
             </p>
           </>
         )}
         <p className="hub-contents__meta">
-          {done} of {plan.nodes.length} {plan.nodes.length === 1 ? 'topic' : 'topics'} done
-          {hours != null ? ` · about ${hours} ${hours === 1 ? 'hour' : 'hours'} in all` : ''}
+          {t('hub.topicsDone', { done, count: plan.nodes.length })}
+          {hours != null ? ` · ${t('hub.hours', { count: hours })}` : ''}
         </p>
       </div>
 
@@ -91,8 +93,7 @@ export function ContentsView({
 
       {affordances.showMastery && anyShown && (
         <p className="hub-contents__hint">
-          Each percentage is the tutor’s estimate of how well you know that topic. Open a topic to
-          see why{affordances.correctMastery ? ', or to correct it' : ''}.
+          {t(affordances.correctMastery ? 'hub.hintCorrect' : 'hub.hint')}
         </p>
       )}
     </div>
@@ -124,6 +125,7 @@ function ContentsItem({
   open: boolean;
   onToggle: () => void;
 }) {
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const measured = isMeasured(mastery);
   const percent = affordances.showMastery ? shownPercent(state, mastery) : undefined;
@@ -156,7 +158,7 @@ function ContentsItem({
         <span className="hub-path__name">
           <Markdown inline content={node.name} />
         </span>
-        {showMastery && <span className="hub-path__pct">{percent}%</span>}
+        {showMastery && <span className="hub-path__pct">{formatPercent(percent / 100)}</span>}
         <span className="hub-path__sub">
           {showMastery && <Meter value={mastery!.confidence} />}
           <span className="hub-path__status">
@@ -164,9 +166,7 @@ function ContentsItem({
             {toClear > 0 && (
               <>
                 {' · '}
-                <span className="hub-path__warn">
-                  {toClear === 1 ? '1 thing to clear up' : `${toClear} things to clear up`}
-                </span>
+                <span className="hub-path__warn">{t('hub.toClear', { count: toClear })}</span>
               </>
             )}
           </span>
@@ -182,7 +182,7 @@ function ContentsItem({
           )}
           {node.objectives.length > 0 && (
             <div>
-              <p className="hub-label">You’ll be able to</p>
+              <p className="hub-label">{t('hub.objectives')}</p>
               <ul className="hub-topic__objectives">
                 {node.objectives.map((objective, i) => (
                   <li key={i}>
@@ -197,16 +197,16 @@ function ContentsItem({
 
           {showMastery && affordances.correctMastery && !saidFelt && (
             <div className="hub-topic__correct">
-              <span>Seems wrong?</span>
+              <span>{t('hub.seemsWrong')}</span>
               {/* The pair wraps as one: never "Too high" on a line and "Too low" alone below. */}
-              <span className="estimate-choices" role="group" aria-label="Correct the estimate">
+              <span className="estimate-choices" role="group" aria-label={t('hub.correct')}>
                 <button
                   type="button"
                   className="btn-outline btn-sm"
                   disabled={busy}
                   onClick={() => void act(() => corrections.onContestMastery(node.id, 'down'))}
                 >
-                  Too high
+                  {t('hub.tooHigh')}
                 </button>
                 <button
                   type="button"
@@ -214,7 +214,7 @@ function ContentsItem({
                   disabled={busy}
                   onClick={() => void act(() => corrections.onContestMastery(node.id, 'up'))}
                 >
-                  Too low
+                  {t('hub.tooLow')}
                 </button>
               </span>
             </div>
@@ -222,7 +222,7 @@ function ContentsItem({
 
           {openMisconceptions.map((m) => (
             <div key={m.id} className="hub-clear">
-              <p className="hub-label">To clear up</p>
+              <p className="hub-label">{t('hub.toClearLabel')}</p>
               <p className="hub-clear__text">
                 <Markdown inline content={asTheirIdea(m.description)} />
               </p>
@@ -233,7 +233,7 @@ function ContentsItem({
                   disabled={busy}
                   onClick={() => void act(() => corrections.onResolveMisconception(node.id, m.id))}
                 >
-                  I’ve got this now
+                  {t('hub.gotIt')}
                 </button>
               )}
             </div>
@@ -241,7 +241,7 @@ function ContentsItem({
 
           {state === 'locked' && waiting.length > 0 && (
             <p className="hub-topic__note">
-              <Markdown inline content={`Starts once you’ve finished ${listInProse(waiting)}.`} />
+              <Markdown inline content={t('hub.startsOnce', { topics: formatList(waiting) })} />
             </p>
           )}
         </div>
@@ -276,13 +276,13 @@ const isStart = (evidence: WhyStep['evidence']) =>
   !!evidence.carriedOver;
 
 /** What placed the estimate directly, in the learner's words. */
-function settingLabel(evidence: WhyStep['evidence']): string {
-  if (evidence?.kind === 'placement') return 'Starting estimate';
-  if (evidence?.kind === 'more_practice') return 'You asked for more practice';
-  if (evidence?.kind === 'marked_known') return 'You marked it as known';
-  if (evidence?.source === 'learner') return 'You corrected it';
-  if (evidence?.source === 'learner_said') return 'You told the tutor';
-  return 'Set by the tutor';
+function settingLabel(t: TutorTranslate, evidence: WhyStep['evidence']): string {
+  if (evidence?.kind === 'placement') return t('why.starting');
+  if (evidence?.kind === 'more_practice') return t('why.morePractice');
+  if (evidence?.kind === 'marked_known') return t('why.markedKnown');
+  if (evidence?.source === 'learner') return t('why.corrected');
+  if (evidence?.source === 'learner_said') return t('why.told');
+  return t('why.byTutor');
 }
 
 /**
@@ -299,6 +299,7 @@ function WhyLine({
   first: boolean;
   topic: string;
 }) {
+  const t = useT();
   const setting = isSetting(evidence);
   const details = evidence?.details ? readableNote(evidence.details) : '';
   // The learner's own correction is its own sentence ("You said the estimate
@@ -308,7 +309,7 @@ function WhyLine({
   const carried = evidence?.carriedOver;
   const delta = pct(after) - pct(before);
   const figure = first
-    ? `${pct(after)}%`
+    ? formatPercent(pct(after) / 100)
     : delta > 0
       ? `+${delta}`
       : delta < 0
@@ -325,7 +326,7 @@ function WhyLine({
           <CarriedOverWords carried={carried} setTo={after} topic={topic} />
         ) : (
           <>
-            {settingLabel(evidence)}
+            {settingLabel(t, evidence)}
             {details && (
               <span className="hub-why__note">
                 <Markdown inline content={details} />
@@ -344,6 +345,7 @@ function WhyLine({
  * practice) reads as the change it made, like any other line.
  */
 function Why({ mastery, explanation }: { mastery: TopicMastery; explanation?: TopicExplanation }) {
+  const t = useT();
   const start = explanation?.start ?? mastery.confidence;
   const steps: WhyStep[] = (explanation?.steps ?? []).map((step) => ({
     ...step,
@@ -357,14 +359,14 @@ function Why({ mastery, explanation }: { mastery: TopicMastery; explanation?: To
 
   return (
     <div className="hub-why">
-      <p className="hub-label">Why {pct(mastery.confidence)}%</p>
+      <p className="hub-label">
+        {t('why.title', { percent: formatPercent(pct(mastery.confidence) / 100) })}
+      </p>
       <ol className="hub-why__list">
         {!opensWithStart && (
           <li className="is-edge">
-            <span className="hub-why__figure">{pct(start)}%</span>
-            <span>
-              {mastery.baseline != null ? 'Carried over from before' : 'Starting estimate'}
-            </span>
+            <span className="hub-why__figure">{formatPercent(pct(start) / 100)}</span>
+            <span>{t(mastery.baseline != null ? 'why.carriedBefore' : 'why.starting')}</span>
           </li>
         )}
         {steps.map((step, i) => (
@@ -377,8 +379,8 @@ function Why({ mastery, explanation }: { mastery: TopicMastery; explanation?: To
         ))}
         {!startIsNow && (
           <li className="is-now">
-            <span className="hub-why__figure">{pct(mastery.confidence)}%</span>
-            <span>Now</span>
+            <span className="hub-why__figure">{formatPercent(pct(mastery.confidence) / 100)}</span>
+            <span>{t('why.now')}</span>
           </li>
         )}
       </ol>

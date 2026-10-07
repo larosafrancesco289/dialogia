@@ -6,6 +6,7 @@ import type { StoreGetter, StoreSetter, ToolExecutionResult } from '@/lib/agent/
 import type { WebSearchArgs } from '@/lib/search/args';
 import { setSearchUiStatus } from '@/lib/search/ui/state';
 import { TOOL_CALL_STOPPED } from '@/lib/constants';
+import { t } from '@/lib/i18n';
 
 const SEARCH_TIMEOUT_MS = 20000;
 
@@ -68,8 +69,8 @@ export async function performWebSearchTool(opts: {
       const reason = controller.signal.aborted
         ? TOOL_CALL_STOPPED
         : timedOut
-          ? 'The search took too long.'
-          : error || 'The search failed.';
+          ? t('searchError.tooLong')
+          : error || t('searchError.failed');
       // A failure only reads as the search's state when nothing was found.
       setSearchUiStatus(
         { set, get },

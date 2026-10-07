@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import styles from './MessageCard.module.css';
+import { useT } from '@/lib/i18n';
 
 /**
  * Your message's actions: copy and edit, under the bubble on the right,
@@ -31,12 +32,12 @@ export const ENTER_MODIFIER =
   /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
     ? '⌘'
     : 'Ctrl';
-const SAVE_SHORTCUT = `${ENTER_MODIFIER} Enter to save`;
 
 /** Save and cancel under a message being edited, with the shortcut named. */
 export function MessageEditBar({ onSave, onCancel }: { onSave: () => void; onCancel: () => void }) {
   // Brought into view when editing starts: under the latest reply it would
   // otherwise sit behind the composer.
+  const t = useT();
   const barRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const reveal = () => barRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -58,12 +59,14 @@ export function MessageEditBar({ onSave, onCancel }: { onSave: () => void; onCan
   }, []);
   return (
     <div ref={barRef} className="message-edit-bar">
-      <span className="message-edit-bar__hint">{SAVE_SHORTCUT}</span>
+      <span className="message-edit-bar__hint">
+        {t('message.saveShortcut', { key: ENTER_MODIFIER })}
+      </span>
       <button type="button" className="btn-ghost btn-sm" onClick={onCancel}>
-        Cancel
+        {t('common.cancel')}
       </button>
       <button type="button" className="btn btn-sm" onClick={onSave}>
-        Save
+        {t('common.save')}
       </button>
     </div>
   );
@@ -73,6 +76,8 @@ type ActionButtonProps = {
   icon: ReactNode;
   title: string;
   ariaLabel?: string;
+  /** A name for code to find the button by, whatever language it is labelled in. */
+  action?: string;
   onClick: () => void;
   disabled?: boolean;
   className?: string;
@@ -83,6 +88,7 @@ export function ActionButton({
   icon,
   title,
   ariaLabel,
+  action,
   onClick,
   disabled,
   className,
@@ -93,6 +99,7 @@ export function ActionButton({
       type="button"
       className={`icon-button icon-button--sm ${showFeedback ? 'is-success' : ''} ${className ?? ''}`.trim()}
       aria-label={ariaLabel ?? title}
+      data-action={action}
       title={title}
       onClick={onClick}
       disabled={disabled}

@@ -8,6 +8,7 @@ import {
   endpointCapabilities,
   type ProviderEndpoint,
 } from '@/lib/transport/endpoints';
+import { t } from '@/lib/i18n';
 
 export type SearchModeOption = { mode: SearchMode; label: string; description: string };
 
@@ -23,8 +24,8 @@ export function listSearchModeOptions(endpoint?: ProviderEndpoint): SearchModeOp
   if (!endpoint || allowsProviderExtensions(endpoint)) {
     options.push({
       mode: NATIVE_SEARCH_MODE,
-      label: 'Built-in',
-      description: "The model provider's own search",
+      label: t('search.builtIn'),
+      description: t('search.builtInDescription'),
     });
   }
   if (endpoint && !endpointCapabilities(endpoint).tools) return options;
@@ -32,7 +33,7 @@ export function listSearchModeOptions(endpoint?: ProviderEndpoint): SearchModeOp
     options.push({
       mode: provider.id,
       label: provider.label,
-      description: 'Searches when it needs to, and reads the pages it finds',
+      description: t('search.toolDescription'),
     });
   }
   return options;

@@ -5,6 +5,7 @@ import { MessageActions, ActionButton, MessageEditBar } from '@/components/messa
 import { MessageAttachments } from '@/components/message/MessageAttachments';
 import type { Message, PersistedAttachment } from '@/lib/types';
 import { USER_MESSAGE_MAX_LINES, exceedsClamp, mightNeedClamp } from '@/lib/ui/userMessageClamp';
+import { useT } from '@/lib/i18n';
 
 const CLAMP_STYLE = { '--user-clamp-lines': USER_MESSAGE_MAX_LINES } as CSSProperties;
 
@@ -78,6 +79,7 @@ export function UserMessage({
   setLightbox,
   attachments,
 }: UserMessageProps) {
+  const t = useT();
   const clamp = useUserMessageClamp(message.content, isEditing);
   const bodyId = useId();
   return (
@@ -92,16 +94,18 @@ export function UserMessage({
                 <ClipboardIcon className="h-4 w-4" />
               )
             }
-            title={copiedId === message.id ? 'Copied' : 'Copy'}
-            ariaLabel="Copy message"
+            title={t(copiedId === message.id ? 'message.copied' : 'message.copy')}
+            ariaLabel={t('message.copyLabel')}
+            action="copy"
             onClick={copyMessage}
             showFeedback={copiedId === message.id}
           />
           {canEdit && (
             <ActionButton
               icon={<PencilSquareIcon className="h-4 w-4" />}
-              title="Edit"
-              ariaLabel="Edit message"
+              title={t('message.edit')}
+              ariaLabel={t('message.editMessage')}
+              action="edit"
               onClick={startEditingMessage}
             />
           )}
@@ -132,7 +136,7 @@ export function UserMessage({
                 setDraft('');
               }
             }}
-            placeholder="Edit your message…"
+            placeholder={t('message.editPlaceholder')}
             autoFocus
           />
         ) : (
@@ -159,7 +163,7 @@ export function UserMessage({
             });
           }}
         >
-          {clamp.expanded ? 'Show less' : 'Show all'}
+          {t(clamp.expanded ? 'message.showLess' : 'message.showAll')}
         </button>
       )}
       {isEditing && (

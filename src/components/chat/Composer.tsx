@@ -38,6 +38,7 @@ import {
   selectSearchEnabled,
   selectSearchProvider,
 } from '@/lib/store/selectors';
+import { t } from '@/lib/i18n';
 
 const EMPTY_OVERRIDES: UiNextOverrides = {};
 const WELCOME_DRAFT_SCOPE_KEY = '__welcome__';
@@ -220,12 +221,12 @@ export function Composer({
       if (snapshot.scope === activeDraftScopeRef.current) {
         setText(snapshot.text);
         replaceAttachments(snapshot.attachments);
-        setNotice('The message could not be sent. Your draft is back in the composer.');
+        setNotice(t('composer.sendFailed'));
         taRef.current?.focus();
         return;
       }
       recoveredAttachmentsByScopeRef.current[snapshot.scope] = snapshot.attachments;
-      setNotice('The message could not be sent. Your draft is back in its chat.');
+      setNotice(t('composer.sendFailedElsewhere'));
     }
   };
   const onSendWithRecovery = () => sendWithRecovery();

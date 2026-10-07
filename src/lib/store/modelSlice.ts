@@ -16,6 +16,7 @@ import { getMessagesForChat } from '@/lib/messages/indexing';
 import { ChatService } from '@/lib/services/chatService';
 import { repository } from '@/lib/db';
 import type { ModelDescriptor } from '@/lib/types';
+import { t } from '@/lib/i18n';
 
 export type ModelSliceState = {
   models: ModelDescriptor[];
@@ -101,9 +102,7 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
           // mode can vouch for nothing else but the person's own local server.
           if (endpoint.kind !== 'openrouter' && zdrOnly && !isLocalServer(endpoint)) {
             modelsByEndpoint.set(endpoint.id, []);
-            noticeSegments.push(
-              `${endpoint.label} models are hidden: zero data retention is on, and only OpenRouter can promise it.`,
-            );
+            noticeSegments.push(t('models.hiddenZdr', { server: endpoint.label }));
             return;
           }
 
@@ -133,12 +132,12 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
             if (isApiError(error) && error.code === API_ERROR_CODES.UNAUTHORIZED) {
               hadUnauthorizedFailure = true;
               markKeyRejected(endpoint.apiKeyRef, auth.apiKey);
-              noticeSegments.push(`${endpoint.label} models unavailable: the key was rejected.`);
+              noticeSegments.push(t('models.unavailableKey', { server: endpoint.label }));
               return;
             }
 
             if (isApiError(error) && error.code === API_ERROR_CODES.RATE_LIMITED) {
-              noticeSegments.push(`${endpoint.label} models unavailable: rate limited.`);
+              noticeSegments.push(t('models.unavailableLimited', { server: endpoint.label }));
               return;
             }
 
@@ -148,11 +147,11 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
                 return;
               }
               reportedUnreachable.add(endpoint.id);
-              noticeSegments.push(`Could not reach ${endpoint.label}.`);
+              noticeSegments.push(t('models.unreachable', { server: endpoint.label }));
               return;
             }
 
-            noticeSegments.push(`${endpoint.label} models unavailable right now.`);
+            noticeSegments.push(t('models.unavailable', { server: endpoint.label }));
           }
         }),
       );

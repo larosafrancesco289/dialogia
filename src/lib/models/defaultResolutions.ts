@@ -9,6 +9,7 @@ import { resolveDefaultModelId } from '@/lib/models/defaultModels';
 import { isDynamicModelId, resolveDynamicModelId } from '@/lib/models/dynamicDefaults';
 import { formatModelLabel } from '@/lib/models/labels';
 import type { ModelDescriptor } from '@/lib/types';
+import { t } from '@/lib/i18n';
 
 type Resolutions = Record<string, string>;
 
@@ -46,7 +47,7 @@ export function reconcileModelDefaults(
         model: findModelById(models, resolved),
         fallbackId: resolved,
       });
-      notices.push(`${family.name} is now ${name}: new chats use it, chats under way keep theirs.`);
+      notices.push(t('models.familyMoved', { family: family.name, model: name }));
     }
   }
 
@@ -58,9 +59,7 @@ export function reconcileModelDefaults(
       // Named as the picker names it before a list carries it.
       const defaultLabel = formatModelLabel({ fallbackId: defaultId });
       const fallbackLabel = formatModelLabel({ model: fallback, fallbackId: fallback.id });
-      notices.push(
-        `${defaultLabel} is not offered by your providers, so new chats start with ${fallbackLabel}.`,
-      );
+      notices.push(t('models.defaultMissing', { model: defaultLabel, fallback: fallbackLabel }));
     }
     next[announcedKey] = fallback.id;
   }

@@ -42,6 +42,7 @@ import { createPlanningExecutionState } from '@/lib/agent/planning/types';
 import type { PlanningExecutionState } from '@/lib/agent/planning/types';
 import type { ToolCallDelta } from '@/lib/transport/types';
 import { createStreamCallContext, type StreamCallContext } from '@/lib/agent/streaming/streamCall';
+import { t } from '@/lib/i18n';
 
 export type StreamingTurnOptions = StreamFinalOptions & {
   userContent: string;
@@ -295,7 +296,7 @@ export async function settleFailedTurn(
     set: turn.set,
     chatId,
     messageId,
-    error: controller.signal.aborted ? TOOL_CALL_STOPPED : 'The turn failed before this call ran',
+    error: controller.signal.aborted ? TOOL_CALL_STOPPED : t('activity.turnFailed'),
   });
   if (!isStreamError(error)) {
     ui.onError?.(

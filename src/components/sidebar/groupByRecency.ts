@@ -1,4 +1,5 @@
 import type { Chat } from '@/lib/types';
+import { t } from '@/lib/i18n';
 
 export type RecencyGroup = { label: string; chats: Chat[] };
 
@@ -14,10 +15,10 @@ export function groupByRecency(chats: Chat[], now: number = Date.now()): Recency
   startOfToday.setHours(0, 0, 0, 0);
   const today = startOfToday.getTime();
   const buckets: RecencyGroup[] = [
-    { label: 'Today', chats: [] },
-    { label: 'Previous 7 days', chats: [] },
-    { label: 'Previous 30 days', chats: [] },
-    { label: 'Earlier', chats: [] },
+    { label: t('sidebar.today'), chats: [] },
+    { label: t('sidebar.previous7'), chats: [] },
+    { label: t('sidebar.previous30'), chats: [] },
+    { label: t('sidebar.earlier'), chats: [] },
   ];
   for (const chat of chats) {
     const at = chat.updatedAt ?? chat.createdAt ?? 0;

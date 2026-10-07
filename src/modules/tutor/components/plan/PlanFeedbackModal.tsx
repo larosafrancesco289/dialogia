@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { Markdown } from '@/components/Markdown';
 import { ENTER_MODIFIER } from '@/components/message/MessageActions';
+import { useT } from '@/modules/tutor/i18n';
 
 export type PlanFeedbackContext =
   | { type: 'plan_proposal' }
@@ -24,6 +25,7 @@ export function PlanFeedbackModal({
   onSubmit: (feedback: string, context: PlanFeedbackContext) => void;
   onClose: () => void;
 }) {
+  const t = useT();
   const [feedback, setFeedback] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
@@ -43,11 +45,11 @@ export function PlanFeedbackModal({
   };
 
   const isPhaseContext = context.type === 'phase';
-  const title = 'Tell the tutor what to change';
-  const subtitle = isPhaseContext ? `About ${context.phaseName}` : null;
+  const title = t('feedback.title');
+  const subtitle = isPhaseContext ? t('feedback.about', { topic: context.phaseName }) : null;
   const placeholder = isPhaseContext
-    ? `Go deeper on something before moving on, reorder the topics, or add groundwork if ${context.phaseName} feels too advanced.`
-    : 'More practice on the fundamentals, skipping what you already know, or a different focus.';
+    ? t('feedback.placeholderTopic', { topic: context.phaseName })
+    : t('feedback.placeholder');
   const canSubmit = feedback.trim().length > 0;
 
   // Portalled to the body: inside the side panel's stacking context the
@@ -106,7 +108,7 @@ export function PlanFeedbackModal({
                 type="button"
                 onClick={onClose}
                 className="icon-button -mr-1.5 -mt-1"
-                aria-label="Close"
+                aria-label={t('common.close')}
               >
                 <XMarkIcon className="h-5 w-5" />
               </button>
@@ -120,19 +122,17 @@ export function PlanFeedbackModal({
               rows={6}
               className="textarea mt-4 text-sm leading-relaxed"
             />
-            <p className="field__hint mt-2">
-              Your note appears in the chat, and the tutor answers with a revised plan.
-            </p>
+            <p className="field__hint mt-2">{t('feedback.hint')}</p>
 
             <div className="dialog__actions">
               <span className="field__hint mr-auto hidden sm:inline">
-                {ENTER_MODIFIER} Enter to send
+                {t('feedback.shortcut', { key: ENTER_MODIFIER })}
               </span>
               <button onClick={onClose} className="btn-ghost btn-sm">
-                Cancel
+                {t('common.cancel')}
               </button>
               <button onClick={handleSubmit} disabled={!canSubmit} className="btn btn-sm">
-                Send to tutor
+                {t('feedback.send')}
               </button>
             </div>
           </motion.div>

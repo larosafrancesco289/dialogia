@@ -5,6 +5,7 @@ import type { ProposalView } from '@/modules/tutor/ui/messageViews';
 import { useApprovePlan, useRequestPlanChanges } from '@/modules/tutor/ui/usePlanCallbacks';
 import { useTutorAffordances } from '@/modules/tutor/ui/useTutorFlags';
 import { Markdown } from '@/components/Markdown';
+import { useT } from '@/modules/tutor/i18n';
 
 export function PlanProposalCard({
   messageId,
@@ -13,6 +14,7 @@ export function PlanProposalCard({
   messageId: string;
   proposal: ProposalView;
 }) {
+  const t = useT();
   const [approving, setApproving] = useState(false);
   const [declining, setDeclining] = useState(false);
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
@@ -75,11 +77,11 @@ export function PlanProposalCard({
   // Settled for good once answered: a revision that arrives later is "below".
   const resolvedLabel =
     proposal.status === 'approved'
-      ? 'Approved'
+      ? t('plan.approved')
       : proposal.status === 'declined'
-        ? 'Changes requested'
+        ? t('plan.changesRequested')
         : proposal.status === 'replaced'
-          ? 'Revised below'
+          ? t('plan.revisedBelow')
           : null;
 
   return (
@@ -98,9 +100,7 @@ export function PlanProposalCard({
             ))}
           </ol>
           {estimatedHours ? (
-            <p className="exercise__meta">
-              About {estimatedHours} {estimatedHours === 1 ? 'hour' : 'hours'}
-            </p>
+            <p className="exercise__meta">{t('plan.hours', { count: estimatedHours })}</p>
           ) : null}
         </div>
         {!resolved && proposal.rationale && (
@@ -111,7 +111,7 @@ export function PlanProposalCard({
         <div className="flex flex-wrap items-center gap-2">
           {!resolved && (
             <button className="btn btn-sm" onClick={handleApprove} disabled={disableActions}>
-              {approving ? 'Applying…' : 'Approve plan'}
+              {t(approving ? 'plan.applying' : 'plan.approve')}
             </button>
           )}
           {!resolved && revisePlan && (
@@ -120,12 +120,12 @@ export function PlanProposalCard({
               onClick={handleRequestChanges}
               disabled={disableActions}
             >
-              {declining ? 'Recording…' : 'Suggest changes'}
+              {t(declining ? 'plan.recording' : 'plan.suggest')}
             </button>
           )}
           {proposal.status !== 'replaced' && (
             <button className="btn-ghost btn-sm" onClick={handleOpenFullPlan}>
-              View full plan
+              {t('plan.viewFull')}
             </button>
           )}
           {resolvedLabel && <span className="exercise__kicker ml-auto">{resolvedLabel}</span>}

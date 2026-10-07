@@ -7,6 +7,9 @@ import { TOOL_CALL_STOPPED } from '@/lib/constants';
 import { hostname } from '@/lib/markdown/citations';
 import { markdownToPlainText, withoutSplitSurrogate } from '@/lib/markdown/plainText';
 import type { MessageActivityItem, ToolCallLogEntry } from '@/lib/types';
+import { t, type MessageKey } from '@/lib/i18n';
+import { formatNumber } from '@/lib/i18n/format';
+import { resolveNotice } from '@/lib/store/notices';
 
 export type SearchSourcesData = {
   query: string;
@@ -69,7 +72,8 @@ export function currentThoughtLine(text: string): string {
 /** How long the model thought, in words: "9 seconds", "1 minute 12 seconds". */
 export function formatThinkingTime(ms: number): string {
   const total = Math.max(1, Math.round(ms / 1000));
-  const unit = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  const unit = (n: number, unit: 'second' | 'minute') =>
+    formatNumber(n, { style: 'unit', unit, unitDisplay: 'long' });
   if (total < 60) return unit(total, 'second');
   const minutes = Math.floor(total / 60);
   const seconds = total % 60;
@@ -87,7 +91,7 @@ export const SILENT_WAIT_NOTICE_MS = 5_000;
  */
 export function silentWaitLine(waitedMs: number): string {
   if (waitedMs < SILENT_WAIT_NOTICE_MS) return '';
-  return `Waiting for the model… ${Math.floor(waitedMs / 1000)}s`;
+  return t('activity.waiting', { seconds: Math.floor(waitedMs / 1000) });
 }
 
 /**
@@ -102,28 +106,30 @@ function thinkingMeasure(activity: MessageActivityItem[], reasoning: string): st
   const timed = thoughts.filter((item) => typeof item.duration === 'number');
   if (timed.length > 0) {
     // Read after the ledger's "Thought" label: "Thought for 8 seconds".
-    return `for ${formatThinkingTime(timed.reduce((sum, item) => sum + (item.duration ?? 0), 0))}`;
+    return t('activity.thoughtFor', {
+      duration: formatThinkingTime(timed.reduce((sum, item) => sum + (item.duration ?? 0), 0)),
+    });
   }
   const text = thoughts.length > 0 ? thoughts.map((item) => item.text).join(' ') : reasoning;
   const words = text.trim() ? text.trim().split(/\s+/).length : 0;
-  return words ? `${words} word${words === 1 ? '' : 's'}` : '';
+  return words ? t('activity.words', { count: words }) : '';
 }
 
 function labelForTool(call: ToolCallLogEntry) {
-  if (call.name === 'web_search') return 'Searching the web';
+  if (call.name === 'web_search') return t('activity.searchingWeb');
   return toolDisplayName(call.name);
 }
 
 // Plain words for the app's own tools; any other tool shows its name.
-const TOOL_LABELS: Record<string, string> = {
-  web_fetch: 'Reading a page',
-  memory_read: 'Checking memory',
-  memory_save: 'Saving to memory',
-  memory_forget: 'Forgetting a note',
+const TOOL_LABELS: Record<string, MessageKey> = {
+  web_fetch: 'activity.tool.fetch',
+  memory_read: 'activity.tool.memoryRead',
+  memory_save: 'activity.tool.memorySave',
+  memory_forget: 'activity.tool.memoryForget',
 };
 
 export function toolDisplayName(name: string) {
-  if (TOOL_LABELS[name]) return TOOL_LABELS[name];
+  if (TOOL_LABELS[name]) return t(TOOL_LABELS[name]);
   const text = name.replace(/_/g, ' ');
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
@@ -148,17 +154,23 @@ export function toolObject(item: ToolActivityItem) {
 // A memory call refused (a folder that is not there, a note already gone) is
 // the model's guess corrected: it reads why, addressed to it, and tries
 // another way. The person needs only the outcome, in plain words.
-const MEMORY_REFUSED: Record<string, string> = {
-  memory_read: 'Not found',
-  memory_save: 'Not saved',
-  memory_forget: 'Not found',
+const MEMORY_REFUSED: Record<string, MessageKey> = {
+  memory_read: 'activity.notFound',
+  memory_save: 'activity.notSaved',
+  memory_forget: 'activity.notFound',
 };
 
 // A wait worth noting: a tool that answers in milliseconds (the tutor's own
 // bookkeeping) needs no clock beside it.
 function formatDuration(duration?: number) {
   if (typeof duration !== 'number' || !Number.isFinite(duration) || duration < 1000) return '';
-  return `${(duration / 1000).toFixed(1)}s`;
+  return formatNumber(duration / 1000, {
+    style: 'unit',
+    unit: 'second',
+    unitDisplay: 'narrow',
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
 }
 
 function toolResultCount(item: ToolActivityItem) {
@@ -185,16 +197,21 @@ export function toolAnnotation(item: ToolActivityItem): {
   hint?: string;
 } {
   if (item.status === 'pending') {
-    return { text: item.name === 'web_search' ? 'Searching' : 'Running', live: true };
+    return {
+      text: t(item.name === 'web_search' ? 'activity.searching' : 'activity.running'),
+      live: true,
+    };
   }
   if (item.status === 'error') {
-    if (item.category === 'tutor') return { text: 'Not applied', hint: item.error };
-    if (item.error === TOOL_CALL_STOPPED) return { text: TOOL_CALL_STOPPED };
-    if (MEMORY_REFUSED[item.name]) return { text: MEMORY_REFUSED[item.name] };
-    return { text: 'Failed', error: true, detail: item.error };
+    if (item.category === 'tutor') return { text: t('activity.notApplied'), hint: item.error };
+    if (item.error === TOOL_CALL_STOPPED) return { text: t('activity.stopped') };
+    if (MEMORY_REFUSED[item.name]) return { text: t(MEMORY_REFUSED[item.name]) };
+    return { text: t('activity.failed'), error: true, detail: resolveNotice(item.error) };
   }
   // How many pages a search found is said once, on the sources line.
-  if (item.name === 'web_search' && toolResultCount(item) === 0) return { text: 'No results' };
+  if (item.name === 'web_search' && toolResultCount(item) === 0) {
+    return { text: t('activity.noResults') };
+  }
   if (typeof item.metadata?.notes === 'string') return { text: item.metadata.notes };
   return { text: formatDuration(item.duration) };
 }
@@ -313,7 +330,11 @@ export function summarizeActivity({
     const object = toolObject(latestActivity);
     return `${toolDisplayName(latestActivity.name)}${object ? `: ${object}` : ''}`;
   }
-  if (isSearching) return sources?.query ? `Searching: ${sources.query}` : 'Searching sources';
+  if (isSearching) {
+    return sources?.query
+      ? t('activity.searchingFor', { query: sources.query })
+      : t('activity.searchingSources');
+  }
   // A failed search does not hold the head while the model carries on without it.
   if (isLive) {
     const thought = latestActivity?.type === 'reasoning' ? latestActivity.text : reasoning;
@@ -321,20 +342,20 @@ export function summarizeActivity({
     return currentThoughtLine(thought);
   }
   // Why it failed is the search entry's own line; the head only says that it did.
-  if (hasSearchError) return 'Search failed';
+  if (hasSearchError) return t('activity.searchFailed');
   if (orderedActivity.length > 0) {
     const searchCount = toolItems.filter((item) => item.name === 'web_search').length;
-    const toolNoun =
+    const tools =
       visibleToolCount > 0 && searchCount === visibleToolCount
-        ? `search${visibleToolCount === 1 ? '' : 'es'}`
-        : `tool${visibleToolCount === 1 ? '' : 's'}`;
+        ? t('activity.searches', { count: visibleToolCount })
+        : t('activity.tools', { count: visibleToolCount });
     const parts = [
       thinkingMeasure(orderedActivity, reasoning),
-      visibleToolCount ? `${visibleToolCount} ${toolNoun}` : '',
+      visibleToolCount ? tools : '',
     ].filter(Boolean);
     return parts.join(', ');
   }
-  if (visibleToolCount > 0) return visibleToolCount === 1 ? '1 tool' : `${visibleToolCount} tools`;
+  if (visibleToolCount > 0) return t('activity.tools', { count: visibleToolCount });
   if (reasoning.trim().length > 0) return thinkingMeasure([], reasoning);
   return '';
 }

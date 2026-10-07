@@ -13,6 +13,7 @@ import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import { focusComposer } from '@/lib/ui/focus';
 import { cn } from '@/lib/ui/cn';
 import { BottomSheet, SheetItem } from '@/components/ui/BottomSheet';
+import { useT } from '@/lib/i18n';
 
 export function RegenerateMenu({
   onChoose,
@@ -32,6 +33,7 @@ export function RegenerateMenu({
     }),
     shallow,
   );
+  const t = useT();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -173,8 +175,8 @@ export function RegenerateMenu({
         ref={triggerRef}
         type="button"
         className="icon-button icon-button--sm"
-        aria-label="Try again"
-        title="Try again"
+        aria-label={t('message.tryAgain')}
+        title={t('message.tryAgain')}
         aria-haspopup="menu"
         aria-expanded={open}
         disabled={disabled}
@@ -189,7 +191,12 @@ export function RegenerateMenu({
       </button>
       {/* A phone's menus are all the one bottom sheet. */}
       {isMobile && (
-        <BottomSheet open={open} label="Try again with" title="Try again with" onClose={closeMenu}>
+        <BottomSheet
+          open={open}
+          label={t('regenerate.with')}
+          title={t('regenerate.with')}
+          onClose={closeMenu}
+        >
           {options.map((o) => (
             <SheetItem
               key={o.id}
@@ -200,7 +207,9 @@ export function RegenerateMenu({
             >
               <span className="flex items-baseline justify-between gap-3">
                 <span className="truncate">{labelOf(o)}</span>
-                {o.id === currentId && <span className="text-xs text-fg-muted">same model</span>}
+                {o.id === currentId && (
+                  <span className="text-xs text-fg-muted">{t('regenerate.sameModel')}</span>
+                )}
               </span>
             </SheetItem>
           ))}
@@ -218,11 +227,11 @@ export function RegenerateMenu({
             }}
             data-placement={coords.placement}
             role="menu"
-            aria-label="Try again with another model"
+            aria-label={t('regenerate.withAnother')}
             ref={menuRef}
             onKeyDown={onMenuKeyDown}
           >
-            <div className="menu-heading">Try again with</div>
+            <div className="menu-heading">{t('regenerate.with')}</div>
             {options.map((o) => {
               const label = labelOf(o);
               return (
@@ -243,7 +252,7 @@ export function RegenerateMenu({
                   <span className="flex items-baseline justify-between gap-3">
                     <span className="truncate">{label}</span>
                     {o.id === currentId && (
-                      <span className="text-xs text-fg-muted">same model</span>
+                      <span className="text-xs text-fg-muted">{t('regenerate.sameModel')}</span>
                     )}
                   </span>
                 </button>

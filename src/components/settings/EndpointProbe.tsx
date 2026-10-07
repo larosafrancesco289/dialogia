@@ -19,27 +19,29 @@ import {
   type EndpointCapabilities,
   type ProviderEndpoint,
 } from '@/lib/transport/endpoints';
+import { useT, type MessageKey } from '@/lib/i18n';
+import { formatNumber } from '@/lib/i18n/format';
 
 // Component: EndpointProbe
 // Responsibility: Let the user find out what a custom endpoint accepts instead
 // of guessing at the capability checkboxes, and copy the answer into them.
 
-const STEP_LABELS: Record<ProbeStep, string> = {
-  models: 'Listing models…',
-  chat: 'Sending a first message…',
-  tools: 'Checking tools…',
-  parallelToolCalls: 'Checking several tools at once…',
-  reasoning: 'Checking thinking effort…',
-  vision: 'Checking images…',
-  streamUsage: 'Checking reply costs…',
-  promptCaching: 'Checking prompt caching…',
+const STEP_LABELS: Record<ProbeStep, MessageKey> = {
+  models: 'probe.step.models',
+  chat: 'probe.step.chat',
+  tools: 'probe.step.tools',
+  parallelToolCalls: 'probe.step.parallelToolCalls',
+  reasoning: 'probe.step.reasoning',
+  vision: 'probe.step.vision',
+  streamUsage: 'probe.step.streamUsage',
+  promptCaching: 'probe.step.promptCaching',
 };
 
-const VERDICT_LABELS: Record<ProbeVerdict, string> = {
-  ok: 'Accepted',
-  no: 'Not supported',
-  unknown: 'No answer',
-  skipped: 'Skipped',
+const VERDICT_LABELS: Record<ProbeVerdict, MessageKey> = {
+  ok: 'probe.verdict.ok',
+  no: 'probe.verdict.no',
+  unknown: 'probe.verdict.unknown',
+  skipped: 'probe.verdict.skipped',
 };
 
 // Accepted in ink, rejected in crimson, the rest muted: the chrome has no green.
@@ -70,50 +72,45 @@ function Detail({ children }: { children: ReactNode }) {
 }
 
 function ServerLine({ result, baseUrl }: { result: EndpointProbeResult; baseUrl: string }) {
+  const t = useT();
   const { models } = result;
   switch (models.verdict) {
     case 'ok': {
       const count = models.ids.length;
       return (
         <Line verdict="ok">
-          Reachable.{' '}
-          {count === 0
-            ? 'It lists no models, so only the ids you typed are used.'
-            : `It lists ${count} model${count === 1 ? '' : 's'}.`}
+          {t('probe.reachable')}{' '}
+          {count === 0 ? t('probe.noModels') : t('probe.listsModels', { count })}
         </Line>
       );
     }
     case 'not-api':
       return (
         <Line verdict="no">
-          Something answered at {baseUrl}, but not as an OpenAI-compatible server.
-          <Detail>
-            Check the address. It is usually the server&apos;s root followed by /v1, e.g.
-            http://localhost:11434/v1 for Ollama.
-          </Detail>
+          {t('probe.notApi', { address: baseUrl })}
+          <Detail>{t('probe.notApiHint')}</Detail>
         </Line>
       );
     case 'no-route':
       return (
         <Line verdict="ok">
-          Reachable. <Detail>No /models route here, so only the ids you typed are used.</Detail>
+          {t('probe.reachable')} <Detail>{t('probe.noRoute')}</Detail>
         </Line>
       );
     case 'unauthorized':
       return (
         <Line verdict="no">
-          Reachable, but it wants a key it did not accept. <Detail>{models.detail}</Detail>
+          {t('probe.unauthorized')} <Detail>{models.detail}</Detail>
         </Line>
       );
     case 'unreachable': {
-      const origin = typeof window !== 'undefined' ? window.location.origin : 'this page';
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
       return (
         <Line verdict="no">
-          Could not reach {baseUrl}.
+          {t('probe.unreachable', { address: baseUrl })}
           <Detail>
-            {models.detail ? `${models.detail} ` : ''}Check that the server is running and that it
-            allows requests from {origin}. Ollama needs OLLAMA_ORIGINS to include that origin, and
-            LM Studio needs CORS enabled in its server settings.
+            {models.detail ? `${models.detail} ` : ''}
+            {t('probe.unreachableHint', { origin })}
           </Detail>
         </Line>
       );
@@ -121,32 +118,35 @@ function ServerLine({ result, baseUrl }: { result: EndpointProbeResult; baseUrl:
     case 'failed':
       return (
         <Line verdict="no">
-          Reachable, but listing models failed. <Detail>{models.detail}</Detail>
+          {t('probe.listFailed')} <Detail>{models.detail}</Detail>
         </Line>
       );
   }
 }
 
 function ChatLine({ result }: { result: EndpointProbeResult }) {
+  const t = useT();
   const { chat, modelId } = result;
   if (chat.verdict === 'ok') {
-    const seconds = ((chat.latencyMs ?? 0) / 1000).toFixed(1);
-    return (
-      <Line verdict="ok">
-        {modelId} replied in {seconds} s.
-      </Line>
-    );
+    const seconds = formatNumber((chat.latencyMs ?? 0) / 1000, {
+      style: 'unit',
+      unit: 'second',
+      unitDisplay: 'short',
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    });
+    return <Line verdict="ok">{t('probe.replied', { model: modelId ?? '', time: seconds })}</Line>;
   }
   if (chat.verdict === 'no') {
     return (
       <Line verdict="no">
-        {modelId} did not answer. <Detail>{chat.detail}</Detail>
+        {t('probe.noAnswer', { model: modelId ?? '' })} <Detail>{chat.detail}</Detail>
       </Line>
     );
   }
   return (
     <Line verdict={chat.verdict}>
-      {modelId ? `${modelId} was not tested.` : 'No message was sent.'}
+      {modelId ? t('probe.notTested', { model: modelId }) : t('probe.noMessage')}
       {chat.detail ? <Detail>{chat.detail}</Detail> : null}
     </Line>
   );
@@ -161,6 +161,7 @@ function ProbeReport({
   result: EndpointProbeResult;
   onApply: (capabilities: Required<EndpointCapabilities>) => void;
 }) {
+  const t = useT();
   const current = endpointCapabilities(endpoint);
   const detected = detectedCapabilities(result, current);
   const differs = CAPABILITY_LABELS.some(({ key }) => detected[key] !== current[key]);
@@ -181,10 +182,10 @@ function ProbeReport({
             return (
               <li key={key}>
                 <Line verdict={check.verdict}>
-                  {label}
+                  {t(label)}
                   <span className="endpoint-probe__verdict">
                     {' '}
-                    · {VERDICT_LABELS[check.verdict]}
+                    · {t(VERDICT_LABELS[check.verdict])}
                   </span>
                   {check.detail ? <Detail>{check.detail}</Detail> : null}
                 </Line>
@@ -197,16 +198,12 @@ function ProbeReport({
         differs ? (
           <div className="endpoint-probe__apply">
             <button type="button" className="btn btn-sm" onClick={() => onApply(detected)}>
-              Apply to the checkboxes below
+              {t('probe.apply')}
             </button>
-            <span className="field__hint">
-              Turns on what was accepted and off what was rejected.
-            </span>
+            <span className="field__hint">{t('probe.applyHint')}</span>
           </div>
         ) : (
-          <p className="field__hint">
-            The checkboxes below already match what this server accepted.
-          </p>
+          <p className="field__hint">{t('probe.alreadyMatch')}</p>
         )
       ) : null}
     </div>
@@ -220,6 +217,7 @@ export function EndpointProbe({
   endpoint: ProviderEndpoint;
   onApply: (capabilities: Required<EndpointCapabilities>) => void;
 }) {
+  const t = useT();
   const { state, run, cancel } = useEndpointProbe(endpoint);
   const models = useChatStore((s) => s.models);
   const [chosenModelId, setChosenModelId] = useState<string>();
@@ -240,7 +238,7 @@ export function EndpointProbe({
 
   return (
     <div className="space-y-2">
-      <div className="field__label">Test the connection</div>
+      <div className="field__label">{t('probe.title')}</div>
       <div className="flex flex-wrap items-center gap-2">
         {/* Gold only until there is an answer: after that, applying it is the
             go-ahead and testing again is the secondary action. */}
@@ -249,12 +247,14 @@ export function EndpointProbe({
           className={running || state.status === 'done' ? 'btn-outline btn-sm' : 'btn btn-sm'}
           onClick={() => (running ? cancel() : run(modelId))}
         >
-          {running ? 'Cancel' : state.status === 'done' ? 'Test again' : 'Test connection'}
+          {t(
+            running ? 'common.cancel' : state.status === 'done' ? 'probe.testAgain' : 'probe.test',
+          )}
         </button>
         {candidates.length > 1 ? (
           <select
             className="input flex-1 min-w-0 text-base sm:text-sm"
-            aria-label="Model to test with"
+            aria-label={t('probe.modelToTest')}
             value={modelId}
             disabled={running}
             onChange={(event) => setChosenModelId(event.target.value)}
@@ -268,14 +268,12 @@ export function EndpointProbe({
         ) : null}
         {running ? (
           <span className="field__hint" role="status" aria-live="polite">
-            {STEP_LABELS[state.step]}
+            {t(STEP_LABELS[state.step])}
           </span>
         ) : null}
       </div>
       <p className="field__hint">
-        Sends a handful of tiny requests
-        {modelId ? ` to ${modelId}` : ''} to see which fields this server accepts, so the checkboxes
-        below can be set from an answer instead of a guess.
+        {modelId ? t('probe.hintModel', { model: modelId }) : t('probe.hint')}
       </p>
       {state.status === 'done' ? (
         <ProbeReport endpoint={endpoint} result={state.result} onApply={onApply} />

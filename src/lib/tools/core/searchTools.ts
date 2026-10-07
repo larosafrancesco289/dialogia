@@ -11,6 +11,7 @@ import { NOTICE_MISSING_SEARCH_KEY } from '@/lib/store/notices';
 import { notify } from '@/lib/store/notify';
 import { WEB_FETCH_TOOL, WEB_SEARCH_TOOL } from '@/lib/tools/definitions/webSearch';
 import { getToolExt, registerTool, type PlanningToolHandler } from '@/lib/tools/registry';
+import { t } from '@/lib/i18n';
 
 export const CORE_MODULE_ID = 'core';
 
@@ -113,7 +114,7 @@ const executeWebSearchTool: PlanningToolHandler = async ({
   if (searchResult.error === NOTICE_MISSING_SEARCH_KEY) {
     notify(get, NOTICE_MISSING_SEARCH_KEY, 'info');
   }
-  const reason = searchResult.error || 'The search failed.';
+  const reason = searchResult.error || t('searchError.failed');
   // Unlike an empty result list, a failure tells the model nothing about the web.
   const failure = {
     ...output,

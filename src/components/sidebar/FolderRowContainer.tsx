@@ -14,6 +14,8 @@ import { FolderRowView } from '@/components/sidebar/FolderRowView';
 import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import type { Folder } from '@/lib/types';
 import { useRevealOnOpen } from '@/lib/hooks/useRevealOnOpen';
+import { useT } from '@/lib/i18n';
+import { displayChatTitle } from '@/lib/ui/chatTitle';
 
 interface FolderRowContainerProps {
   folder: Folder;
@@ -28,7 +30,7 @@ function folderHasMatch(index: FolderTreeIndex, folder: Folder, q: string): bool
   if (folder.name.toLowerCase().includes(q)) return true;
   const { chats, folders } = getFolderChildren(index, folder.id);
   return (
-    chats.some((chat) => chat.title.toLowerCase().includes(q)) ||
+    chats.some((chat) => displayChatTitle(chat.title).toLowerCase().includes(q)) ||
     folders.some((sub) => folderHasMatch(index, sub, q))
   );
 }
@@ -39,6 +41,7 @@ export function FolderRowContainer({
   depth = 0,
   query = '',
 }: FolderRowContainerProps) {
+  const t = useT();
   const { selectedChatId, selectChat, renameFolder, deleteFolder, toggleFolderExpanded } =
     useChatStore(
       (s) => ({
@@ -74,7 +77,7 @@ export function FolderRowContainer({
   const nameMatches = !!query && folder.name.toLowerCase().includes(query);
   const narrowed = !!query && !nameMatches;
   const folderChats = narrowed
-    ? children.chats.filter((chat) => chat.title.toLowerCase().includes(query))
+    ? children.chats.filter((chat) => displayChatTitle(chat.title).toLowerCase().includes(query))
     : children.chats;
   const subFolders = narrowed
     ? children.folders.filter((sub) => folderHasMatch(folderTreeIndex, sub, query))
@@ -147,7 +150,7 @@ export function FolderRowContainer({
 
       <BottomSheet
         open={isMobile && showActions}
-        label={`Folder actions for ${folder.name}`}
+        label={t('folder.actionsFor', { name: folder.name })}
         title={folder.name}
         onClose={() => setShowActions(false)}
         returnFocus={() =>
@@ -163,7 +166,7 @@ export function FolderRowContainer({
             setIsEditing(true);
           }}
         >
-          Rename folder
+          {t('folder.rename')}
         </SheetItem>
         <div className="sheet-rule" aria-hidden="true" />
         <SheetItem
@@ -174,20 +177,20 @@ export function FolderRowContainer({
             setShowDeleteConfirm(true);
           }}
         >
-          Delete folder
+          {t('folder.delete')}
         </SheetItem>
       </BottomSheet>
 
       <ConfirmDialog
         open={showDeleteConfirm}
-        title="Delete this folder?"
+        title={t('folder.deleteTitle')}
         description={
           children.chats.length > 0
-            ? `The chats in “${folder.name}” stay; they move out of the folder.`
-            : `“${folder.name}” is empty.`
+            ? t('folder.deleteBodyChats', { name: folder.name })
+            : t('folder.deleteBodyEmpty', { name: folder.name })
         }
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
         onCancel={() => setShowDeleteConfirm(false)}
         onConfirm={async () => {
           setShowDeleteConfirm(false);

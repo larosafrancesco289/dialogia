@@ -11,6 +11,7 @@ import { InlineTitleEdit } from '@/components/sidebar/InlineTitleEdit';
 import { ROW_INDENT } from '@/components/sidebar/ChatRowView';
 import { createSingleClickDeferral } from '@/lib/ui/clickIntent';
 import { cn } from '@/lib/ui/cn';
+import { useT } from '@/lib/i18n';
 
 export type FolderRowViewProps = {
   folderId: string;
@@ -72,6 +73,7 @@ export function FolderRowView({
   onPointerCancel,
   onContextMenu,
 }: FolderRowViewProps) {
+  const t = useT();
   // A double click renames; folding waits to be sure it was a single click,
   // so the folder does not open and shut again before the name field shows.
   const toggleRef = useRef(onToggleExpanded);
@@ -149,7 +151,7 @@ export function FolderRowView({
           {chevron}
           <InlineTitleEdit
             value={name}
-            ariaLabel="Folder name"
+            ariaLabel={t('folder.namePlaceholder')}
             onCommit={onCommitEdit}
             onCancel={onCancelEdit}
           />
@@ -172,10 +174,7 @@ export function FolderRowView({
           {chevron}
           <span className="flex-1 min-w-0 text-sm truncate folder-row__name">{name}</span>
           {count > 0 && (
-            <span
-              className="folder-row__count"
-              aria-label={`${count} ${count === 1 ? 'chat' : 'chats'}`}
-            >
+            <span className="folder-row__count" aria-label={t('folder.count', { count })}>
               {count}
             </span>
           )}
@@ -190,7 +189,7 @@ export function FolderRowView({
               e?.stopPropagation();
               onStartEdit();
             }}
-            title="Rename folder"
+            title={t('folder.rename')}
           >
             <PencilSquareIcon />
           </IconButton>
@@ -200,7 +199,7 @@ export function FolderRowView({
               e?.stopPropagation();
               onDelete();
             }}
-            title="Delete folder"
+            title={t('folder.delete')}
           >
             <TrashIcon />
           </IconButton>

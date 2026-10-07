@@ -6,6 +6,7 @@ import {
   ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
 import { getHighlightSegments, type ModelSearchResult } from '@/lib/models/search';
+import { useT } from '@/lib/i18n';
 
 /** The parts of `text` that match the query's words, underlined. */
 function HighlightedText({ text, words }: { text: string; words: string[] }) {
@@ -26,16 +27,17 @@ function HighlightedText({ text, words }: { text: string; words: string[] }) {
 
 /** What a model can do, as a row of small icons; nothing when it has none of them. */
 function ModelCapabilities({ result }: { result?: ModelSearchResult }) {
+  const t = useT();
   if (!result) return null;
   const { reasoning, vision, audio, image, zdr } = result.capabilities;
   if (!reasoning && !vision && !audio && !image && !zdr) return null;
   return (
     <span className="model-row__caps">
-      {reasoning && <LightBulbIcon title="Thinks before answering" />}
-      {vision && <EyeIcon title="Reads images" />}
-      {audio && <MicrophoneIcon title="Hears audio" />}
-      {image && <PhotoIcon title="Makes images" />}
-      {zdr && <ShieldCheckIcon title="Keeps none of your data (zero data retention)" />}
+      {reasoning && <LightBulbIcon title={t('models.caps.reasoning')} />}
+      {vision && <EyeIcon title={t('models.caps.vision')} />}
+      {audio && <MicrophoneIcon title={t('models.caps.audio')} />}
+      {image && <PhotoIcon title={t('models.caps.image')} />}
+      {zdr && <ShieldCheckIcon title={t('models.caps.zdr')} />}
     </span>
   );
 }
@@ -45,12 +47,13 @@ function ModelCapabilities({ result }: { result?: ModelSearchResult }) {
  * `.model-row__meta`, which puts the separators between them.
  */
 function ModelRowFacts({ result }: { result: ModelSearchResult }) {
+  const t = useT();
   return (
     <>
       <span>{result.providerLabel || result.provider}</span>
       {result.contextLength && (
-        <span title="How much it can read at once">
-          {Intl.NumberFormat().format(result.contextLength)} tokens
+        <span title={t('models.contextHint')}>
+          {t('models.contextTokens', { count: result.contextLength })}
         </span>
       )}
       {result.price && <span>{result.price}</span>}

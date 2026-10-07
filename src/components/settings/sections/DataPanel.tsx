@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import type { RenderSection } from '@/components/settings/types';
+import { useT } from '@/lib/i18n';
 
 type DataPanelProps = {
   renderSection: RenderSection;
@@ -13,23 +14,22 @@ type DataPanelProps = {
 export function DataPanel({ renderSection, onExport, onImportPicked }: DataPanelProps) {
   // An import writes over chats and settings with the same ids, and cannot be
   // undone, so a picked file is named and confirmed first.
+  const t = useT();
   const [pending, setPending] = useState<File | null>(null);
   return (
     <>
       {renderSection(
         'data',
         'data',
-        <SettingsSection title="Import and export">
+        <SettingsSection title={t('settings.section.data')}>
           <div className="settings-row">
             <div className="settings-row-label">
-              <div className="settings-row-label-text">Chats and settings</div>
-              <div className="settings-row-label-description">
-                Everything in one file. Your keys are never included.
-              </div>
+              <div className="settings-row-label-text">{t('data.label')}</div>
+              <div className="settings-row-label-description">{t('data.hint')}</div>
             </div>
             <div className="settings-row-control flex gap-2">
               <label className="btn-outline btn-sm cursor-pointer">
-                Import
+                {t('data.import')}
                 <input
                   type="file"
                   accept="application/json"
@@ -41,7 +41,7 @@ export function DataPanel({ renderSection, onExport, onImportPicked }: DataPanel
                 />
               </label>
               <button className="btn-outline btn-sm" onClick={() => onExport()}>
-                Export
+                {t('data.export')}
               </button>
             </div>
           </div>
@@ -49,9 +49,9 @@ export function DataPanel({ renderSection, onExport, onImportPicked }: DataPanel
       )}
       <ConfirmDialog
         open={!!pending}
-        title={`Import ${pending?.name ?? 'this file'}?`}
-        description="Chats in the file replace chats here with the same id, and its settings replace yours: servers, favorites and chat defaults. Everything else here is kept. Export first if you may want to go back."
-        confirmLabel="Import"
+        title={t('data.importTitle', { name: pending?.name ?? t('data.thisFile') })}
+        description={t('data.importBody')}
+        confirmLabel={t('data.import')}
         tone="default"
         onConfirm={() => {
           const file = pending;

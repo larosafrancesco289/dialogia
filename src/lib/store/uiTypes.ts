@@ -22,6 +22,7 @@ export type PersistedUiState = {
   sidebarCollapsed?: boolean;
   zdrOnly?: UiSnapshot['zdrOnly'];
   messageTimestamps?: UiSnapshot['messageTimestamps'];
+  language?: UiSnapshot['language'];
   memoryEnabled?: UiSnapshot['memoryEnabled'];
   memorySensitive?: UiSnapshot['memorySensitive'];
   dynamicDefaultResolutions?: UiSnapshot['dynamicDefaultResolutions'];

@@ -109,6 +109,8 @@ test('partialize emits the same key set the pre-refactor build wrote', () => {
     'zdrModelIds',
     'zdrProviderIds',
   ]);
+  // `language` is additive too: the app's language, "auto" until chosen.
+  assert.equal(persisted.ui.language, 'auto');
   // `introSeen` and `setupDismissed` went with the first-run tour and the setup
   // sheet opening by itself; a stored value is never read, and never written again.
   assert.equal('introSeen' in persisted.ui, false);
@@ -118,6 +120,7 @@ test('partialize emits the same key set the pre-refactor build wrote', () => {
     'debug',
     'dynamicDefaultResolutions',
     'flags',
+    'language',
     'memoryEnabled',
     'memorySensitive',
     'messageTimestamps',

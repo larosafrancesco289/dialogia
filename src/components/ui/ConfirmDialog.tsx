@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { DialogOverlay, DialogPortal, DialogSurface } from '@/components/ui/Dialog';
 import { useBackToClose } from '@/lib/hooks/useBackToClose';
 import { useModalFocus } from '@/lib/hooks/useModalFocus';
+import { useT } from '@/lib/i18n';
 
 type Props = {
   open: boolean;
@@ -19,12 +20,13 @@ export function ConfirmDialog({
   open,
   title,
   description,
-  confirmLabel = 'Delete',
-  cancelLabel = 'Cancel',
+  confirmLabel,
+  cancelLabel,
   onConfirm,
   onCancel,
   tone = 'danger',
 }: Props) {
+  const t = useT();
   const cancelRef = useRef<HTMLButtonElement>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);
   // Back cancels, as Escape does, instead of closing what is behind it.
@@ -58,13 +60,13 @@ export function ConfirmDialog({
             {description && <p className="dialog__lead">{description}</p>}
             <div className="dialog__actions">
               <button ref={cancelRef} className="btn-outline btn-sm" onClick={onCancel}>
-                {cancelLabel}
+                {cancelLabel ?? t('common.cancel')}
               </button>
               <button
                 className={`btn btn-sm${tone === 'danger' ? ' btn-danger' : ''}`}
                 onClick={onConfirm}
               >
-                {confirmLabel}
+                {confirmLabel ?? t('common.delete')}
               </button>
             </div>
           </DialogSurface>

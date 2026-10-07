@@ -3,7 +3,8 @@
 // same in the Learning Hub and in memory's Learning folder.
 
 import type { TopicMastery } from '@/lib/types';
-import { listInProse } from '@/lib/utils/text';
+import { formatList } from '@/lib/i18n/format';
+import { t } from '@/modules/tutor/i18n';
 import type { StepState } from '@/modules/tutor/components/learning-panel/PlanPath';
 import { isMeasured } from '@/modules/tutor/engine';
 
@@ -22,10 +23,12 @@ export function shownPercent(state: StepState, mastery: TopicMastery | undefined
 
 /** `waiting` leaves out the topic just before, which goes without saying. */
 export function statusWords(state: StepState, upNext: boolean, waiting: string[]): string {
-  if (state === 'done') return 'Done';
-  if (state === 'current') return 'In progress';
+  if (state === 'done') return t('status.done');
+  if (state === 'current') return t('status.inProgress');
   if (state === 'locked' && waiting.length) {
-    return `Starts after ${listInProse(waiting.map((name) => `“${name}”`))}`;
+    return t('status.startsAfter', {
+      topics: formatList(waiting.map((name) => t('status.quoted', { name }))),
+    });
   }
-  return upNext ? 'Up next' : 'Not started';
+  return t(upNext ? 'status.upNext' : 'status.notStarted');
 }

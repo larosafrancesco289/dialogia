@@ -26,6 +26,7 @@ import {
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { ModelRowContent } from '@/components/model-picker/ModelRow';
 import { useFieldDropdownPosition } from '@/components/model-picker/useFieldDropdownPosition';
+import { useT } from '@/lib/i18n';
 
 export type ModelSearchHandle = {
   focus: () => void;
@@ -54,11 +55,11 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
     {
       onSelect,
       selectedIds,
-      placeholder = 'Search models',
+      placeholder: givenPlaceholder,
       ariaLabel,
       className = '',
       inputClassName = '',
-      emptyMessage = 'No models found',
+      emptyMessage: givenEmptyMessage,
       maxResults = 60,
       clearOnSelect = false,
       autoFocus = false,
@@ -67,6 +68,9 @@ export const ModelSearch = forwardRef<ModelSearchHandle | null, ModelSearchProps
     },
     ref,
   ) {
+    const t = useT();
+    const placeholder = givenPlaceholder ?? t('picker.search');
+    const emptyMessage = givenEmptyMessage ?? t('picker.noneFound');
     const { zdrModelIds, zdrProviderIds } = useChatStore(
       (state) => ({
         zdrModelIds: state.zdrModelIds,

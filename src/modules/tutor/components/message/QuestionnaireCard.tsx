@@ -10,6 +10,7 @@ import { contentVariants, safeKey } from '@/modules/tutor/components/message/sha
 import { StepperDots } from '@/modules/tutor/components/message/StepperDots';
 import { useStepper } from '@/modules/tutor/components/message/hooks/useStepper';
 import { Markdown } from '@/components/Markdown';
+import { useT } from '@/modules/tutor/i18n';
 
 type QuestionnaireItem = IntakeQuestion;
 
@@ -22,6 +23,7 @@ export function QuestionnaireCard({
   messageId: string;
   intake: IntakeView;
 }) {
+  const t = useT();
   const { questions, responses } = intake;
   const initialSelections = useMemo(() => {
     const map: Record<string, string[]> = {};
@@ -121,21 +123,23 @@ export function QuestionnaireCard({
   return (
     <div className="exercise">
       <div>
-        <h4 className="exercise__title">Tell me about your goals</h4>
+        <h4 className="exercise__title">{t('intake.title')}</h4>
         <p className="exercise__meta">
-          {isSubmitted
-            ? 'Thank you. The plan will be shaped around this.'
-            : isClosed
-              ? 'Skipped. The tutor went on without these answers.'
-              : allowMultiple
-                ? 'Choose any that fit you.'
-                : 'Choose one.'}
+          {t(
+            isSubmitted
+              ? 'intake.thanks'
+              : isClosed
+                ? 'intake.skippedHint'
+                : allowMultiple
+                  ? 'intake.chooseAny'
+                  : 'intake.chooseOne',
+          )}
         </p>
       </div>
 
       <div className="exercise__bar">
         <span className="exercise__kicker">
-          Question {activeIndex + 1} of {questionCount}
+          {t('quiz.question', { at: activeIndex + 1, count: questionCount })}
         </span>
         <StepperDots
           items={questions}
@@ -205,10 +209,10 @@ export function QuestionnaireCard({
           className="exercise__done"
         >
           <CheckIcon />
-          Answers sent
+          {t('intake.sent')}
         </motion.p>
       ) : isClosed ? (
-        <p className="exercise__done">Skipped</p>
+        <p className="exercise__done">{t('intake.skipped')}</p>
       ) : (
         <div className="exercise__nav">
           <div className="ml-auto flex items-center gap-2">
@@ -218,7 +222,7 @@ export function QuestionnaireCard({
               onClick={goPrevious}
               disabled={activeIndex === 0}
             >
-              Previous
+              {t('common.previous')}
             </button>
             {activeIndex === questionCount - 1 ? (
               <button
@@ -227,7 +231,7 @@ export function QuestionnaireCard({
                 onClick={handleSubmit}
                 disabled={!allAnswered || submitting}
               >
-                {submitting ? 'Sending…' : 'Send answers'}
+                {t(submitting ? 'intake.sending' : 'intake.send')}
               </button>
             ) : (
               <button
@@ -236,7 +240,7 @@ export function QuestionnaireCard({
                 onClick={goNext}
                 disabled={!isCurrentAnswered}
               >
-                Next
+                {t('common.next')}
               </button>
             )}
           </div>

@@ -5,6 +5,9 @@ import { shortDate } from '@/lib/ui/shortDate';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import type { MemoryFolder, MemoryNote } from '@/lib/types';
+import { useT } from '@/lib/i18n';
+import { displayChatTitle } from '@/lib/ui/chatTitle';
+import { folderDescription, folderName } from '@/lib/ui/memoryFolder';
 
 /** Opens a chat from the Memory page, which steps aside for it. */
 export function useOpenChat() {
@@ -19,34 +22,41 @@ export function useOpenChat() {
 /** How an open note is kept or let go. A phone's keyboard has no Escape;
  * its Done (or a tap elsewhere) keeps the note. */
 function EditHint() {
+  const t = useT();
   const touch = useMediaQuery(MEDIA_QUERIES.touch);
   return (
     <span className="memory-note__meta">
-      {touch ? 'Tap Done to save' : 'Enter to save · Esc to cancel'}
+      {t(touch ? 'memory.editHintTouch' : 'memory.editHint')}
     </span>
   );
 }
 
 function Provenance({ note }: { note: MemoryNote }) {
+  const t = useT();
   const source = useChatStore((s) =>
     note.sourceChatId ? s.chats.find((chat) => chat.id === note.sourceChatId) : undefined,
   );
   const openChat = useOpenChat();
-  const who =
+  const who = t(
     note.author === 'model'
-      ? 'Written by the model'
+      ? 'memory.byModel'
       : note.updatedAt > note.createdAt
-        ? 'Edited by you'
-        : 'Written by you';
+        ? 'memory.editedByYou'
+        : 'memory.byYou',
+  );
   return (
     <span className="memory-note__meta">
       {who} · {shortDate(note.updatedAt)}
       {source && (
         <>
-          {' · from '}
-          <button type="button" className="memory-link" onClick={() => openChat(source.id)}>
-            {source.title || 'Untitled chat'}
-          </button>
+          {' · '}
+          {t.rich('memory.fromChat', {
+            chat: (
+              <button type="button" className="memory-link" onClick={() => openChat(source.id)}>
+                {displayChatTitle(source.title)}
+              </button>
+            ),
+          })}
         </>
       )}
     </span>
@@ -144,6 +154,7 @@ function TextField({
 }
 
 function NoteRow({ note }: { note: MemoryNote }) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const editMemoryNote = useChatStore((s) => s.editMemoryNote);
   const forgetMemoryNote = useChatStore((s) => s.forgetMemoryNote);
@@ -153,7 +164,7 @@ function NoteRow({ note }: { note: MemoryNote }) {
       {editing ? (
         <TextField
           className="memory-note__field"
-          label="Note"
+          label={t('memory.note')}
           text={note.text}
           onSave={(text) => {
             void editMemoryNote(note.id, text);
@@ -180,12 +191,12 @@ function NoteRow({ note }: { note: MemoryNote }) {
             <button
               type="button"
               className="memory-quiet memory-note__forget"
-              aria-label={`Forget: ${note.text}`}
+              aria-label={t('memory.forgetNamed', { note: note.text })}
               onClick={(e) =>
                 void removeRow(e.currentTarget, forgetMemoryNote(note.id), '.memory-add')
               }
             >
-              Forget
+              {t('memory.forget')}
             </button>
           </>
         )}
@@ -206,6 +217,7 @@ export function NoteList({ notes }: { notes: MemoryNote[] }) {
 }
 
 export function AddNote({ folderId }: { folderId: string }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const addMemoryNote = useChatStore((s) => s.addMemoryNote);
   const addRef = useFocusWhenClosed<HTMLButtonElement>(open);
@@ -214,9 +226,9 @@ export function AddNote({ folderId }: { folderId: string }) {
       <div className="memory-note is-editing memory-add__field">
         <TextField
           className="memory-note__field"
-          label="New note"
+          label={t('memory.newNote')}
           text=""
-          placeholder="Something the model should know"
+          placeholder={t('memory.newNotePlaceholder')}
           onSave={(text) => {
             void addMemoryNote(folderId, text);
             setOpen(false);
@@ -231,35 +243,34 @@ export function AddNote({ folderId }: { folderId: string }) {
   return (
     <button ref={addRef} type="button" className="memory-add" onClick={() => setOpen(true)}>
       <PlusIcon className="h-4 w-4" aria-hidden="true" />
-      Add a note
+      {t('memory.addNote')}
     </button>
   );
 }
 
 /** A folder's name, then the line the model reads in its index, which the person may edit. */
 export function FolderHead({ folder, level = 1 }: { folder: MemoryFolder; level?: 1 | 2 }) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const editMemoryFolder = useChatStore((s) => s.editMemoryFolder);
   const lineRef = useFocusWhenClosed<HTMLButtonElement>(editing);
   const Title = level === 1 ? 'h3' : 'h4';
   return (
     <div className={`memory-head memory-head--${level}`}>
-      <Title className="memory-head__title">{folder.name}</Title>
+      <Title className="memory-head__title">{folderName(folder)}</Title>
       {editing ? (
         <>
           <TextField
             className="memory-head__field"
-            label={`What ${folder.name} holds`}
-            text={folder.description}
+            label={t('memory.folderHolds', { folder: folderName(folder) })}
+            text={folderDescription(folder)}
             onSave={(description) => {
               void editMemoryFolder(folder.id, { description });
               setEditing(false);
             }}
             onCancel={() => setEditing(false)}
           />
-          <span className="memory-note__meta">
-            The model reads this line first, and opens the folder when it fits.
-          </span>
+          <span className="memory-note__meta">{t('memory.folderLineHint')}</span>
         </>
       ) : (
         <button
@@ -268,7 +279,7 @@ export function FolderHead({ folder, level = 1 }: { folder: MemoryFolder; level?
           className="memory-head__line"
           onClick={() => setEditing(true)}
         >
-          {folder.description || 'Say what this folder holds'}
+          {folderDescription(folder) || t('memory.folderLinePlaceholder')}
         </button>
       )}
     </div>

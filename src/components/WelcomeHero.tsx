@@ -9,6 +9,7 @@ import { useAnyModelOffered } from '@/lib/hooks/useProviderKeys';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
+import { useT } from '@/lib/i18n';
 import styles from './WelcomeHero.module.css';
 
 // Component: WelcomeHero
@@ -20,6 +21,7 @@ import styles from './WelcomeHero.module.css';
 export function WelcomeHero({ keyboardMetrics }: { keyboardMetrics: KeyboardMetrics }) {
   // One layout at a time: two mounted composers fought over the shared
   // composer height and the phone's focus state.
+  const t = useT();
   const isMobile = useMediaQuery(MEDIA_QUERIES.mobile);
   const connected = useAnyModelOffered();
   const tutorActive = useChatStore(selectIsTutorEnabled);
@@ -36,34 +38,27 @@ export function WelcomeHero({ keyboardMetrics }: { keyboardMetrics: KeyboardMetr
   // Until the keys are read, neither the box nor the composer is a fact.
   if (connected === undefined) return <div className={styles.hero} />;
 
-  const headline = !connected ? (
-    <>
-      Welcome to <span className={styles.headlineEmphasis}>Dialogia</span>
-    </>
-  ) : tutorActive ? (
-    // No longer than "Begin a new dialogue", so switching modes never
-    // rewraps the headline and moves the switch from under the pointer.
-    <>
-      What will you <span className={styles.headlineEmphasis}>learn</span>?
-    </>
-  ) : (
-    <>
-      Begin a new <span className={styles.headlineEmphasis}>dialogue</span>
-    </>
-  );
+  const emphasis = (word: string) => <span className={styles.headlineEmphasis}>{word}</span>;
+  const headline = !connected
+    ? t.rich('welcome.headline.first', { name: emphasis('Dialogia') })
+    : tutorActive
+      ? // No longer than "Begin a new dialogue", so switching modes never
+        // rewraps the headline and moves the switch from under the pointer.
+        t.rich('welcome.headline.learn', { word: emphasis(t('welcome.headline.learnWord')) })
+      : t.rich('welcome.headline.chat', { word: emphasis(t('welcome.headline.chatWord')) });
   // Said once, on the page that asks for a key.
   const subline = connected
     ? null
     : tutorOffered
-      ? 'Chat with the leading AI models, or learn something with a tutor.'
-      : 'Chat with the leading AI models.';
+      ? t('welcome.subline.withTutor')
+      : t('welcome.subline');
 
   const connectBox = (
-    <ConnectForm id="welcome-connect" title="First, connect a model" variant="box" autoFocus />
+    <ConnectForm id="welcome-connect" title={t('welcome.connectTitle')} variant="box" autoFocus />
   );
   const status = (
     <p className="sr-only" role="status">
-      {asked && connected ? 'Connected' : ''}
+      {asked && connected ? t('welcome.connected') : ''}
     </p>
   );
   const modes = (
