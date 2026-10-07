@@ -79,9 +79,9 @@ export default defineConfig({
         'robots.txt',
       ],
       manifest: {
-        name: 'Dialogia — Private Multi-Model Chat',
+        name: 'Dialogia',
         short_name: 'Dialogia',
-        description: 'Local-only, privacy-first multi-model chat UI.',
+        description: 'Local-first, bring-your-own-key chat and tutoring with any model provider.',
         start_url: '/',
         scope: '/',
         display: 'standalone',
@@ -90,6 +90,9 @@ export default defineConfig({
         icons: [
           { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
           { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          // The mark sits inside the safe circle on a full-bleed tile, so the
+          // same image serves a launcher that crops icons to its own shape.
+          { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       workbox: {
