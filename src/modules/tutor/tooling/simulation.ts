@@ -5,6 +5,7 @@
 
 import type { Usage } from '@/lib/api/normalizers';
 import type { LearningPlan } from '@/lib/types';
+import type { ReasoningEffort } from '@/lib/types/enums';
 import {
   nextReadyNode,
   percent,
@@ -80,6 +81,8 @@ export type SimulationMeta = {
   scenario: string;
   title: string;
   tutorModel: string;
+  /** The tutor chat's reasoning effort, when the run set one. */
+  tutorEffort?: ReasoningEffort;
   studentModel: string;
   flags: TutorFlags;
   learnerEdits: boolean;
@@ -105,7 +108,7 @@ export type SimulationOptions = {
   student: SimulatedStudent;
   exchanges: number;
   flags: TutorFlags;
-  meta: Pick<SimulationMeta, 'tutorModel' | 'studentModel' | 'seed'>;
+  meta: Pick<SimulationMeta, 'tutorModel' | 'tutorEffort' | 'studentModel' | 'seed'>;
   /** Let the student quietly mark topics known or move estimates (study conditions). */
   learnerEdits?: boolean;
   /** Plan declines before the student approves whatever comes. */
@@ -439,6 +442,7 @@ export async function runSimulation(options: SimulationOptions): Promise<Simulat
       scenario: student.scenario.id,
       title: student.scenario.title,
       tutorModel: options.meta.tutorModel,
+      ...(options.meta.tutorEffort ? { tutorEffort: options.meta.tutorEffort } : {}),
       studentModel: options.meta.studentModel,
       flags,
       learnerEdits: !!options.learnerEdits,

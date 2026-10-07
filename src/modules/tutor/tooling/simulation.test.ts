@@ -517,5 +517,25 @@ test('the CLI writes the transcript and report, and --check sets the exit code',
     { pipeline: pipeline((params) => reply(params, 'Tell me more.')), log: () => undefined },
   );
   assert.equal(chatty, 1);
+
+  // --tutor-effort reaches every tutor request and the report.
+  const efforts = new Set<string | undefined>();
+  const report: string[] = [];
+  await runTutorSimulationCli(['--turns', '2', '--tutor-effort', 'high', '--out', out, '--quiet'], {
+    pipeline: pipeline((params) => {
+      efforts.add(params.reasoningEffort);
+      return reply(params, 'Tell me more.');
+    }),
+    log: (line) => report.push(line),
+  });
+  assert.deepEqual([...efforts], ['high']);
+  assert.ok(report.join('\n').includes('(high effort) · student'));
+  await assert.rejects(
+    runTutorSimulationCli(['--tutor-effort', 'loud', '--out', out], {
+      pipeline: pipeline(scriptedTutor),
+      log: () => undefined,
+    }),
+    /Unknown --tutor-effort "loud"/,
+  );
   await fs.rm(out, { recursive: true, force: true });
 });
