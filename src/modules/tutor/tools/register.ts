@@ -4,6 +4,7 @@
 
 import {
   TOOL_ENDS_TURN,
+  TOOL_KEEPS_RECORD,
   TUTOR_TOOLS,
   cardIntroduction,
   TUTOR_TOOL_NAMES,
@@ -117,6 +118,7 @@ function createHandler(name: TutorToolName): PlanningToolHandler {
       usedContentTool: endsTurn,
       result,
       endsTurn: endsTurn ? ('after_text' as const) : false,
+      ...(TOOL_KEEPS_RECORD[name] ? { quiet: true } : {}),
       ...(resultBeforeText ? { resultBeforeText } : {}),
       replay,
     };

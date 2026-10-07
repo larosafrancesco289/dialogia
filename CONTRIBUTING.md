@@ -130,7 +130,8 @@ event log and folded state) and a readable report to `tmp/tutor-sim/`. `--check`
 protocol health check fails: a tool error the tutor never fixed, a card the learner could not
 answer, evidence recorded twice for one answer, a reply that gained on a topic it noted a
 misconception on that its answer showed, mastery outside [0, 1], an answer key in replayed
-history, a request without the state block, no approved plan in time, or a stalled topic: one the
+history, a request without the state block, a reply that says the same paragraph twice (often a
+round's text written again after its tool results), no approved plan in time, or a stalled topic: one the
 engine would let the tutor complete as mastered, left open for `--close-within` tutor turns. A run
 in which no topic got that far (the student kept erring) is reported as not judged, since it
 measures the student rather than the tutor. The harness itself is covered by

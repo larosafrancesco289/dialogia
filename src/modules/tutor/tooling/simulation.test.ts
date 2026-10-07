@@ -167,6 +167,27 @@ function stallingTutor(params: TransportStreamParams): void {
   return scriptedTutor(params);
 }
 
+const ANSWERED =
+  'Right: you subtracted 3 from both sides first, which undoes the addition.\n\nNow try 2x + 5 = 13.';
+
+/** The same tutor, except that it writes its reply with a call and, asked again, writes it again. */
+function repeatingTutor(params: TransportStreamParams): void {
+  const messages = params.messages;
+  const lastUser = messages.map((m) => m.role).lastIndexOf('user');
+  const said = textOf(messages[lastUser]?.content);
+  const round = messages.slice(lastUser + 1).filter((m) => m.role === 'assistant').length + 1;
+  const teaching = textOf(messages.find((m) => m.role === 'system')?.content).includes(
+    'Current topic: ',
+  );
+  if (teaching && said === 'Is it x = 4?') {
+    if (round > 1) return reply(params, ANSWERED.replace('which undoes', 'and that undoes'));
+    return reply(params, ANSWERED, [
+      call('record_evidence', { kind: 'applied', note: 'You said x = 4', weight: 0.5 }),
+    ]);
+  }
+  return scriptedTutor(params);
+}
+
 /** The student's model: JSON for the screen questions, a short line otherwise. */
 const scriptedStudent =
   (edits: Array<Record<string, unknown>> = []): StudentLLM =>
@@ -479,6 +500,46 @@ test('a misconception an earlier answer showed does not count against the replyâ
   assert.equal(verdict(noted('latest', run.state.lastSeq + 1)), false);
 });
 
+test('a reply that says a paragraph twice fails the check, by round when the run recorded them', async () => {
+  const verdict = (run: SimulationRun) => checkRun(run).find((c) => c.id === 'no_repeated_text')!;
+  const { run } = await simulate();
+  assert.equal(verdict(run).ok, true);
+
+  // #4 ran three rounds: the reply written in the first and again, reworded, in the last.
+  const [first] = ANSWERED.split('\n\n');
+  const again: SimulationRun = structuredClone(run);
+  const requests = again.exchanges[3].tutor.requests;
+  requests[0].text = ANSWERED;
+  requests[2].text = first.replace('which undoes', 'and that undoes');
+  assert.match(
+    verdict(again).problems[0],
+    /^#4: 1 of 2 paragraphs repeat an earlier one, round 1 written again in round 3 \("Right: you subtracted/,
+  );
+
+  // A transcript without each round's text is judged on the message as the learner saw it.
+  const old: SimulationRun = structuredClone(again);
+  for (const r of old.exchanges[3].tutor.requests) delete r.text;
+  old.exchanges[3].tutor.text = `${first}\n\n${first}`;
+  assert.match(verdict(old).problems[0], /^#4: 1 of 2 paragraphs repeat an earlier one \("/);
+
+  // Two different paragraphs on the same subject are not a repeat.
+  const distinct: SimulationRun = structuredClone(old);
+  distinct.exchanges[3].tutor.text = `${first}\n\nNow subtract 5 from both sides of 2x + 5 = 13 and tell me what is left on the right.`;
+  assert.equal(verdict(distinct).ok, true);
+});
+
+test('a reply written alongside record-keeping calls ends the turn, so it is never written twice', async () => {
+  const { run } = await simulate({ script: repeatingTutor });
+  const x = run.exchanges[5];
+  assert.deepEqual(
+    x.tutor.toolCalls.map((c) => [c.name, c.ok]),
+    [['record_evidence', true]],
+  );
+  assert.equal(x.tutor.requests.length, 1);
+  assert.equal(x.tutor.text, ANSWERED);
+  assert.equal(checkRun(run).find((c) => c.id === 'no_repeated_text')?.ok, true);
+});
+
 test('the CLI writes the transcript and report, and --check sets the exit code', async () => {
   const out = await fs.mkdtemp(path.join(os.tmpdir(), 'tutor-sim-'));
   const lines: string[] = [];
@@ -509,7 +570,7 @@ test('the CLI writes the transcript and report, and --check sets the exit code',
   assert.equal(written.exchanges.length, 5);
   assert.ok(Array.isArray(written.events) && written.state.plan);
   assert.ok(written.checks.every((c: { ok: boolean }) => c.ok));
-  assert.ok(lines.join('\n').includes('Checks: 11 of 11 passed'));
+  assert.ok(lines.join('\n').includes('Checks: 12 of 12 passed'));
 
   // A tutor that only chats never gets a plan approved.
   const chatty = await runTutorSimulationCli(

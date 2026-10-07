@@ -317,8 +317,10 @@ A turn with tools runs one of two loops in `src/lib/agent/streaming/`.
   another model call. One that returns `endsTurn: 'after_text'` stops it the same way when the
   turn already has visible text; when it has none, the model reads the handler's
   `resultBeforeText` instead and gets one more round, with `tool_choice: 'none'`, to introduce
-  what it showed. The loop is capped at `AGENT_MAX_ROUNDS`, and the last round is sent with
-  `tool_choice: 'none'`.
+  what it showed. A round that wrote text and whose calls all returned `quiet: true` (they
+  succeeded and only kept a record, like the tutor's evidence) also ends the turn: the reply is
+  written, and a model asked for another round after such results tends to write it again. The
+  loop is capped at `AGENT_MAX_ROUNDS`, and the last round is sent with `tool_choice: 'none'`.
 
 In both loops a call runs only if the round that made it offered its tool (`scheduleTools`). The
 registry holds every tool, so a call to one the turn withheld is refused like any other.

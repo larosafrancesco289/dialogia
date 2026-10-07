@@ -404,6 +404,69 @@ function noAnswerKeysReplayed(run: SimulationRun): CheckResult {
   );
 }
 
+/** A paragraph shorter than this is a line or a formula, which a reply may fairly repeat. */
+const REPEAT_MIN_WORDS = 8;
+/** Shared word pairs (Dice) at which two paragraphs say the same thing, reworded or not. */
+const REPEAT_SIMILARITY = 0.6;
+
+type Paragraph = { round?: number; text: string; pairs: string[] };
+
+function paragraphsOf(text: string, round?: number): Paragraph[] {
+  return text.split(/\n\s*\n/).flatMap((part) => {
+    const words = part.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
+    if (words.length < REPEAT_MIN_WORDS) return [];
+    const pairs = words.slice(1).map((word, i) => `${words[i]} ${word}`);
+    return [{ ...(round ? { round } : {}), text: part.trim(), pairs }];
+  });
+}
+
+function similarity(a: string[], b: string[]): number {
+  const left = new Map<string, number>();
+  for (const pair of a) left.set(pair, (left.get(pair) ?? 0) + 1);
+  let shared = 0;
+  for (const pair of b) {
+    const n = left.get(pair) ?? 0;
+    if (n === 0) continue;
+    shared += 1;
+    left.set(pair, n - 1);
+  }
+  return (2 * shared) / (a.length + b.length);
+}
+
+/**
+ * The learner sees a turn's rounds as one message, so a reply written before
+ * the tool calls and again after their results reads as the same reply twice.
+ * Judged per paragraph, on each round's own text when the run recorded it.
+ */
+function noRepeatedText(run: SimulationRun): CheckResult {
+  const problems: string[] = [];
+  for (const x of run.exchanges) {
+    const { requests } = x.tutor;
+    const byRound = requests.length > 0 && requests.every((r) => r.text !== undefined);
+    const paragraphs = byRound
+      ? requests.flatMap((r) => paragraphsOf(r.text ?? '', r.round))
+      : paragraphsOf(x.tutor.text);
+    const repeats = paragraphs.flatMap((p, i) => {
+      const earlier = paragraphs
+        .slice(0, i)
+        .find((q) => similarity(q.pairs, p.pairs) >= REPEAT_SIMILARITY);
+      return earlier ? [{ earlier, later: p }] : [];
+    });
+    if (!repeats.length) continue;
+    const { earlier, later } = repeats[0];
+    const where =
+      earlier.round === undefined
+        ? ''
+        : earlier.round === later.round
+          ? ` within round ${later.round}`
+          : `, round ${earlier.round} written again in round ${later.round}`;
+    problems.push(
+      `#${x.index}: ${repeats.length} of ${paragraphs.length} paragraphs repeat an earlier one${where} ("${later.text.slice(0, 60)}…")`,
+    );
+  }
+  return result('no_repeated_text', problems, 'No tutor reply said the same paragraph twice.');
+}
+
 export function checkRun(
   run: SimulationRun,
   options: CheckOptions = DEFAULT_CHECK_OPTIONS,
@@ -418,6 +481,7 @@ export function checkRun(
     masteryInRange(run),
     noGainWithMisconception(run),
     noAnswerKeysReplayed(run),
+    noRepeatedText(run),
     planApprovedWithin(run, options.planWithin),
     topicClosedWhenReady(run, options.closeWithin),
   ];

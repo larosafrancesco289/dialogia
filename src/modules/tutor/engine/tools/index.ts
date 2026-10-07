@@ -9,6 +9,7 @@ import { TUTOR_TOOLS, TUTOR_TOOL_NAMES } from '@/modules/tutor/engine/tools/defi
 
 export {
   TOOL_ENDS_TURN,
+  TOOL_KEEPS_RECORD,
   TUTOR_TOOLS,
   TUTOR_TOOL_NAMES,
 } from '@/modules/tutor/engine/tools/definitions';
