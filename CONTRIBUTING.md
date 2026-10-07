@@ -59,6 +59,9 @@ behaves like it is running someone else's build, that is why.
   accurate when you change what that file is for, and add one when a new module's purpose is not
   obvious from its name.
 - Make focused changes. No drive-by refactors and no broad renames. Note the opportunity instead.
+- **No words in JSX.** Add a key to `src/lib/i18n/messages/en.ts` (or the tutor's `en.ts`), then
+  to every other language in the same folder, following `GLOSSARY.md`; `tests/hardcodedText.test.ts`
+  fails on text written straight into JSX, and the type check on a language that lacks the key.
 
 ## Boundaries you cannot cross
 

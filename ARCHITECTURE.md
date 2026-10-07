@@ -500,6 +500,35 @@ changed since. The tools offered follow the state, and the agent loop reads them
 round (`ModuleComposeContribution.refreshTools`), so a topic started in one round can be quizzed in
 the next round of the same turn.
 
+## Languages
+
+The app speaks English (the source), Italian, French, Spanish, German, Brazilian Portuguese and
+Greek. Every word on screen comes from a typed catalogue: `src/lib/i18n/messages/en.ts` for core,
+`src/modules/tutor/i18n/en.ts` for the tutor, so deleting the module deletes its words. Each other
+language is a file typed from the English one (`Translation<typeof en>`), so a missing key, an extra
+one or a plural written as a plain string fails the type check, and `tests/i18n.test.ts` checks
+placeholders and plural forms too. Components call `useT()` (it re-renders them when the language
+changes); code outside React calls `t()` when it speaks. `{name}` is a placeholder, an object of
+forms is a plural chosen by `Intl.PluralRules`, and `t.rich` puts elements in placeholders.
+Numbers, money, dates and lists go through `src/lib/i18n/format.ts`, in the reader's own regional
+variant of the language shown.
+
+`src/lib/i18n/**` imports nothing above it, so every layer may use it. English ships in the boot
+bundle; another language is fetched before the first render (`src/main.tsx`) and on a switch, each
+registered catalogue at once, so no screen mixes two. The setting is `ui.language` (`'auto'` or a
+locale), and `<html lang>` follows it.
+
+Some English is data, not words on screen, and must stay as it was written: a chat's default title
+(`DEFAULT_CHAT_TITLE`) and a branch's marker, the built-in memory folders' names, the notice
+constants code compares and stores (a reply's `cutOffReason`), and the engine's evidence notes.
+Each is turned into the language shown where it is displayed (`displayChatTitle`, `folderName`,
+`resolveNotice`, `readableNote`). Prompts stay in English; the tutor, and Memory's consolidation
+report, are told the app's language (`appLanguageForModel`) so a learner is taught in theirs. The
+default system prompt already answers in the language the person writes in.
+
+Neither Newsreader nor Plus Jakarta Sans draws Greek: `styles/fonts.css` adds Source Serif 4 and
+Manrope under the same family names with a Greek `unicode-range`, fetched only when Greek shows.
+
 ## Deployment
 
 `bun run build` emits `dist/`, a static site. There is no worker, no API route and no environment
@@ -544,4 +573,5 @@ A browser-held key is readable by the page holding it. That is inherent to bring
 | Chat persistence         | `src/lib/db/**`                                                                             |
 | Cross-tab sync           | `src/lib/sync/tabChannel.ts`, `src/lib/db/announce.ts`, `src/lib/store/tabSync.ts`          |
 | Feature modules          | `src/modules/**`, listed in `src/lib/modules.ts`                                            |
+| Languages                | `src/lib/i18n/**`, `src/modules/tutor/i18n/**`                                              |
 | Styles and tokens        | `styles/**`                                                                                 |
