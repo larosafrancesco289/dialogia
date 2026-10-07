@@ -1085,6 +1085,18 @@ describe('topics and phases', () => {
     );
   });
 
+  test('complete_topic judges READY on the percent the learner sees', () => {
+    const h = teaching();
+    for (const note of ['Solved one alone', 'Solved another alone']) {
+      h.tutor({ type: 'record_evidence', kind: 'applied', note, source: 'observation' }, note);
+    }
+    h.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.7995 });
+    assert.equal(h.state.mastery.limits.confidence, 0.7995);
+    assert.equal(readyToComplete(h.state, 'limits'), true);
+    h.tutor({ type: 'complete_topic', how: 'mastered' });
+    assert.equal(h.state.plan!.nodes[0].completedHow, 'mastered');
+  });
+
   test('mastered needs two pieces of the learner’s own work, not a starting estimate and one answer', () => {
     const h = harness();
     h.tutor({ type: 'give_diagnostic', topic: 'Calculus basics', items: DIAGNOSTIC });

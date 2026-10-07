@@ -180,7 +180,7 @@ export const ARGS = {
       .max(WEIGHT_MAX)
       .optional()
       .describe(
-        `How far this moves the estimate. Omit for the default per kind (${OBSERVATION_KINDS.map((k) => `${k} ${signed(OBSERVATION_WEIGHTS[k])}`).join(', ')}); its sign must match the kind.`,
+        `How far this moves the estimate. Omit for the default per kind (${OBSERVATION_KINDS.map((k) => `${k} ${signed(OBSERVATION_WEIGHTS[k])}`).join(', ')}); its sign must match the kind: only struggled is negative, and partial never lowers the estimate.`,
       ),
     helped: z
       .boolean()
