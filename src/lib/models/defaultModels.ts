@@ -5,7 +5,7 @@
 import { DEFAULT_MODEL_PREFERENCE, TUTOR_MODEL_PREFERENCE } from '@/data/curatedModels';
 import { resolveFirstAvailableModelId } from '@/lib/models/dynamicDefaults';
 import { isBuiltInEndpointId } from '@/lib/transport/endpoints';
-import type { ModelDescriptor } from '@/lib/types';
+import type { ModelDescriptor, ReasoningEffort } from '@/lib/types';
 
 /** Claude Haiku, on OpenRouter or a Claude API key; GPT Luna where Haiku is not served. */
 export function resolveDefaultModelId(models: ModelDescriptor[]): string {
@@ -19,4 +19,16 @@ export function resolveDefaultModelId(models: ModelDescriptor[]): string {
 export function resolveTutorModelId(chosen: string | undefined, models: ModelDescriptor[]): string {
   const preference = chosen ? [chosen, ...TUTOR_MODEL_PREFERENCE] : TUTOR_MODEL_PREFERENCE;
   return resolveFirstAvailableModelId(preference, models, isBuiltInEndpointId);
+}
+
+// Claude Haiku 5.5, on OpenRouter or a Claude API key.
+const HAIKU_5_5 = /^anthropic(?:-direct)?\/claude-haiku-5[.-]5(?:-\d{8})?$/;
+
+/**
+ * The effort a tutor turn runs at when the learner chose none: high on Claude
+ * Haiku 5.5, which at its default medium still narrated its bookkeeping around
+ * tool calls; otherwise the model's own default.
+ */
+export function tutorDefaultEffort(modelId: string): ReasoningEffort | undefined {
+  return HAIKU_5_5.test(modelId) ? 'high' : undefined;
 }

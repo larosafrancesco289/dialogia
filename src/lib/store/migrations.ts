@@ -96,6 +96,16 @@ export const migrateToV8 = (state: PersistedState): PersistedState => {
   return { ...state, ui: { ...state.ui, tutor } };
 };
 
+// V9 moves the tutor from GPT-6 Luna to Claude Haiku 5.5. The UI defaults
+// write the tutor model into every saved state, so the old default is rewritten
+// (every tutor chat follows it); any other model the learner picked is kept.
+export const migrateToV9 = (state: PersistedState): PersistedState => {
+  if (!isRecord(state.ui) || !isRecord(state.ui.tutor)) return state;
+  if (state.ui.tutor.defaultModelId !== 'openai/gpt-6-luna') return state;
+  const tutor = { ...state.ui.tutor, defaultModelId: 'anthropic/claude-haiku-5.5' };
+  return { ...state, ui: { ...state.ui, tutor } };
+};
+
 export const migrate = (persistedState: unknown, version = 0): PersistedStoreState => {
   if (!isRecord(persistedState)) return {} as PersistedStoreState;
   let state: PersistedState = persistedState;
@@ -104,5 +114,6 @@ export const migrate = (persistedState: unknown, version = 0): PersistedStoreSta
   if (version < 4) state = migrateToV4(state);
   if (version < 7) state = migrateToV7(state);
   if (version < 8) state = migrateToV8(state);
+  if (version < 9) state = migrateToV9(state);
   return state as PersistedStoreState;
 };

@@ -12,6 +12,7 @@ import {
   clampReasoningEffort,
   getDefaultReasoningEffort,
   resolveDynamicModelId,
+  tutorDefaultEffort,
 } from '@/lib/models';
 import { selectSearchMode } from '@/lib/policy/provider';
 import { NATIVE_SEARCH_MODE } from '@/lib/types/enums';
@@ -129,24 +130,6 @@ export function resolveTurnSettings(args: {
   const explicitReasoningTokens = supportsReasoning
     ? (overrides.reasoning?.tokens ?? chat.settings.generation.reasoningTokens)
     : undefined;
-  // When the user hasn't chosen an effort (and set no token budget), follow
-  // the model's own provider default (e.g. Claude reasoning models default to
-  // 'high'); fall back to the app standard when the metadata carries none.
-  const rawReasoningEffort = supportsReasoning
-    ? (overrides.reasoning?.effort ??
-      chat.settings.generation.reasoningEffort ??
-      (explicitReasoningTokens === undefined
-        ? (getDefaultReasoningEffort(modelMeta) ?? DEFAULT_REASONING_EFFORT)
-        : undefined))
-    : undefined;
-  // Clamp to the effort levels the provider reports for this model. When
-  // modelMeta is undefined (model list not yet loaded, or unknown id) the
-  // value passes through unchanged — the request layer sees the same metadata
-  // and will do the right thing, and users don't lose their selection while
-  // the index is hydrating.
-  const reasoningEffort = rawReasoningEffort
-    ? clampReasoningEffort(rawReasoningEffort, modelMeta)
-    : rawReasoningEffort;
   const reasoningTokens = explicitReasoningTokens;
   const searchEnabled = overrides.search?.enabled ?? chat.settings.features.search.enabled;
   const searchProviderCandidate =
@@ -183,6 +166,27 @@ export function resolveTurnSettings(args: {
           },
         };
   const tutorEnabled = isTutorRuntimeEnabled(ui, policyChat);
+  // When the user hasn't chosen an effort (and set no token budget), the
+  // tutor's own default for its model comes first, then the model's provider
+  // default (e.g. Claude reasoning models default to 'high'), then the app
+  // standard when the metadata carries none.
+  const rawReasoningEffort = supportsReasoning
+    ? (overrides.reasoning?.effort ??
+      chat.settings.generation.reasoningEffort ??
+      (explicitReasoningTokens === undefined
+        ? ((tutorEnabled ? tutorDefaultEffort(resolvedModelId) : undefined) ??
+          getDefaultReasoningEffort(modelMeta) ??
+          DEFAULT_REASONING_EFFORT)
+        : undefined))
+    : undefined;
+  // Clamp to the effort levels the provider reports for this model. When
+  // modelMeta is undefined (model list not yet loaded, or unknown id) the
+  // value passes through unchanged — the request layer sees the same metadata
+  // and will do the right thing, and users don't lose their selection while
+  // the index is hydrating.
+  const reasoningEffort = rawReasoningEffort
+    ? clampReasoningEffort(rawReasoningEffort, modelMeta)
+    : rawReasoningEffort;
 
   const generation: GenerationSettings = {
     maxTokens,

@@ -21,11 +21,13 @@ const GPT_LUNA: CuratedModel = {
 };
 
 // Pinned, not a family: the tutor's prompt and its simulator checks are tuned
-// on this exact model. If it disappears, the tutor falls back to GPT Luna.
+// on this exact model, at high effort (tutorDefaultEffort in
+// src/lib/models/defaultModels.ts). If it disappears, the tutor falls back to
+// GPT Luna.
 export const DEFAULT_TUTOR_MODEL: CuratedModel = {
-  id: 'openai/gpt-6-luna',
-  name: 'GPT-6 Luna',
-  description: 'Fast, inexpensive and reliable with tools; the tutor by default',
+  id: 'anthropic/claude-haiku-5.5',
+  name: 'Claude Haiku 5.5',
+  description: 'Fast, inexpensive and a warm, patient teacher; the tutor by default',
 };
 
 export const DEFAULT_MODEL_ID = DEFAULT_CHAT_MODEL.id;
