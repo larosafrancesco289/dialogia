@@ -288,9 +288,11 @@ const messages: Translation<typeof en> = {
   'models.caps.zdr': 'Ne garde aucune de tes données (zéro conservation)',
   'models.contextHint': 'Ce qu’il peut lire d’un coup',
   'models.contextTokens': { one: '{count} token', other: '{count} tokens' },
-  'models.curated.gptLuna':
-    'Rapide, bon marché et à l’aise avec les outils ; les nouvelles discussions commencent ici',
-  'models.curated.tutor': 'Rapide, bon marché et fiable avec les outils ; le tuteur par défaut',
+  'models.curated.claudeHaiku':
+    'Rapide, bon marché et belle plume ; les nouvelles discussions commencent ici',
+  'models.curated.gptLuna': 'Rapide, bon marché et concis ; à l’aise avec les outils',
+  'models.curated.tutor':
+    'Rapide, bon marché, un professeur chaleureux et patient ; le tuteur par défaut',
   'models.curated.gptSol':
     'La gamme principale d’OpenAI, pour le raisonnement et l’écriture plus difficiles',
   'models.curated.claudeOpus':

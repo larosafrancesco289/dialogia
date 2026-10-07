@@ -289,8 +289,10 @@ const messages: Translation<typeof en> = {
   'models.caps.zdr': 'Speichert keine deiner Daten (Zero Data Retention)',
   'models.contextHint': 'Wie viel es auf einmal lesen kann',
   'models.contextTokens': { one: '{count} Token', other: '{count} Tokens' },
-  'models.curated.gptLuna': 'Schnell, günstig und gut mit Werkzeugen; neue Chats beginnen hier',
-  'models.curated.tutor': 'Schnell, günstig und zuverlässig mit Werkzeugen; der Standard-Tutor',
+  'models.curated.claudeHaiku': 'Schnell, günstig und schreibt stark; neue Chats beginnen hier',
+  'models.curated.gptLuna': 'Schnell, günstig und knapp; gut mit Werkzeugen',
+  'models.curated.tutor':
+    'Schnell, günstig und ein warmherziger, geduldiger Lehrer; der Standard-Tutor',
   'models.curated.gptSol': 'OpenAIs Hauptmodell, für schwierigeres Denken und Schreiben',
   'models.curated.claudeOpus': 'Sorgfältige, lange Arbeit; Anthropics empfohlener Standard',
   'models.curated.claudeFable': 'Das stärkste Claude, für die schwersten Probleme; das teuerste',
