@@ -162,15 +162,15 @@ function metadataEntries(metadata: ToolCallLogEntry['metadata']): Array<[string,
   return entries;
 }
 
-function JsonBlock({ label, value }: { label: 'input' | 'output'; value: unknown }) {
+function JsonBlock({ kind, value }: { kind: 'input' | 'output'; value: unknown }) {
   const t = useT();
   return (
     <div>
       <div className="devtools__section-head">
-        <span className="devtools__label">{t(`toolLog.${label}`)}</span>
+        <span className="devtools__label">{t(`toolLog.${kind}`)}</span>
         <CopyButton
           text={stringify(value)}
-          label={t(`toolLog.copy.${label}`)}
+          label={t(`toolLog.copy.${kind}`)}
           className="icon-button icon-button--sm"
         />
       </div>
@@ -271,9 +271,9 @@ export function ToolCallLog({
                 </button>
                 {isExpanded && (
                   <div className="tool-log__detail">
-                    <JsonBlock label="input" value={call.input} />
+                    <JsonBlock kind="input" value={call.input} />
 
-                    {call.output && <JsonBlock label="output" value={call.output} />}
+                    {call.output && <JsonBlock kind="output" value={call.output} />}
 
                     {call.error && (
                       <p className="tool-log__error">
