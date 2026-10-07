@@ -29,6 +29,7 @@ import {
   clampWeight,
   observationWeight,
   percent,
+  reaches,
 } from '@/modules/tutor/engine/rules';
 import {
   confidenceOf,
@@ -342,7 +343,7 @@ export function decideTutor(
         }
       } else {
         const confidence = confidenceOf(state, node.id);
-        if (confidence < READY) {
+        if (!reaches(confidence, READY)) {
           return err(
             'not_ready',
             `${node.name} is at ${percent(confidence)}%; completing it as mastered needs ${percent(READY)}%.`,
