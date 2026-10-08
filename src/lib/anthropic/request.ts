@@ -13,7 +13,9 @@ import {
   anthropicThinkingOff,
   defaultAnthropicMaxTokens,
   defaultAnthropicThinkingBudget,
+  anthropicTakesOneSampler,
   documentedAnthropicDefaultEffort,
+  isAnthropicSamplingFixed,
   normalizeAnthropicModelSlug,
   resolveAnthropicDirectModelId,
   supportsAnthropicAdaptiveThinking,
@@ -138,6 +140,39 @@ function buildThinkingConfig(params: {
   };
 }
 
+// Models that think when `thinking` is left out (Claude 5 on) fix sampling anyway.
+const thinkingOn = (thinking: AnthropicMessagesRequest['thinking']) =>
+  thinking?.type === 'enabled' || thinking?.type === 'adaptive';
+
+/** top_p's range while thinking is on, on models that take it at all then. */
+const THINKING_TOP_P_MIN = 0.95;
+
+/**
+ * The temperature and top_p a model accepts, of those asked for; anything
+ * else is a 400 for the whole request, so it is left out. Models that fix
+ * sampling take neither. Before them, thinking rules out temperature and
+ * narrows top_p, and from Opus 4.1 only one of the two may be set.
+ */
+function samplingParams(
+  model: string,
+  temperature: number | undefined,
+  topP: number | undefined,
+  thinking: boolean,
+): Pick<AnthropicMessagesRequest, 'temperature' | 'top_p'> {
+  if (isAnthropicSamplingFixed(model)) return {};
+  let t = typeof temperature === 'number' ? temperature : undefined;
+  let p = typeof topP === 'number' ? topP : undefined;
+  if (thinking) {
+    t = undefined;
+    if (p !== undefined && (p < THINKING_TOP_P_MIN || p > 1)) p = undefined;
+  }
+  if (t !== undefined && p !== undefined && anthropicTakesOneSampler(model)) p = undefined;
+  return {
+    ...(t !== undefined ? { temperature: t } : {}),
+    ...(p !== undefined ? { top_p: p } : {}),
+  };
+}
+
 export function buildAnthropicBody(
   params: Pick<
     TransportChatParams,
@@ -191,8 +226,6 @@ export function buildAnthropicBody(
     body.cache_control = { type: 'ephemeral' };
   }
 
-  if (typeof params.temperature === 'number') body.temperature = params.temperature;
-  if (typeof params.topP === 'number') body.top_p = params.topP;
   if (system !== undefined) body.system = system;
 
   const tools: Array<AnthropicToolDefinition | AnthropicWebSearchToolDefinition> =
@@ -224,6 +257,10 @@ export function buildAnthropicBody(
   if ('output_config' in thinkingConfig && thinkingConfig.output_config) {
     body.output_config = thinkingConfig.output_config;
   }
+  Object.assign(
+    body,
+    samplingParams(resolvedModel, params.temperature, params.topP, thinkingOn(body.thinking)),
+  );
 
   if (unsupported.size > 0) params.onUnsupportedContent?.(Array.from(unsupported));
 

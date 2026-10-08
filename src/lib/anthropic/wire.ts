@@ -8,6 +8,8 @@ type AnthropicCacheControl = {
 export type AnthropicTextBlock = {
   type: 'text';
   text: string;
+  /** A reply's citations, sent back with the text they belong to. */
+  citations?: Array<Record<string, unknown>>;
   cache_control?: AnthropicCacheControl;
 };
 
@@ -15,6 +17,11 @@ export type AnthropicThinkingBlock = {
   type: 'thinking';
   thinking: string;
   signature: string;
+};
+
+type AnthropicRedactedThinkingBlock = {
+  type: 'redacted_thinking';
+  data: string;
 };
 
 type AnthropicToolUseBlock = {
@@ -63,6 +70,7 @@ export type AnthropicUserContentBlock =
 export type AnthropicAssistantContentBlock =
   | AnthropicTextBlock
   | AnthropicThinkingBlock
+  | AnthropicRedactedThinkingBlock
   | AnthropicToolUseBlock
   | AnthropicServerToolUseBlock
   | AnthropicWebSearchToolResultBlock;

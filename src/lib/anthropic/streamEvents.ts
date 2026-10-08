@@ -14,7 +14,13 @@ import { parseToolInput } from '@/lib/anthropic/messages';
 import { blockAnnotations, citationAnnotation } from '@/lib/anthropic/citations';
 import type { AnthropicThinkingBlock } from '@/lib/anthropic/wire';
 
-type PendingToolCall = { id?: string; name: string; arguments: string };
+type PendingToolCall = {
+  id?: string;
+  name: string;
+  arguments: string;
+  /** Its block stopped, so the arguments are whole. */
+  done?: boolean;
+};
 
 /** One response. A continuation's response numbers its blocks from 0 again. */
 type StreamRound = {
@@ -22,6 +28,8 @@ type StreamRound = {
   blocks: Array<Record<string, unknown> | undefined>;
   toolInputs: Map<number, string>;
   usage?: Usage;
+  /** message_stop arrived: the response ended, rather than the connection. */
+  stopped?: boolean;
 };
 
 export type StreamTurn = {
@@ -34,6 +42,8 @@ export type StreamTurn = {
   stopReason?: unknown;
   stopDetails?: unknown;
   round: StreamRound;
+  /** The content of the rounds before this one, in order. */
+  earlierContent: Array<Record<string, unknown>>;
   /** How many blocks the rounds before this one held. */
   blockBase: number;
   /** Thinking has been shown; a later thinking block opens a new paragraph. */
@@ -58,6 +68,7 @@ export function createStreamTurn(): StreamTurn {
     annotations: [],
     toolCalls: new Map(),
     round: newRound(),
+    earlierContent: [],
     blockBase: 0,
     thinkingShown: false,
     thinkingBreak: false,
@@ -66,6 +77,7 @@ export function createStreamTurn(): StreamTurn {
 
 /** Moves the turn on to a continuation's response. */
 export function startNextRound(turn: StreamTurn): void {
+  turn.earlierContent.push(...roundContent(turn));
   turn.blockBase += turn.round.blocks.length;
   turn.round = newRound();
 }
@@ -75,11 +87,26 @@ export function roundContent(turn: StreamTurn): Array<Record<string, unknown>> {
   return turn.round.blocks.filter((block): block is Record<string, unknown> => !!block);
 }
 
-/** The turn's tool calls, in the order they started; one without an id cannot be answered. */
+/**
+ * The assistant message the turn adds, every block in the order it arrived,
+ * as the next request must send it back: thinking (redacted or not), text
+ * with its citations, server tool calls and their results, tool calls.
+ */
+export function turnContent(turn: StreamTurn): Array<Record<string, unknown>> {
+  return [...turn.earlierContent, ...roundContent(turn)];
+}
+
+/**
+ * The turn's tool calls, in the order they started. One without an id cannot
+ * be answered, and one whose block never stopped, or in a response cut off
+ * before message_stop, has arguments that never finished: running it would
+ * act on an empty or partial input.
+ */
 export function finishedToolCalls(turn: StreamTurn): ToolCall[] | undefined {
+  if (!turn.round.stopped) return undefined;
   const calls: ToolCall[] = [];
   for (const call of turn.toolCalls.values()) {
-    if (call.id === undefined) continue;
+    if (call.id === undefined || !call.done) continue;
     calls.push({
       id: call.id,
       type: 'function',
@@ -115,6 +142,9 @@ export function applyStreamEvent(turn: StreamTurn, payload: unknown, emit: Strea
       addUsage(turn.round, payload.usage);
       return;
     }
+    case 'message_stop':
+      turn.round.stopped = true;
+      return;
   }
 }
 
@@ -203,6 +233,12 @@ function applyDelta(turn: StreamTurn, index: number, value: unknown, emit: Strea
     return;
   }
   if (value.type === 'citations_delta') {
+    if (block?.type === 'text' && isRecord(value.citation)) {
+      block.citations = [
+        ...(Array.isArray(block.citations) ? block.citations : []),
+        value.citation,
+      ];
+    }
     const annotation = citationAnnotation(value.citation);
     if (annotation) addAnnotations(turn, [annotation], emit);
     return;
@@ -227,5 +263,8 @@ function stopBlock(turn: StreamTurn, index: number): void {
   const input = parseToolInput(turn.round.toolInputs.get(index));
   if (block?.type === 'tool_use' || block?.type === 'server_tool_use') block.input = input;
   const call = turn.toolCalls.get(turn.blockBase + index);
-  if (call) call.arguments = JSON.stringify(input);
+  if (call) {
+    call.arguments = JSON.stringify(input);
+    call.done = true;
+  }
 }

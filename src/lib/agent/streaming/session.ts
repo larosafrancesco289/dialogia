@@ -29,6 +29,8 @@ import { schedulePlanningRound } from '@/lib/agent/planning/schedule';
 import { getMessagesForChat } from '@/lib/messages/indexing';
 import { buildSystemMessage } from '@/lib/agent/cache';
 import { resolveModelTransportKind } from '@/lib/providers';
+import { anthropicBindsThinkingToPrefix } from '@/lib/anthropic/shared';
+import { withoutThinking } from '@/lib/anthropic/messages';
 import type {
   ModelMessage,
   PlanTurnResult,
@@ -70,6 +72,10 @@ export type TurnSession = {
   /** Anthropic reads tool results without a nudge; other transports need one. */
   appendToolFollowUp: boolean;
   preLoggedToolIndices: Set<number>;
+  /** The model rejects thinking sent back after the system prompt or tools changed. */
+  bindsThinking: boolean;
+  /** The system prompt and tools the turn's last request sent, while that matters. */
+  thinkingPrefix?: string;
 };
 
 export async function openSession(opts: StreamingTurnOptions): Promise<TurnSession> {
@@ -105,6 +111,7 @@ export async function openSession(opts: StreamingTurnOptions): Promise<TurnSessi
     searchProvider: settings.searchProvider || 'openrouter',
     appendToolFollowUp: resolveModelTransportKind(settings.modelId, modelMeta) !== 'anthropic',
     preLoggedToolIndices: new Set(),
+    bindsThinking: anthropicBindsThinkingToPrefix(settings.modelId),
   };
 }
 
@@ -147,6 +154,42 @@ export function refreshSessionTools(session: TurnSession): void {
     return !!name && session.gate.isAllowed(name);
   });
   if (offered.length) session.tools = offered;
+}
+
+/**
+ * Takes the turn's thinking out of the conversation when this round's system
+ * prompt or tools differ from the last round's. On models that bind a thinking
+ * block to everything sent before it, sending one back after such a change
+ * fails the request; leaving every earlier block out is allowed, and costs
+ * only that reasoning. A tool set that follows the turn's progress (the
+ * tutor's) and sources added to the system prompt after a search both change
+ * mid-turn. Call it before building the round's request; once dropped, the
+ * thinking stays out.
+ */
+export function forgetStaleThinking(
+  session: TurnSession,
+  messages: ModelMessage[],
+  tools: ToolDefinition[] | undefined,
+): void {
+  if (!session.bindsThinking) return;
+  const prefix = JSON.stringify([systemTexts(messages), tools ?? []]);
+  const changed = session.thinkingPrefix !== undefined && session.thinkingPrefix !== prefix;
+  session.thinkingPrefix = prefix;
+  if (!changed) return;
+  for (const message of session.convo) {
+    if (message.role !== 'assistant' || message.reasoning_details === undefined) continue;
+    const kept = withoutThinking(message.reasoning_details);
+    if (kept === undefined) delete message.reasoning_details;
+    else message.reasoning_details = kept;
+  }
+}
+
+function systemTexts(messages: ModelMessage[]): string[] {
+  return messages.flatMap((message) => {
+    if (message.role !== 'system') return [];
+    if (typeof message.content === 'string') return [message.content];
+    return message.content.map((block) => (block.type === 'text' ? block.text : ''));
+  });
 }
 
 /**

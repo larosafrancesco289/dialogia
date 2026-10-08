@@ -282,6 +282,36 @@ export function defaultAnthropicMaxTokens(model: string): number {
   return 32000;
 }
 
+/**
+ * Whether the model rejects any non-default temperature, top_p or top_k on
+ * every request, thinking or not: Claude 5 on, Opus from 4.7, and the Mythos
+ * class (Anthropic's thinking docs, "Sampling parameters").
+ */
+export function isAnthropicSamplingFixed(model: string): boolean {
+  if (isMythosPreview(model)) return true;
+  const gen = claudeGeneration(normalizeSlug(model));
+  if (!gen) return false;
+  return gen.version >= 5 || gen.name === 'mythos' || (gen.name === 'opus' && gen.version >= 4.7);
+}
+
+/** Opus 4.1 on refuses a request that sets both temperature and top_p. */
+export function anthropicTakesOneSampler(model: string): boolean {
+  const gen = claudeGeneration(normalizeSlug(model));
+  return !!gen && gen.version >= 4.1;
+}
+
+/**
+ * Whether the model binds a signed thinking block to everything sent before
+ * it (the system prompt, the tools and every earlier message), so a request
+ * that changed any of them and sends the block back fails. Claude Fable 5.1
+ * and later run the check; Mythos 5.1 and every earlier model do not
+ * (Anthropic's preserved-thinking docs).
+ */
+export function anthropicBindsThinkingToPrefix(model: string): boolean {
+  const gen = claudeGeneration(normalizeSlug(model));
+  return !!gen && gen.name !== 'mythos' && gen.version >= 5.1;
+}
+
 export function supportsAnthropicReasoning(model: string): boolean {
   const normalized = normalizeSlug(model);
   return normalized.startsWith('claude-');

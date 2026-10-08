@@ -117,7 +117,7 @@ const reply = (
   callbacks: StreamCallbacks | undefined,
   text: string,
   toolCalls?: ToolCall[],
-  finishReason: 'stop' | 'tool_calls' = toolCalls?.length ? 'tool_calls' : 'stop',
+  finishReason: 'stop' | 'tool_calls' | 'length' = toolCalls?.length ? 'tool_calls' : 'stop',
 ) => {
   if (toolCalls?.length) {
     callbacks?.onToolCallDelta?.(
@@ -136,11 +136,12 @@ async function runAgentTurn(
     /** Tool names offered on the first round; every test tool by default. */
     tools?: string[];
     refreshTools?: () => ToolDefinition[];
+    modelId?: string;
   } = {},
 ) {
   const chatId = `chat-agent-${Math.random().toString(36).slice(2)}`;
   const model: ModelDescriptor = {
-    id: 'provider/model',
+    id: options.modelId ?? 'provider/model',
     name: 'Provider Model',
     context_length: 16000,
     pricing: undefined,
@@ -639,4 +640,75 @@ test('a call runs only if its tool was offered in the round that made it', async
   assert.equal(turn.message()?.memoryWrites, undefined);
   // Offered after the refresh, the card runs in round two and ends the turn.
   assert.equal(turn.requests.length, 2);
+});
+
+test('a round cut off at its token limit runs none of its calls and ends the turn', async () => {
+  const turn = await runAgentTurn((_round, callbacks) =>
+    reply(callbacks, 'Let me note', [call(TOOL_NOTE, { what: 'x' })], 'length'),
+  );
+  await turn.run;
+  assert.equal(turn.requests.length, 1);
+  assert.equal(turn.message()?.toolRounds, undefined, 'the note never ran');
+  assert.equal(turn.message()?.content, 'Let me note');
+});
+
+/** A Claude reply that thought, said a word, and called `name`. */
+const thoughtReply = (callbacks: StreamCallbacks | undefined, name: string) => {
+  const toolCall = call(name);
+  const thinking = { type: 'thinking', thinking: 'Plan.', signature: 'sig-1' };
+  callbacks?.onToken?.('Noting.');
+  callbacks?.onDone?.('Noting.', {
+    finishReason: 'tool_calls',
+    toolCalls: [toolCall],
+    reasoningDetails: {
+      provider: 'anthropic',
+      thinkingBlocks: [thinking],
+      content: [
+        thinking,
+        { type: 'text', text: 'Noting.' },
+        { type: 'tool_use', id: toolCall.id, name, input: {} },
+      ],
+    },
+  });
+};
+
+const replayedDetails = (params: TransportStreamParams) => {
+  const message = params.messages.find((entry) => entry.role === 'assistant' && entry.tool_calls);
+  return message?.role === 'assistant'
+    ? (message.reasoning_details as { content: Array<{ type: string }> } | undefined)
+    : undefined;
+};
+
+test('thinking is left out of a round whose tools changed, on a model that binds it', async () => {
+  const run = (modelId: string | undefined, changed: boolean) =>
+    runAgentTurn(
+      (round, callbacks) =>
+        round === 1 ? thoughtReply(callbacks, TOOL_NOTE) : reply(callbacks, 'Done.'),
+      {
+        ...(modelId ? { modelId } : {}),
+        tools: [TOOL_NOTE],
+        refreshTools: () => (changed ? [TOOL_NOTE, TOOL_CARD] : [TOOL_NOTE]).map(definition),
+      },
+    );
+
+  const binding = await run('anthropic/claude-haiku-5.5', true);
+  await binding.run;
+  assert.deepEqual(
+    replayedDetails(binding.requests[1])?.content.map((block) => block.type),
+    ['text', 'tool_use'],
+    'the thinking goes, the rest of the reply stays as it was',
+  );
+
+  // Tools as they were, or a model that does not bind its thinking: sent back whole.
+  for (const [modelId, changed] of [
+    ['anthropic/claude-haiku-5.5', false],
+    [undefined, true],
+  ] as const) {
+    const turn = await run(modelId, changed);
+    await turn.run;
+    assert.deepEqual(
+      replayedDetails(turn.requests[1])?.content.map((block) => block.type),
+      ['thinking', 'text', 'tool_use'],
+    );
+  }
 });

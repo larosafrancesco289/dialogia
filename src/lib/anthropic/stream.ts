@@ -16,6 +16,7 @@ import {
   finishedToolCalls,
   roundContent,
   startNextRound,
+  turnContent,
 } from '@/lib/anthropic/streamEvents';
 import { buildAnthropicError, wrapAnthropicClientError } from '@/lib/anthropic/errors';
 
@@ -77,6 +78,6 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
     finishReason: mapStopReason(turn.stopReason),
     stopDetails: turn.stopDetails,
     toolCalls: finishedToolCalls(turn),
-    reasoningDetails: toReasoningDetails(turn.thinkingBlocks),
+    reasoningDetails: toReasoningDetails(turn.thinkingBlocks, turnContent(turn)),
   });
 }

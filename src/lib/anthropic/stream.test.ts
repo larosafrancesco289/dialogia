@@ -7,6 +7,7 @@ import {
   createStreamTurn,
   finishedToolCalls,
   roundContent,
+  turnContent,
 } from '@/lib/anthropic/streamEvents';
 import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
 import { buildTransportAuth } from '@/lib/auth/transport';
@@ -485,4 +486,92 @@ test("streamChatCompletion reports a native web search's sources as annotations"
   assert.deepEqual(sourcesFromAnnotations(annotations), sources);
   // Sources show while the reply streams: the last report is the whole set.
   assert.deepEqual(sourcesFromAnnotations(reported.at(-1)), sources);
+});
+
+const fold = (events: unknown[]) => {
+  const turn = createStreamTurn();
+  for (const event of events) applyStreamEvent(turn, event);
+  return turn;
+};
+
+const toolUse = (index: number, id: string, json: string, stop = true) => [
+  {
+    type: 'content_block_start',
+    index,
+    content_block: { type: 'tool_use', id, name: 'record_evidence', input: {} },
+  },
+  { type: 'content_block_delta', index, delta: { type: 'input_json_delta', partial_json: json } },
+  ...(stop ? [{ type: 'content_block_stop', index }] : []),
+];
+
+test('a cut-off response calls nothing: its arguments never finished', () => {
+  const ended = [
+    { type: 'message_delta', delta: { stop_reason: 'tool_use' } },
+    { type: 'message_stop' },
+  ];
+  // The connection dropped mid-arguments, then before message_stop.
+  assert.equal(finishedToolCalls(fold(toolUse(0, 'a', '{"node":'))), undefined);
+  assert.equal(finishedToolCalls(fold(toolUse(0, 'a', '{"node":"x"}'))), undefined);
+  // Ended properly, only the call whose block stopped counts.
+  const calls = finishedToolCalls(
+    fold([...toolUse(0, 'a', '{"node":"x"}'), ...toolUse(1, 'b', '{"no', false), ...ended]),
+  );
+  assert.deepEqual(
+    calls?.map((call) => [call.id, call.function.arguments]),
+    [['a', '{"node":"x"}']],
+  );
+});
+
+test('the turn keeps the reply block for block, as the next request sends it back', () => {
+  const citation = {
+    type: 'web_search_result_location',
+    url: 'https://solar.test',
+    title: 'Solar',
+    cited_text: 'Solar grew.',
+    encrypted_index: 'x',
+  };
+  const turn = fold([
+    { type: 'content_block_start', index: 0, content_block: { type: 'thinking', thinking: '' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'thinking_delta', thinking: 'Hm.' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'signature_delta', signature: 's1' } },
+    { type: 'content_block_stop', index: 0 },
+    {
+      type: 'content_block_start',
+      index: 1,
+      content_block: { type: 'redacted_thinking', data: 'opaque' },
+    },
+    { type: 'content_block_stop', index: 1 },
+    {
+      type: 'content_block_start',
+      index: 2,
+      content_block: { type: 'server_tool_use', id: 'srv', name: 'web_search', input: {} },
+    },
+    {
+      type: 'content_block_delta',
+      index: 2,
+      delta: { type: 'input_json_delta', partial_json: '{"query":"solar"}' },
+    },
+    { type: 'content_block_stop', index: 2 },
+    {
+      type: 'content_block_start',
+      index: 3,
+      content_block: { type: 'web_search_tool_result', tool_use_id: 'srv', content: [] },
+    },
+    { type: 'content_block_stop', index: 3 },
+    { type: 'content_block_start', index: 4, content_block: { type: 'text', text: '' } },
+    { type: 'content_block_delta', index: 4, delta: { type: 'citations_delta', citation } },
+    { type: 'content_block_delta', index: 4, delta: { type: 'text_delta', text: 'Solar.' } },
+    { type: 'content_block_stop', index: 4 },
+    ...toolUse(5, 'call', '{"node":"x"}'),
+    { type: 'message_delta', delta: { stop_reason: 'tool_use' } },
+    { type: 'message_stop' },
+  ]);
+  assert.deepEqual(turnContent(turn), [
+    { type: 'thinking', thinking: 'Hm.', signature: 's1' },
+    { type: 'redacted_thinking', data: 'opaque' },
+    { type: 'server_tool_use', id: 'srv', name: 'web_search', input: { query: 'solar' } },
+    { type: 'web_search_tool_result', tool_use_id: 'srv', content: [] },
+    { type: 'text', text: 'Solar.', citations: [citation] },
+    { type: 'tool_use', id: 'call', name: 'record_evidence', input: { node: 'x' } },
+  ]);
 });

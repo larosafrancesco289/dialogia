@@ -305,3 +305,110 @@ test('thinking without a chosen effort runs at the model’s documented default'
   assert.equal(effortOf('claude-fable-5-1'), 'high');
   assert.equal(effortOf('claude-opus-5'), 'high');
 });
+
+test('sampling is sent only where the model takes it', () => {
+  const sampling = (
+    model: string,
+    opts: { temperature?: number; topP?: number; think?: boolean },
+  ) => {
+    const body = buildAnthropicBody({
+      model,
+      messages: [{ role: 'user', content: 'Hi' }],
+      stream: false,
+      temperature: opts.temperature,
+      topP: opts.topP,
+      ...(opts.think ? { reasoningEffort: 'medium' as const } : {}),
+    });
+    return { temperature: body.temperature, top_p: body.top_p };
+  };
+  const none = { temperature: undefined, top_p: undefined };
+
+  // Claude 5 on, and Opus from 4.7, refuse any non-default value, thinking or not.
+  for (const model of [
+    'claude-haiku-5-5',
+    'claude-sonnet-5',
+    'claude-opus-4-7',
+    'claude-fable-5-1',
+  ]) {
+    assert.deepEqual(sampling(model, { temperature: 0.8 }), none, model);
+    assert.deepEqual(sampling(model, { topP: 0.9 }), none, model);
+  }
+  // Before them, sampling stands while thinking is off; from Opus 4.1 only one of the two.
+  assert.deepEqual(sampling('claude-haiku-4-5', { temperature: 0.8 }), {
+    temperature: 0.8,
+    top_p: undefined,
+  });
+  assert.deepEqual(sampling('claude-sonnet-4-5', { temperature: 0.8, topP: 0.9 }), {
+    temperature: 0.8,
+    top_p: undefined,
+  });
+  assert.deepEqual(sampling('claude-3-7-sonnet-latest', { temperature: 0.8, topP: 0.9 }), {
+    temperature: 0.8,
+    top_p: 0.9,
+  });
+  // Thinking rules out temperature and keeps top_p only from 0.95 to 1.
+  assert.deepEqual(sampling('claude-sonnet-4-5', { temperature: 0.8, think: true }), none);
+  assert.deepEqual(sampling('claude-sonnet-4-5', { topP: 0.9, think: true }), none);
+  assert.deepEqual(sampling('claude-sonnet-4-5', { topP: 0.97, think: true }), {
+    temperature: undefined,
+    top_p: 0.97,
+  });
+});
+
+test('a reply goes back block for block, with only the calls the message still answers', () => {
+  const citation = { type: 'web_search_result_location', url: 'https://a.test', cited_text: 'A.' };
+  const content = [
+    { type: 'thinking', thinking: 'Hm.', signature: 's1' },
+    { type: 'redacted_thinking', data: 'opaque' },
+    { type: 'server_tool_use', id: 'srv', name: 'web_search', input: { query: 'a' } },
+    { type: 'web_search_tool_result', tool_use_id: 'srv', content: [] },
+    { type: 'thinking', thinking: 'Then.', signature: 's2' },
+    { type: 'text', text: 'Found A.', citations: [citation] },
+    { type: 'tool_use', id: 'kept', name: 'note', input: { a: 1 } },
+    { type: 'tool_use', id: 'dropped', name: 'note', input: { a: 2 } },
+  ];
+  const body = buildAnthropicBody({
+    model: 'claude-haiku-5-5',
+    stream: false,
+    tools: [{ type: 'function', function: { name: 'note', parameters: { type: 'object' } } }],
+    messages: [
+      { role: 'user', content: 'Go.' },
+      {
+        role: 'assistant',
+        content: 'Found A.',
+        tool_calls: [{ id: 'kept', type: 'function', function: { name: 'note', arguments: '{}' } }],
+        reasoning_details: { provider: 'anthropic', thinkingBlocks: [], content },
+      },
+      { role: 'tool', tool_call_id: 'kept', content: '{"ok":true}' },
+    ],
+  });
+  assert.deepEqual(body.messages[1], {
+    role: 'assistant',
+    content: content.filter((block) => !('id' in block && block.id === 'dropped')),
+  });
+});
+
+test('a reply kept without its whole content still sends its thinking first', () => {
+  const body = buildAnthropicBody({
+    model: 'claude-haiku-5-5',
+    stream: false,
+    tools: [{ type: 'function', function: { name: 'note', parameters: { type: 'object' } } }],
+    messages: [
+      { role: 'user', content: 'Go.' },
+      {
+        role: 'assistant',
+        content: 'Noting.',
+        tool_calls: [{ id: 'c', type: 'function', function: { name: 'note', arguments: '{}' } }],
+        reasoning_details: {
+          provider: 'anthropic',
+          thinkingBlocks: [{ type: 'thinking', thinking: 'Hm.', signature: 's1' }],
+        },
+      },
+      { role: 'tool', tool_call_id: 'c', content: '{"ok":true}' },
+    ],
+  });
+  assert.deepEqual(
+    (body.messages[1].content as Array<{ type: string }>).map((block) => block.type),
+    ['thinking', 'text', 'tool_use'],
+  );
+});
