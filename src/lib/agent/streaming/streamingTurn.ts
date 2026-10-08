@@ -33,6 +33,7 @@ import {
   createUiCallbacks,
   emitPlanResult,
   finalSystemFor,
+  forgetStaleThinking,
   markStreamErrors,
   offeredToolNames,
   openSession,
@@ -167,11 +168,13 @@ async function streamRound(
     if (!stoppedWhole()) ui.onError?.(error);
   };
   const streamError = markStreamErrors(callbacks);
+  // Sources found so far join the system prompt after the first round.
+  const messages =
+    round === 0 ? session.convo : messagesWithSystem(session, finalSystemFor(session));
+  forgetStaleThinking(session, messages, session.tools);
   try {
     await executeStreamCall(session.call, {
-      messages: applyCacheBreakpoints(
-        round === 0 ? session.convo : messagesWithSystem(session, finalSystemFor(session)),
-      ),
+      messages: applyCacheBreakpoints(messages),
       tools: session.tools,
       toolChoice,
       callbacks,

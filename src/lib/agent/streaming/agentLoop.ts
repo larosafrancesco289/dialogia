@@ -2,15 +2,18 @@
 // Responsibility: The visible agent loop a module asks for with `loop: 'agent'`.
 // Every round streams into the same reply (successive rounds set off by a blank
 // line); when a round calls tools they run, their results go back to the model,
-// and the next round streams. The loop ends when the model stops calling tools,
-// when a handler says the turn ends (a card now waits for the user; a handler
-// ending it 'after_text' in a turn with no words yet gets one more round, with
+// and the next round streams. The loop ends when the model stops calling tools
+// (a round cut off at its token limit counts, and its calls never run), when a
+// handler says the turn ends (a card now waits for the user; a handler ending
+// it 'after_text' in a turn with no words yet gets one more round, with
 // tool_choice 'none', to introduce the card), when a round wrote text and its
 // calls only kept records (the reply is written), or at the round cap, whose
 // last round is sent with tool_choice 'none'. Between rounds the tools are read
 // again when a module can refresh them, so a call that changed what is
-// possible (starting a topic) opens the tools that follow from it. There is no
-// draft clearing and no follow-up nudge here.
+// possible (starting a topic) opens the tools that follow from it; on a model
+// that binds its thinking to the tools, the turn's earlier thinking is then
+// left out (`forgetStaleThinking`). There is no draft clearing and no
+// follow-up nudge here.
 
 import { cleanStreamedText, type MessageStreamCallbacks } from '@/lib/agent/streamHandlers';
 import { sumUsage } from '@/lib/api/normalizers';
@@ -26,6 +29,7 @@ import type { StreamDoneExtras } from '@/lib/transport/types';
 import {
   captureRound,
   executeStreamCall,
+  roundWantsTools,
   type RoundCapture,
 } from '@/lib/agent/streaming/streamCall';
 import {
@@ -34,6 +38,7 @@ import {
   createUiCallbacks,
   emitPlanResult,
   finalSystemFor,
+  forgetStaleThinking,
   markStreamErrors,
   preLogToolCalls,
   refreshSessionTools,
@@ -77,9 +82,11 @@ export async function runAgentLoop(session: TurnSession): Promise<StreamingTurnR
       const text = cleanStreamedText(capture.full || capture.content, timestamps);
       if (text) texts.push(text);
 
-      // A tool call in the stream counts whatever the finish reason says: some
-      // providers report 'stop' alongside calls.
-      if (lastRound || capture.toolCalls.length === 0) break;
+      // A tool call in the stream counts whatever the finish reason says (some
+      // providers report 'stop' alongside calls), unless the round was cut off
+      // at its token limit: the turn ends there rather than run a call whose
+      // arguments never finished.
+      if (lastRound || !roundWantsTools(capture)) break;
 
       let outcomes = repeats.check(session.convo, await runToolRound(session, round, capture));
       const ending = turnEnding(outcomes, text, capture.toolCalls.length);
@@ -114,6 +121,7 @@ async function streamRound(
     onToolCallDelta: lastRound ? undefined : (deltas) => preLogToolCalls(session, deltas),
   });
   const streamError = markStreamErrors(callbacks);
+  forgetStaleThinking(session, session.convo, session.tools);
   try {
     await executeStreamCall(session.call, {
       messages: applyCacheBreakpoints(session.convo),

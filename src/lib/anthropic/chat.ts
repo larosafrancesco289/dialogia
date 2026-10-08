@@ -96,7 +96,10 @@ function mapAnthropicResponseToChatCompletion(
 ): ChatCompletion {
   const content = Array.isArray(data.content) ? data.content : [];
   const toolCalls = buildToolCalls(content);
-  const reasoningDetails = toReasoningDetails(pickThinkingBlocks(content));
+  const reasoningDetails = toReasoningDetails(
+    pickThinkingBlocks(content),
+    content.filter(isRecord),
+  );
   const annotations = mergeAnnotations(undefined, content.flatMap(blockAnnotations));
 
   return {

@@ -130,10 +130,14 @@ function convertUserContent(
 /**
  * How a reply's thinking is kept on the message (`reasoning_details`), so the
  * next request can send it back as the Messages API requires during tool use.
+ * `content` is the whole reply as it arrived, which is what goes back when
+ * present: thinking is bound to what came before it, so the message is echoed
+ * block for block rather than rebuilt from its text and calls.
  */
 type AnthropicReasoningDetails = {
   provider: 'anthropic';
   thinkingBlocks: AnthropicThinkingBlock[];
+  content?: Array<Record<string, unknown>>;
 };
 
 /** The signed thinking blocks in a list. An unsigned block cannot be sent back. */
@@ -154,20 +158,123 @@ export function pickThinkingBlocks(entries: unknown[]): AnthropicThinkingBlock[]
 
 export function toReasoningDetails(
   thinkingBlocks: AnthropicThinkingBlock[],
+  content: Array<Record<string, unknown>> = [],
 ): AnthropicReasoningDetails | undefined {
-  return thinkingBlocks.length > 0 ? { provider: 'anthropic', thinkingBlocks } : undefined;
+  if (thinkingBlocks.length === 0 && content.length === 0) return undefined;
+  return {
+    provider: 'anthropic',
+    thinkingBlocks,
+    ...(content.length > 0 ? { content } : {}),
+  };
 }
 
-function readReasoningDetails(value: unknown): AnthropicThinkingBlock[] {
-  if (!isRecord(value)) return [];
-  if (value.provider !== 'anthropic') return [];
-  if (!Array.isArray(value.thinkingBlocks)) return [];
-  return pickThinkingBlocks(value.thinkingBlocks);
+const isThinking = (block: Record<string, unknown>) =>
+  block.type === 'thinking' || block.type === 'redacted_thinking';
+
+/**
+ * A reply's reasoning details with its thinking taken out, for a request
+ * whose system prompt or tools changed since the thinking was produced:
+ * the model would reject it. Every other block stays. Details in another
+ * provider's shape hold nothing but reasoning, so none of them are kept.
+ */
+export function withoutThinking(details: unknown): unknown {
+  if (!isRecord(details) || details.provider !== 'anthropic') return undefined;
+  const content = Array.isArray(details.content)
+    ? details.content.filter((block) => isRecord(block) && !isThinking(block))
+    : [];
+  return content.length > 0 ? { provider: 'anthropic', thinkingBlocks: [], content } : undefined;
+}
+
+function readReasoningDetails(value: unknown): {
+  thinkingBlocks: AnthropicThinkingBlock[];
+  content?: Array<Record<string, unknown>>;
+} {
+  if (!isRecord(value) || value.provider !== 'anthropic') return { thinkingBlocks: [] };
+  const thinkingBlocks = Array.isArray(value.thinkingBlocks)
+    ? pickThinkingBlocks(value.thinkingBlocks)
+    : [];
+  const content = Array.isArray(value.content) ? value.content.filter(isRecord) : undefined;
+  return { thinkingBlocks, ...(content ? { content } : {}) };
+}
+
+/**
+ * One block of a reply as a request carries it: the fields the API reads back,
+ * nothing a response adds around them. A thinking block without a signature
+ * was cut off and cannot be sent; a block type this client does not know is
+ * sent as it came.
+ */
+function replayBlock(block: Record<string, unknown>): AnthropicAssistantContentBlock | null {
+  switch (block.type) {
+    case 'thinking':
+      if (typeof block.signature !== 'string' || !block.signature) return null;
+      return {
+        type: 'thinking',
+        thinking: typeof block.thinking === 'string' ? block.thinking : '',
+        signature: block.signature,
+      };
+    case 'redacted_thinking':
+      return typeof block.data === 'string'
+        ? { type: 'redacted_thinking', data: block.data }
+        : null;
+    case 'text': {
+      if (typeof block.text !== 'string') return null;
+      const citations = Array.isArray(block.citations) ? block.citations.filter(isRecord) : [];
+      return citations.length > 0
+        ? { type: 'text', text: block.text, citations }
+        : { type: 'text', text: block.text };
+    }
+    case 'tool_use':
+    case 'server_tool_use':
+      if (typeof block.id !== 'string' || typeof block.name !== 'string') return null;
+      return {
+        type: block.type,
+        id: block.id,
+        name: block.name,
+        input: isRecord(block.input) ? block.input : {},
+      };
+    default:
+      return block as AnthropicAssistantContentBlock;
+  }
+}
+
+/**
+ * The reply as it arrived. Only the calls the message still carries go back,
+ * since each needs a result: a loop that ran some of a round's calls answers
+ * only those. A cache marker the message's text carried moves to the last
+ * text block.
+ */
+function replayContent(
+  content: Array<Record<string, unknown>>,
+  message: Extract<ModelMessage, { role: 'assistant' }>,
+): AnthropicAssistantContentBlock[] {
+  const callIds = new Set((message.tool_calls ?? []).map((call) => call.id));
+  const blocks = content
+    .map(replayBlock)
+    .filter((block): block is AnthropicAssistantContentBlock => block !== null)
+    .filter((block) => block.type !== 'tool_use' || callIds.has(block.id));
+  const marker = Array.isArray(message.content)
+    ? message.content.find((block) => block.type === 'text' && block.cache_control)
+    : undefined;
+  if (marker?.type === 'text' && marker.cache_control) {
+    for (let i = blocks.length - 1; i >= 0; i -= 1) {
+      const block = blocks[i];
+      if (block.type !== 'text' || !block.text.trim()) continue;
+      blocks[i] = { ...block, cache_control: marker.cache_control };
+      break;
+    }
+  }
+  return blocks;
 }
 
 function convertAssistantContent(message: Extract<ModelMessage, { role: 'assistant' }>) {
+  const details = readReasoningDetails(message.reasoning_details);
+  if (details.content) {
+    const replayed = replayContent(details.content, message);
+    if (replayed.length > 0) return replayed;
+  }
+
   const blocks: AnthropicAssistantContentBlock[] = [];
-  blocks.push(...readReasoningDetails(message.reasoning_details));
+  blocks.push(...details.thinkingBlocks);
 
   if (Array.isArray(message.content)) {
     for (const block of message.content) {

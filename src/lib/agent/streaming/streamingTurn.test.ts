@@ -517,3 +517,43 @@ test('executeStreamingTurn ends the reply as failed when a tool throws', async (
   assert.equal(run.lastPersisted?.cutOff, 'failed');
   assert.ok(!run.lastPersisted?.toolCalls?.some((entry) => entry.status === 'pending'));
 });
+
+test('executeStreamingTurn sends thinking back while the system prompt and tools stay as they were', async () => {
+  const thinking = { type: 'thinking', thinking: 'Plan.', signature: 'sig-1' };
+  const run = await runTurn({
+    endpoint: ANTHROPIC_ENDPOINT,
+    model: {
+      id: 'anthropic-direct/claude-haiku-5-5',
+      name: 'Claude Haiku 5.5',
+      context_length: 200000,
+      pricing: undefined,
+      raw: { supported_parameters: ['tools'] },
+      endpointId: 'anthropic',
+      transportModelId: 'claude-haiku-5-5',
+      providerDisplay: 'Anthropic',
+    },
+    rounds: [
+      ({ callbacks }) => {
+        callbacks?.onDone?.('', {
+          finishReason: 'tool_calls',
+          toolCalls: [
+            {
+              id: 'call_1',
+              type: 'function',
+              function: { name: 'advance_topic', arguments: '{}' },
+            },
+          ],
+          reasoningDetails: { provider: 'anthropic', thinkingBlocks: [thinking] },
+        });
+      },
+      finish(ANSWER),
+    ],
+  });
+
+  // Every round after the first builds its system prompt again; unchanged, the thinking stays.
+  const assistant = run.requests[1].find((message) => message.role === 'assistant');
+  assert.deepEqual(assistant?.reasoning_details, {
+    provider: 'anthropic',
+    thinkingBlocks: [thinking],
+  });
+});
