@@ -12,6 +12,7 @@ import {
 import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
 import { buildTransportAuth } from '@/lib/auth/transport';
 import { sourcesFromAnnotations } from '@/lib/ui/messageSources';
+import type { StreamCallbacks } from '@/lib/transport/types';
 import { mockFetch } from '../../../tests/helpers/mockFetch';
 
 function createSseResponse(events: unknown[]): Response {
@@ -574,4 +575,141 @@ test('the turn keeps the reply block for block, as the next request sends it bac
     { type: 'text', text: 'Solar.', citations: [citation] },
     { type: 'tool_use', id: 'call', name: 'record_evidence', input: { node: 'x' } },
   ]);
+});
+
+test('a search filtered in code streams whole, lists its sources and resumes in its container', async () => {
+  const caller = { type: 'code_execution_20260120', tool_id: 'srv_code' };
+  const results = [
+    { type: 'web_search_result', title: 'Tides', url: 'https://a.test', encrypted_content: 'e1' },
+    { type: 'web_search_result', title: 'Moon', url: 'https://b.test', encrypted_content: 'e2' },
+  ];
+  const code = "r = await web_search({'query': 'tides'})\nprint(r[:1])";
+  const firstRound = [
+    { type: 'server_tool_use', id: 'srv_code', name: 'code_execution', input: { code } },
+    // A search the code ran arrives whole: no input deltas follow it.
+    {
+      type: 'server_tool_use',
+      id: 'srv_ws',
+      name: 'web_search',
+      input: { query: 'tides' },
+      caller,
+    },
+    { type: 'web_search_tool_result', tool_use_id: 'srv_ws', content: results, caller },
+  ];
+  const codeResult = {
+    type: 'code_execution_tool_result',
+    tool_use_id: 'srv_code',
+    content: {
+      type: 'code_execution_result',
+      stdout: "[{'url': 'https://a.test'}]",
+      stderr: '',
+      return_code: 0,
+      content: [],
+    },
+  };
+  const citation = {
+    type: 'web_search_result_location',
+    url: 'https://a.test',
+    title: 'Tides',
+    encrypted_index: 'i1',
+    cited_text: 'Tides follow the moon.',
+  };
+  const requestBodies: Array<Record<string, unknown>> = [];
+  const restoreFetch = mockFetch(async (_input, init) => {
+    requestBodies.push(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>);
+    if (requestBodies.length === 1) {
+      return createSseResponse([
+        { type: 'message_start', message: { id: 'm1', role: 'assistant', content: [] } },
+        {
+          type: 'content_block_start',
+          index: 0,
+          content_block: {
+            type: 'server_tool_use',
+            id: 'srv_code',
+            name: 'code_execution',
+            input: {},
+          },
+        },
+        {
+          type: 'content_block_delta',
+          index: 0,
+          delta: { type: 'input_json_delta', partial_json: JSON.stringify({ code }) },
+        },
+        { type: 'content_block_stop', index: 0 },
+        { type: 'content_block_start', index: 1, content_block: firstRound[1] },
+        { type: 'content_block_stop', index: 1 },
+        { type: 'content_block_start', index: 2, content_block: firstRound[2] },
+        { type: 'content_block_stop', index: 2 },
+        {
+          type: 'message_delta',
+          delta: {
+            stop_reason: 'pause_turn',
+            container: { id: 'container_1', expires_at: '2026-10-08T12:00:00Z' },
+          },
+        },
+        { type: 'message_stop' },
+      ]);
+    }
+    return createSseResponse([
+      { type: 'message_start', message: { id: 'm2', role: 'assistant', content: [] } },
+      { type: 'content_block_start', index: 0, content_block: codeResult },
+      { type: 'content_block_stop', index: 0 },
+      { type: 'content_block_start', index: 1, content_block: { type: 'text', text: '' } },
+      {
+        type: 'content_block_delta',
+        index: 1,
+        delta: { type: 'text_delta', text: 'Tides follow the moon.' },
+      },
+      { type: 'content_block_delta', index: 1, delta: { type: 'citations_delta', citation } },
+      { type: 'content_block_stop', index: 1 },
+      { type: 'message_delta', delta: { stop_reason: 'end_turn' } },
+      { type: 'message_stop' },
+    ]);
+  });
+
+  let shown = '';
+  const toolDeltas: unknown[] = [];
+  let extras: Parameters<NonNullable<StreamCallbacks['onDone']>>[1];
+  try {
+    await streamChatCompletion({
+      auth: buildTransportAuth({ endpoint: ANTHROPIC_ENDPOINT, apiKey: 'test-key' }),
+      model: 'claude-opus-5-5',
+      messages: [{ role: 'user', content: 'Why are there tides?' }],
+      plugins: [{ id: 'web' }],
+      callbacks: {
+        onToken: (delta) => (shown += delta),
+        onToolCallDelta: (deltas) => toolDeltas.push(...deltas),
+        onDone: (_text, done) => {
+          extras = done;
+        },
+      },
+    });
+  } finally {
+    restoreFetch();
+  }
+
+  // The code and its output are the model's working, never the learner's reading.
+  assert.equal(shown, 'Tides follow the moon.');
+  // Server tools are Anthropic's to run, never the app's.
+  assert.deepEqual(toolDeltas, []);
+  assert.equal(extras?.toolCalls, undefined);
+  // Every result the search found is a source, not only the cited one.
+  assert.deepEqual(
+    sourcesFromAnnotations(extras?.annotations).map((source) => source.url),
+    ['https://a.test', 'https://b.test'],
+  );
+  // The paused round goes back as it came, in the container its code runs in.
+  assert.equal(requestBodies[1]?.container, 'container_1');
+  const resumed = requestBodies[1]?.messages as Array<{ role: string; content: unknown }>;
+  assert.deepEqual(resumed.at(-1), { role: 'assistant', content: firstRound });
+  assert.deepEqual(extras?.reasoningDetails, {
+    provider: 'anthropic',
+    thinkingBlocks: [],
+    content: [
+      ...firstRound,
+      codeResult,
+      { type: 'text', text: 'Tides follow the moon.', citations: [citation] },
+    ],
+    container: 'container_1',
+  });
 });

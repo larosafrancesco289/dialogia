@@ -57,7 +57,7 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
       usage = sumUsage(usage, turn.round.usage);
       const nextBody =
         turn.stopReason === 'pause_turn' && continuations < MAX_PAUSE_TURN_CONTINUATIONS
-          ? appendContinuationMessage(body, roundContent(turn))
+          ? appendContinuationMessage(body, roundContent(turn), turn.container)
           : body;
       if (nextBody === body) break;
       body = nextBody;
@@ -78,6 +78,6 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
     finishReason: mapStopReason(turn.stopReason),
     stopDetails: turn.stopDetails,
     toolCalls: finishedToolCalls(turn),
-    reasoningDetails: toReasoningDetails(turn.thinkingBlocks, turnContent(turn)),
+    reasoningDetails: toReasoningDetails(turn.thinkingBlocks, turnContent(turn), turn.container),
   });
 }

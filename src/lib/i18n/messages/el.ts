@@ -459,7 +459,7 @@ const messages: Translation<typeof en> = {
   // What each section shows and is about, so search finds it by the words on
   // screen as well as by its title. English words always find it too.
   'settings.keywords.providers':
-    'κλειδί openrouter κλειδί anthropic api πάροχος σύνδεση αντικατάσταση αφαίρεση',
+    'κλειδί openrouter κλειδί anthropic api πάροχος σύνδεση αντικατάσταση αφαίρεση χώρος εργασίας workspace',
   'settings.keywords.endpoints':
     'ο δικός σου διακομιστής τοπικός ollama lm studio llama.cpp vllm διεύθυνση διακομιστή url προσαρμοσμένο endpoint συμβατό openai κλειδί api ονόματα μοντέλων δοκιμή σύνδεσης εργαλεία εικόνες βάθος σκέψης κόστος απαντήσεων προσωρινή αποθήκευση prompt τίτλοι συζητήσεων αφαίρεση',
   'settings.keywords.web-search': 'tavily κλειδί αναζήτηση web openrouter jina reader',
@@ -499,6 +499,10 @@ const messages: Translation<typeof en> = {
   'providers.needsAddress': 'Χρειάζεται διεύθυνση',
   'providers.needsKey': 'Χρειάζεται κλειδί',
   'providers.keysStay': 'Τα κλειδιά μένουν σε αυτόν τον browser και δεν εξάγονται ποτέ.',
+  'providers.workspace': 'ID χώρου εργασίας (προαιρετικό)',
+  'providers.workspaceHint':
+    'Χρειάζεται μόνο αν το Claude πει ότι το κλειδί σου θέλει χώρο εργασίας. Αντίγραψε το ID από τα Workspaces στο Claude Console· ξεκινά με wrkspc_.',
+  'providers.workspaceInvalid': 'Ένα ID χώρου εργασίας έχει μόνο γράμματα, αριθμούς, _ και -.',
   'apiKey.saved': 'Αποθηκεύτηκε {key}. Επικόλλησε για αντικατάσταση',
   'apiKey.replace': 'Αντικατάσταση',
   'apiKey.removeNamed': 'Αφαίρεση: {label}',

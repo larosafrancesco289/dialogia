@@ -76,6 +76,86 @@ const isThinkingAlwaysOn = (gen: ClaudeGeneration | undefined): boolean =>
 const isThinkingOnByDefault = (gen: ClaudeGeneration | undefined): boolean =>
   !!gen && gen.version >= 5;
 
+/**
+ * What the Models API says about a model, where it says it: its `line`, and
+ * the capability flags Anthropic tells clients to read instead of guessing
+ * from the id. Every field is undefined when the response left it out (an
+ * older response, or a model the list has not been loaded for), and the id
+ * rules answer then.
+ */
+export type AnthropicModelFacts = {
+  /** `line`: opus, sonnet, haiku, fable, mythos, or more to come. */
+  line?: string;
+  /** `capabilities.thinking.types.disabled`: false exactly when "disabled" is a 400. */
+  thinkingOff?: boolean;
+  /** `capabilities.thinking.types.adaptive`. */
+  adaptiveThinking?: boolean;
+  /** `capabilities.thinking.types.enabled`: manual thinking with a budget. */
+  budgetThinking?: boolean;
+  /** `capabilities.server_tools.web_search`: some version of the tool is accepted. */
+  webSearch?: boolean;
+  /**
+   * `capabilities.code_execution`: code the model runs can call the request's
+   * other tools, which web search's dynamic filtering needs.
+   */
+  codeCallsTools?: boolean;
+};
+
+/** A nested capability's `supported` flag, or undefined when the path is not there. */
+function capabilityAt(capabilities: unknown, ...path: string[]): boolean | undefined {
+  let value: unknown = capabilities;
+  for (const key of path) {
+    if (!isRecord(value)) return undefined;
+    value = value[key];
+  }
+  return isRecord(value) && typeof value.supported === 'boolean' ? value.supported : undefined;
+}
+
+/** The facts in one Models API entry. */
+export function readAnthropicModelFacts(entry: Record<string, unknown>): AnthropicModelFacts {
+  const caps = entry.capabilities;
+  const facts: AnthropicModelFacts = {
+    line: typeof entry.line === 'string' && entry.line ? entry.line : undefined,
+    thinkingOff: capabilityAt(caps, 'thinking', 'types', 'disabled'),
+    adaptiveThinking: capabilityAt(caps, 'thinking', 'types', 'adaptive'),
+    budgetThinking: capabilityAt(caps, 'thinking', 'types', 'enabled'),
+    webSearch: capabilityAt(caps, 'server_tools', 'web_search'),
+    codeCallsTools: capabilityAt(caps, 'code_execution'),
+  };
+  return Object.fromEntries(
+    Object.entries(facts).filter(([, value]) => value !== undefined),
+  ) as AnthropicModelFacts;
+}
+
+// Filled as the model list loads; the request path is synchronous and reads it here.
+const modelFacts = new Map<string, AnthropicModelFacts>();
+
+const factsKey = (model: string) => resolveAnthropicDirectModelId(model) ?? normalizeSlug(model);
+
+export function rememberAnthropicModelFacts(model: string, facts: AnthropicModelFacts): void {
+  modelFacts.set(factsKey(model), facts);
+}
+
+function factsFor(model: string): AnthropicModelFacts | undefined {
+  return modelFacts.get(factsKey(model));
+}
+
+/** @internal Test seam: forgets every model's facts. */
+export function resetAnthropicModelFactsForTest(): void {
+  modelFacts.clear();
+}
+
+/**
+ * The model's generation: its version from the id, and its line from the
+ * Models API when the list said, which Anthropic asks clients to read rather
+ * than infer from the id.
+ */
+function generationOf(model: string): ClaudeGeneration | undefined {
+  const gen = claudeGeneration(normalizeSlug(model));
+  const line = factsFor(model)?.line;
+  return gen && line ? { ...gen, name: line } : gen;
+}
+
 const KNOWN_ANTHROPIC_PRICING: Record<
   string,
   {
@@ -216,30 +296,60 @@ const isMythosPreview = (model: string) => normalizeSlug(model) === 'claude-myth
 
 /** Every Claude 3 or later caches prompts. */
 export function supportsAnthropicPromptCaching(model: string): boolean {
-  const gen = claudeGeneration(normalizeSlug(model));
+  const gen = generationOf(model);
   return isMythosPreview(model) || (!!gen && gen.version >= 3);
 }
 
 export function supportsAnthropicAdaptiveThinking(model: string): boolean {
-  return isMythosPreview(model) || isAdaptiveGeneration(claudeGeneration(normalizeSlug(model)));
+  return (
+    factsFor(model)?.adaptiveThinking ??
+    (isMythosPreview(model) || isAdaptiveGeneration(generationOf(model)))
+  );
 }
 
+/**
+ * Whether a request thinks on a budget the chat sets: on the models that
+ * predate adaptive thinking. Opus 4.6 and Sonnet 4.6 still take a budget, but
+ * deprecated, so they are sent adaptive thinking and the budget is not offered.
+ */
+export function supportsAnthropicBudgetThinking(model: string): boolean {
+  return !supportsAnthropicAdaptiveThinking(model) && factsFor(model)?.budgetThinking !== false;
+}
+
+// Claude Sonnet 5.5 refuses "disabled" and takes "between_tools" instead. The
+// Models API has no flag for it, so this one stays a rule on the generation.
+const takesBetweenTools = (gen: ClaudeGeneration | undefined): boolean =>
+  !!gen && gen.name === 'sonnet' && gen.version >= 5.5;
+
+/**
+ * Whether nothing a request sends turns thinking off. The Models API says
+ * when a model refuses "disabled"; one that takes "between_tools" instead
+ * can still turn up-front thinking off.
+ */
 export function isAnthropicThinkingMandatory(model: string): boolean {
-  return isMythosPreview(model) || isThinkingAlwaysOn(claudeGeneration(normalizeSlug(model)));
+  const off = factsFor(model)?.thinkingOff;
+  if (off !== undefined) return !off && !takesBetweenTools(generationOf(model));
+  return isMythosPreview(model) || isThinkingAlwaysOn(generationOf(model));
 }
 
 /**
  * How a request turns thinking off, or undefined when leaving `thinking` out
  * already does (before Claude 5) or nothing can (Fable, Mythos, Opus 5.5).
  * Claude Sonnet 5.5 refuses "disabled" and takes "between_tools" instead.
+ * A model the Models API says accepts "disabled" is sent it unless thinking
+ * is off without it; one it says refuses it is never sent it.
  */
 export function anthropicThinkingOff(
   model: string,
 ): { type: 'disabled' } | { type: 'between_tools' } | undefined {
   if (isAnthropicThinkingMandatory(model)) return undefined;
-  const gen = claudeGeneration(normalizeSlug(model));
-  if (!isThinkingOnByDefault(gen)) return undefined;
-  if (gen?.name === 'sonnet' && gen.version >= 5.5) return { type: 'between_tools' };
+  const gen = generationOf(model);
+  if (takesBetweenTools(gen)) return { type: 'between_tools' };
+  const accepted = factsFor(model)?.thinkingOff;
+  if (accepted === false) return undefined;
+  // An id this client cannot read, which the API says takes "disabled", may
+  // think by default: saying so costs nothing.
+  if (!isThinkingOnByDefault(gen) && !(accepted && !gen)) return undefined;
   return { type: 'disabled' };
 }
 
@@ -249,7 +359,7 @@ export function anthropicThinkingOff(
  * default to "medium" (Anthropic's effort docs).
  */
 export function documentedAnthropicDefaultEffort(model: string): 'medium' | 'high' {
-  const gen = claudeGeneration(normalizeSlug(model));
+  const gen = generationOf(model);
   const mediumByDefault =
     !!gen && (gen.name === 'opus' || gen.name === 'haiku') && gen.version >= 5.5;
   return mediumByDefault ? 'medium' : 'high';
@@ -263,7 +373,7 @@ export function documentedAnthropicDefaultEffort(model: string): 'medium' | 'hig
 export function documentedAnthropicEffortLevels(model: string): string[] {
   const levels = ['low', 'medium', 'high'];
   if (isMythosPreview(model)) return [...levels, 'max'];
-  const gen = claudeGeneration(normalizeSlug(model));
+  const gen = generationOf(model);
   if (!isAdaptiveGeneration(gen)) return levels;
   if (gen && gen.version >= 4.7) levels.push('xhigh');
   levels.push('max');
@@ -278,7 +388,7 @@ export function documentedAnthropicEffortLevels(model: string): string[] {
  * long answers short and left no room beside a thinking budget.
  */
 export function defaultAnthropicMaxTokens(model: string): number {
-  const gen = claudeGeneration(normalizeSlug(model));
+  const gen = generationOf(model);
   if (gen && gen.version < 3.5) return 4096;
   if (gen && gen.version < 3.7) return 8192;
   return 32000;
@@ -291,14 +401,14 @@ export function defaultAnthropicMaxTokens(model: string): number {
  */
 export function isAnthropicSamplingFixed(model: string): boolean {
   if (isMythosPreview(model)) return true;
-  const gen = claudeGeneration(normalizeSlug(model));
+  const gen = generationOf(model);
   if (!gen) return false;
   return gen.version >= 5 || gen.name === 'mythos' || (gen.name === 'opus' && gen.version >= 4.7);
 }
 
 /** Opus 4.1 on refuses a request that sets both temperature and top_p. */
 export function anthropicTakesOneSampler(model: string): boolean {
-  const gen = claudeGeneration(normalizeSlug(model));
+  const gen = generationOf(model);
   return !!gen && gen.version >= 4.1;
 }
 
@@ -310,8 +420,30 @@ export function anthropicTakesOneSampler(model: string): boolean {
  * (Anthropic's preserved-thinking docs).
  */
 export function anthropicBindsThinkingToPrefix(model: string): boolean {
-  const gen = claudeGeneration(normalizeSlug(model));
+  const gen = generationOf(model);
   return !!gen && gen.name !== 'mythos' && gen.version >= 5.1;
+}
+
+/**
+ * How a request offers the model web search:
+ * - `filtered`: the current tool as it comes, which lets the model filter the
+ *   results in code before they reach its context ("dynamic filtering"), on
+ *   models whose code can call other tools: Claude 4.6 on and the Mythos class.
+ * - `direct`: the current tool limited to direct calls, which a model without
+ *   that ability needs (Claude Haiku 4.5, say), or the API returns a 400.
+ * - `basic`: the original tool, for models older than the current one's.
+ * - `none`: the Models API says the model takes no web search tool at all.
+ * The Models API's flags decide where the list gave them.
+ */
+export function anthropicWebSearchMode(model: string): 'filtered' | 'direct' | 'basic' | 'none' {
+  const facts = factsFor(model);
+  if (facts?.webSearch === false) return 'none';
+  if (facts?.codeCallsTools === true) return 'filtered';
+  const gen = generationOf(model);
+  const filters = isMythosPreview(model) || (!!gen && gen.version >= 4.6);
+  if (filters && facts?.codeCallsTools !== false) return 'filtered';
+  if (filters || (!!gen && gen.version >= 4.5)) return 'direct';
+  return 'basic';
 }
 
 export function supportsAnthropicReasoning(model: string): boolean {

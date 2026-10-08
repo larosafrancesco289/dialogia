@@ -37,6 +37,12 @@ export type ProviderEndpoint = {
   titleModelId?: string;
   /** Never generate titles through this endpoint. */
   disableTitleGeneration?: boolean;
+  /**
+   * The Claude Console workspace a request acts in (`anthropic-workspace-id`),
+   * which a key that can act in more than one workspace must name. Set on the
+   * built-in Claude connection only, by the endpoint registry.
+   */
+  workspaceId?: string;
 };
 
 export const OPENROUTER_ENDPOINT_ID = 'openrouter';
@@ -189,4 +195,17 @@ export function isValidBaseUrl(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+const WORKSPACE_ID_RE = /^[A-Za-z0-9_-]{1,128}$/;
+
+/**
+ * A workspace ID as typed: trimmed, undefined when the field was emptied, or
+ * null when it cannot be one (it goes into a request header, so spaces or
+ * other characters would fail every call).
+ */
+export function normalizeWorkspaceId(value: string): string | undefined | null {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  return WORKSPACE_ID_RE.test(trimmed) ? trimmed : null;
 }

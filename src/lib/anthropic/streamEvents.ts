@@ -10,7 +10,7 @@ import { mergeUsage, normalizeUsage, type Usage } from '@/lib/api/normalizers';
 import type { ToolCall } from '@/lib/transport/contracts';
 import type { StreamCallbacks } from '@/lib/transport/types';
 import { isRecord } from '@/lib/utils/guards';
-import { parseToolInput } from '@/lib/anthropic/messages';
+import { parseToolInput, readContainerId } from '@/lib/anthropic/messages';
 import { blockAnnotations, citationAnnotation } from '@/lib/anthropic/citations';
 import type { AnthropicThinkingBlock } from '@/lib/anthropic/wire';
 
@@ -41,6 +41,8 @@ export type StreamTurn = {
   toolCalls: Map<number, PendingToolCall>;
   stopReason?: unknown;
   stopDetails?: unknown;
+  /** The code execution container the turn last ran code in. */
+  container?: string;
   round: StreamRound;
   /** The content of the rounds before this one, in order. */
   earlierContent: Array<Record<string, unknown>>;
@@ -124,7 +126,10 @@ export function applyStreamEvent(turn: StreamTurn, payload: unknown, emit: Strea
     case 'error':
       throw streamError(payload);
     case 'message_start':
-      if (isRecord(payload.message)) addUsage(turn.round, payload.message.usage);
+      if (isRecord(payload.message)) {
+        addUsage(turn.round, payload.message.usage);
+        turn.container = readContainerId(payload.message.container) ?? turn.container;
+      }
       return;
     case 'content_block_start':
       startBlock(turn, index, payload.content_block, emit);
@@ -139,6 +144,7 @@ export function applyStreamEvent(turn: StreamTurn, payload: unknown, emit: Strea
       const delta = isRecord(payload.delta) ? payload.delta : undefined;
       turn.stopReason = delta?.stop_reason;
       if (delta?.stop_details !== undefined) turn.stopDetails = delta.stop_details;
+      turn.container = readContainerId(delta?.container) ?? turn.container;
       addUsage(turn.round, payload.usage);
       return;
     }
@@ -189,19 +195,24 @@ function startBlock(turn: StreamTurn, index: number, value: unknown, emit: Strea
   // Thinking before and after a tool call (a server-side search, say) arrives
   // as separate blocks with nothing between them.
   if (value.type === 'thinking' && turn.thinkingShown) turn.thinkingBreak = true;
-  if (value.type !== 'tool_use') return;
+  if (value.type !== 'tool_use' && value.type !== 'server_tool_use') return;
 
-  const key = turn.blockBase + index;
+  // A call can arrive whole, with no input deltas after it: a search that code
+  // ran (web search's filtering) does. Its input stands when the block stops.
   const input =
     isRecord(value.input) && Object.keys(value.input).length > 0
       ? JSON.stringify(value.input)
       : undefined;
+  if (input) turn.round.toolInputs.set(index, input);
+  // Server tools run on Anthropic's side: they are not the app's to call.
+  if (value.type !== 'tool_use') return;
+
+  const key = turn.blockBase + index;
   turn.toolCalls.set(key, {
     id: typeof value.id === 'string' ? value.id : undefined,
     name: typeof value.name === 'string' ? value.name : '',
     arguments: input ?? '',
   });
-  if (input) turn.round.toolInputs.set(index, input);
   if (typeof value.name === 'string' && value.name) {
     emit.onToolCallDelta?.([{ index: key, function: { name: value.name } }]);
   }

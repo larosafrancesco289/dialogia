@@ -11,6 +11,7 @@ import {
   ANTHROPIC_MIN_ANSWER_TOKENS,
   ANTHROPIC_MIN_THINKING_BUDGET,
   anthropicThinkingOff,
+  anthropicWebSearchMode,
   defaultAnthropicMaxTokens,
   defaultAnthropicThinkingBudget,
   anthropicTakesOneSampler,
@@ -22,7 +23,11 @@ import {
   supportsAnthropicPromptCaching,
   supportsAnthropicReasoning,
 } from '@/lib/anthropic/shared';
-import { convertMessages, type UnsupportedContentKind } from '@/lib/anthropic/messages';
+import {
+  convertMessages,
+  pendingCodeContainer,
+  type UnsupportedContentKind,
+} from '@/lib/anthropic/messages';
 import type {
   AnthropicMessageParam,
   AnthropicMessagesRequest,
@@ -32,11 +37,28 @@ import type {
   AnthropicWebSearchToolDefinition,
 } from '@/lib/anthropic/wire';
 
-const ANTHROPIC_WEB_SEARCH_TOOL: AnthropicWebSearchToolDefinition = {
-  type: 'web_search_20250305',
-  name: 'web_search',
-  max_uses: 5,
-};
+const WEB_SEARCH_MAX_USES = 5;
+
+/**
+ * The web search tool this model takes (see `anthropicWebSearchMode`), or
+ * undefined when it takes none. `response_inclusion` stays at its default,
+ * "full": "excluded" would drop the results that code consumed from the
+ * response, and with them the sources a reply lists, while the reply's
+ * citations would still point at results the history no longer holds.
+ */
+function webSearchTool(model: string): AnthropicWebSearchToolDefinition | undefined {
+  const mode = anthropicWebSearchMode(model);
+  if (mode === 'none') return undefined;
+  if (mode === 'basic') {
+    return { type: 'web_search_20250305', name: 'web_search', max_uses: WEB_SEARCH_MAX_USES };
+  }
+  return {
+    type: 'web_search_20260318',
+    name: 'web_search',
+    max_uses: WEB_SEARCH_MAX_USES,
+    ...(mode === 'direct' ? { allowed_callers: ['direct'] as ['direct'] } : {}),
+  };
+}
 
 function countExplicitCacheBreakpoints(params: {
   system?: string | AnthropicTextBlock[];
@@ -231,8 +253,12 @@ export function buildAnthropicBody(
   const tools: Array<AnthropicToolDefinition | AnthropicWebSearchToolDefinition> =
     functionTools.slice();
   if (hasWebPlugin(params.plugins)) {
-    tools.push(ANTHROPIC_WEB_SEARCH_TOOL);
+    const search = webSearchTool(resolvedModel);
+    if (search) tools.push(search);
+    else logger.warn(`[Anthropic] ${resolvedModel} takes no web search tool; searching is off`);
   }
+  const container = functionTools.length > 0 ? pendingCodeContainer(params.messages) : undefined;
+  if (container) body.container = container;
   if (tools?.length) body.tools = tools;
   const toolChoice = mapToolChoice(params.toolChoice);
   if (toolChoice) body.tool_choice = toolChoice;

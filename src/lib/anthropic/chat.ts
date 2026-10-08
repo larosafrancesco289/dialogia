@@ -4,7 +4,7 @@ import type { TransportChatParams } from '@/lib/transport/types';
 import type { ChatCompletion } from '@/lib/transport/completions';
 import { anMessages } from '@/lib/anthropic/http';
 import { bodyFromParams } from '@/lib/anthropic/request';
-import { pickThinkingBlocks, toReasoningDetails } from '@/lib/anthropic/messages';
+import { pickThinkingBlocks, readContainerId, toReasoningDetails } from '@/lib/anthropic/messages';
 import type { AnthropicMessagesRequest } from '@/lib/anthropic/wire';
 import {
   appendContinuationMessage,
@@ -59,6 +59,7 @@ async function requestAnthropicMessageSequence(args: {
   let combinedUsage: ReturnType<typeof normalizeUsage> | undefined;
   // A continuation's response holds only what came after the pause.
   const content: unknown[] = [];
+  let container: string | undefined;
 
   while (true) {
     let res: Response;
@@ -78,12 +79,18 @@ async function requestAnthropicMessageSequence(args: {
     const data = (await res.json()) as Record<string, unknown>;
     combinedUsage = sumUsage(combinedUsage, normalizeUsage(data.usage as Record<string, number>));
     if (Array.isArray(data.content)) content.push(...data.content);
+    container = readContainerId(data.container) ?? container;
     const nextBody =
       data.stop_reason === 'pause_turn' && continuations < MAX_PAUSE_TURN_CONTINUATIONS
-        ? appendContinuationMessage(body, data.content)
+        ? appendContinuationMessage(body, data.content, container)
         : body;
     if (nextBody === body) {
-      return { ...data, content, ...(combinedUsage ? { usage: combinedUsage } : {}) };
+      return {
+        ...data,
+        content,
+        ...(container ? { container: { id: container } } : {}),
+        ...(combinedUsage ? { usage: combinedUsage } : {}),
+      };
     }
     body = nextBody;
     continuations += 1;
@@ -99,6 +106,7 @@ function mapAnthropicResponseToChatCompletion(
   const reasoningDetails = toReasoningDetails(
     pickThinkingBlocks(content),
     content.filter(isRecord),
+    readContainerId(data.container),
   );
   const annotations = mergeAnnotations(undefined, content.flatMap(blockAnnotations));
 

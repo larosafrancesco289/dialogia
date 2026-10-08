@@ -2,20 +2,35 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildAnthropicBody } from '@/lib/anthropic/request';
 
-test('buildAnthropicBody maps the web plugin to Anthropic web search', () => {
-  const body = buildAnthropicBody({
-    model: 'anthropic/claude-haiku-4.5',
+const searchTools = (model: string) =>
+  buildAnthropicBody({
+    model,
     messages: [{ role: 'user', content: 'Find the latest renewable energy news.' }],
     stream: false,
     plugins: [{ id: 'web' }],
-  });
+  }).tools;
 
-  assert.deepEqual(body.tools, [
+test('the web plugin asks for the web search tool each model takes', () => {
+  // Claude 4.6 on filter results in code: the current tool as it comes.
+  for (const model of ['claude-opus-5-5', 'claude-haiku-5-5', 'anthropic/claude-sonnet-4.6']) {
+    assert.deepEqual(
+      searchTools(model),
+      [{ type: 'web_search_20260318', name: 'web_search', max_uses: 5 }],
+      model,
+    );
+  }
+  // Haiku 4.5's code cannot call tools, so without "direct" the API returns a 400.
+  assert.deepEqual(searchTools('anthropic/claude-haiku-4.5'), [
     {
-      type: 'web_search_20250305',
+      type: 'web_search_20260318',
       name: 'web_search',
       max_uses: 5,
+      allowed_callers: ['direct'],
     },
+  ]);
+  // Older than the current tool: the original one.
+  assert.deepEqual(searchTools('claude-opus-4-1'), [
+    { type: 'web_search_20250305', name: 'web_search', max_uses: 5 },
   ]);
 });
 
@@ -44,7 +59,7 @@ test('buildAnthropicBody preserves function tools alongside web search', () => {
   );
   assert.equal(
     body.tools?.[1] && 'type' in body.tools[1] ? body.tools[1].type : undefined,
-    'web_search_20250305',
+    'web_search_20260318',
   );
 });
 
@@ -411,4 +426,51 @@ test('a reply kept without its whole content still sends its thinking first', ()
     (body.messages[1].content as Array<{ type: string }>).map((block) => block.type),
     ['thinking', 'text', 'tool_use'],
   );
+});
+
+test('a reply whose code waits on the app’s own tools resumes in its container', () => {
+  const caller = { type: 'code_execution_20260120', tool_id: 'srv_code' };
+  const searched = [
+    { type: 'server_tool_use', id: 'srv_code', name: 'code_execution', input: { code: 'x' } },
+    { type: 'server_tool_use', id: 'srv_ws', name: 'web_search', input: { query: 'a' }, caller },
+    { type: 'web_search_tool_result', tool_use_id: 'srv_ws', content: [], caller },
+  ];
+  const call = { type: 'tool_use', id: 'note_1', name: 'note', input: {} };
+  const request = (content: Array<Record<string, unknown>>, after: 'tool' | 'user') =>
+    buildAnthropicBody({
+      model: 'claude-opus-5-5',
+      stream: false,
+      tools: [{ type: 'function', function: { name: 'note', parameters: { type: 'object' } } }],
+      plugins: [{ id: 'web' }],
+      messages: [
+        { role: 'user', content: 'Go.' },
+        {
+          role: 'assistant',
+          content: '',
+          tool_calls: [
+            { id: 'note_1', type: 'function', function: { name: 'note', arguments: '{}' } },
+          ],
+          reasoning_details: {
+            provider: 'anthropic',
+            thinkingBlocks: [],
+            content,
+            container: 'c_1',
+          },
+        },
+        { role: 'tool', tool_call_id: 'note_1', content: '{"ok":true}' },
+        ...(after === 'user' ? [{ role: 'user' as const, content: 'And?' }] : []),
+      ],
+    });
+
+  // The code has no result yet: it is paused, and only its container can resume it.
+  const paused = request([...searched, call], 'tool');
+  assert.equal(paused.container, 'c_1');
+  // Every block goes back as it came, the search's caller with it.
+  assert.deepEqual(paused.messages[1], { role: 'assistant', content: [...searched, call] });
+
+  // Code that finished needs nothing resumed; a container named later may have expired.
+  const finished = [...searched, { type: 'code_execution_tool_result', tool_use_id: 'srv_code' }];
+  assert.equal(request([...finished, call], 'tool').container, undefined);
+  // Nor once the person has spoken again.
+  assert.equal(request([...searched, call], 'user').container, undefined);
 });
