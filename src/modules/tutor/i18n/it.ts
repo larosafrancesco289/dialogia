@@ -71,12 +71,12 @@ const messages: Translation<typeof en> = {
   'note.checkOneRight': 'Domanda della verifica giusta',
   'note.checkOneMissed': 'Domanda della verifica sbagliata',
   'note.quizScore': {
-    one: '{right} domanda del quiz giusta su {count}',
-    other: '{right} domande del quiz giuste su {count}',
+    one: '{right} su {count} domanda del quiz giusta',
+    other: '{right} su {count} domande del quiz giuste',
   },
   'note.checkScore': {
-    one: '{right} domanda della verifica giusta su {count}',
-    other: '{right} domande della verifica giuste su {count}',
+    one: '{right} su {count} domanda della verifica giusta',
+    other: '{right} su {count} domande della verifica giuste',
   },
   'note.feltHigh': 'Hai detto che la stima ti sembrava troppo alta',
   'note.feltLow': 'Hai detto che la stima ti sembrava troppo bassa',
@@ -144,7 +144,7 @@ const messages: Translation<typeof en> = {
   'quiz.notQuite': 'Non proprio',
   'diagnostic.title': 'Una verifica veloce su {topic}',
   'diagnostic.why': 'Così il tutor sa da dove partire.',
-  'diagnostic.score': { one: '{right} giusta su {count}', other: '{right} giuste su {count}' },
+  'diagnostic.score': { one: '{right} su {count} giusta', other: '{right} su {count} giuste' },
 
   // The opening questions
   'intake.title': 'Raccontami i tuoi obiettivi',
@@ -206,7 +206,7 @@ const messages: Translation<typeof en> = {
   'welcome.addNotes': 'Puoi aggiungere appunti o letture in qualsiasi momento',
 
   // The learner's actions, as lines in the transcript
-  'ledger.score': { one: '{right} giusta su {count}', other: '{right} giuste su {count}' },
+  'ledger.score': { one: '{right} su {count} giusta', other: '{right} su {count} giuste' },
   'ledger.intake': 'Ho risposto alle domande iniziali',
   'ledger.quiz': 'Ho risposto al quiz: {score}',
   'ledger.diagnostic': 'Ho finito la verifica veloce: {score}',
