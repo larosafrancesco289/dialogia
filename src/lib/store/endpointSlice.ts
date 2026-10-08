@@ -10,16 +10,19 @@ import {
   endpointKeyRef,
   isBuiltInEndpointId,
   normalizeBaseUrl,
+  normalizeWorkspaceId,
   parseEndpointModelId,
   slugifyEndpointId,
   type ProviderEndpoint,
 } from '@/lib/transport/endpoints';
-import { setCustomEndpoints } from '@/lib/transport/endpointRegistry';
+import { setAnthropicWorkspaceId, setCustomEndpoints } from '@/lib/transport/endpointRegistry';
 import { isRecord } from '@/lib/utils/guards';
 
 export type EndpointSliceState = {
   /** User-added endpoints only; the two built-ins are implicit and non-deletable. */
   customEndpoints: ProviderEndpoint[];
+  /** The workspace the built-in Claude connection's requests name, when its key needs one. */
+  anthropicWorkspaceId?: string;
 };
 
 export type EndpointSliceActions = {
@@ -28,6 +31,8 @@ export type EndpointSliceActions = {
   ) => ProviderEndpoint;
   updateEndpoint: (id: string, patch: Partial<Omit<ProviderEndpoint, 'id' | 'apiKeyRef'>>) => void;
   removeEndpoint: (id: string) => void;
+  /** Sets or (with undefined) clears the Claude connection's workspace ID. */
+  setAnthropicWorkspaceId: (workspaceId: string | undefined) => void;
 };
 
 function sanitizeEndpoint(value: unknown): ProviderEndpoint | null {
@@ -69,12 +74,22 @@ export function parseCustomEndpoints(value: unknown): ProviderEndpoint[] {
   return endpoints;
 }
 
+/** A stored workspace ID, or undefined when there is none or it could not be one. */
+function parseWorkspaceId(value: unknown): string | undefined {
+  return typeof value === 'string' ? (normalizeWorkspaceId(value) ?? undefined) : undefined;
+}
+
 export const endpointPersistFragment: PersistFragment = {
-  partialize: (state) => ({ customEndpoints: state.customEndpoints }),
+  partialize: (state) => ({
+    customEndpoints: state.customEndpoints,
+    anthropicWorkspaceId: state.anthropicWorkspaceId,
+  }),
   merge: (_current, persisted) => {
     const customEndpoints = parseCustomEndpoints(persisted.customEndpoints);
+    const anthropicWorkspaceId = parseWorkspaceId(persisted.anthropicWorkspaceId);
     setCustomEndpoints(customEndpoints);
-    return { customEndpoints };
+    setAnthropicWorkspaceId(anthropicWorkspaceId);
+    return { customEndpoints, anthropicWorkspaceId };
   },
 };
 
@@ -142,6 +157,12 @@ export const createEndpointSlice = createStoreSlice<EndpointSliceState & Endpoin
         // The ref is derived from the id, so an orphaned key would be re-bound
         // to whatever host the next endpoint slugged the same way points at.
         void deleteKey(endpointKeyRef(id));
+      },
+
+      setAnthropicWorkspaceId(workspaceId) {
+        const value = parseWorkspaceId(workspaceId);
+        setAnthropicWorkspaceId(value);
+        set({ anthropicWorkspaceId: value });
       },
     } satisfies Partial<StoreState>;
   },

@@ -12,8 +12,11 @@ import {
   getAnthropicPricing,
   isAnthropicThinkingMandatory,
   readAnthropicCapabilityFlag,
+  readAnthropicModelFacts,
+  rememberAnthropicModelFacts,
   resolveAnthropicPublicModelId,
   supportsAnthropicAdaptiveThinking,
+  supportsAnthropicBudgetThinking,
   supportsAnthropicReasoning,
   supportsAnthropicToolUse,
   supportsAnthropicVision,
@@ -49,7 +52,9 @@ const EFFORT_LEVEL_KEYS = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
  * metadata shape OpenRouter publishes, so the models layer reads one format.
  * The API default effort cannot be read from metadata; the effort docs give
  * it (`high`, `medium` on Opus 5.5 and Haiku 5.5). Older manual-thinking
- * models have thinking off by default.
+ * models have thinking off by default. Whether thinking can be turned off, and
+ * which kinds of thinking a model takes, come from `capabilities.thinking.types`
+ * once `rememberAnthropicModelFacts` has the entry.
  */
 function buildAnthropicReasoningMetadata(
   directId: string,
@@ -74,13 +79,15 @@ function buildAnthropicReasoningMetadata(
     // manual-thinking models require explicitly enabling thinking.
     default_enabled: effortSupported || mandatory,
     mandatory,
-    supports_max_tokens: !supportsAnthropicAdaptiveThinking(directId),
+    supports_max_tokens: supportsAnthropicBudgetThinking(directId),
   };
 }
 
 function normalizeAnthropicModel(entry: unknown, endpointId: string): ModelDescriptor | null {
   if (!isRecord(entry) || typeof entry.id !== 'string' || !entry.id) return null;
   const directId = entry.id;
+  // Before anything below asks the shared rules about this model.
+  rememberAnthropicModelFacts(directId, readAnthropicModelFacts(entry));
   const publicId = resolveAnthropicPublicModelId(directId);
   const appId = toAnthropicModelId(publicId);
   const displayName =
@@ -146,7 +153,8 @@ export async function fetchModels(
 ): Promise<ModelDescriptor[]> {
   const fetchFn = opts.fetchFn ?? anFetchModels;
   const fingerprint = fingerprintKey(typeof auth.apiKey === 'string' ? auth.apiKey : '');
-  const cacheKey = `${opts.origin || 'default'}::${fingerprint}`;
+  // Another workspace can serve another list.
+  const cacheKey = `${opts.origin || 'default'}::${fingerprint}::${auth.endpoint?.workspaceId ?? ''}`;
   const cached = modelCache.get(cacheKey);
   const now = Date.now();
   if (cached && now - cached.fetchedAt < MODEL_CACHE_TTL_MS) {

@@ -138,6 +138,8 @@ type AnthropicReasoningDetails = {
   provider: 'anthropic';
   thinkingBlocks: AnthropicThinkingBlock[];
   content?: Array<Record<string, unknown>>;
+  /** The code execution container the reply ran code in (web search's filtering does). */
+  container?: string;
 };
 
 /** The signed thinking blocks in a list. An unsigned block cannot be sent back. */
@@ -159,13 +161,43 @@ export function pickThinkingBlocks(entries: unknown[]): AnthropicThinkingBlock[]
 export function toReasoningDetails(
   thinkingBlocks: AnthropicThinkingBlock[],
   content: Array<Record<string, unknown>> = [],
+  container?: string,
 ): AnthropicReasoningDetails | undefined {
   if (thinkingBlocks.length === 0 && content.length === 0) return undefined;
   return {
     provider: 'anthropic',
     thinkingBlocks,
     ...(content.length > 0 ? { content } : {}),
+    ...(container ? { container } : {}),
   };
+}
+
+/** The id of a response's `container`, the code execution sandbox it ran code in. */
+export function readContainerId(value: unknown): string | undefined {
+  return isRecord(value) && typeof value.id === 'string' && value.id ? value.id : undefined;
+}
+
+/**
+ * The container a request must name to resume code a reply left running: the
+ * conversation ends in an assistant reply and the results of its tool calls,
+ * and the reply holds a server tool call with no result yet (web search
+ * filtering in code, paused while the app runs its own tools). Undefined
+ * otherwise, since naming a container that has since expired is an error.
+ */
+export function pendingCodeContainer(messages: ModelMessage[]): string | undefined {
+  let index = messages.length - 1;
+  while (index >= 0 && messages[index].role === 'tool') index -= 1;
+  const reply = messages[index];
+  if (index === messages.length - 1 || reply?.role !== 'assistant') return undefined;
+  const details = reply.reasoning_details;
+  if (!isRecord(details) || details.provider !== 'anthropic') return undefined;
+  if (typeof details.container !== 'string' || !details.container) return undefined;
+  const content = Array.isArray(details.content) ? details.content.filter(isRecord) : [];
+  const answered = new Set(content.map((block) => block.tool_use_id));
+  const pending = content.some(
+    (block) => block.type === 'server_tool_use' && !answered.has(block.id),
+  );
+  return pending ? details.container : undefined;
 }
 
 const isThinking = (block: Record<string, unknown>) =>
@@ -182,7 +214,14 @@ export function withoutThinking(details: unknown): unknown {
   const content = Array.isArray(details.content)
     ? details.content.filter((block) => isRecord(block) && !isThinking(block))
     : [];
-  return content.length > 0 ? { provider: 'anthropic', thinkingBlocks: [], content } : undefined;
+  if (content.length === 0) return undefined;
+  const container = typeof details.container === 'string' ? details.container : undefined;
+  return {
+    provider: 'anthropic',
+    thinkingBlocks: [],
+    content,
+    ...(container ? { container } : {}),
+  };
 }
 
 function readReasoningDetails(value: unknown): {
@@ -226,11 +265,13 @@ function replayBlock(block: Record<string, unknown>): AnthropicAssistantContentB
     case 'tool_use':
     case 'server_tool_use':
       if (typeof block.id !== 'string' || typeof block.name !== 'string') return null;
+      // A call code made (web search's filtering) names that run as its caller.
       return {
         type: block.type,
         id: block.id,
         name: block.name,
         input: isRecord(block.input) ? block.input : {},
+        ...(isRecord(block.caller) ? { caller: block.caller } : {}),
       };
     default:
       return block as AnthropicAssistantContentBlock;

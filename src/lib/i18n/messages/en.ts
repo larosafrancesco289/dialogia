@@ -445,7 +445,8 @@ const en = {
 
   // What each section shows and is about, so search finds it by the words on
   // screen as well as by its title. English words always find it too.
-  'settings.keywords.providers': 'openrouter key anthropic key api provider connect replace remove',
+  'settings.keywords.providers':
+    'openrouter key anthropic key api provider connect replace remove workspace',
   'settings.keywords.endpoints':
     'your own server local ollama lm studio llama.cpp vllm server address base url custom endpoint openai compatible key api model names test connection tools images thinking effort reply costs prompt caching chat titles remove self-hosted',
   'settings.keywords.web-search': 'tavily key search browse web openrouter search jina reader',
@@ -485,6 +486,10 @@ const en = {
   'providers.needsAddress': 'Needs an address',
   'providers.needsKey': 'Needs a key',
   'providers.keysStay': 'Keys stay in this browser and are never exported.',
+  'providers.workspace': 'Workspace ID (optional)',
+  'providers.workspaceHint':
+    'Only needed if Claude says your key needs a workspace. Copy the ID from Workspaces in the Claude Console; it starts with wrkspc_.',
+  'providers.workspaceInvalid': 'A workspace ID has only letters, numbers, _ and -.',
   'apiKey.saved': 'Saved {key}. Paste to replace',
   'apiKey.replace': 'Replace',
   'apiKey.removeNamed': 'Remove the {label}',

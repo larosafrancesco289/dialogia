@@ -9,6 +9,7 @@ import { getKey } from '@/lib/keys/store';
 import type { ModelDescriptor } from '@/lib/transport/models';
 import {
   ANTHROPIC_ENDPOINT,
+  ANTHROPIC_ENDPOINT_ID,
   BUILT_IN_ENDPOINTS,
   OPENROUTER_ENDPOINT,
   ENDPOINT_NAMESPACE,
@@ -18,14 +19,30 @@ import {
 } from '@/lib/transport/endpoints';
 
 let customEndpoints: ProviderEndpoint[] = [];
+let anthropicWorkspaceId: string | undefined;
 
 /** Called by the endpoint slice whenever the user's configuration changes. */
 export function setCustomEndpoints(endpoints: ProviderEndpoint[]): void {
   customEndpoints = endpoints.filter((endpoint) => !isBuiltInEndpointId(endpoint.id));
 }
 
+/** Called by the endpoint slice whenever the Claude connection's workspace changes. */
+export function setAnthropicWorkspaceId(workspaceId: string | undefined): void {
+  anthropicWorkspaceId = workspaceId || undefined;
+}
+
+/** The built-in Claude connection, with the workspace its requests name. */
+function anthropicEndpoint(): ProviderEndpoint {
+  return anthropicWorkspaceId
+    ? { ...ANTHROPIC_ENDPOINT, workspaceId: anthropicWorkspaceId }
+    : ANTHROPIC_ENDPOINT;
+}
+
 export function listEndpoints(): ProviderEndpoint[] {
-  return [...BUILT_IN_ENDPOINTS, ...customEndpoints];
+  const builtIns = BUILT_IN_ENDPOINTS.map((endpoint) =>
+    endpoint.id === ANTHROPIC_ENDPOINT_ID ? anthropicEndpoint() : endpoint,
+  );
+  return [...builtIns, ...customEndpoints];
 }
 
 export function getEndpoint(id?: string): ProviderEndpoint | undefined {
@@ -76,13 +93,13 @@ export function findModelEndpoint(
       const scoped = parseEndpointModelId(modelId);
       return scoped ? getEndpoint(scoped.endpointId) : undefined;
     }
-    if (modelId.startsWith('anthropic-direct/')) return ANTHROPIC_ENDPOINT;
+    if (modelId.startsWith('anthropic-direct/')) return anthropicEndpoint();
     // OpenRouter's own Claude ids ('anthropic/...', what new chats start with)
     // go where a loaded list sends them: to OpenRouter whenever it has a key,
     // so a chat never starts on one provider and goes on with another. Without
     // one, the Claude API takes them (older chats, a Claude key alone).
     if (modelId.startsWith('anthropic/')) {
-      return getKey(OPENROUTER_ENDPOINT.apiKeyRef) ? OPENROUTER_ENDPOINT : ANTHROPIC_ENDPOINT;
+      return getKey(OPENROUTER_ENDPOINT.apiKeyRef) ? OPENROUTER_ENDPOINT : anthropicEndpoint();
     }
   }
 
@@ -107,4 +124,5 @@ export function resolveModelEndpoint(
 /** @internal Test seam: resets module state between tests. */
 export function resetEndpointRegistryForTest(): void {
   customEndpoints = [];
+  anthropicWorkspaceId = undefined;
 }

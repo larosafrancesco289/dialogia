@@ -54,6 +54,7 @@ export type PersistedStoreState = Pick<
   StoreDataState,
   | 'selectedChatId'
   | 'customEndpoints'
+  | 'anthropicWorkspaceId'
   | 'favoriteModelIds'
   | 'hiddenModelIds'
   | 'zdrModelIds'

@@ -98,8 +98,10 @@ test('partialize emits the same key set the pre-refactor build wrote', () => {
   const merged = mergePersistedState(freshState(), migrate(preRefactorBlob, 6) as never);
   const persisted = buildPersistedState(merged as StoreState);
 
-  // `customEndpoints` is additive: Stage 3 added a key, renamed none.
+  // `customEndpoints` is additive: Stage 3 added a key, renamed none. So is
+  // `anthropicWorkspaceId`, the Claude connection's workspace.
   assert.deepEqual(Object.keys(persisted).sort(), [
+    'anthropicWorkspaceId',
     'customEndpoints',
     'favoriteModelIds',
     'hiddenModelIds',

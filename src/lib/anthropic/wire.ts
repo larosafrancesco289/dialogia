@@ -24,11 +24,18 @@ type AnthropicRedactedThinkingBlock = {
   data: string;
 };
 
+/**
+ * Who made a call: `{ type: 'direct' }`, or code the model ran, as
+ * `{ type: 'code_execution_20260120', tool_id }` naming that run's block.
+ */
+type AnthropicToolCaller = Record<string, unknown>;
+
 type AnthropicToolUseBlock = {
   type: 'tool_use';
   id: string;
   name: string;
   input: Record<string, unknown>;
+  caller?: AnthropicToolCaller;
 };
 
 type AnthropicServerToolUseBlock = {
@@ -36,6 +43,7 @@ type AnthropicServerToolUseBlock = {
   id: string;
   name: string;
   input: Record<string, unknown>;
+  caller?: AnthropicToolCaller;
 };
 
 type AnthropicWebSearchToolResultBlock = {
@@ -93,9 +101,11 @@ export type AnthropicToolDefinition = {
 };
 
 export type AnthropicWebSearchToolDefinition = {
-  type: 'web_search_20250305';
+  type: 'web_search_20250305' | 'web_search_20260318';
   name: 'web_search';
   max_uses: number;
+  /** Only `["direct"]` is sent: it turns dynamic filtering off. */
+  allowed_callers?: ['direct'];
 };
 
 export type AnthropicMessagesRequest = {
@@ -103,6 +113,11 @@ export type AnthropicMessagesRequest = {
   messages: AnthropicMessageParam[];
   max_tokens: number;
   stream?: boolean;
+  /**
+   * The code execution container a turn left code running in: a request that
+   * resumes it must name it.
+   */
+  container?: string;
   cache_control?: AnthropicCacheControl;
   temperature?: number;
   top_p?: number;

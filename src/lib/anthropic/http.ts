@@ -22,6 +22,11 @@ async function anFetch(path: string, options: AnthropicFetchOptions = {}): Promi
     // The page calls the Claude API directly; without this opt-in the API
     // refuses the browser's CORS preflight.
     'anthropic-dangerous-direct-browser-access': 'true',
+    // A key that can act in more than one workspace must say which; without
+    // it the API refuses the call with a 400 that asks for this header.
+    ...(options.auth.endpoint.workspaceId
+      ? { 'anthropic-workspace-id': options.auth.endpoint.workspaceId }
+      : {}),
     ...(options.headers || {}),
   };
 

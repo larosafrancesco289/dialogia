@@ -15,6 +15,7 @@ import {
   endpointKeyRef,
   isBuiltInEndpointId,
   isValidBaseUrl,
+  normalizeWorkspaceId,
   type ProviderEndpoint,
 } from '@/lib/transport/endpoints';
 import { listEndpoints } from '@/lib/transport/endpointRegistry';
@@ -44,6 +45,65 @@ function EndpointStatus({ endpoint }: { endpoint: ProviderEndpoint }) {
     );
   }
   return <span className="text-xs text-fg-muted">{t('providers.needsKey')}</span>;
+}
+
+// The shape of the ID, which every language writes the same way.
+const WORKSPACE_ID_PLACEHOLDER = 'wrkspc_…';
+
+/**
+ * The Claude connection's workspace ID, which only a key that can act in more
+ * than one workspace needs (the API's error says so). Shown once there is a
+ * Claude key, so a first visit is not asked about it.
+ */
+function WorkspaceIdField({ keyRef, onChanged }: { keyRef: string; onChanged: () => void }) {
+  const t = useT();
+  const { hasKey } = useProviderKeys();
+  const { workspaceId, setWorkspaceId } = useChatStore(
+    (s) => ({
+      workspaceId: s.anthropicWorkspaceId,
+      setWorkspaceId: s.setAnthropicWorkspaceId,
+    }),
+    shallow,
+  );
+  const [invalid, setInvalid] = useState(false);
+  if (!hasKey(keyRef) && !workspaceId) return null;
+
+  return (
+    <div className="space-y-2">
+      <label className="field__label" htmlFor="anthropic-workspace">
+        {t('providers.workspace')}
+      </label>
+      <input
+        id="anthropic-workspace"
+        className="input w-full text-base sm:text-sm"
+        defaultValue={workspaceId ?? ''}
+        placeholder={WORKSPACE_ID_PLACEHOLDER}
+        autoCapitalize="none"
+        autoCorrect="off"
+        autoComplete="off"
+        spellCheck={false}
+        aria-invalid={invalid || undefined}
+        aria-describedby="anthropic-workspace-hint"
+        onChange={() => setInvalid(false)}
+        onBlur={(event) => {
+          const value = normalizeWorkspaceId(event.target.value);
+          if (value === null) {
+            setInvalid(true);
+            return;
+          }
+          event.target.value = value ?? '';
+          if (value === workspaceId) return;
+          setWorkspaceId(value);
+          onChanged();
+        }}
+      />
+      <p id="anthropic-workspace-hint" className="field__hint" role={invalid ? 'alert' : undefined}>
+        {invalid
+          ? `${t('providers.workspaceInvalid')} ${t('servers.notSaved')}`
+          : t('providers.workspaceHint')}
+      </p>
+    </div>
+  );
 }
 
 function CustomEndpointEditor({
@@ -327,6 +387,12 @@ export function ProvidersPanel({ renderSection, loadModels }: ProvidersPanelProp
                       placeholder={option.placeholder}
                       onChanged={refresh}
                     />
+                    {endpoint.kind === 'anthropic' && (
+                      <WorkspaceIdField
+                        keyRef={endpoint.apiKeyRef ?? endpoint.id}
+                        onChanged={refresh}
+                      />
+                    )}
                   </div>
                 );
               })}

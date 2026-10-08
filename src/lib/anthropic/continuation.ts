@@ -32,16 +32,19 @@ export function mapStopReason(value: unknown): FinishReason | undefined {
 
 /**
  * The request that resumes a paused turn: the paused response's content sent
- * back as the assistant's message. Returns `body` itself when there is nothing
- * to send, which the callers read as "stop here".
+ * back as the assistant's message, naming the container it ran code in, where
+ * code it paused (web search's filtering) goes on. Returns `body` itself when
+ * there is nothing to send, which the callers read as "stop here".
  */
 export function appendContinuationMessage(
   body: AnthropicMessagesRequest,
   content: unknown,
+  container?: string,
 ): AnthropicMessagesRequest {
   if (!Array.isArray(content) || content.length === 0) return body;
   return {
     ...body,
+    ...(container ? { container } : {}),
     messages: [
       ...body.messages,
       { role: 'assistant', content: content as AnthropicAssistantMessageContent },

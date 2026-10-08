@@ -2,6 +2,7 @@ import { ANTHROPIC_ENDPOINT } from '@/lib/transport/endpoints';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fetchModels } from '@/lib/anthropic/models';
+import { buildAnthropicBody } from '@/lib/anthropic/request';
 import { describeModelPricing } from '@/lib/cost';
 
 test('fetchModels exposes Anthropic pricing in per-token units', async () => {
@@ -111,4 +112,73 @@ test('fetchModels synthesizes reasoning metadata from effort capabilities', asyn
   // Manual-thinking model without effort capability: thinking off by default.
   assert.equal(haikuReasoning.default_enabled, false);
   assert.equal(haikuReasoning.mandatory, false);
+});
+
+test('fetchModels reads thinking types and line, and the request path then follows them', async () => {
+  const on = { supported: true };
+  const off = { supported: false };
+  const responseBody = {
+    data: [
+      {
+        id: 'claude-sonnet-5-5',
+        display_name: 'Claude Sonnet 5.5',
+        line: 'sonnet',
+        capabilities: {
+          thinking: { supported: true, types: { adaptive: on, enabled: off, disabled: off } },
+          effort: { supported: true, low: on, medium: on, high: on, xhigh: on, max: on },
+          server_tools: { supported: true, web_search: on, code_execution: on },
+          code_execution: on,
+        },
+      },
+      {
+        id: 'claude-haiku-4-5-20251001',
+        display_name: 'Claude Haiku 4.5',
+        line: 'haiku',
+        capabilities: {
+          thinking: { supported: true, types: { adaptive: off, enabled: on, disabled: on } },
+          effort: { supported: false, low: off, medium: off, high: off, xhigh: null, max: off },
+          server_tools: { supported: true, web_search: on, code_execution: on },
+          code_execution: off,
+        },
+      },
+    ],
+  };
+
+  const models = await fetchModels(
+    { endpoint: ANTHROPIC_ENDPOINT, apiKey: 'test-key-thinking-types' },
+    {
+      fetchFn: async () =>
+        new Response(JSON.stringify(responseBody), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+    },
+  );
+  const reasoning = (id: string) =>
+    (models.find((m) => m.transportModelId === id)?.raw as Record<string, unknown>)
+      .reasoning as Record<string, unknown>;
+
+  // Sonnet 5.5 refuses "disabled" but turns up-front thinking off with between_tools.
+  assert.equal(reasoning('claude-sonnet-5-5').mandatory, false);
+  assert.equal(reasoning('claude-sonnet-5-5').supports_max_tokens, false);
+  assert.equal(reasoning('claude-haiku-4-5-20251001').supports_max_tokens, true);
+  assert.equal(reasoning('claude-haiku-4-5-20251001').default_enabled, false);
+
+  const off5 = buildAnthropicBody({
+    model: 'claude-sonnet-5-5',
+    messages: [{ role: 'user', content: 'Hi' }],
+    stream: false,
+    disableReasoning: true,
+  });
+  assert.deepEqual(off5.thinking, { type: 'between_tools' });
+  // Haiku 4.5's code cannot call tools: its search is a direct one.
+  const search = buildAnthropicBody({
+    model: 'claude-haiku-4-5',
+    messages: [{ role: 'user', content: 'News?' }],
+    stream: false,
+    plugins: [{ id: 'web' }],
+  });
+  assert.deepEqual(search.tools, [
+    { type: 'web_search_20260318', name: 'web_search', max_uses: 5, allowed_callers: ['direct'] },
+  ]);
 });

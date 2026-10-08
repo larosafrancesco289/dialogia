@@ -459,7 +459,7 @@ const messages: Translation<typeof en> = {
   // What each section shows and is about, so search finds it by the words on
   // screen as well as by its title. English words always find it too.
   'settings.keywords.providers':
-    'chiave openrouter chiave anthropic api fornitore collega sostituisci rimuovi',
+    'chiave openrouter chiave anthropic api fornitore collega sostituisci rimuovi workspace',
   'settings.keywords.endpoints':
     'il tuo server locale ollama lm studio llama.cpp vllm indirizzo del server url endpoint personalizzato compatibile openai chiave api nomi dei modelli prova la connessione strumenti immagini livello di ragionamento costi delle risposte cache dei prompt titoli delle chat rimuovi self-hosted',
   'settings.keywords.web-search': 'tavily chiave ricerca naviga web ricerca openrouter jina reader',
@@ -499,6 +499,10 @@ const messages: Translation<typeof en> = {
   'providers.needsAddress': 'Serve un indirizzo',
   'providers.needsKey': 'Serve una chiave',
   'providers.keysStay': 'Le chiavi restano in questo browser e non vengono mai esportate.',
+  'providers.workspace': 'ID del workspace (facoltativo)',
+  'providers.workspaceHint':
+    'Serve solo se Claude dice che la tua chiave richiede un workspace. Copia l’ID da Workspaces nella Claude Console: inizia con wrkspc_.',
+  'providers.workspaceInvalid': 'Un ID del workspace contiene solo lettere, numeri, _ e -.',
   'apiKey.saved': '{key} salvata. Incolla per sostituirla',
   'apiKey.replace': 'Sostituisci',
   'apiKey.removeNamed': 'Rimuovi: {label}',

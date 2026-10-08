@@ -2,7 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildPersistedState, mergePersistedState } from '@/lib/store/persistence';
 import { parseCustomEndpoints } from '@/lib/store/endpointSlice';
-import { listEndpoints, resetEndpointRegistryForTest } from '@/lib/transport/endpointRegistry';
+import {
+  listEndpoints,
+  resetEndpointRegistryForTest,
+  resolveModelEndpoint,
+} from '@/lib/transport/endpointRegistry';
 import { isValidBaseUrl, OPENROUTER_ENDPOINT } from '@/lib/transport/endpoints';
 import { isEndpointConnected, isEndpointUsable, requireEndpointAuth } from '@/lib/auth/require';
 import { deleteKey, getKey, isKeyRejected, setKey } from '@/lib/keys/store';
@@ -334,4 +338,39 @@ test('a key the provider refused is marked until a new one is saved', async () =
   } finally {
     await deleteKey(ref);
   }
+});
+
+test('the Claude connection’s workspace ID persists and reaches every Claude request', async () => {
+  resetEndpointRegistryForTest();
+  const store = createTestStore();
+  store.getState().setAnthropicWorkspaceId('  wrkspc_011CZkZaBF1tNoB5wlCeusgy ');
+  const claude = () => resolveModelEndpoint('anthropic-direct/claude-opus-5-5');
+  assert.equal(claude().workspaceId, 'wrkspc_011CZkZaBF1tNoB5wlCeusgy');
+  assert.equal(
+    listEndpoints().find((endpoint) => endpoint.id === 'anthropic')?.workspaceId,
+    'wrkspc_011CZkZaBF1tNoB5wlCeusgy',
+  );
+  // OpenRouter is not Anthropic's API: it is never told a Claude workspace.
+  assert.equal(OPENROUTER_ENDPOINT.workspaceId, undefined);
+
+  // It survives a reload, and reaches the request path again from storage alone.
+  const persisted = buildPersistedState(store.getState());
+  assert.equal(persisted.anthropicWorkspaceId, 'wrkspc_011CZkZaBF1tNoB5wlCeusgy');
+  resetEndpointRegistryForTest();
+  const reloaded = mergePersistedState(createTestStore().getState(), persisted);
+  assert.equal(reloaded.anthropicWorkspaceId, 'wrkspc_011CZkZaBF1tNoB5wlCeusgy');
+  assert.equal(claude().workspaceId, 'wrkspc_011CZkZaBF1tNoB5wlCeusgy');
+
+  // A stored value that could not go in a header is dropped, not sent.
+  mergePersistedState(createTestStore().getState(), {
+    ...persisted,
+    anthropicWorkspaceId: 'wrkspc_1\r\nx-api-key: stolen',
+  });
+  assert.equal(claude().workspaceId, undefined);
+
+  // Emptied, the requests name none.
+  store.getState().setAnthropicWorkspaceId('wrkspc_2');
+  store.getState().setAnthropicWorkspaceId('');
+  assert.equal(store.getState().anthropicWorkspaceId, undefined);
+  assert.equal(claude().workspaceId, undefined);
 });
