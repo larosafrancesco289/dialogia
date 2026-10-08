@@ -102,3 +102,27 @@ test('a router listed at -1 has an unknown cost, never a negative one', () => {
   } as ModelDescriptor;
   assert.equal(computeCost({ model, promptTokens: 100, completionTokens: 50 }).total, undefined);
 });
+
+test('computeCost bills a long prompt’s input at its higher rate, counting cached tokens', () => {
+  const model = {
+    id: 'anthropic-direct/claude-haiku-5-5',
+    endpointId: 'anthropic',
+    pricing: {
+      prompt: 0.0000001,
+      completion: 0.0000005,
+      inputCacheRead: 0.00000001,
+      currency: 'usd',
+      longPrompt: { above: 100_000, multiplier: 5 },
+    },
+  } as ModelDescriptor;
+  const cost = (input: number, cached: number) =>
+    computeCost({
+      model,
+      usage: { input_tokens: input, cache_read_input_tokens: cached, output_tokens: 1000 },
+    }).total;
+  // Short: 10k input + 1k output at the base rates.
+  assert.ok(Math.abs((cost(10_000, 0) ?? 0) - 0.0015) < 1e-12);
+  // Long only with the cache counted in: input and cache at five times, output unchanged.
+  const long = 10_000 * 0.0000005 + 95_000 * 0.00000005 + 1000 * 0.0000005;
+  assert.ok(Math.abs((cost(10_000, 95_000) ?? 0) - long) < 1e-12);
+});

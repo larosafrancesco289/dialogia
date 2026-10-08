@@ -5,6 +5,7 @@
 // (auth resolution, body building) is synchronous and sits below the store, so
 // the slice pushes its list here and everything else reads from here.
 
+import { getKey } from '@/lib/keys/store';
 import type { ModelDescriptor } from '@/lib/transport/models';
 import {
   ANTHROPIC_ENDPOINT,
@@ -75,8 +76,13 @@ export function findModelEndpoint(
       const scoped = parseEndpointModelId(modelId);
       return scoped ? getEndpoint(scoped.endpointId) : undefined;
     }
-    if (modelId.startsWith('anthropic-direct/') || modelId.startsWith('anthropic/')) {
-      return ANTHROPIC_ENDPOINT;
+    if (modelId.startsWith('anthropic-direct/')) return ANTHROPIC_ENDPOINT;
+    // OpenRouter's own Claude ids ('anthropic/...', what new chats start with)
+    // go where a loaded list sends them: to OpenRouter whenever it has a key,
+    // so a chat never starts on one provider and goes on with another. Without
+    // one, the Claude API takes them (older chats, a Claude key alone).
+    if (modelId.startsWith('anthropic/')) {
+      return getKey(OPENROUTER_ENDPOINT.apiKeyRef) ? OPENROUTER_ENDPOINT : ANTHROPIC_ENDPOINT;
     }
   }
 

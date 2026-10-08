@@ -32,8 +32,14 @@ window.addEventListener('vite:preloadError', (event) => {
 
 // The language is chosen before the first render, so a page in Italian never
 // opens in English first: English is bundled, any other is one small chunk.
-// The setting follows from then on (and from other tabs, through the store).
-const languageReady = applyLanguagePreference(useChatStore.getState().ui.language);
+// A chunk slower than this opens the page in English, and the language
+// follows when it lands. The setting follows from then on (and from other
+// tabs, through the store).
+const LANGUAGE_WAIT_MS = 1500;
+const languageReady = Promise.race([
+  applyLanguagePreference(useChatStore.getState().ui.language),
+  new Promise<void>((resolve) => setTimeout(resolve, LANGUAGE_WAIT_MS)),
+]);
 useChatStore.subscribe((state, previous) => {
   if (state.ui.language !== previous.ui.language) {
     void applyLanguagePreference(state.ui.language);

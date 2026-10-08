@@ -1,9 +1,10 @@
 // Module: tutor lib text
+// Responsibility: joining the tutor's own words (goals, notes, reasons) into the interface's
+// sentences, so text that already ends in punctuation never ends twice.
+
 import { getLocale } from '@/lib/i18n/state';
 import { t } from '@/modules/tutor/i18n';
 import { formatNumber } from '@/lib/i18n/format';
-// Responsibility: joining the tutor's own words (goals, notes, reasons) into the interface's
-// sentences, so text that already ends in punctuation never ends twice.
 
 // A sentence has ended when its last word is followed by . ! ? or an ellipsis,
 // possibly inside a closing quote or bracket: `...describe?"` has ended.
@@ -76,8 +77,10 @@ const NUMBER_WORDS = [
   'twenty',
 ];
 
-/** A count in words, as prose sets small numbers: "four", then digits past twenty. */
-/** "two" in English, where the app spells small numbers out; a numeral in any other language. */
+/**
+ * A count as prose sets it: in English small numbers in words ("four"), then
+ * digits past twenty; a numeral in any other language.
+ */
 export const countWord = (n: number) =>
   getLocale() === 'en' && n >= 1 && n <= NUMBER_WORDS.length
     ? NUMBER_WORDS[n - 1]

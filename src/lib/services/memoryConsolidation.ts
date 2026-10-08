@@ -24,12 +24,6 @@ import { v4 as uuidv4 } from 'uuid';
 const CONSOLIDATION_MAX_TOKENS = 8000;
 const CONSOLIDATION_TIMEOUT_MS = 120_000;
 
-/**
- * The plan for one pass, or undefined when zero data retention will not let
- * the model see memory (the guard has said why). Throws when there is no
- * answer, and with `UNREADABLE_PLAN` when the answer is no plan, including
- * one cut off before its end.
- */
 /** The pass's "say" lines are read in the app, so they come in its language. */
 function consolidationSystemPrompt(): string {
   const language = appLanguageForModel();
@@ -38,6 +32,12 @@ function consolidationSystemPrompt(): string {
     : CONSOLIDATION_SYSTEM_PROMPT;
 }
 
+/**
+ * The plan for one pass, or undefined when zero data retention will not let
+ * the model see memory (the guard has said why). Throws when there is no
+ * answer, and with `UNREADABLE_PLAN` when the answer is no plan, including
+ * one cut off before its end.
+ */
 export async function planConsolidation(
   set: StoreSetter,
   get: StoreGetter,

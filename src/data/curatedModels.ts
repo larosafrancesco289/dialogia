@@ -1,10 +1,13 @@
 import type { MessageKey } from '@/lib/i18n';
+import type { ReasoningEffort } from '@/lib/types';
 
 type CuratedModel = {
   id: string;
   name: string;
   /** What it is good for, in the language shown (`models.curated.*`). */
   description: MessageKey;
+  /** The effort it runs at where nobody chose one (the tutor's tuned setting). */
+  effort?: ReasoningEffort;
 };
 
 // Most picks are model families ('~vendor/family-latest', OpenRouter's own
@@ -24,13 +27,14 @@ const GPT_LUNA: CuratedModel = {
 };
 
 // Pinned, not a family: the tutor's prompt and its simulator checks are tuned
-// on this exact model, at high effort (tutorDefaultEffort in
-// src/lib/models/defaultModels.ts). If it disappears, the tutor falls back to
+// on this exact model, at this effort (at its default medium it narrated its
+// bookkeeping around tool calls). If it disappears, the tutor falls back to
 // GPT Luna.
 export const DEFAULT_TUTOR_MODEL: CuratedModel = {
   id: 'anthropic/claude-haiku-5.5',
   name: 'Claude Haiku 5.5',
   description: 'models.curated.tutor',
+  effort: 'high',
 };
 
 export const DEFAULT_MODEL_ID = DEFAULT_CHAT_MODEL.id;

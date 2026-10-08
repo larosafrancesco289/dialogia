@@ -2,7 +2,11 @@
 // Responsibility: Which concrete model new chats and the tutor start with,
 // given what the user's providers serve right now.
 
-import { DEFAULT_MODEL_PREFERENCE, TUTOR_MODEL_PREFERENCE } from '@/data/curatedModels';
+import {
+  DEFAULT_MODEL_PREFERENCE,
+  DEFAULT_TUTOR_MODEL,
+  TUTOR_MODEL_PREFERENCE,
+} from '@/data/curatedModels';
 import { resolveFirstAvailableModelId } from '@/lib/models/dynamicDefaults';
 import { isBuiltInEndpointId } from '@/lib/transport/endpoints';
 import type { ModelDescriptor, ReasoningEffort } from '@/lib/types';
@@ -21,14 +25,22 @@ export function resolveTutorModelId(chosen: string | undefined, models: ModelDes
   return resolveFirstAvailableModelId(preference, models, isBuiltInEndpointId);
 }
 
-// Claude Haiku 5.5, on OpenRouter or a Claude API key.
-const HAIKU_5_5 = /^anthropic(?:-direct)?\/claude-haiku-5[.-]5(?:-\d{8})?$/;
+// A model by name alone: "anthropic/claude-haiku-5.5", its Claude API id
+// "anthropic-direct/claude-haiku-5-5", a dated or ":variant" id all read alike.
+const bareModelName = (id: string) =>
+  id
+    .replace(/^[^/]*\//, '')
+    .replace(/:.*$/, '')
+    .replace(/-\d{8}$/, '')
+    .replace(/\./g, '-');
 
 /**
- * The effort a tutor turn runs at when the learner chose none: high on Claude
- * Haiku 5.5, which at its default medium still narrated its bookkeeping around
- * tool calls; otherwise the model's own default.
+ * The effort a tutor turn runs at when the learner chose none: the one the
+ * tutor's pinned model is tuned at, on any provider that serves it; otherwise
+ * the model's own default.
  */
 export function tutorDefaultEffort(modelId: string): ReasoningEffort | undefined {
-  return HAIKU_5_5.test(modelId) ? 'high' : undefined;
+  return bareModelName(modelId) === bareModelName(DEFAULT_TUTOR_MODEL.id)
+    ? DEFAULT_TUTOR_MODEL.effort
+    : undefined;
 }
