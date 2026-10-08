@@ -10,7 +10,11 @@ import { createStoreSlice } from '@/lib/store/createSlice';
 import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
 import { getTransportClient } from '@/lib/transport/registry';
 import { listEndpoints } from '@/lib/transport/endpointRegistry';
-import { describeNoModelsOffered, NOTICE_INVALID_KEY } from '@/lib/store/notices';
+import {
+  describeErrorNotice,
+  describeNoModelsOffered,
+  NOTICE_INVALID_KEY,
+} from '@/lib/store/notices';
 import { notify } from '@/lib/store/notify';
 import { getMessagesForChat } from '@/lib/messages/indexing';
 import { ChatService } from '@/lib/services/chatService';
@@ -151,7 +155,14 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
               return;
             }
 
-            noticeSegments.push(t('models.unavailable', { server: endpoint.label }));
+            // The provider's own reason, when it gave one, says what to fix
+            // (a key that needs a workspace, a plan without model access).
+            const reason = describeErrorNotice(error);
+            noticeSegments.push(
+              [t('models.unavailable', { server: endpoint.label }), reason]
+                .filter(Boolean)
+                .join(' '),
+            );
           }
         }),
       );
