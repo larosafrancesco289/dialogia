@@ -377,20 +377,25 @@ test('a card after an earlier round with words ends the turn without an introduc
 });
 
 test('a round that wrote its reply and only kept records ends the turn', async () => {
+  const written =
+    'Right: dividing both sides by two was the move. Now try one on your own: 2x = 8.';
   const replied = await runAgentTurn((round, callbacks) => {
-    if (round === 1) return reply(callbacks, 'Right. Now try 2x = 8.', [call(TOOL_KEPT)]);
-    return reply(callbacks, 'Right. Now try 2x = 8.');
+    if (round === 1) return reply(callbacks, written, [call(TOOL_KEPT)]);
+    return reply(callbacks, written);
   });
   await replied.run;
   assert.equal(replied.requests.length, 1);
-  assert.equal(replied.message()?.content, 'Right. Now try 2x = 8.');
-  assert.equal(replied.persisted.at(-1)?.toolRounds?.[0]?.text, 'Right. Now try 2x = 8.');
+  assert.equal(replied.message()?.content, written);
+  assert.equal(replied.persisted.at(-1)?.toolRounds?.[0]?.text, written);
 
-  // No words yet, or a call that did more than keep a record: the model goes on.
+  // No words yet, only a lead-in to the calls, or a call that did more than
+  // keep a record: the model goes on.
   for (const first of [
     (callbacks: StreamCallbacks | undefined) => reply(callbacks, '', [call(TOOL_KEPT)]),
     (callbacks: StreamCallbacks | undefined) =>
-      reply(callbacks, 'Right.', [call(TOOL_KEPT), call(TOOL_NOTE)]),
+      reply(callbacks, 'Good, let me note that.', [call(TOOL_KEPT)]),
+    (callbacks: StreamCallbacks | undefined) =>
+      reply(callbacks, written, [call(TOOL_KEPT), call(TOOL_NOTE)]),
   ]) {
     const turn = await runAgentTurn((round, callbacks) =>
       round === 1 ? first(callbacks) : reply(callbacks, 'Now try 2x = 8.'),

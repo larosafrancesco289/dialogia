@@ -200,10 +200,18 @@ async function runToolRound(
 
 // ── Ending the turn ─────────────────────────────────────────────────────────
 
+/** Fewer words than this, or a closing colon, reads as a lead-in to the calls, not a reply. */
+const REPLY_MIN_WORDS = 12;
+
+const readsAsReply = (text: string) =>
+  !/:\s*$/.test(text) && text.trim().split(/\s+/).length >= REPLY_MIN_WORDS;
+
 /**
  * How the round's calls end the turn: now, once it has text, or not at all. A
- * round that wrote its text and made only quiet calls, all run, has replied:
- * asking again would only invite the same reply a second time.
+ * round that wrote its reply and made only quiet calls, all run, has replied:
+ * asking again would only invite the same reply a second time. A line that
+ * only leads into the calls ("Good, let me note that.") is not a reply, so
+ * the model goes on to write one.
  */
 function turnEnding(
   outcomes: ToolCallOutcome[],
@@ -212,7 +220,7 @@ function turnEnding(
 ): 'now' | 'after_text' | undefined {
   if (outcomes.some((outcome) => outcome.endsTurn === true)) return 'now';
   if (outcomes.some((outcome) => outcome.endsTurn === 'after_text')) return 'after_text';
-  const replied = text !== '' && outcomes.length === calls && outcomes.every((o) => o.quiet);
+  const replied = readsAsReply(text) && outcomes.length === calls && outcomes.every((o) => o.quiet);
   return replied ? 'now' : undefined;
 }
 

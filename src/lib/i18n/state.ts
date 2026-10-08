@@ -1,7 +1,7 @@
 // Module: i18n/state
 // Responsibility: The one active language. Switching loads every registered
 // catalogue's translation first, so no screen shows half one language and half
-// the other, then tells the subscribers (React re-renders through `useLocale`).
+// the other, then tells the subscribers (React re-renders through `useT`).
 
 import { browserLanguages, englishName, SOURCE_LOCALE, type Locale } from '@/lib/i18n/locales';
 
@@ -12,6 +12,9 @@ const listeners = new Set<() => void>();
 let active: Locale = SOURCE_LOCALE;
 let pending = 0;
 let requested: Locale = SOURCE_LOCALE;
+// Counts what subscribers were told: a language switch, or a catalogue's
+// words for the shown language arriving after it, which leaves `active` as it was.
+let version = 0;
 
 export function registerCatalogue(catalogue: Registered): void {
   catalogues.push(catalogue);
@@ -29,7 +32,13 @@ export function subscribeLocale(listener: () => void): () => void {
   return () => listeners.delete(listener);
 }
 
+/** Changes whenever the words shown may have changed, for React's snapshot. */
+export function getLocaleVersion(): number {
+  return version;
+}
+
 function notify() {
+  version += 1;
   listeners.forEach((listener) => listener());
 }
 

@@ -84,6 +84,7 @@ const KNOWN_ANTHROPIC_PRICING: Record<
     inputCacheRead: number;
     inputCacheWrite: number;
     currency: string;
+    longPrompt?: { above: number; multiplier: number };
   }
 > = {
   'claude-fable-5-1': {
@@ -107,13 +108,14 @@ const KNOWN_ANTHROPIC_PRICING: Record<
     inputCacheWrite: 0.0000025,
     currency: 'usd',
   },
-  // Prompts over 100k tokens cost five times this; the table holds one rate.
   'claude-haiku-5-5': {
     prompt: 0.0000001,
     completion: 0.0000005,
     inputCacheRead: 0.00000001,
     inputCacheWrite: 0.000000125,
     currency: 'usd',
+    // Prompts over 100k tokens cost five times as much.
+    longPrompt: { above: 100_000, multiplier: 5 },
   },
   'claude-opus-5': {
     prompt: 0.000005,

@@ -1,8 +1,9 @@
 // Module: markdown/citations
-import { t } from '@/lib/i18n';
 // Responsibility: Pure text transforms applied before markdown parsing, and the
 // name a cited source goes by. Kept out of the renderer module so callers can
 // use them without pulling react-markdown.
+
+import { t } from '@/lib/i18n';
 
 export type MarkdownCitationSource = {
   title?: string;

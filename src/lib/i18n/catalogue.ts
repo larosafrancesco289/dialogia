@@ -7,7 +7,13 @@
 
 import { createElement, Fragment, useSyncExternalStore, type ReactNode } from 'react';
 import type { Locale } from '@/lib/i18n/locales';
-import { getLocale, intlLocale, registerCatalogue, subscribeLocale } from '@/lib/i18n/state';
+import {
+  getLocale,
+  getLocaleVersion,
+  intlLocale,
+  registerCatalogue,
+  subscribeLocale,
+} from '@/lib/i18n/state';
 import { formatNumber } from '@/lib/i18n/format';
 
 export type PluralMessage = {
@@ -142,26 +148,19 @@ export function defineCatalogue<S extends MessageSource>(
     return translate;
   };
 
-  // One function per language, so a component's memo sees the language change.
-  const byLocale = new Map<Locale, Translate<S>>();
-  const forLocale = (locale: Locale) => {
-    let translate = byLocale.get(locale);
-    if (!translate) {
-      translate = build();
-      byLocale.set(locale, translate);
-    }
-    return translate;
+  // A new function whenever the words may have changed (a switch, or this
+  // language's table arriving late), so a component's memo sees it.
+  let current: { version: number; translate: Translate<S> } | undefined;
+  const forVersion = (version: number) => {
+    if (current?.version !== version) current = { version, translate: build() };
+    return current.translate;
   };
 
   return {
     t: build(),
-    useT: () => forLocale(useLocale()),
+    useT: () =>
+      forVersion(useSyncExternalStore(subscribeLocale, getLocaleVersion, getLocaleVersion)),
     source,
     load,
   };
-}
-
-/** The language now shown, re-rendering when it changes. */
-export function useLocale(): Locale {
-  return useSyncExternalStore(subscribeLocale, getLocale, getLocale);
 }
