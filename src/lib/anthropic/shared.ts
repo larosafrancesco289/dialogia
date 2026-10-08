@@ -114,7 +114,7 @@ const KNOWN_ANTHROPIC_PRICING: Record<
     inputCacheRead: 0.00000001,
     inputCacheWrite: 0.000000125,
     currency: 'usd',
-    // Prompts over 100k tokens cost five times as much.
+    // Over 100k prompt tokens, input, output and cache all cost five times as much.
     longPrompt: { above: 100_000, multiplier: 5 },
   },
   'claude-opus-5': {
