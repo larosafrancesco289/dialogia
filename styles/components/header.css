@@ -111,6 +111,9 @@
     font-weight: 500;
     font-size: 1.125rem;
     letter-spacing: -0.01em;
+    /* A version number is a label, not prose: it stands on the line with the
+       capitals ("Haiku 5.5") instead of Newsreader's descending old-style 5. */
+    font-variant-numeric: lining-nums;
     color: var(--color-fg);
     text-align: left;
   }
