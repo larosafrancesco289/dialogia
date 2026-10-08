@@ -17,8 +17,8 @@ const messages: Translation<typeof en> = {
   // The Learning Hub
   'hub.goal': 'Ton objectif',
   'hub.topicsDone': {
-    one: '{done} sujet sur {count} terminé',
-    other: '{done} sujets sur {count} terminés',
+    one: '{done} sur {count} sujet terminé',
+    other: '{done} sur {count} sujets terminés',
   },
   'hub.hours': { one: 'environ {count} heure en tout', other: 'environ {count} heures en tout' },
   'hub.hint':
@@ -38,7 +38,7 @@ const messages: Translation<typeof en> = {
   'hub.open': 'Ouvrir le parcours',
   'hub.close': 'Fermer le parcours',
   'hub.labelWith': 'Parcours : {detail}',
-  'hub.topicsOf': { one: '{done} sujet sur {count}', other: '{done} sujets sur {count}' },
+  'hub.topicsOf': { one: '{done} sur {count} sujet', other: '{done} sur {count} sujets' },
   'hub.editing': 'Modification du plan',
   'hub.proposed': 'Plan proposé',
   'hub.done': 'Terminé',
@@ -71,12 +71,12 @@ const messages: Translation<typeof en> = {
   'note.checkOneRight': 'Question du petit test réussie',
   'note.checkOneMissed': 'Question du petit test manquée',
   'note.quizScore': {
-    one: '{right} question du quiz réussie sur {count}',
-    other: '{right} questions du quiz réussies sur {count}',
+    one: '{right} sur {count} question du quiz réussie',
+    other: '{right} sur {count} questions du quiz réussies',
   },
   'note.checkScore': {
-    one: '{right} question du petit test réussie sur {count}',
-    other: '{right} questions du petit test réussies sur {count}',
+    one: '{right} sur {count} question du petit test réussie',
+    other: '{right} sur {count} questions du petit test réussies',
   },
   'note.feltHigh': 'Tu as dit que l’estimation te semblait trop haute',
   'note.feltLow': 'Tu as dit que l’estimation te semblait trop basse',
