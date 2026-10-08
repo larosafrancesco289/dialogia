@@ -103,7 +103,7 @@ test('a router listed at -1 has an unknown cost, never a negative one', () => {
   assert.equal(computeCost({ model, promptTokens: 100, completionTokens: 50 }).total, undefined);
 });
 
-test('computeCost bills a long prompt’s input at its higher rate, counting cached tokens', () => {
+test('computeCost bills a long prompt at its higher rate, counting cached tokens', () => {
   const model = {
     id: 'anthropic-direct/claude-haiku-5-5',
     endpointId: 'anthropic',
@@ -122,7 +122,7 @@ test('computeCost bills a long prompt’s input at its higher rate, counting cac
     }).total;
   // Short: 10k input + 1k output at the base rates.
   assert.ok(Math.abs((cost(10_000, 0) ?? 0) - 0.0015) < 1e-12);
-  // Long only with the cache counted in: input and cache at five times, output unchanged.
-  const long = 10_000 * 0.0000005 + 95_000 * 0.00000005 + 1000 * 0.0000005;
+  // Long only with the cache counted in: input, cache and output all at five times.
+  const long = 10_000 * 0.0000005 + 95_000 * 0.00000005 + 1000 * 0.0000025;
   assert.ok(Math.abs((cost(10_000, 95_000) ?? 0) - long) < 1e-12);
 });

@@ -12,7 +12,7 @@ export type ModelDescriptor = {
     webSearch?: number;
     internalReasoning?: number;
     currency?: string;
-    /** Prompts longer than `above` tokens bill their input at `multiplier` times the rates above. */
+    /** Prompts longer than `above` tokens bill input and output at `multiplier` times the rates above. */
     longPrompt?: { above: number; multiplier: number };
   };
   raw?: unknown;

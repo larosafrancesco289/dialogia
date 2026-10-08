@@ -72,27 +72,28 @@ export function computeCost(opts: {
       ? Math.max(0, (promptTokens ?? 0) - (cacheReadTokens ?? 0) - (cacheWriteTokens ?? 0))
       : promptTokens;
 
-  // A long prompt bills its input at a higher rate, judged on the whole prompt,
-  // cached or not; the Claude API counts cache tokens apart from input_tokens.
+  // A long prompt bills the whole request at a higher rate, input and output,
+  // judged on the whole prompt, cached or not; the Claude API counts cache
+  // tokens apart from input_tokens.
   const longPrompt = model?.pricing?.longPrompt;
   const wholePrompt =
     (promptTokens ?? 0) + (directAnthropic ? (cacheReadTokens ?? 0) + (cacheWriteTokens ?? 0) : 0);
-  const inputScale = longPrompt && wholePrompt > longPrompt.above ? longPrompt.multiplier : 1;
+  const scale = longPrompt && wholePrompt > longPrompt.above ? longPrompt.multiplier : 1;
 
   const pCost =
     promptRate != null && billablePromptTokens != null
-      ? promptRate * billablePromptTokens * inputScale
+      ? promptRate * billablePromptTokens * scale
       : 0;
   const cacheReadCost =
-    cacheReadRate != null && cacheReadTokens != null
-      ? cacheReadRate * cacheReadTokens * inputScale
-      : 0;
+    cacheReadRate != null && cacheReadTokens != null ? cacheReadRate * cacheReadTokens * scale : 0;
   const cacheWriteCost =
     cacheWriteRate != null && cacheWriteTokens != null
-      ? cacheWriteRate * cacheWriteTokens * inputScale
+      ? cacheWriteRate * cacheWriteTokens * scale
       : 0;
   const cCost =
-    completionRate != null && completionTokens != null ? completionRate * completionTokens : 0;
+    completionRate != null && completionTokens != null
+      ? completionRate * completionTokens * scale
+      : 0;
   const total = pCost + cacheReadCost + cacheWriteCost + cCost;
   return { currency, total: total || undefined };
 }
