@@ -27,7 +27,8 @@ export function resolveTutorModelId(chosen: string | undefined, models: ModelDes
 
 // A model by name alone: "anthropic/claude-haiku-5.5", its Claude API id
 // "anthropic-direct/claude-haiku-5-5", a dated or ":variant" id all read alike.
-const bareModelName = (id: string) =>
+/** A model's name without its provider or date: the same model on any provider. */
+export const bareModelName = (id: string) =>
   id
     .replace(/^[^/]*\//, '')
     .replace(/:.*$/, '')
