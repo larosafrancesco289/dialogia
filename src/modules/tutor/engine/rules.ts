@@ -16,6 +16,13 @@ export const READY = 0.8;
  */
 export const MASTERY_EVIDENCE_MIN = 2;
 
+/**
+ * A tutor clears a misconception only after this many right answers of the
+ * learner's own since it was noted. One right answer just after the
+ * correction can be imitation; a second, in another turn, shows it held.
+ */
+export const MISCONCEPTION_CLEAR_MIN = 2;
+
 /** Below this a topic is still being built; between it and READY it is being practised. */
 export const PRACTISING = 0.5;
 

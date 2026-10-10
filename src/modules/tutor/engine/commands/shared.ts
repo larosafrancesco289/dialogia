@@ -4,6 +4,7 @@
 import type { LearningPlan, LearningPlanNode } from '@/lib/types';
 import type { TutorEvent, TutorEventDraft } from '@/modules/tutor/engine/events';
 import { findPlanNode, readyNodes, unmetPrerequisites } from '@/modules/tutor/engine/plan';
+import { MISCONCEPTION_CLEAR_MIN } from '@/modules/tutor/engine/rules';
 import {
   openMisconceptions,
   shownGone,
@@ -181,8 +182,8 @@ export function resolveMisconception(
     if (by === 'tutor' && !shownGone(state, nodeId, hit.id)) {
       return err(
         'needs_evidence',
-        `Nothing they did on their own since "${hit.id}" was noted shows it is gone.`,
-        'Give them a fresh question that this belief would get wrong, with no hint; when they answer it right on their own, record that and resolve it then.',
+        `Not enough they did on their own since "${hit.id}" was noted shows it is gone: it takes ${MISCONCEPTION_CLEAR_MIN} right answers of their own, in separate turns.`,
+        'Give them a fresh question that this belief would get wrong, with no hint; when they have answered such questions right on their own, recorded each time, resolve it then.',
       );
     }
     out.push({
