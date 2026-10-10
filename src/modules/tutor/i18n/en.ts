@@ -5,7 +5,7 @@
 const en = {
   // How a topic stands
   'status.done': 'Done',
-  'status.skipped': 'Skipped',
+  'status.skipped': 'Left for now',
   'status.inProgress': 'In progress',
   'status.startsAfter': 'Starts after {topics}',
   'status.quoted': '“{name}”',
