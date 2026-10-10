@@ -2,7 +2,7 @@ import type { PersistFragment, StoreState } from '@/lib/store/types';
 import { requireEndpointAuth } from '@/lib/auth/require';
 import { loadKeys, markKeyRejected } from '@/lib/keys/store';
 import { isLocalServer, ZDR_UNAVAILABLE_NOTICE } from '@/lib/policy/zdr';
-import { computeZdrFilterCached } from '@/lib/policy/zdr/cache';
+import { computeZdrFilterCached, refreshZdrListsIfNeeded } from '@/lib/policy/zdr/cache';
 import type { ModelIndex } from '@/lib/models';
 import { createModelIndex, EMPTY_MODEL_INDEX, resolveDefaultModelId } from '@/lib/models';
 import { reconcileModelDefaults } from '@/lib/models/defaultResolutions';
@@ -124,6 +124,9 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
             let models = await transportClient.fetchModels(auth);
 
             if (endpoint.kind === 'openrouter') {
+              // The lists describe OpenRouter's providers alone, so they are
+              // fetched here, for its models, rather than for everyone at start.
+              await refreshZdrListsIfNeeded(set, get).catch(() => undefined);
               const { filter, filtered } = await computeZdrFilterCached(
                 models,
                 zdrOnly ? 'enforce' : 'informational',
