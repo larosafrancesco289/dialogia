@@ -23,10 +23,11 @@ import { ProvidersPanel } from '@/components/settings/sections/ProvidersPanel';
 import { ChatPanel } from '@/components/settings/sections/ChatPanel';
 import { SettingsModuleSlot } from '@/components/ModuleSlot';
 import { AppearancePanel } from '@/components/settings/sections/AppearancePanel';
-import { DataPanel } from '@/components/settings/sections/DataPanel';
+import { DataPanel, type ImportKind } from '@/components/settings/sections/DataPanel';
 import { TAB_LIST } from '@/components/settings/sections/config';
 import { NOTICE_EXPORTED_CHATS } from '@/lib/store/notices';
-import { buildChatExport, importChatExport } from '@/lib/settings/transfer';
+import { buildChatExport, importFile } from '@/lib/settings/transfer';
+import type { ImportProgress } from '@/lib/historyImport/importHistory';
 import { t } from '@/lib/i18n';
 import { anyTurnActive } from '@/lib/ui/streaming';
 
@@ -50,6 +51,8 @@ export type SettingsDrawerState = {
 
 export function useSettingsDrawerState(): SettingsDrawerState {
   const [closing, setClosing] = useState(false);
+  const [importing, setImporting] = useState<ImportKind | null>(null);
+  const [importProgress, setImportProgress] = useState<ImportProgress | null>(null);
 
   const { setUI, setNotice, ui, loadModels, toggleFavoriteModel, favoriteModelIds, initializeApp } =
     useChatStore(
@@ -159,7 +162,7 @@ export function useSettingsDrawerState(): SettingsDrawerState {
     }
   };
 
-  const onImportPicked = async (file?: File | null) => {
+  const onImportPicked = async (file: File | null, kind: ImportKind) => {
     if (!file) return;
     // An import reloads every chat from disk, and a reply being written is
     // the store's, not the disk's yet: it would be lost from under its turn.
@@ -167,9 +170,12 @@ export function useSettingsDrawerState(): SettingsDrawerState {
       setNotice(t('data.importWhileReplying'));
       return;
     }
+    setImporting(kind);
     try {
-      const text = await file.text();
-      const importResult = await importChatExport(text);
+      const importResult = await importFile(file, {
+        historyOnly: kind === 'history',
+        onProgress: setImportProgress,
+      });
       if (!importResult.ok) {
         setNotice(importResult.error || t('data.importFailed'));
         return;
@@ -179,6 +185,9 @@ export function useSettingsDrawerState(): SettingsDrawerState {
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : t('data.importFailed');
       setNotice(message);
+    } finally {
+      setImporting(null);
+      setImportProgress(null);
     }
   };
 
@@ -250,6 +259,8 @@ export function useSettingsDrawerState(): SettingsDrawerState {
         renderSection={renderSection}
         onExport={onExport}
         onImportPicked={onImportPicked}
+        importing={importing}
+        importProgress={importProgress}
       />
     ),
   };

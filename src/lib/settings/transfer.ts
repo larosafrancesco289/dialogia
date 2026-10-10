@@ -5,6 +5,9 @@ import { migrate } from '@/lib/store/migrations';
 import { STORE_MIGRATION_VERSION } from '@/lib/store/versions';
 import { err, ok, type Result } from '@/lib/utils/result';
 import { t } from '@/lib/i18n';
+import { detectHistorySource } from '@/lib/historyImport/parse';
+import { importHistory, type ImportProgress } from '@/lib/historyImport/importHistory';
+import { looksLikeZip, readZipText } from '@/lib/historyImport/zip';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -81,6 +84,7 @@ export function describeImport({
   return `${imported} ${skipped}`;
 }
 
+/** @internal A backup's text, as `importFile` takes one. */
 export async function importChatExport(
   payload: string,
 ): Promise<Result<{ notice: string }, string>> {
@@ -90,6 +94,44 @@ export async function importChatExport(
   } catch {
     return err(t('data.notJson'));
   }
+  return importDialogiaBackup(data);
+}
+
+/**
+ * Any file Settings › Data is given: a Dialogia backup, or the
+ * conversations.json of a ChatGPT or Claude export (on its own or still in
+ * the export's .zip), told apart by what is in it.
+ */
+export async function importFile(
+  file: Blob,
+  options: { historyOnly?: boolean; onProgress?: (progress: ImportProgress) => void } = {},
+): Promise<Result<{ notice: string }, string>> {
+  let payload: string;
+  if (await looksLikeZip(file)) {
+    const read = await readZipText(file, 'conversations.json').catch(() => undefined);
+    if (!read?.ok)
+      return err(t(read?.reason === 'missing' ? 'history.zipMissing' : 'history.zipUnreadable'));
+    payload = read.text;
+  } else {
+    payload = await file.text();
+  }
+  let data: unknown;
+  try {
+    data = JSON.parse(payload);
+  } catch {
+    return err(t('data.notJson'));
+  }
+  const source = detectHistorySource(data);
+  if (source && Array.isArray(data)) return importHistory(source, data, options.onProgress);
+  // Asked for chats from elsewhere, a backup (which replaces settings) is not
+  // brought back without the warning its own button gives.
+  if (options.historyOnly) {
+    return err(t(isRecord(data) && 'chats' in data ? 'history.isBackup' : 'history.unknown'));
+  }
+  return importDialogiaBackup(data);
+}
+
+async function importDialogiaBackup(data: unknown): Promise<Result<{ notice: string }, string>> {
   const hasSettings = isRecord(data) && isRecord(data.persistedStore);
   const hasChats = isRecord(data) && Array.isArray(data.chats) && data.chats.length > 0;
   // Any JSON parses; one with nothing of ours in it is said to be so, not

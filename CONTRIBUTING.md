@@ -120,7 +120,7 @@ pattern the runner and knip match, and live either in `tests/` or beside the cod
 **Browser tests.** `bun run e2e` builds the app, serves it on :4318 with the mock model from
 `e2e/mock/server.ts` on :4399, and drives the critical journeys in headless Chromium: first run,
 a wrong key then a right one, streaming, Stop, a connection cut mid-reply, a provider error and Try
-again, Learn on a model without tools, two tabs, export and import, and the phone layout. Both
+again, Learn on a model without tools, two tabs, export and import, a ChatGPT export brought in, and the phone layout. Both
 ports are fresh origins, so no key or chat of yours is ever in reach. A run already listening there
 is reused outside CI, so a second checkout running at the same time sets `E2E_APP_PORT` and
 `E2E_MOCK_PORT` to ports of its own. Specs are `e2e/*.spec.ts` (`*.phone.spec.ts` run at phone size) and fail on any uncaught
