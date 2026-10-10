@@ -529,10 +529,10 @@ const en = {
   'servers.namePlaceholder': 'Name, e.g. Ollama',
   'servers.add': 'Add',
   'servers.addHint':
-    'Works with Ollama, LM Studio, llama.cpp and vLLM. Capabilities start off and are yours to turn on.',
+    'Works with Ollama, LM Studio, llama.cpp and vLLM. Extras start switched off: open the server to turn on what it can do, such as tools (needed for search, memory and the tutor) or images.',
   'servers.noAddress': 'no address',
   'webSearch.hint':
-    'Search built into the model provider needs no extra key and is the default. With an OpenRouter key you can also pick OpenRouter search in the composer: the model searches when it needs to, on your OpenRouter credit, and pages are read through Jina Reader. Your searches go to OpenRouter’s search partner, and page addresses to Jina.',
+    'Your model provider’s own search needs no extra key, and is the default. With an OpenRouter key you can also choose OpenRouter search in the composer, paid from your OpenRouter credit. Your searches then go to OpenRouter’s search partner, and the pages are read through a service called Jina.',
   'webSearch.keyLabel': '{provider} key',
   'capability.tools': 'Tools',
   'capability.toolsHint': 'Let the model use tools, such as search and memory.',
@@ -622,6 +622,38 @@ const en = {
     one: '{count} chat could not be read.',
     other: '{count} chats could not be read.',
   },
+
+  'data.review.system': 'It sets the instruction every new chat starts with:',
+  'data.review.notes': {
+    one: 'It adds this note to Memory:',
+    other: 'It adds these {count} notes to Memory:',
+  },
+  'data.review.more': { one: 'and {count} more', other: 'and {count} more' },
+  'history.label': 'Chats from ChatGPT or Claude',
+  'history.hint':
+    'Ask ChatGPT or Claude for a copy of your data. Choose the .zip file it sends you, or the conversations.json file inside it.',
+  'history.choose': 'Choose file',
+  'history.confirmBody':
+    'Your chats are added in a folder of their own, and nothing you have here is replaced. Choosing the same file again brings nothing in twice. Pictures and files stay behind; a note marks where each one was.',
+  'history.reading': 'Reading the file…',
+  'history.progress': 'Importing from {source}: {done} of {total}',
+  'history.folder': 'From {source}',
+  'history.imported': {
+    one: 'Imported {count} chat from {source}, into the folder “{folder}”.',
+    other: 'Imported {count} chats from {source}, into the folder “{folder}”.',
+  },
+  'history.nothing': 'This {source} export has no chats in it.',
+  'history.zipMissing':
+    'There is no conversations.json in this .zip. Choose the data export you got from ChatGPT or Claude.',
+  'history.zipUnreadable':
+    'This browser cannot open that .zip. Unzip it, then choose the conversations.json file inside.',
+  'history.isBackup':
+    'This is a Dialogia backup. Use Import under “Chats and settings” to bring it back.',
+  'history.unknown':
+    'This is not a ChatGPT or Claude export. Choose the conversations.json file from one, or the .zip it came in.',
+  'history.placeholder.image': '[Picture not included]',
+  'history.placeholder.file': '[File not included: {name}]',
+  'history.placeholder.fileUnnamed': '[File not included]',
 
   // Settings › Appearance
   'appearance.scheme': 'Color scheme',
@@ -778,6 +810,7 @@ const en = {
   'notice.providerError': 'The model provider returned an error',
   'notice.modelListFailed': 'Could not load the model list',
   'notice.emptyResponse': 'The provider sent an empty response',
+  'markdown.remoteImage': 'Image: {name} (open)',
   'notice.kind.image': 'images',
   'notice.kind.audio': 'audio',
   'notice.kind.pdf': 'PDFs',

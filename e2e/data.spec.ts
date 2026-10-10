@@ -27,7 +27,7 @@ test('an export imported into a fresh browser brings the chats back', async ({
   // The Import button is a label around a hidden file input.
   await other
     .getByRole('tabpanel', { name: 'Data' })
-    .locator('input[type=file]')
+    .getByLabel('Import', { exact: true })
     .setInputFiles(file);
   const confirm = other.getByRole('alertdialog').or(other.getByRole('dialog', { name: /Import/ }));
   if (await confirm.isVisible().catch(() => false)) {

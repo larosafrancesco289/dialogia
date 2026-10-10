@@ -74,6 +74,31 @@ export function parseCustomEndpoints(value: unknown): ProviderEndpoint[] {
   return endpoints;
 }
 
+/**
+ * A backup's servers, made safe to adopt. A key is stored under the server's
+ * id, so an imported address for an id already here, or for one a key still
+ * waits under, would send that key to whatever host the file names. A server
+ * already here keeps its own address and kind; one whose id holds a key but
+ * no server comes in under an id of its own, which holds no key.
+ */
+export function guardImportedEndpoints(
+  imported: unknown,
+  local: ProviderEndpoint[],
+  hasKey: (ref?: string) => boolean,
+): ProviderEndpoint[] {
+  const localById = new Map(local.map((endpoint) => [endpoint.id, endpoint]));
+  const parsed = parseCustomEndpoints(imported);
+  const taken = new Set([...localById.keys(), ...parsed.map((endpoint) => endpoint.id)]);
+  return parsed.map((endpoint) => {
+    const mine = localById.get(endpoint.id);
+    if (mine) return { ...endpoint, kind: mine.kind, baseUrl: mine.baseUrl };
+    if (!hasKey(endpoint.apiKeyRef)) return endpoint;
+    const id = slugifyEndpointId(endpoint.label, taken);
+    taken.add(id);
+    return { ...endpoint, id, apiKeyRef: endpointKeyRef(id) };
+  });
+}
+
 /** A stored workspace ID, or undefined when there is none or it could not be one. */
 function parseWorkspaceId(value: unknown): string | undefined {
   return typeof value === 'string' ? (normalizeWorkspaceId(value) ?? undefined) : undefined;

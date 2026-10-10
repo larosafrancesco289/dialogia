@@ -17,7 +17,8 @@
     "mock-llm": "PORT=3999 tsx e2e/mock/server.ts",
     "tutor:simulate": "tsx src/modules/tutor/tooling/simulate.ts",
     "tutor:step": "tsx src/modules/tutor/tooling/step.ts",
-    "tutor:evals": "tsx src/modules/tutor/tooling/evals.ts"
+    "tutor:evals": "tsx src/modules/tutor/tooling/evals.ts",
+    "smoke:providers": "tsx src/lib/cli/providerSmoke.ts"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "^5.3.0",
@@ -60,6 +61,7 @@
     "@vitejs/plugin-react": "^6.0.4",
     "eslint": "^9.12.0",
     "eslint-plugin-react-hooks": "^5.1.0",
+    "fake-indexeddb": "6.2.5",
     "knip": "^6.29.0",
     "prettier": "^3.3.3",
     "tailwindcss": "^4.0.0",
