@@ -18,25 +18,29 @@ export async function extractTextFromPdf(file: File): Promise<PdfExtractionResul
   }
 
   // Dynamic import to avoid SSR issues
-  const pdfjs = await import('pdfjs-dist');
-
-  // Configure worker using the legacy build for broader compatibility
-  pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
+  const [pdfjs, worker] = await Promise.all([
+    import('pdfjs-dist'),
+    // The worker ships with the app: fetched from a CDN, it reached a third
+    // party for someone on their own server, failed offline, and the page's
+    // policy (src/lib/csp.ts) allows workers from this origin alone.
+    import('pdfjs-dist/build/pdf.worker.min.mjs?url'),
+  ]);
+  pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
 
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-  const pageCount = pdf.numPages;
-
-  const pageTexts: string[] = [];
-  for (let i = 1; i <= pageCount; i++) {
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    const pageText = content.items.map((item) => ('str' in item ? item.str : '')).join(' ');
-    pageTexts.push(pageText.trim());
+  try {
+    const pageCount = pdf.numPages;
+    const pageTexts: string[] = [];
+    for (let i = 1; i <= pageCount; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      const pageText = content.items.map((item) => ('str' in item ? item.str : '')).join(' ');
+      pageTexts.push(pageText.trim());
+    }
+    return { text: pageTexts.join('\n\n'), pageCount };
+  } finally {
+    // The document holds the whole file in the worker until it is destroyed.
+    void pdf.destroy();
   }
-
-  return {
-    text: pageTexts.join('\n\n'),
-    pageCount,
-  };
 }
