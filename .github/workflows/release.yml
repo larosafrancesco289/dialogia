@@ -28,7 +28,11 @@ jobs:
 
       - run: bun run build
 
+      # Pinned: the action's own default (3.90) uploads dist/_headers as a plain
+      # file instead of applying it, so frame-ancestors, nosniff and the
+      # Permissions-Policy never reached visitors.
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          wranglerVersion: '4.144.0'
           command: deploy
