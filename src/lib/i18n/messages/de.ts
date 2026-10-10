@@ -807,6 +807,7 @@ const messages: Translation<typeof en> = {
   'notice.providerError': 'Der Modellanbieter hat einen Fehler gemeldet',
   'notice.modelListFailed': 'Die Modellliste konnte nicht geladen werden',
   'notice.emptyResponse': 'Der Anbieter hat eine leere Antwort geschickt',
+  'markdown.remoteImage': 'Bild: {name} (öffnen)',
   'notice.kind.image': 'Bilder',
   'notice.kind.audio': 'Audio',
   'notice.kind.pdf': 'PDFs',

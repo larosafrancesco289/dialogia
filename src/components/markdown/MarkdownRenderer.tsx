@@ -15,7 +15,7 @@ import remarkMath from 'remark-math';
 import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import { logger } from '@/lib/logger';
-import type { MarkdownCitationSource } from '@/lib/markdown/citations';
+import { hostname, type MarkdownCitationSource } from '@/lib/markdown/citations';
 import { hasMathDelimiter, preprocessMarkdown } from '@/lib/markdown/preprocess';
 import { loadKatexPlugin, loadedKatexPlugin } from '@/components/markdown/loadKatex';
 import { CodeBlock } from '@/components/markdown/CodeBlock';
@@ -214,6 +214,20 @@ const COMPONENTS: Components = {
   // react-markdown 9 passes no `inline` flag; a fenced block's <code> is
   // read and replaced by the <pre> override above.
   code: Code,
+  // An image is drawn only from the reply itself (data:) or this device
+  // (blob:). One from the web is a link to open, never a request made on
+  // render: model output is untrusted, and an image URL written by a model a
+  // fetched page steered can carry the conversation out in its query string.
+  img: ({ src, alt, node: _node, ...props }) => {
+    const url = typeof src === 'string' ? src : '';
+    if (/^(data:image\/|blob:)/i.test(url)) return <img src={url} alt={alt ?? ''} {...props} />;
+    if (!/^https?:\/\//i.test(url)) return alt ? <span>{alt}</span> : null;
+    return (
+      <a href={url} target="_blank" rel="noopener noreferrer" className="remote-image">
+        {t('markdown.remoteImage', { name: alt || hostname(url) })}
+      </a>
+    );
+  },
   // `node` is react-markdown's syntax tree; spread onto the DOM it
   // becomes node="[object Object]".
   a: ({ href, children, node: _node, ...props }) => {
