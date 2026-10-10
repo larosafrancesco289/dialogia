@@ -15,7 +15,7 @@ function SourcesList({ sources }: { sources: MarkdownCitationSource[] }) {
         >
           <span className="response-ledger__source-index">{index + 1}</span>
           <a
-            href={source.url}
+            href={source.url && /^https?:\/\//i.test(source.url) ? source.url : undefined}
             target="_blank"
             rel="noreferrer"
             className="response-ledger__source-link"

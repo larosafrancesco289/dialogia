@@ -834,6 +834,7 @@ const messages: Translation<typeof en> = {
   'notice.providerError': 'El proveedor del modelo devolvió un error',
   'notice.modelListFailed': 'No se pudo cargar la lista de modelos',
   'notice.emptyResponse': 'El proveedor envió una respuesta vacía',
+  'markdown.remoteImage': 'Imagen: {name} (abrir)',
   'notice.kind.image': 'imágenes',
   'notice.kind.audio': 'audio',
   'notice.kind.pdf': 'PDF',
