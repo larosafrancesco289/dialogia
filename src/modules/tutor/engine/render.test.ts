@@ -38,10 +38,13 @@ test('while teaching: goal, current topic with objectives, bands, misconceptions
       'Phase: teaching',
       'Current topic: Limits [limits]',
       'Objectives: Evaluate simple limits',
-      'Card questions on this topic so far, the latest last, with how each went. Any new question must differ from these and use new numbers:',
+      'Card questions on this topic so far, each asked once, the latest last, with how it went. Your next question uses a new case and new numbers:',
       '- "lim x->0 of x?" (quiz, right)',
       '- "lim x->1 of 2x?" (quiz, not answered)',
       '- "lim x->2 of x^2?" (quiz, not answered)',
+      'Coming up in the plan, with their own objectives. Teach these there, not inside the current topic; work the learner does on them is evidence for that topic:',
+      '- Derivatives [derivatives]: Define the derivative; Apply the power rule',
+      '- Chain rule [chain-rule]: Differentiate composite functions',
       'Topics (building < 50%, practising 50-79%, ready >= 80%):',
       '- Limits [limits]: in progress; building 48%',
       '- Derivatives [derivatives]: not started; building 30%; needs limits',
@@ -94,7 +97,10 @@ test('no plan: intake answers, diagnostic results, and a declined proposal are s
   const block = render(h);
   assert.match(block, /^The learner declined your last plan proposal: "Skip limits"\.$/m);
   assert.match(block, /^Intake answers:\n- "Goal\?": Exam\n- "Background\?": Complete beginner$/m);
-  assert.match(block, /^Diagnostic on "Algebra": 2 of 3 right; missed "lim x->1 of 2x\?"\.$/m);
+  assert.match(
+    block,
+    /^Diagnostic on "Algebra": 2 of 3 right\. Missed: "lim x->1 of 2x\?" \(chose "1"; right answer "2"\)\.$/m,
+  );
   assert.match(block, /^Budget: 1 diagnostic left\.$/m);
 });
 
@@ -301,7 +307,7 @@ test('diagnostic items tied to the current topic are remembered with their resul
 
 test('the tutor is reminded of the answers it recorded on the current topic since it opened', () => {
   const h = teaching();
-  assert.doesNotMatch(render(h), /recent answers/);
+  assert.doesNotMatch(render(h), /What their answers on this topic/);
   const record = (kind: 'struggled' | 'applied', note: string, messageId: string) =>
     h.tutor({ type: 'record_evidence', kind, note, source: 'observation' }, messageId);
   record('struggled', 'Said the left side stays', 'r1');
@@ -317,7 +323,7 @@ test('the tutor is reminded of the answers it recorded on the current topic sinc
     'r2',
   );
   const block = render(h);
-  assert.match(block, /recent answers you recorded on this topic/);
+  assert.match(block, /What their answers on this topic have shown so far/);
   assert.match(
     block,
     /^- struggled: "Said the left side stays"\n- applied: "Said equal midpoint means found"$/m,
@@ -328,5 +334,44 @@ test('the tutor is reminded of the answers it recorded on the current topic sinc
   h.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.9 });
   h.tutor({ type: 'complete_topic', how: 'skipped' });
   h.learner({ type: 'reopen_topic', nodeId: 'limits' });
-  assert.doesNotMatch(render(h), /recent answers/);
+  assert.doesNotMatch(render(h), /What their answers on this topic/);
+});
+
+test('a diagnostic stays in view while teaching, with the wrong choices the learner picked', () => {
+  const h = harness();
+  h.tutor({
+    type: 'give_diagnostic',
+    topic: 'Adding fractions',
+    items: [
+      { question: '1/2 + 1/3?', choices: ['2/5', '5/6'], correct: 1 },
+      { question: '1/4 + 1/6?', choices: ['2/10', '5/12'], correct: 1 },
+      { question: '1/2 + 1/2?', choices: ['1', '2/4'], correct: 0 },
+    ],
+  });
+  h.learner({
+    type: 'answer_diagnostic',
+    diagnosticId: h.state.awaiting!.id,
+    answers: { q1: 0, q2: 0, q3: 0 },
+  });
+  h.tutor({ type: 'propose_plan', ...CALCULUS });
+  h.learner({ type: 'approve_plan', proposalId: h.state.proposal!.proposalId });
+  assert.equal(h.state.phase, 'teaching');
+  assert.match(
+    render(h),
+    /^Diagnostic on "Adding fractions": 1 of 3 right\. Missed: "1\/2 \+ 1\/3\?" \(chose "2\/5"; right answer "5\/6"\); "1\/4 \+ 1\/6\?" \(chose "2\/10"; right answer "5\/12"\)\.$/m,
+  );
+});
+
+test('the next topics are shown with their objectives, and finished ones drop out', () => {
+  const h = teaching();
+  assert.match(
+    render(h),
+    /^Coming up in the plan.*\n- Derivatives \[derivatives\]: Define the derivative; Apply the power rule\n- Chain rule \[chain-rule\]: Differentiate composite functions$/m,
+  );
+  master(h);
+  h.tutor({ type: 'complete_topic', how: 'mastered' });
+  h.tutor({ type: 'start_topic', nodeId: 'derivatives' });
+  const block = render(h);
+  assert.match(block, /^- Chain rule \[chain-rule\]: Differentiate composite functions$/m);
+  assert.doesNotMatch(block, /^- Derivatives \[derivatives\]: Define/m);
 });
