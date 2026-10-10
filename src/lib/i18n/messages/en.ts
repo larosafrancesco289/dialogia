@@ -596,6 +596,7 @@ const en = {
     'Chats in the file replace chats here with the same id, and its settings replace yours: servers, favorites and chat defaults. Everything else here is kept. Export first if you may want to go back.',
   'data.exportFailed': 'The export failed. Try again.',
   'data.importFailed': 'The import failed. Try again.',
+  'data.importWhileReplying': 'Wait for the reply to finish, then import.',
   'data.nothing': 'This file has no Dialogia chats or settings.',
   'data.notJson': 'That file is not a Dialogia export: it is not valid JSON.',
   'data.newerVersion':
@@ -749,6 +750,8 @@ const en = {
   'notice.unreachable':
     'Could not reach the provider. Check your connection, or that your local server is running.',
   'notice.timedOut': 'The request timed out. Try again.',
+  'notice.cutOff': 'The connection closed before the reply finished. Try again.',
+  'notice.stalled': 'The provider stopped sending, so the reply was ended. Try again.',
   'notice.unknownError': 'Something went wrong, and the provider did not say what.',
   'notice.tryAgainSoon': 'Try again in a moment.',
   'notice.providerError': 'The model provider returned an error',

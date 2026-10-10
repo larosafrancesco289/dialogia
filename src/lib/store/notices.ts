@@ -36,6 +36,8 @@ const NOTICE_KEYS = {
   replacedReplyChangedMemory: 'notice.replacedReplyChangedMemory',
   unreachable: 'notice.unreachable',
   timedOut: 'notice.timedOut',
+  cutOff: 'notice.cutOff',
+  stalled: 'notice.stalled',
   unknownError: 'notice.unknownError',
   zdrUnavailable: 'zdr.unavailable',
 } as const satisfies Record<string, MessageKey>;
@@ -87,7 +89,9 @@ export function isAbortLike(error: unknown): boolean {
   if (error instanceof DOMException && error.name === 'AbortError') return true;
   if (error instanceof Error) {
     if (error.name === 'AbortError') return true;
-    if (/\baborted?\b/i.test(error.message)) return true;
+    // A provider's own words never mean the person pressed Stop, even when
+    // they say "Upstream request aborted"; the browser's own abort is named.
+    if (!isApiError(error) && /\baborted?\b/i.test(error.message)) return true;
     const cause = (error as Error & { detail?: unknown }).detail ?? error.cause;
     if (cause && cause !== error) return isAbortLike(cause);
   }
@@ -118,17 +122,33 @@ export function describeErrorNotice(error: unknown): string | undefined {
   if (isApiError(error) && error.code === API_ERROR_CODES.RATE_LIMITED) {
     return NOTICE_RATE_LIMITED;
   }
+  if (isApiError(error) && error.code === API_ERROR_CODES.STREAM_CUT_OFF) {
+    return NOTICE_CATALOG.cutOff;
+  }
+  if (isApiError(error) && error.code === API_ERROR_CODES.STREAM_STALLED) {
+    return NOTICE_CATALOG.stalled;
+  }
   const fromBody = httpErrorNotice(error);
   if (fromBody) return clip(fromBody);
   const message = error instanceof Error ? error.message : '';
-  if (/failed to fetch|load failed|networkerror|network request failed/i.test(message)) {
+  // A transport wraps the browser's TypeError ("Load failed" on iOS when the
+  // app is backgrounded mid-reply) as its detail, under its own code.
+  const said = errorChainMessages(error).join('\n');
+  if (/failed to fetch|load failed|networkerror|network request failed|network error/i.test(said)) {
     return NOTICE_CATALOG.unreachable;
   }
-  if (/timed? ?out/i.test(message)) {
+  if (/timed? ?out/i.test(said)) {
     return NOTICE_CATALOG.timedOut;
   }
   if (!message.trim()) return NOTICE_CATALOG.unknownError;
   return clip(readable(message));
+}
+
+/** The messages of an error and of the errors it wraps, outermost first. */
+function errorChainMessages(error: unknown, depth = 0): string[] {
+  if (!(error instanceof Error) || depth > MAX_BODY_DEPTH) return [];
+  const inner = (error as Error & { detail?: unknown }).detail ?? error.cause;
+  return [error.message, ...(inner !== error ? errorChainMessages(inner, depth + 1) : [])];
 }
 
 function clip(text: string): string {

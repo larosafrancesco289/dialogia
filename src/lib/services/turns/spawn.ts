@@ -9,6 +9,8 @@ import { createAssistantMessage, createUserMessage } from '@/lib/messages/create
 import { persistMessages } from '@/lib/services/messagePersistence';
 import { appendMessagesToChat } from '@/lib/messages/indexing';
 import { adjustActiveTurnCount } from '@/lib/ui/streaming';
+import { notify } from '@/lib/store/notify';
+import { NOTICE_SAVE_FAILED } from '@/lib/store/notices';
 
 export type SpawnMessagesResult = {
   userMessage: Message;
@@ -26,7 +28,7 @@ export const spawnTurnMessages = async ({
   primaryAttachments,
   activeModelIds,
   set,
-  get: _get,
+  get,
   repository,
 }: {
   chatId: string;
@@ -96,10 +98,18 @@ export const spawnTurnMessages = async ({
 
   // On disk a reply starts out as one the page closed on: a reload before its
   // first checkpoint still says what happened. Its ending clears the mark.
-  await persistMessages(repository, [
-    userMessage,
-    ...assistantPlaceholders.map((msg) => ({ ...msg, cutOff: 'interrupted' as const })),
-  ]);
+  try {
+    await persistMessages(repository, [
+      userMessage,
+      ...assistantPlaceholders.map((msg) => ({ ...msg, cutOff: 'interrupted' as const })),
+    ]);
+  } catch {
+    // The browser refused the write (storage full, or the database closed for
+    // a newer tab). The turn is counted as running by now, so it runs: the
+    // reply still reaches the screen, as a failed checkpoint's does, and the
+    // count comes down when it ends rather than staying up for good.
+    notify(get, NOTICE_SAVE_FAILED);
+  }
 
   return { userMessage, assistantByModel, masterController, markComplete, completeAll };
 };

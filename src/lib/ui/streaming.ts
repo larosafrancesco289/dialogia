@@ -10,6 +10,11 @@ export function isChatStreaming(ui: UIState, chatId?: string): boolean {
   return getActiveTurnCount(ui, chatId) > 0;
 }
 
+/** Whether this tab is writing a reply in any chat. */
+export function anyTurnActive(ui: UIState): boolean {
+  return Object.keys(ui.activeTurnByChatId).length > 0;
+}
+
 export function setActiveTurnCount(ui: UIState, chatId: string, count: number): UIState {
   const nextCount = Math.max(0, count);
   const nextMap = { ...ui.activeTurnByChatId };

@@ -28,6 +28,7 @@ import { TAB_LIST } from '@/components/settings/sections/config';
 import { NOTICE_EXPORTED_CHATS } from '@/lib/store/notices';
 import { buildChatExport, importChatExport } from '@/lib/settings/transfer';
 import { t } from '@/lib/i18n';
+import { anyTurnActive } from '@/lib/ui/streaming';
 
 export type SettingsDrawerState = {
   closing: boolean;
@@ -160,6 +161,12 @@ export function useSettingsDrawerState(): SettingsDrawerState {
 
   const onImportPicked = async (file?: File | null) => {
     if (!file) return;
+    // An import reloads every chat from disk, and a reply being written is
+    // the store's, not the disk's yet: it would be lost from under its turn.
+    if (anyTurnActive(useChatStore.getState().ui)) {
+      setNotice(t('data.importWhileReplying'));
+      return;
+    }
     try {
       const text = await file.text();
       const importResult = await importChatExport(text);

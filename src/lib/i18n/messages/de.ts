@@ -610,6 +610,7 @@ const messages: Translation<typeof en> = {
     'Chats aus der Datei ersetzen Chats hier mit derselben ID, und ihre Einstellungen ersetzen deine: Server, Favoriten und Chat-Voreinstellungen. Alles andere bleibt. Exportiere vorher, falls du zurückwillst.',
   'data.exportFailed': 'Der Export ist fehlgeschlagen. Versuch es noch einmal.',
   'data.importFailed': 'Der Import ist fehlgeschlagen. Versuch es noch einmal.',
+  'data.importWhileReplying': 'Warte, bis die Antwort fertig ist, und importiere dann.',
   'data.nothing': 'Diese Datei enthält keine Chats oder Einstellungen von Dialogia.',
   'data.notJson': 'Diese Datei ist kein Dialogia-Export: Sie ist kein gültiges JSON.',
   'data.newerVersion':
@@ -776,6 +777,10 @@ const messages: Translation<typeof en> = {
   'notice.unreachable':
     'Der Anbieter ist nicht erreichbar. Prüf deine Verbindung oder ob dein lokaler Server läuft.',
   'notice.timedOut': 'Die Anfrage hat zu lange gedauert. Versuch es noch einmal.',
+  'notice.cutOff':
+    'Die Verbindung wurde getrennt, bevor die Antwort fertig war. Versuch es noch einmal.',
+  'notice.stalled':
+    'Der Anbieter hat nichts mehr gesendet, deshalb wurde die Antwort beendet. Versuch es noch einmal.',
   'notice.unknownError': 'Etwas ist schiefgegangen, und der Anbieter hat nicht gesagt, was.',
   'notice.tryAgainSoon': 'Versuch es gleich noch einmal.',
   'notice.providerError': 'Der Modellanbieter hat einen Fehler gemeldet',

@@ -53,6 +53,8 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
             },
         onMessage: (event) => applyStreamEvent(turn, JSON.parse(event.data), callbacks),
       });
+      // No message_stop: the connection ended, not the response.
+      if (!turn.round.stopped) throw new ApiError({ code: API_ERROR_CODES.STREAM_CUT_OFF });
 
       usage = sumUsage(usage, turn.round.usage);
       const nextBody =

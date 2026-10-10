@@ -88,6 +88,8 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
   let usage: Usage | undefined;
   let annotations: unknown[] = [];
   let finishReason: FinishReason | undefined;
+  // Any finish reason, standard or not ("eos", "end_turn"): the provider ended the reply.
+  let providerEnded = false;
   const reasoningDetails: Array<Record<string, unknown>> = [];
   let reasoningTail = '';
   // Which reasoning block the text is in, when `reasoning_details` says.
@@ -236,6 +238,7 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
 
       // Capture finish reason
       const rawFinishReason = choice?.finish_reason;
+      if (typeof rawFinishReason === 'string' && rawFinishReason) providerEnded = true;
       if (typeof rawFinishReason === 'string' && VALID_FINISH_REASONS.has(rawFinishReason)) {
         finishReason = rawFinishReason as FinishReason;
       }
@@ -251,10 +254,20 @@ export async function streamChatCompletion(params: TransportStreamParams): Promi
   };
 
   try {
+    let receivedDone = false;
     await consumeSse(res, {
       onStart: callbacks?.onStart,
       onMessage: handleMessage,
+      onDone: (info) => {
+        receivedDone = info.receivedDone;
+      },
     });
+    // Ended by the connection, not the provider: what came is a fragment, and
+    // its tool calls may carry half their arguments. Some servers skip [DONE]
+    // but every one sends a finish reason, so either one marks a real ending.
+    if (!receivedDone && !providerEnded) {
+      throw new ApiError({ code: API_ERROR_CODES.STREAM_CUT_OFF });
+    }
   } catch (error) {
     const apiError =
       error instanceof ApiError

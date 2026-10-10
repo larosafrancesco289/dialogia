@@ -15,7 +15,47 @@ export type SseHandlers = {
   onDone?: (info: { receivedDone: boolean }) => void;
 };
 
-export async function consumeSse(response: Response, handlers: SseHandlers): Promise<void> {
+/**
+ * How long a stream may send nothing at all before it is given up on. A
+ * half-open connection (after a laptop sleeps, or a wifi switch) never errors
+ * and never ends, so without this a reply spins until Stop. Any bytes count,
+ * keep-alive comments and pings included, so a model thinking quietly behind a
+ * provider that pings is never cut; the margin is for a local server reading
+ * a long prompt before its first token.
+ */
+export const STREAM_IDLE_TIMEOUT_MS = 180_000;
+
+export type SseOptions = {
+  /** Overrides {@link STREAM_IDLE_TIMEOUT_MS}; tests shorten it. */
+  idleTimeoutMs?: number;
+};
+
+async function readWithin(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  ms: number,
+): Promise<ReadableStreamReadResult<Uint8Array>> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const stalled = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      // Rejected before the cancel, which settles the pending read as done:
+      // the other order reads a stall as a stream that ended.
+      reject(new ApiError({ code: API_ERROR_CODES.STREAM_STALLED }));
+      void reader.cancel().catch(() => undefined);
+    }, ms);
+  });
+  try {
+    return await Promise.race([reader.read(), stalled]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export async function consumeSse(
+  response: Response,
+  handlers: SseHandlers,
+  options: SseOptions = {},
+): Promise<void> {
+  const idleTimeoutMs = options.idleTimeoutMs ?? STREAM_IDLE_TIMEOUT_MS;
   const body = response.body;
   if (!body)
     throw new ApiError({ code: API_ERROR_CODES.STREAM_MISSING_BODY, status: response.status });
@@ -67,7 +107,7 @@ export async function consumeSse(response: Response, handlers: SseHandlers): Pro
   };
 
   while (true) {
-    const { done, value } = await reader.read();
+    const { done, value } = await readWithin(reader, idleTimeoutMs);
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split(/\r?\n/);

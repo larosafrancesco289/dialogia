@@ -5,6 +5,10 @@ export const API_ERROR_CODES = Object.freeze({
   UNAUTHORIZED: 'unauthorized',
   RATE_LIMITED: 'rate_limited',
   STREAM_MISSING_BODY: 'stream_missing_body',
+  /** The connection closed before the provider said the reply was finished. */
+  STREAM_CUT_OFF: 'stream_cut_off',
+  /** Nothing arrived, not even a keep-alive, for longer than a stream may pause. */
+  STREAM_STALLED: 'stream_stalled',
   OPENROUTER_CHAT_FAILED: 'openrouter_chat_failed',
   OPENROUTER_MODELS_FAILED: 'openrouter_models_failed',
   OPENROUTER_ZDR_FAILED: 'openrouter_zdr_failed',
