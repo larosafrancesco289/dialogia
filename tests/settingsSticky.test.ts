@@ -291,7 +291,7 @@ test('chat export and import preserve sticky chat defaults', async () => {
 
     const exported = await buildChatExport();
     assert.equal(exported.ok, true);
-    const parsed = JSON.parse(exported.json);
+    const parsed = JSON.parse(await exported.blob.text());
     assert.equal(parsed.persistedStore.ui.chatDefaults.system, 'Exported sticky system');
 
     useChatStore.setState({

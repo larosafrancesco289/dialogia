@@ -42,9 +42,16 @@ export function useComposerAttachments({
       });
       if (pick.notice) onSkipped?.(pick.notice);
       const converted: DraftAttachment[] = [];
-      for (const file of pick.pdfs) converted.push(await toPdfAttachment(file));
+      // What reading the PDFs found out is said once they are read, with the above.
+      const notices: string[] = [];
+      for (const file of pick.pdfs) {
+        const { attachment, notice } = await toPdfAttachment(file);
+        if (attachment) converted.push(attachment);
+        if (notice) notices.push(notice);
+      }
       for (const file of pick.images) converted.push(await toImageAttachment(file));
       for (const file of pick.audio) converted.push(await toAudioAttachment(file));
+      if (notices.length) onSkipped?.([pick.notice, ...notices].filter(Boolean).join(' '));
       if (converted.length) setAttachments([...attachmentsRef.current, ...converted]);
     },
     [canAudio, canVision, onSkipped, setAttachments],

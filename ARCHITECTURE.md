@@ -191,6 +191,23 @@ the schema.
 6. Streaming responses feed `src/lib/agent/streamHandlers.ts`, which updates the store and
    checkpoints the partial assistant message to IndexedDB.
 
+### Attachments
+
+A file is stored once (`src/lib/attachments/prepare`): a PDF whose text was read in the browser
+keeps the text alone, its file only when there is none; audio keeps its data URL, and the base64
+a model takes is cut from it at send time. A PDF locked by a password, or with no text and too
+large to send as a file, is not attached, and the composer says why; a scan small enough goes as
+the file, with a note that only some models read it.
+
+`buildChatCompletionMessages` sends attachments with their message and counts them toward its
+budget (`AttachmentProcessor.tokens`: a PDF's text by its length, a flat amount per image,
+recording and PDF page sent as a file), so an old one is dropped like any other words. The newest
+message is always kept, whatever it costs. Only the two latest messages that carry files send them
+in full; an earlier image, recording or file-only PDF is a line naming it (`[image: x.png, shared
+earlier]`), so a long chat stops paying for every picture again each turn while follow-up
+questions still see the latest ones. An image or recording the turn's model cannot take in
+(`ResolvedTurnSettings.caps`) is a line saying so, wherever it sits in the history.
+
 ### Two invariants in the streaming path
 
 **Token flushes are batched.** `src/lib/agent/streaming/accumulator.ts` coalesces tokens on a 32 ms
@@ -307,7 +324,10 @@ Web search is two distinct mechanisms, kept apart on purpose.
 2. **Tool-based search** is a real `web_search`/`web_fetch` tool call against a third-party API,
    described by the `SearchProvider` interface in `src/lib/search/providers/types.ts`. Tavily is the
    first implementation. `web_fetch` is offered to the model only when the active provider
-   implements `fetchPage`.
+   implements `fetchPage`. A reply's searches share one list of sources, once per page, in the
+   order found and capped at `MAX_SEARCH_SOURCES` (`mergeSearchResults`). Its numbers are the
+   ones `[n]` cites everywhere: each `web_search` result tells the model its pages' numbers in
+   that list, the system prompt after tools lists it, and the reply keeps it as `searchSources`.
 
 `SearchMode` is an open string. A chat naming a provider this machine has no key for degrades to
 native search rather than failing (`selectSearchMode`).
@@ -318,6 +338,9 @@ A turn with tools runs one of two loops in `src/lib/agent/streaming/`.
 
 - **The default loop** (`streamingTurn.ts`, used by search and memory) streams every round into
   the reply and clears a round that calls tools, so the first round that answers is the reply.
+  A cleared round's citations go with its words: native search is sent with every round, since
+  its results ground only the request that carried them, so a round that led to tool calls
+  would otherwise leave citations to pages the answer never read.
   Tool calls in a round run whatever the finish reason says. A round whose calls only save or
   forget memory notes, or name tools the turn never offered, keeps the reply's text instead
   (`keepsText`): the writes run, and the next round adds to that text after a blank line, with a
@@ -421,7 +444,9 @@ remove_folder, each with a sentence for the person. The app applies the plan its
 breaking a rule (a built-in folder removed, a folder removed that still holds live notes or
 subfolders), or without its sentence, is skipped and counted: the report says how many, and never
 calls memory tidy when something was proposed. Each line of the report opens the note or folder it
-changed. The plan is applied only if memory has not changed while the model answered, and an
+changed. The plan is applied only if memory has not changed while the model answered (checked again
+inside the write, against the rows the plan read, so another tab's change not yet heard of here
+is never written over), and an
 answer that cannot be read, or was cut off, is a failed pass that names the model as the cause. The request passes
 the zero-data-retention guard a turn does. The pass keeps the rows it wrote and the same rows as
 they were, under KV `memory:lastConsolidation` with its report, so Undo works even after a reload,

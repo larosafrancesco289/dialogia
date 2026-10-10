@@ -406,6 +406,30 @@ test('a plan made before memory changed is not applied', async () => {
   assert.match(ui.notice ?? '', /changed while it was being consolidated/);
 });
 
+test('a pass never writes over a note another tab changed that this tab has not read yet', async () => {
+  const store = createTestStore();
+  await store.getState().loadMemory();
+  await store.getState().changeMemory({ pass: null });
+  const added = await store.getState().addMemoryNote(MEMORY_ABOUT_FOLDER_ID, 'Lives in Rome');
+  await withModel(
+    async () => {
+      // Another tab rewrites the note; its announcement has not arrived here yet.
+      const stored = (await repository.loadMemory()).notes.find((n) => n.id === added!.id)!;
+      await repository.writeMemory({
+        notes: [{ ...stored, text: 'Moved to Porto in 2026', updatedAt: Date.now() }],
+      });
+      return { content: rewrite(added!.id, 'Lives in Rome, Italy') };
+    },
+    () => store.getState().consolidateMemory(),
+  );
+  const stored = (await repository.loadMemory()).notes.find((n) => n.id === added!.id)!;
+  assert.equal(stored.text, 'Moved to Porto in 2026', "the other tab's words stay");
+  assert.equal((await repository.loadMemory()).pass, undefined, 'no report of a pass not made');
+  const { memory, ui } = store.getState();
+  assert.equal(memory.notes.find((n) => n.id === added!.id)?.text, 'Moved to Porto in 2026');
+  assert.match(ui.notice ?? '', /changed while it was being consolidated/);
+});
+
 test('an answer that cannot be read, or was cut off, is a failed pass that names the model', async () => {
   const store = createTestStore();
   await store.getState().loadMemory();

@@ -861,6 +861,10 @@ const messages: Translation<typeof en> = {
   'attach.audioTypes': 'solo audio mp3 o wav',
   'attach.modelTakes': 'este modelo acepta {kinds}',
   'attach.notAttached': 'No adjuntados: {files}.',
+  'attach.pdfLocked': 'protegido con contraseña; quítala y vuelve a adjuntar el archivo',
+  'attach.pdfNoText': 'sin texto que leer, y demasiado grande para enviarlo como archivo',
+  'attach.pdfScanned':
+    '{name} no tiene texto que leer (quizá sea un escaneo). Se envía como archivo, y solo algunos modelos pueden leerlo.',
   'attach.hint': 'Adjuntar {kinds}',
 
   // Search errors, as the reasoning line shows them

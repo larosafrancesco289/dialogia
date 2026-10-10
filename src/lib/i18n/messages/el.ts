@@ -864,6 +864,10 @@ const messages: Translation<typeof en> = {
   'attach.audioTypes': 'μόνο ήχος mp3 ή wav',
   'attach.modelTakes': 'αυτό το μοντέλο δέχεται {kinds}',
   'attach.notAttached': 'Δεν επισυνάφθηκαν: {files}.',
+  'attach.pdfLocked': 'προστατεύεται με κωδικό· αφαίρεσέ τον και επισύναψε ξανά το αρχείο',
+  'attach.pdfNoText': 'δεν έχει κείμενο για ανάγνωση και είναι πολύ μεγάλο για να σταλεί ως αρχείο',
+  'attach.pdfScanned':
+    'Το {name} δεν έχει κείμενο για ανάγνωση (ίσως είναι σάρωση). Στέλνεται ως αρχείο, που μόνο ορισμένα μοντέλα μπορούν να διαβάσουν.',
   'attach.hint': 'Επισύναψη: {kinds}',
 
   // Search errors, as the reasoning line shows them

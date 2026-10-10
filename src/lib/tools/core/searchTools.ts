@@ -1,8 +1,8 @@
 // Module: tools/core/searchTools
 // Responsibility: The core web_search / web_fetch tools: handlers plus registration.
 
-import { MAX_FALLBACK_RESULTS } from '@/lib/constants';
 import { mergeSearchResults, performWebFetchTool, performWebSearchTool } from '@/lib/search';
+import { numberResults } from '@/lib/search/tool/results';
 import { getSearchProvider } from '@/lib/search/providers';
 import { normalizeWebFetchArgs, normalizeWebSearchArgs } from '@/lib/search/args';
 import { setSearchUiStatus } from '@/lib/search/ui/state';
@@ -85,10 +85,13 @@ const executeWebSearchTool: PlanningToolHandler = async ({
       }));
       return result ?? {};
     });
-    const payload = searchResult.results.slice(0, MAX_FALLBACK_RESULTS).map((result) => ({
-      title: result?.title,
-      url: result?.url,
-      description: result?.description,
+    // Numbered as the reply's sources are, so [n] means the same page to the
+    // model, in its system prompt, and under the reply.
+    const payload = numberResults(searchResult.results, merged).map((result) => ({
+      n: result.n,
+      title: result.title,
+      url: result.url,
+      description: result.description,
     }));
     output.resultsPreview = payload.slice(0, 3);
     log.success(output, {
@@ -227,7 +230,12 @@ const executeWebFetchTool: PlanningToolHandler = async ({
   if (result.error === NOTICE_MISSING_SEARCH_KEY) {
     notify(get, NOTICE_MISSING_SEARCH_KEY, 'info');
   }
-  const output = { ok: false, url: fetchArgs.url, error: result.error || 'No content' };
+  const output = {
+    ok: false,
+    url: fetchArgs.url,
+    error: result.error || t('searchError.reader.couldNot'),
+    hint: 'Tell the person this page could not be read. Do not guess what it says; another source may have it.',
+  };
   log.error(output, result.error || 'Fetch returned no content', metadataBase);
   return {
     convoMessages: [

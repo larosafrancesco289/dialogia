@@ -10,10 +10,19 @@ import type {
 import type { ModelMessage } from '@/lib/agent/types';
 import { TokenBudgeter } from './TokenBudgeter';
 import { createToolCallIdAllocator, replayAssistantTurn } from './replay';
-import { AttachmentProcessor } from '@/lib/attachments/prompt';
+import { AttachmentProcessor, type AttachmentReplay } from '@/lib/attachments/prompt';
+import { getModelCapabilities } from '@/lib/models/capabilities';
 import { formatMessageTimestamp } from '@/lib/agent/prompts/timestamps';
 import { estimateTokens } from '@/lib/tokenEstimate';
 import { memoryWriteRound } from '@/lib/memory/writes';
+
+/**
+ * How many of the latest messages that carry files (images, recordings, PDFs
+ * sent as files) send them in full; earlier ones name each file in a line. Two
+ * keep the person's latest pictures in view through any number of follow-up
+ * questions, while a long chat stops paying for every file again each turn.
+ */
+const MESSAGES_WITH_FILES_IN_FULL = 2;
 
 export function buildChatCompletionMessages(params: {
   chat: Chat;
@@ -24,10 +33,16 @@ export function buildChatCompletionMessages(params: {
   timestamps?: boolean;
   /** Memory, when this turn offers its tools: each reply's writes replay as its calls. */
   replayMemoryWrites?: { folders: MemoryFolder[]; notes: MemoryNote[] };
+  /**
+   * What the model can take in, so an earlier image or recording it cannot is
+   * a line naming it; read from the model's own listing when not given.
+   */
+  inputs?: { canSee: boolean; canAudio: boolean };
 }): ModelMessage[] {
   const { chat, priorMessages, models, newUserContent, newUserAttachments, timestamps } = params;
   const modelInfo = models.find((m) => m.id === chat.settings.modelId);
   const contextLimit = modelInfo?.context_length ?? 8000;
+  const { canSee, canAudio } = params.inputs ?? getModelCapabilities(modelInfo);
   const reserved =
     typeof chat.settings.generation.maxTokens === 'number'
       ? chat.settings.generation.maxTokens
@@ -39,6 +54,8 @@ export function buildChatCompletionMessages(params: {
     content: string;
     createdAt?: number;
     attachments?: PersistedAttachment[];
+    /** How the attachments go: set once it is known which messages send their files in full. */
+    replay?: AttachmentReplay;
     annotations?: Message['annotations'];
     /** Replayed as real tool calls; budgeted with the message, never apart from it. */
     toolRounds?: MessageToolRound[];
@@ -85,12 +102,31 @@ export function buildChatCompletionMessages(params: {
     });
   }
 
-  // 2. Budget Tokens
+  // 2. Attachments travel with their message and count toward its budget, so
+  // an old one is dropped like any other words. Only the latest messages that
+  // carry files send them in full.
+  let withFiles = 0;
+  for (let i = history.length - 1; i >= 0; i--) {
+    const entry = history[i];
+    const attachments = entry.role === 'user' ? entry.attachments : undefined;
+    if (!attachments?.length) continue;
+    const carries = AttachmentProcessor.carriesFiles(attachments, { canSee, canAudio });
+    if (carries) withFiles += 1;
+    entry.replay = {
+      canSee,
+      canAudio,
+      files: carries && withFiles <= MESSAGES_WITH_FILES_IN_FULL,
+    };
+    entry.extraTokens =
+      (entry.extraTokens ?? 0) + AttachmentProcessor.tokens(attachments, entry.replay);
+  }
+
+  // 3. Budget Tokens
   const budgeter = new TokenBudgeter(contextLimit, reserved);
   const indicesToKeep = budgeter.budget(history);
   const kept = indicesToKeep.map((i) => history[i]);
 
-  // 3. Format Messages
+  // 4. Format Messages
   const finalMsgs: ModelMessage[] = [];
   const allocateToolCallId = createToolCallIdAllocator();
 
@@ -119,7 +155,7 @@ export function buildChatCompletionMessages(params: {
     }
     const content = stamp(k.content);
     if (k.role === 'user' && Array.isArray(k.attachments) && k.attachments.length > 0) {
-      const blocks = AttachmentProcessor.process(k.attachments);
+      const blocks = AttachmentProcessor.process(k.attachments, k.replay);
       if (content && content.trim()) {
         blocks.unshift({ type: 'text', text: content });
       }

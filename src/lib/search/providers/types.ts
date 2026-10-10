@@ -48,6 +48,15 @@ export type SearchProvider = {
 export { NATIVE_SEARCH_MODE };
 export type { SearchMode };
 
+/**
+ * Whether a fetch brought back words to read. A page that would not load can
+ * still come back as success: Tavily answers 200 with no results (the page
+ * under `failed_results`), and Jina Reader with empty content.
+ */
+export function hasReadableContent(pages: FetchedPage[]): boolean {
+  return pages.some((page) => typeof page.raw_content === 'string' && page.raw_content.trim());
+}
+
 export function isNativeSearchMode(mode?: SearchMode): boolean {
   return !mode || mode === NATIVE_SEARCH_MODE;
 }

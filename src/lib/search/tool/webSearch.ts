@@ -5,6 +5,7 @@ import type { SearchResult } from '@/lib/search/types';
 import type { StoreGetter, StoreSetter, ToolExecutionResult } from '@/lib/agent/types';
 import type { WebSearchArgs } from '@/lib/search/args';
 import { setSearchUiStatus } from '@/lib/search/ui/state';
+import { mergeSearchResults } from '@/lib/search/tool/results';
 import { TOOL_CALL_STOPPED } from '@/lib/constants';
 import { t } from '@/lib/i18n';
 
@@ -102,7 +103,7 @@ export async function performWebSearchTool(opts: {
         setSearchUiStatus({ set, get }, assistantMessageId, {
           query: rawQuery,
           status: 'done',
-          results: result.results,
+          results: mergeSearchResults([earlierResults, result.results]),
         });
         return { ok: true, results: result.results as SearchResult[], query: rawQuery };
       }

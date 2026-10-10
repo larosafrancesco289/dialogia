@@ -6,7 +6,14 @@ import assert from 'node:assert/strict';
 import { createStore } from 'zustand/vanilla';
 import type { StateCreator } from 'zustand';
 import { repository } from '@/lib/db';
-import { describeImport, importChatExport, prepareImport } from '@/lib/settings/transfer';
+import {
+  buildChatExport,
+  describeImport,
+  importChatExport,
+  prepareImport,
+} from '@/lib/settings/transfer';
+import { createUserMessage } from '@/lib/messages/createMessage';
+import { makeChat } from './helpers/makeChat';
 import { useChatStore } from '@/lib/store';
 import { guardImportedEndpoints } from '@/lib/store/endpointSlice';
 import { endpointKeyRef } from '@/lib/transport/endpoints';
@@ -213,4 +220,20 @@ test('a ChatGPT or Claude export asks about nothing and sets nothing but chats',
     (await repository.loadMemory()).notes.some((n) => n.id === 'n'),
     false,
   );
+});
+
+test('an export is compact JSON that reads back row for row', async () => {
+  const chat = makeChat({ id: 'chat-export-compact', title: 'Exported' });
+  await repository.saveChat(chat);
+  await repository.saveMessage(
+    createUserMessage({ chatId: chat.id, content: 'Line one\nline two', createdAt: 5 }),
+  );
+  const exported = await buildChatExport();
+  assert.equal(exported.ok, true);
+  const text = await exported.blob.text();
+  assert.ok(!text.includes('\n'), 'no indentation, and no line breaks outside strings');
+  const parsed = JSON.parse(text);
+  assert.equal(parsed.chats.find((c: { id: string }) => c.id === chat.id)?.title, 'Exported');
+  assert.ok(parsed.messages.some((m: { content: string }) => m.content === 'Line one\nline two'));
+  assert.equal(parsed.persistedStoreVersion, STORE_MIGRATION_VERSION);
 });
