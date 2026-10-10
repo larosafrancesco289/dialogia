@@ -1,1 +1,1 @@
-export { AttachmentProcessor, hasPdfText } from '@/lib/attachments/prompt/AttachmentProcessor';
+export { AttachmentProcessor, hasPdfText, pdfFileFits } from '@/lib/attachments/prompt/AttachmentProcessor';

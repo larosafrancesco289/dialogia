@@ -7,6 +7,10 @@ import { detectAudioFormatFromAttachment, extractBase64FromDataUrl } from '@/lib
 // We use 5MB as a safe threshold to avoid hitting limits.
 const MAX_PDF_PAYLOAD_BYTES = 5 * 1024 * 1024;
 
+/** Whether a PDF file of this many bytes is small enough to send as it is (as a data URL). */
+export const pdfFileFits = (bytes: number | undefined): boolean =>
+  typeof bytes !== 'number' || Math.ceil(bytes / 3) * 4 + 64 <= MAX_PDF_PAYLOAD_BYTES;
+
 /** Whether a PDF's text was read: a scan reads as whitespace, which is no text. */
 export const hasPdfText = (attachment: { text?: string }): boolean =>
   typeof attachment.text === 'string' && attachment.text.trim().length > 0;

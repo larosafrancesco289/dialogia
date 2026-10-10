@@ -830,6 +830,10 @@ const en = {
   'attach.audioTypes': 'only mp3 or wav audio',
   'attach.modelTakes': 'this model takes {kinds}',
   'attach.notAttached': 'Not attached: {files}.',
+  'attach.pdfLocked': 'protected by a password; remove it and attach the file again',
+  'attach.pdfNoText': 'no text to read, and too large to send as a file',
+  'attach.pdfScanned':
+    '{name} has no text to read (it may be a scan). It is sent as a file, which only some models can read.',
   'attach.hint': 'Attach {kinds}',
 
   // Search errors, as the reasoning line shows them

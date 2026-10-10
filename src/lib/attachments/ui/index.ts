@@ -12,7 +12,8 @@ import {
 } from '@/lib/constants';
 import { fileToDataUrl } from '@/lib/attachments/readers';
 import { detectAudioFormatFromFile } from '@/lib/attachments/audio';
-import { extractTextFromPdf } from '@/lib/attachments/pdf';
+import { extractTextFromPdf, type PdfExtractionResult } from '@/lib/attachments/pdf';
+import { hasPdfText, pdfFileFits } from '@/lib/attachments/prompt';
 import { t } from '@/lib/i18n';
 import { formatList } from '@/lib/i18n/format';
 
@@ -137,28 +138,62 @@ export async function toImageAttachment(file: File): Promise<DraftAttachment> {
   };
 }
 
-export async function toPdfAttachment(file: File): Promise<DraftAttachment> {
-  // Extract text from PDF client-side to avoid payload size limits.
+type PdfIntake = {
+  /** Absent when the PDF is not attached. */
+  attachment?: DraftAttachment;
+  /** What the person should know about it, attached or not. */
+  notice?: string;
+};
+
+// pdf.js refuses a document it needs a password for with this error.
+const isPasswordError = (error: unknown) =>
+  !!error &&
+  typeof error === 'object' &&
+  (error as { name?: unknown }).name === 'PasswordException';
+
+/**
+ * Reads a PDF's text in the browser, since a model is sent the text. A PDF
+ * with none (a scan) goes as the file itself, which only some models read, so
+ * the person is told; one too large to go that way, or locked by a password
+ * (which every provider refuses), is not attached, and they are told why.
+ */
+export async function toPdfAttachment(
+  file: File,
+  extract: (file: File) => Promise<PdfExtractionResult> = extractTextFromPdf,
+): Promise<PdfIntake> {
+  const name = file.name || t('attach.aFile');
+  const notAttached = (reason: string) => ({
+    notice: t('attach.notAttached', { files: `${name} (${reason})` }),
+  });
   let text: string | undefined;
   let pageCount: number | undefined;
+  let unreadable = false;
   try {
-    const result = await extractTextFromPdf(file);
+    const result = await extract(file);
     text = result.text;
     pageCount = result.pageCount;
-  } catch {
-    // If extraction fails, we'll still create the attachment without text.
-    // The file will be sent as base64 if small enough, otherwise it will fail.
+    unreadable = !hasPdfText(result);
+  } catch (error) {
+    if (isPasswordError(error)) return notAttached(t('attach.pdfLocked'));
+    // Not read here (pdf.js could not load, say): the file goes as it is.
+  }
+  if (!hasPdfText({ text })) {
+    text = undefined;
+    if (!pdfFileFits(file.size)) return notAttached(t('attach.pdfNoText'));
   }
 
   return {
-    id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    kind: 'pdf',
-    name: file.name,
-    mime: file.type,
-    size: file.size,
-    file,
-    text,
-    pageCount,
+    attachment: {
+      id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      kind: 'pdf',
+      name: file.name,
+      mime: file.type,
+      size: file.size,
+      file,
+      text,
+      pageCount,
+    },
+    ...(unreadable ? { notice: t('attach.pdfScanned', { name }) } : {}),
   };
 }
 
