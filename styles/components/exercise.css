@@ -270,18 +270,19 @@
     color: color-mix(in oklab, var(--color-fg) 82%, var(--color-canvas));
   }
 
-  /* Stepper dots: ink for where you are, grading colours once answered. */
+  /* Stepper dots: ink for where you are, grading colours once answered. The
+     dot is drawn small; its target is the 24px square around it. */
   .step-dots {
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 0;
   }
   .step-dot {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 16px;
-    height: 16px;
+    width: 24px;
+    height: 24px;
     min-height: 0;
     min-width: 0;
     padding: 0;

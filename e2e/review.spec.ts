@@ -1,17 +1,15 @@
-import fs from 'node:fs/promises';
 import { test, expect, connectMock, send, REPLY_END } from './fixtures';
 import { MOCK_URL } from '../playwright.config';
+import { importBackup, type Backup, type Row } from './backup';
 
 const DAY = 24 * 60 * 60 * 1000;
-
-type Row = Record<string, unknown>;
 
 /**
  * A tutor chat whose first topic was finished nine days ago, built from a real
  * chat of this browser's export so its settings name the mock: the plan, a
  * quiz answered right three times, the topic completed, the next one started.
  */
-function studiedChat(exported: { chats: Row[]; messages: Row[] }) {
+function studiedChat(exported: Backup) {
   const source = exported.chats[0] as { settings: Row & { modelId: string; features: Row } };
   const chatId = 'chat-studied';
   // An hour more than nine days, so every row of it reads nine days old.
@@ -122,27 +120,7 @@ test('a topic studied nine days ago is offered for a refresher on the Learn page
   await send(page, 'Remember this exchange');
   await expect(page.getByRole('main').getByText(REPLY_END)).toBeVisible();
 
-  await page.getByRole('button', { name: 'Open settings' }).click();
-  await page.getByRole('tab', { name: 'Data' }).click();
-  const downloading = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export' }).click();
-  const exported = testInfo.outputPath('export.json');
-  await (await downloading).saveAs(exported);
-  const backup = testInfo.outputPath('studied.json');
-  await fs.writeFile(
-    backup,
-    JSON.stringify(studiedChat(JSON.parse(await fs.readFile(exported, 'utf8')))),
-  );
-  await page
-    .getByRole('tabpanel', { name: 'Data' })
-    .locator('input[type=file]')
-    .setInputFiles(backup);
-  const confirm = page.getByRole('alertdialog').or(page.getByRole('dialog', { name: /Import/ }));
-  if (await confirm.isVisible().catch(() => false)) {
-    await confirm.getByRole('button', { name: 'Import' }).click();
-  }
-  await expect(page.getByText(/Imported 1 chat/)).toBeVisible();
-  await page.getByRole('button', { name: 'Close settings' }).click();
+  await importBackup(page, testInfo, studiedChat);
 
   // A fresh page in Learn lists it, with the session it comes from.
   await page.getByRole('button', { name: 'New chat' }).first().click();
@@ -152,7 +130,6 @@ test('a topic studied nine days ago is offered for a refresher on the Learn page
   await expect(offer.getByText('Studied 9 days ago')).toBeVisible();
 
   // Review now opens that session and asks the tutor, who reads the gap.
-  await fetch(`${MOCK_URL.replace(/\/v1$/, '')}/__requests`, { method: 'DELETE' });
   await offer.getByRole('button', { name: 'Review now' }).click();
   const main = page.getByRole('main');
   await expect(main.getByText('Asked to review: Equivalent fractions')).toBeVisible();
@@ -160,7 +137,12 @@ test('a topic studied nine days ago is offered for a refresher on the Learn page
   const requests = (await (
     await fetch(`${MOCK_URL.replace(/\/v1$/, '')}/__requests`)
   ).json()) as Array<{ messages?: Array<{ role: string; content: unknown }> }>;
-  const system = JSON.stringify(requests.at(-1)?.messages?.filter((m) => m.role === 'system'));
+  // The mock serves every test running in parallel: this session's turn is
+  // the last request whose instructions carry its plan.
+  const systemOf = (request: (typeof requests)[number]) =>
+    JSON.stringify(request.messages?.filter((m) => m.role === 'system'));
+  const turn = [...requests].reverse().find((r) => systemOf(r).includes('Equivalent fractions'));
+  const system = turn ? systemOf(turn) : '';
   expect(system).toContain('Back after a break: the last exchange here was 9 days ago.');
   expect(system).toContain('Due for a refresher, studied a while ago and not practised since');
 

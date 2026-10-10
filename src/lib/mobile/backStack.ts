@@ -23,10 +23,18 @@ export function createBackStack(
   const stack: Entry[] = [];
   let armed = false;
   let ignorePops = 0;
+  // Armed while our own Back is still on its way: the browser aimed that Back
+  // when it was asked, so an entry pushed now is skipped, and the next Back
+  // leaves the app. The entry goes in once the Back has landed.
+  let pushAfterPop = false;
 
   const arm = () => {
     if (armed) return;
     armed = true;
+    if (ignorePops > 0) {
+      pushAfterPop = true;
+      return;
+    }
     // Same URL, same router state: only the entry itself is new.
     history.pushState(history.state, '');
   };
@@ -34,6 +42,10 @@ export function createBackStack(
   const onPopState = () => {
     if (ignorePops > 0) {
       ignorePops -= 1;
+      if (ignorePops === 0 && pushAfterPop) {
+        pushAfterPop = false;
+        history.pushState(history.state, '');
+      }
       return;
     }
     if (!armed) return;
@@ -59,6 +71,10 @@ export function createBackStack(
       defer(() => {
         if (stack.length > 0 || !armed) return;
         armed = false;
+        if (pushAfterPop) {
+          pushAfterPop = false;
+          return;
+        }
         ignorePops += 1;
         history.back();
       });

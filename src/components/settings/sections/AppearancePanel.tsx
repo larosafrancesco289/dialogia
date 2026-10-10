@@ -27,14 +27,14 @@ function LanguageSetting() {
   return (
     <div className="settings-row">
       <div className="settings-row-label">
-        <label className="settings-row-label-text" htmlFor="settings-language">
+        <label className="settings-row-label-text" htmlFor="settings-language-select">
           {t('appearance.language')}
         </label>
         <div className="settings-row-label-description">{t('appearance.languageHint')}</div>
       </div>
       <div className="settings-row-control">
         <select
-          id="settings-language"
+          id="settings-language-select"
           className="input"
           value={preference}
           onChange={(event) => {

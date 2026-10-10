@@ -58,13 +58,15 @@
 }
 
 /* The line is short, but the target is the whole middle of the header,
-   title included, as in phone chat apps: a tap anywhere there opens it. */
+   title included, as in phone chat apps: a tap anywhere there opens it. The
+   line itself is never under the 24px floor, so it stands as a target alone
+   too (WCAG 2.2 target size). */
 .modelPicker :global(.model-picker-trigger),
 .center :global(.tutor-header-line) {
   position: relative;
   justify-content: center;
   width: 100%;
-  min-height: 22px;
+  min-height: 24px;
   padding: 0 var(--space-2);
   gap: 4px;
 }
@@ -72,7 +74,7 @@
 .center :global(.tutor-header-line:enabled)::after {
   content: '';
   position: absolute;
-  inset: -26px 0 -8px;
+  inset: -24px 0 -7px;
 }
 
 .modelPicker :global(.model-picker-trigger__name) {

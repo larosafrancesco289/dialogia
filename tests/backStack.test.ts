@@ -2,30 +2,40 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createBackStack } from '@/lib/mobile/backStack';
 
+/**
+ * A browser's history as far as the stack sees it: a back() aims at the entry
+ * before the current one when it is called, and lands, with its popstate, a
+ * moment later. A pushState meanwhile adds an entry the back() then skips.
+ */
 function fakeHistory() {
-  let length = 1;
+  let index = 0;
   const pending: (() => void)[] = [];
   const history = {
     state: null,
     pushState: () => {
-      length += 1;
+      index += 1;
     },
     back: () => {
-      length -= 1;
-      // The browser answers a back() with a popstate a moment later.
-      pending.push(() => stack.onPopState());
+      const target = index - 1;
+      pending.push(() => {
+        index = target;
+        stack.onPopState();
+      });
     },
   };
   const deferred: (() => void)[] = [];
   const stack = createBackStack(history, (fn) => deferred.push(fn));
   return {
     stack,
-    length: () => length,
+    /** Entries up to the current one: 1 is the page as it was loaded. */
+    length: () => index + 1,
     /** The user presses Back. */
     pressBack: () => {
-      length -= 1;
+      index -= 1;
       stack.onPopState();
     },
+    /** Only the stack's deferred work, not the popstates it asked for. */
+    runDeferred: () => deferred.splice(0).forEach((fn) => fn()),
     /** Let deferred work and queued popstates run. */
     flush: () => {
       while (deferred.length || pending.length) {
@@ -86,5 +96,34 @@ test('a sheet that closes as the next opens keeps the one entry', () => {
   assert.equal(h.length(), 2);
   h.pressBack();
   assert.deepEqual(closed, ['move']);
+  assert.equal(h.length(), 1);
+});
+
+test("an overlay that opens while the last one's Back is on its way waits for it", () => {
+  const h = fakeHistory();
+  const closed: string[] = [];
+  // Settings from the phone's drawer: the drawer closes, its Back is sent,
+  // and Settings opens before that Back has landed.
+  const releaseDrawer = h.stack.push(() => closed.push('drawer'));
+  releaseDrawer();
+  h.runDeferred();
+  const releaseSettings = h.stack.push(() => closed.push('settings'));
+  h.flush();
+  assert.equal(h.length(), 2);
+  // Closing Settings by hand takes its entry back and stays in the app.
+  releaseSettings();
+  h.flush();
+  assert.equal(h.length(), 1);
+  assert.deepEqual(closed, []);
+});
+
+test('an overlay that opens and closes while a Back is on its way never stands an entry', () => {
+  const h = fakeHistory();
+  const releaseDrawer = h.stack.push(() => assert.fail('Back was not pressed'));
+  releaseDrawer();
+  h.runDeferred();
+  const releaseSheet = h.stack.push(() => assert.fail('Back was not pressed'));
+  releaseSheet();
+  h.flush();
   assert.equal(h.length(), 1);
 });

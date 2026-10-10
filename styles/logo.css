@@ -59,9 +59,20 @@
   }
 }
 
+/* Without motion the live mark holds one frame of its loop: the gold voice
+   halfway drawn from the join, its eye not yet reached. Whole, it would read
+   as the brand at rest, with nothing coming; the words beside it (a reply's
+   "Writing a reply") say the rest. */
 @media (prefers-reduced-motion: reduce) {
   .logo-mark--live .logo-mark__voice--close,
   .logo-mark--live .logo-mark__eye--close {
     animation: none;
+  }
+  .logo-mark--live .logo-mark__voice--close {
+    stroke-dasharray: 0.5 1;
+    stroke-dashoffset: 0;
+  }
+  .logo-mark--live .logo-mark__eye--close {
+    opacity: 0;
   }
 }
