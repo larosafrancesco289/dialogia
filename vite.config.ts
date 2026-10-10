@@ -1,9 +1,11 @@
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, type ViteDevServer } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { injectThemeClass } from './src/lib/html';
+import { contentSecurityPolicy, headersFile, inlineScripts } from './src/lib/csp';
 
 // The page's paper (--color-canvas in styles/tokens.css), so the browser's
 // bars and a home-screen app's splash meet the page without a seam.
@@ -21,6 +23,35 @@ const themeInit = () => ({
   name: 'dialogia-theme-init',
   transformIndexHtml() {
     return [{ tag: 'script', children: injectThemeClass(), injectTo: 'head' as const }];
+  },
+});
+
+/**
+ * The built page carries its Content Security Policy twice: as a <meta>, so
+ * `vite preview` and the browser tests run under it, and in Cloudflare's
+ * `_headers` with what a <meta> cannot set (frame-ancestors, nosniff). The
+ * inline theme script is allowed by its hash, taken from the final HTML.
+ */
+const securityHeaders = () => ({
+  name: 'dialogia-security-headers',
+  apply: 'build' as const,
+  enforce: 'post' as const,
+  generateBundle(_options: unknown, bundle: Record<string, { type: string; source?: unknown }>) {
+    const page = bundle['index.html'];
+    if (!page || page.type !== 'asset' || typeof page.source !== 'string') return;
+    const hashes = inlineScripts(page.source).map((body) =>
+      createHash('sha256').update(body).digest('base64'),
+    );
+    const meta = `<meta http-equiv="Content-Security-Policy" content="${contentSecurityPolicy(hashes, { meta: true })}" />`;
+    page.source = page.source.replace(
+      '<meta charset="UTF-8" />',
+      `<meta charset="UTF-8" />\n    ${meta}`,
+    );
+    (this as unknown as { emitFile: (file: object) => void }).emitFile({
+      type: 'asset',
+      fileName: '_headers',
+      source: headersFile(hashes),
+    });
   },
 });
 
@@ -67,6 +98,7 @@ export default defineConfig({
     tailwindcss(),
     themeInit(),
     devSwSelfDestruct(),
+    securityHeaders(),
     VitePWA({
       registerType: 'autoUpdate',
       // Oversized optional chunks are a deliberate skip, not a build failure.
