@@ -35,6 +35,10 @@ yarn-error.log*
 # Private working notes
 NOTES.md
 
+# Browser tests
+test-results/
+playwright-report/
+
 # Temporary files
 tmp/
 *.log

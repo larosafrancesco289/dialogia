@@ -4,9 +4,16 @@
     "src/modules/tutor/tooling/simulate.ts!",
     "tests/**/*.test.ts",
     "src/**/*.test.ts",
-    "tests/helpers/**/*.ts"
+    "tests/helpers/**/*.ts",
+    "e2e/**/*.spec.ts"
   ],
-  "project": ["src/**/*.{ts,tsx}!", "!src/lib/html.ts!", "!src/**/testSupport.ts!", "*.{ts,js}"],
+  "project": [
+    "src/**/*.{ts,tsx}!",
+    "!src/lib/html.ts!",
+    "!src/**/testSupport.ts!",
+    "*.{ts,js}",
+    "e2e/**/*.ts"
+  ],
   "ignoreExportsUsedInFile": true,
   "ignoreDependencies": [
     "@fontsource-variable/manrope",
