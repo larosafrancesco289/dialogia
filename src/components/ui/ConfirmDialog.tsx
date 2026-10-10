@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { DialogOverlay, DialogPortal, DialogSurface } from '@/components/ui/Dialog';
 import { useBackToClose } from '@/lib/hooks/useBackToClose';
 import { useModalFocus } from '@/lib/hooks/useModalFocus';
@@ -14,6 +14,8 @@ type Props = {
   onCancel: () => void;
   /** A destructive confirmation reads in crimson, not gold. */
   tone?: 'default' | 'danger';
+  /** What the question is about, shown under the lead. */
+  children?: ReactNode;
 };
 
 export function ConfirmDialog({
@@ -25,6 +27,7 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
   tone = 'danger',
+  children,
 }: Props) {
   const t = useT();
   const cancelRef = useRef<HTMLButtonElement>(null);
@@ -58,6 +61,7 @@ export function ConfirmDialog({
           >
             <h2 className="dialog__title">{title}</h2>
             {description && <p className="dialog__lead">{description}</p>}
+            {children}
             <div className="dialog__actions">
               <button ref={cancelRef} className="btn-outline btn-sm" onClick={onCancel}>
                 {cancelLabel ?? t('common.cancel')}

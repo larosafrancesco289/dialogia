@@ -640,6 +640,12 @@ const messages: Translation<typeof en> = {
     other: '{count} Chats ließen sich nicht lesen.',
   },
 
+  'data.review.system': 'Sie legt die Anweisung fest, mit der jeder neue Chat beginnt:',
+  'data.review.notes': {
+    one: 'Sie fügt diese Notiz dem Gedächtnis hinzu:',
+    other: 'Sie fügt diese {count} Notizen dem Gedächtnis hinzu:',
+  },
+  'data.review.more': { one: 'und {count} weitere', other: 'und {count} weitere' },
   'history.label': 'Chats aus ChatGPT oder Claude',
   'history.hint':
     'Bitte ChatGPT oder Claude um eine Kopie deiner Daten. Wähle die .zip-Datei, die du bekommst, oder die Datei conversations.json darin.',
