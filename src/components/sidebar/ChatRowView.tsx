@@ -1,4 +1,4 @@
-import { useRef, type PointerEvent } from 'react';
+import { useId, useRef, type PointerEvent } from 'react';
 import { IconButton } from '@/components/ui/IconButton';
 import {
   AcademicCapIcon,
@@ -81,6 +81,7 @@ export function ChatRowView({
   const { name, branch } = splitBranchTitle(title);
   const shownTitle = displayChatTitle(title);
   const allowActions = !collapsed && !isEditing;
+  const titleId = useId();
 
   return (
     <div
@@ -103,7 +104,12 @@ export function ChatRowView({
       onClick={!isEditing && !isMobile ? onSelect : undefined}
       onDoubleClick={!isMobile && !isEditing ? onStartEdit : undefined}
       // Reachable by keyboard: Enter or Space opens the chat, F2 renames it.
+      // A link to the chat, named by its title alone: the row's own buttons
+      // are read on their own, not as part of its name.
       tabIndex={isEditing ? -1 : 0}
+      role={isEditing ? undefined : 'link'}
+      aria-labelledby={!isEditing && showTitle ? titleId : undefined}
+      aria-label={!isEditing && !showTitle ? shownTitle : undefined}
       aria-current={isSelected ? 'page' : undefined}
       onKeyDown={(event) => {
         if (isEditing || event.target !== event.currentTarget) return;
@@ -133,6 +139,7 @@ export function ChatRowView({
           {isTutor && <AcademicCapIcon className="chat-item__kind" aria-hidden="true" />}
           <div
             key={title}
+            id={titleId}
             className={cn('flex flex-1 min-w-0 text-sm', retitled && 'chat-item__title--new')}
           >
             {isTutor && <span className="sr-only">{t('chatRow.tutoring')} </span>}

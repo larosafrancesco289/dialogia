@@ -168,6 +168,9 @@ export function MessageCardView({ viewModel }: { viewModel: MessageCardViewData 
     <div
       className={messageClassName}
       data-mid={message.id}
+      // An article, so a screen reader can step from message to message; a
+      // label on a plain div is read by none.
+      role="article"
       aria-label={t(message.role === 'assistant' ? 'message.sheet.reply' : 'message.sheet.yours')}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}

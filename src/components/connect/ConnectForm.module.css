@@ -64,10 +64,14 @@
   color: var(--color-fg-muted);
 }
 
+/* Each toggle keeps to one line with its chevron; where two will not fit
+   side by side (Italian or German on a phone), the second takes the next
+   line rather than both breaking. */
 .toggles {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: var(--space-3);
+  gap: 0 var(--space-3);
   margin-top: var(--space-2);
 }
 
@@ -75,7 +79,9 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  min-height: 24px;
   padding: var(--space-1) 0;
+  white-space: nowrap;
   border: 0;
   background: none;
   font-size: 0.8125rem;
@@ -193,6 +199,11 @@
 @media (max-width: 767px), (pointer: coarse) and (max-height: 499px) and (max-width: 1023px) {
   .row {
     flex-direction: column;
+  }
+  /* A thumb's height, as every phone button gets (mobile.css); the 24px
+     floor above is for a pointer. */
+  .toggle {
+    min-height: var(--touch-target-min);
   }
   .privacy {
     margin-top: var(--space-3);

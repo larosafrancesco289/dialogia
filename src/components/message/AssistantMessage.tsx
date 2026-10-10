@@ -30,6 +30,7 @@ import { replyEndingNote } from '@/lib/ui/replyEnding';
 import { silentWaitLine } from '@/lib/ui/responseActivity';
 import styles from './MessageCard.module.css';
 import { useT } from '@/lib/i18n';
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 
 export type AssistantMessageProps = {
   message: Message;
@@ -83,15 +84,29 @@ export type AssistantMessageProps = {
  * moves the reply. Hidden from screen readers, which would otherwise hear it
  * every second; the status already says a reply is coming.
  */
-function SilentWait({ since, className = '' }: { since?: number; className?: string }) {
+function SilentWait({
+  since,
+  still,
+  counts = true,
+  className = '',
+}: {
+  since?: number;
+  /** Said from the start when motion is reduced, since the mark then stands still. */
+  still?: string;
+  /** Whether the wait is long enough, at some point, to be said with its seconds. */
+  counts?: boolean;
+  className?: string;
+}) {
   const [startedAt] = useState(() => since ?? Date.now());
   const [now, setNow] = useState(startedAt);
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   useEffect(() => {
+    if (!counts) return;
     const tick = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(tick);
-  }, []);
+  }, [counts]);
   useT();
-  const line = silentWaitLine(now - startedAt);
+  const line = (counts && silentWaitLine(now - startedAt)) || (reducedMotion ? still : '');
   if (!line) return null;
   return (
     <span className={`${styles.silentWait} ${className} motion-fade`} aria-hidden="true">
@@ -203,7 +218,7 @@ export function AssistantMessage({
       <div className="markdown" role="status" aria-label={t('message.writing')}>
         <p className={styles.waiting}>
           <LogoMark className={`${styles.pen} ${styles.penWaiting}`} live />
-          <SilentWait />
+          <SilentWait still={t('message.writing')} />
         </p>
       </div>
     );
@@ -235,9 +250,14 @@ export function AssistantMessage({
           <div className="markdown" role="status" aria-label={t('message.stillWorking')}>
             <p>
               <LogoMark className={styles.pen} live />
-              {quietSince !== undefined && !toolCallInFlight(message) && (
-                <SilentWait since={quietSince} className={styles.silentWaitAfterPen} />
-              )}
+              <SilentWait
+                // Remounted when the words rest, so the count starts there.
+                key={quietSince ?? 'busy'}
+                since={quietSince}
+                counts={quietSince !== undefined && !toolCallInFlight(message)}
+                still={t('message.stillWorking')}
+                className={styles.silentWaitAfterPen}
+              />
             </p>
           </div>
         )}

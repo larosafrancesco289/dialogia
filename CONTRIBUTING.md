@@ -129,6 +129,13 @@ and the English words in `src/lib/i18n/messages/en.ts`. The mock's markers (`[cu
 `[status=500]`, `[delay=ms]`, `[tick=ms]`, `[think]`) shape one reply; the top of the file lists
 them. CI runs this as its own job, separate from `scripts/ci.sh`, and keeps traces of failures.
 
+**Accessibility scans.** `e2e/a11y.spec.ts` and `e2e/a11y.phone.spec.ts` run axe
+(`@axe-core/playwright`) over the main screens (welcome, a long reply, the model picker, every
+Settings page, Memory, Learn, a tutor quiz) in the light and dark themes, at desktop and phone
+size, against WCAG 2.x A and AA including 2.2's target size. A serious or critical violation fails
+the run; each scan's full report, with what axe could not decide, is attached to the test. A new
+screen worth guarding gets a test in `e2e/a11y.ts`.
+
 ## Simulating tutoring sessions
 
 `bun run tutor:simulate` is the tutor's automated QA harness. It runs one session through the
