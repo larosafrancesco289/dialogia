@@ -23,7 +23,9 @@ export function shownPercent(state: StepState, mastery: TopicMastery | undefined
 
 /**
  * `waiting` leaves out the topic just before, which goes without saying. A
- * skipped topic says so: "Done" would claim what the learner never showed.
+ * topic closed before it was shown ("skipped": the learner moved on) is left
+ * for now: "Done" would claim what they never showed, and "Skipped" read to
+ * learners who had worked it as if they had not.
  */
 export function statusWords(
   state: StepState,

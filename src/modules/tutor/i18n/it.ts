@@ -7,7 +7,7 @@ import type { Translation } from '@/lib/i18n/catalogue';
 const messages: Translation<typeof en> = {
   // How a topic stands
   'status.done': 'Fatto',
-  'status.skipped': 'Saltato',
+  'status.skipped': 'Lasciato per ora',
   'status.inProgress': 'In corso',
   'status.startsAfter': 'Inizia dopo {topics}',
   'status.quoted': '“{name}”',

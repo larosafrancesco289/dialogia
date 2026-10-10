@@ -569,7 +569,7 @@ export class StepRun {
       const status =
         node.status === 'completed'
           ? node.completedHow === 'skipped'
-            ? 'skipped'
+            ? 'left for now'
             : 'done'
           : node.status === 'in_progress'
             ? 'in progress'
