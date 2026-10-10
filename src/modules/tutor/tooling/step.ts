@@ -27,6 +27,8 @@ Moves (each prints what the learner sees next):
   too-high <topic#>            "Too high" on an estimate
   too-low <topic#>             "Too low" on an estimate
   cleared <topic#> <idea#>     "I've got this now" on an open idea (misconception)
+  review                       "Review now" in the Learning Hub, when topics are due
+  wait <days>                  Come back that many days later (the saved chat moves into the past)
   view                         Show the screen again without moving
 
 End:
@@ -117,6 +119,12 @@ async function main(argv: string[]): Promise<number> {
     case 'too-low':
     case 'cleared':
       console.log(await run.hub(move, rest[0] ?? '', rest[1]));
+      return 0;
+    case 'review':
+      console.log(await run.review());
+      return 0;
+    case 'wait':
+      console.log(await run.wait(Number(rest[0])));
       return 0;
     case 'view':
       console.log(run.screen());
