@@ -321,6 +321,9 @@ A turn with tools runs one of two loops in `src/lib/agent/streaming/`.
 
 - **The default loop** (`streamingTurn.ts`, used by search and memory) streams every round into
   the reply and clears a round that calls tools, so the first round that answers is the reply.
+  A cleared round's citations go with its words: native search is sent with every round, since
+  its results ground only the request that carried them, so a round that led to tool calls
+  would otherwise leave citations to pages the answer never read.
   Tool calls in a round run whatever the finish reason says. A round whose calls only save or
   forget memory notes, or name tools the turn never offered, keeps the reply's text instead
   (`keepsText`): the writes run, and the next round adds to that text after a blank line, with a

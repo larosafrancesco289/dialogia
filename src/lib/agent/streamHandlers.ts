@@ -52,6 +52,11 @@ export type MessageStreamOptions = {
 };
 
 export type MessageStreamCallbacks = StreamCallbacks & {
+  /**
+   * Takes back what the current round put on the reply and the caller is
+   * clearing: its text not yet shown, and the citations it added (a round of
+   * native search that led to tool calls cites pages the answer never read).
+   */
   discardPendingText: () => void;
   /**
    * Starts another round of the same reply (agent mode): its thinking gets a
@@ -190,6 +195,8 @@ export function createMessageStreamCallbacks(
 
   const contentAccumulator = createStreamAccumulator(flushDelta);
 
+  // The reply's citations as the current round found them, for a round taken back.
+  let annotationsBeforeRound = assistantMessage.annotations;
   // Set by `beginRound`: the next visible text starts a new paragraph, unless
   // nothing is on screen yet. Whitespace a round opens with is dropped.
   let roundSeparatorPending = false;
@@ -416,6 +423,11 @@ export function createMessageStreamCallbacks(
     discardPendingText: () => {
       timestampHold = '';
       contentAccumulator.cancel();
+      applyMessageUpdate(set, chatId, assistantMessage.id, (msg) =>
+        msg.annotations === annotationsBeforeRound
+          ? msg
+          : { ...msg, annotations: annotationsBeforeRound },
+      );
     },
     beginRound: () => {
       releaseTimestampHold();
@@ -424,6 +436,7 @@ export function createMessageStreamCallbacks(
       settleReasoning();
       reasoningActivityId = undefined;
       roundSentAt = Date.now();
+      annotationsBeforeRound = get().messagesById[assistantMessage.id]?.annotations;
       // Each round may echo the timestamp prefix again; hold it back as on the first.
       timestampGateOpen = false;
       roundSeparatorPending = true;

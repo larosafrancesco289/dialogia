@@ -30,6 +30,10 @@ export function createStreamCallContext(
     modalities: caps.canImageOut ? ['image', 'text'] : undefined,
     disableReasoning: caps.canReason && !isReasoningRequested(generation),
     canImageOut: caps.canImageOut,
+    // Every round carries them, native search too: its results ground only the
+    // request that asked for them and are not in the conversation sent back, so
+    // the round that answers after tools would answer without them. A round
+    // whose words are cleared gives back its citations with them.
     plugins: Array.isArray(opts.plugins) && opts.plugins.length > 0 ? opts.plugins : undefined,
   };
 }

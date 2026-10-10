@@ -214,6 +214,34 @@ test('executeStreamingTurn writes the answer once: the round after the tools is 
   assert.equal(run.lastPersisted?.usage?.prompt_tokens, 200, 'usage covers both rounds');
 });
 
+const cite = (url: string) => ({ type: 'url_citation', url_citation: { url, title: url } });
+
+/** A round of native search: cites a page, then streams `round`. */
+const citing =
+  (url: string, round: Round): Round =>
+  (ctx) => {
+    ctx.callbacks?.onAnnotations?.([cite(url)]);
+    round(ctx);
+  };
+
+test('executeStreamingTurn keeps only the citations of rounds whose words stay', async () => {
+  const cleared = await runTurn({
+    rounds: [
+      citing('https://cleared.test', draftThenTool('Let me check.', 'quiz')),
+      citing('https://answer.test', finish(ANSWER)),
+    ],
+  });
+  assert.equal(cleared.message?.content, ANSWER);
+  assert.deepEqual(cleared.lastPersisted?.annotations, [cite('https://answer.test')]);
+
+  const kept = await runTurn({
+    tools: [...TOOLS, ...MEMORY_TOOLS],
+    rounds: [citing('https://kept.test', draftThenTool(ANSWER, 'memory_save', SAVE)), finish('')],
+  });
+  assert.equal(kept.message?.content, ANSWER);
+  assert.deepEqual(kept.lastPersisted?.annotations, [cite('https://kept.test')]);
+});
+
 test('executeStreamingTurn closes with tools withheld once the tool rounds run out', async () => {
   const run = await runTurn({
     rounds: [
