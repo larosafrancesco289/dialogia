@@ -124,7 +124,8 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
       set((s) => ({ memory: { ...s.memory, ...stored, loaded: true } }));
     };
 
-    const changeMemory = async (change: MemoryChange) => {
+    /** 'changed' when the change was refused because a row it expected changed since. */
+    const writeChange = async (change: MemoryChange): Promise<'saved' | 'changed' | 'failed'> => {
       set((s) => ({
         memory: {
           ...s.memory,
@@ -135,13 +136,13 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
       }));
       writing += 1;
       begun += 1;
-      let saved = true;
+      let outcome: 'saved' | 'changed' | 'failed' = 'saved';
       try {
         await repository.writeMemory(change);
       } catch (error) {
-        saved = false;
         readAfterWrites = true;
-        if (!(error instanceof MemoryChangedError)) get().setNotice(NOTICE_SAVE_FAILED);
+        outcome = error instanceof MemoryChangedError ? 'changed' : 'failed';
+        if (outcome === 'failed') get().setNotice(NOTICE_SAVE_FAILED);
       } finally {
         writing -= 1;
       }
@@ -149,8 +150,10 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
         readAfterWrites = false;
         await refreshMemory();
       }
-      return saved;
+      return outcome;
     };
+
+    const changeMemory = async (change: MemoryChange) => (await writeChange(change)) === 'saved';
 
     const changeNote = async (id: string, change: (note: MemoryNote) => MemoryNote) => {
       const note = get().memory.notes.find((n) => n.id === id);
@@ -296,7 +299,14 @@ export const createMemorySlice = createStoreSlice<MemorySliceState & MemorySlice
             ...(lines.length ? { undo, ...(previous ? { previousAt: previous.at } : {}) } : {}),
             shown: true,
           };
-          await changeMemory({ ...change, pass });
+          // Another tab's write may not have reached this tab yet: the rows the
+          // plan read must still be stored as it read them.
+          const written = await writeChange({
+            ...change,
+            pass,
+            expect: { folders: undo.before.folders, notes: undo.before.notes },
+          });
+          if (written === 'changed') get().setNotice(NOTICE_CONSOLIDATION_STALE);
         } catch (error) {
           const code = (error as { code?: unknown } | null)?.code;
           get().setNotice(

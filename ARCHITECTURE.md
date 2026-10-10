@@ -421,7 +421,9 @@ remove_folder, each with a sentence for the person. The app applies the plan its
 breaking a rule (a built-in folder removed, a folder removed that still holds live notes or
 subfolders), or without its sentence, is skipped and counted: the report says how many, and never
 calls memory tidy when something was proposed. Each line of the report opens the note or folder it
-changed. The plan is applied only if memory has not changed while the model answered, and an
+changed. The plan is applied only if memory has not changed while the model answered (checked again
+inside the write, against the rows the plan read, so another tab's change not yet heard of here
+is never written over), and an
 answer that cannot be read, or was cut off, is a failed pass that names the model as the cause. The request passes
 the zero-data-retention guard a turn does. The pass keeps the rows it wrote and the same rows as
 they were, under KV `memory:lastConsolidation` with its report, so Undo works even after a reload,
