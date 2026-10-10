@@ -49,8 +49,15 @@ const PLAN = {
 };
 
 /** Intake, a plan, a quiz, then plain teaching: each move's first round, and quiet after it. */
+/** The system prompt of the latest request, state block included. */
+let lastSystem = '';
+
 function tutor(params: TransportStreamParams): void {
   const messages = params.messages;
+  lastSystem = messages
+    .filter((m) => m.role === 'system')
+    .map((m) => textOf(m.content))
+    .join('\n');
   const lastUser = messages.map((m) => m.role).lastIndexOf('user');
   const said = textOf(messages[lastUser]?.content);
   const round = messages.slice(lastUser + 1).filter((m) => m.role === 'assistant').length + 1;
@@ -137,10 +144,27 @@ test('a stepped chat survives being reopened between every move, and shows what 
   screen = await move(dir, (run) => run.hub('too-high', '1'));
   assert.match(screen, /You said: Said the estimate felt too high: Equivalent fractions/);
 
+  // Nine days away: the saved chat moves into the past, and the tutor reads the gap.
+  const before = JSON.parse(await fs.readFile(path.join(dir, 'session.json'), 'utf8'));
+  screen = await move(dir, (run) => run.wait(9));
+  assert.match(screen, /^9 day\(s\) later/);
+  assert.match(screen, /1\. Equivalent fractions: in progress, \d+%, studied 9 day\(s\) ago/);
+  const after = JSON.parse(await fs.readFile(path.join(dir, 'session.json'), 'utf8'));
+  assert.equal(after.events[0].at, before.events[0].at - 9 * 24 * 60 * 60 * 1000);
+  assert.deepEqual(after.waits, [{ afterExchange: 5, days: 9 }]);
+  screen = await move(dir, (run) => run.say('Hello again'));
+  const system = lastSystem;
+  assert.match(system, /Back after a break: the last exchange here was 9 days ago\./);
+  assert.match(
+    system,
+    /- Equivalent fractions \[equivalent\]: in progress; .*last studied 9 days ago/,
+  );
+
   const { checks } = await move(dir, (run) => run.finish());
   assert.ok(checks.length > 0);
   const transcript = JSON.parse(await fs.readFile(path.join(dir, 'transcript.json'), 'utf8'));
-  assert.equal(transcript.exchanges.length, 5);
+  assert.equal(transcript.exchanges.length, 6);
+  assert.deepEqual(transcript.waits, [{ afterExchange: 5, days: 9 }]);
   assert.equal(transcript.meta.scenario, 'test');
   assert.match(transcript.promptHash, /^[0-9a-f]{12}$/);
   assert.ok(transcript.cost > 0);

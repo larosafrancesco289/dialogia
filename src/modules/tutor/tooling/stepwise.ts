@@ -10,13 +10,18 @@ import path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 import type { PipelineClient } from '@/lib/agent/pipelineClient';
 import { computeCost } from '@/lib/cost';
+import { repository } from '@/lib/db';
 import { setLocale } from '@/lib/i18n/state';
 import { LOCALES, type Locale } from '@/lib/i18n/locales';
 import type { Usage } from '@/lib/api/normalizers';
 import type { Chat, Message, ModelDescriptor } from '@/lib/types';
 import {
+  DAY_MS,
   confidenceOf,
   contestTarget,
+  daysBetween,
+  dueTopics,
+  lastStudiedAt,
   nextReadyNode,
   openMisconceptions,
   percent,
@@ -80,6 +85,8 @@ type SavedSession = {
   exchanges: ExchangeRecord[];
   /** Learner changes made since the last turn that started none (quiet ones). */
   pending: LearnerActionRecord[];
+  /** Breaks the learner took (`wait`), each after the exchange it followed. */
+  waits?: Array<{ afterExchange: number; days: number }>;
 };
 
 export type StepDeps = {
@@ -145,6 +152,7 @@ export class StepRun {
     private saved: SavedSession,
     private readonly session: HeadlessTutorSession,
     private readonly model: ModelDescriptor,
+    private readonly deps: StepDeps,
   ) {}
 
   static async create(dir: string, options: NewRunOptions, deps: StepDeps = {}): Promise<StepRun> {
@@ -197,7 +205,7 @@ export class StepRun {
       ...(deps.pipeline ? { pipeline: deps.pipeline } : {}),
     });
     await session.restore(saved.messages, saved.events);
-    return new StepRun(dir, saved, session, model);
+    return new StepRun(dir, saved, session, model, deps);
   }
 
   get meta(): StepMeta {
@@ -250,6 +258,40 @@ export class StepRun {
     await this.save();
     if (tutor.error) return `${before}The tutor's turn failed: ${tutor.error}\n`;
     return before + this.screen();
+  }
+
+  /**
+   * The learner comes back `days` later. Everything saved moves that far into
+   * the past, so the next move runs at today's clock after a real-looking gap:
+   * the app reads time only from what it stored, and from the clock.
+   */
+  async wait(days: number): Promise<string> {
+    if (!Number.isFinite(days) || days <= 0) throw new Error('wait needs a number of days.');
+    const ms = Math.round(days * DAY_MS);
+    const { chat, messages, events } = this.saved;
+    this.saved = {
+      ...this.saved,
+      chat: { ...chat, createdAt: chat.createdAt - ms, updatedAt: chat.updatedAt - ms },
+      messages: messages.map((message) => ({ ...message, createdAt: message.createdAt - ms })),
+      events: events.map((event) => ({ ...event, at: event.at - ms })),
+      waits: [...(this.saved.waits ?? []), { afterExchange: this.saved.exchanges.length, days }],
+    };
+    await fs.writeFile(path.join(this.dir, SESSION_FILE), JSON.stringify(this.saved, null, 2));
+    // Reopened as the next move's fresh process will find it: from the folder alone.
+    await repository.deleteChatAndMessages(chat.id);
+    await repository.deleteTutorEvents(chat.id);
+    const back = await StepRun.open(this.dir, this.deps);
+    return `${days} day(s) later, you open the chat again.\n\n${back.screen()}`;
+  }
+
+  /** "Review now" in the Learning Hub: asks the tutor for a refresher on what is due. */
+  async review(): Promise<string> {
+    const plan = this.state.plan;
+    const due = dueTopics(this.state, Date.now()).flatMap(
+      (schedule) => plan?.nodes.find((n) => n.id === schedule.nodeId)?.name ?? [],
+    );
+    if (!due.length) throw new Error(`Nothing is due for a refresher. ${this.movesLine()}`);
+    return this.turn({ kind: 'ledger', text: LEDGER.review(due), actions: [] });
   }
 
   private requireCard(kind: 'quiz' | 'diagnostic' | 'intake' | 'proposal') {
@@ -565,6 +607,9 @@ export class StepRun {
   private hubScreen(state: TutorState): string | undefined {
     const plan = state.plan;
     if (!plan) return undefined;
+    const now = Date.now();
+    const cardOpen = !!state.awaiting && state.awaiting.kind !== 'proposal';
+    const due = new Set(cardOpen ? [] : dueTopics(state, now).map((s) => s.nodeId));
     const lines = plan.nodes.map((node, i) => {
       const status =
         node.status === 'completed'
@@ -580,9 +625,15 @@ export class StepRun {
       const ideas = openMisconceptions(state, node.id).map(
         (m, j) => `\n   open idea ${j + 1}: ${m.description}`,
       );
-      return `${i + 1}. ${node.name}: ${status}${estimate}${ideas.join('')}`;
+      const studied = lastStudiedAt(state, node.id);
+      const when = studied != null ? `, studied ${daysBetween(studied, now)} day(s) ago` : '';
+      const refresh = due.has(node.id) ? ', due for a refresher' : '';
+      return `${i + 1}. ${node.name}: ${status}${estimate}${when}${refresh}${ideas.join('')}`;
     });
-    return `LEARNING HUB: ${plan.goal}\n${lines.join('\n')}`;
+    const box = due.size
+      ? `\nTIME FOR A REFRESHER: a few quick questions now help you keep what you learned. (move: review)`
+      : '';
+    return `LEARNING HUB: ${plan.goal}\n${lines.join('\n')}${box}`;
   }
 
   private movesLine(): string {
@@ -606,6 +657,8 @@ export class StepRun {
     const seam = this.chapterBreak();
     if (seam) moves.unshift(...(seam.next ? ['go-on'] : []), 'more-practice');
     if (state.plan) {
+      const cardOpen = !!state.awaiting && state.awaiting.kind !== 'proposal';
+      if (!cardOpen && dueTopics(state, Date.now()).length) moves.push('review');
       moves.push('known <topic#>', 'reopen <topic#>');
       if (this.meta.flags.learnerModelEditable) {
         moves.push('too-high <topic#>', 'too-low <topic#>', 'cleared <topic#> <idea#>');
@@ -640,7 +693,13 @@ export class StepRun {
     await fs.writeFile(
       path.join(this.dir, 'transcript.json'),
       JSON.stringify(
-        { ...run, checks, cost: this.meta.cost, promptHash: tutorPromptHash() },
+        {
+          ...run,
+          checks,
+          cost: this.meta.cost,
+          promptHash: tutorPromptHash(),
+          ...(this.saved.waits?.length ? { waits: this.saved.waits } : {}),
+        },
         null,
         2,
       ),
