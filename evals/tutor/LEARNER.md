@@ -32,6 +32,8 @@ open card, the chapter break, the Learning Hub and `YOUR MOVES`. Only use moves 
 | `too-high <topic#>` / `too-low <topic#>` | Says an estimate feels wrong                                 |
 | `cleared <topic#> <idea#>`               | "I've got this now" on an open wrong idea                    |
 | `reopen <topic#>`                        | Reopens a finished topic                                     |
+| `review`                                 | "Review now" in the Learning Hub, when topics are due        |
+| `wait <days>`                            | Closes the app and comes back that many days later           |
 | `view`                                   | Shows the screen again                                       |
 | `finish`                                 | Ends the session and writes the report (your last move)      |
 
@@ -62,6 +64,12 @@ open card, the chapter break, the Learning Hub and `YOUR MOVES`. Only use moves 
      counter-example or by having you check your own answer. It goes from **wavering** to **gone**
      only after you apply the correct idea yourself, correctly, twice.
    - Nothing goes above 0.95. Your persona file may change these rates; follow it.
+   - **Forgetting.** Only when your brief tells you to take a break (`wait <days>`): right after
+     it, each skill keeps only part of what it gained above its starting value, `0.5^(days/7)` of
+     it, or `0.5^(days/14)` for a skill you applied correctly yourself in two separate sittings
+     (spread over time, not one stretch). A wrong idea that was `gone` comes back as `wavering`
+     after a break of more than two weeks. Record the faded state as its own line in
+     `truth.jsonl`, with `"why": "after a break of N days"`.
 6. **After every move**, append one line to `RUN/learner/truth.jsonl`:
    `{"move": <n>, "skills": {"<skill>": 0.35, ...}, "ideas": {"<idea>": "held" | "wavering" | "gone"}, "why": "<one sentence>"}`.
    Create the folder first. The first line (move 0) is your starting state.

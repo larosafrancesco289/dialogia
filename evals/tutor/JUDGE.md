@@ -40,6 +40,10 @@ would have done no better.
 10. **tone**: warm, direct, not condescending, not sycophantic. Praise only what was earned.
 11. **language**: wrote in the learner's language throughout, cards included. Score 5 when the
     persona is English and the tutor stayed in English.
+12. **review**: only when the learner took a break (`transcript.json` → `waits`; leave it out
+    otherwise). On their return, did the tutor notice the gap, check with a short refresher what
+    had stayed before building on it, and respond to what had slipped, without making the
+    refresher a chore or ignoring a question the learner came back with?
 
 ## Measure the learner model
 
