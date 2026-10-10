@@ -224,7 +224,7 @@ export function renderStateBlock(state: TutorState, options: RenderOptions): str
     const asked = askedOnTopic(state, current.id);
     if (asked.length) {
       lines.push(
-        "Already asked on this topic (don't repeat them or reuse their numbers; build on them):",
+        'Card questions on this topic so far, the latest last, with how each went. Any new question must differ from these and use new numbers:',
         ...asked,
       );
     }
@@ -252,6 +252,15 @@ export function renderStateBlock(state: TutorState, options: RenderOptions): str
       ),
     );
     if (open.length) lines.push('Open misconceptions:', ...open);
+    const cleared = (current ? (state.mastery[current.id]?.misconceptions ?? []) : []).filter(
+      (m) => m.resolved,
+    );
+    if (cleared.length) {
+      lines.push(
+        `Cleared before on ${current!.id} (if one comes back, note it again with its id):`,
+        ...cleared.map((m) => `- ${m.id}: ${m.description}`),
+      );
+    }
   }
 
   if (state.proposal) {

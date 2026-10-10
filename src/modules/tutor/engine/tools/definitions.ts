@@ -217,6 +217,12 @@ export const ARGS = {
         'The mistaken belief, written to the learner as what they thought: "You thought a vaccine attacks the germ itself". Never a bare statement, which reads as fact.',
       ),
     topicId: topicId.optional().describe('Defaults to the current topic.'),
+    misconceptionId: z
+      .string()
+      .optional()
+      .describe(
+        'When it is a belief already on the topic come back (listed under open misconceptions or cleared before), its id: the same entry reopens instead of a second one. Leave out for a new belief.',
+      ),
     shownBy: z
       .enum(['latest_answer', 'earlier_answer'])
       .default('latest_answer')

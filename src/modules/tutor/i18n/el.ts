@@ -7,6 +7,7 @@ import type { Translation } from '@/lib/i18n/catalogue';
 const messages: Translation<typeof en> = {
   // How a topic stands
   'status.done': 'Ολοκληρώθηκε',
+  'status.skipped': 'Παραλείφθηκε',
   'status.inProgress': 'Σε εξέλιξη',
   'status.startsAfter': 'Ξεκινά μετά από {topics}',
   'status.quoted': '«{name}»',
@@ -104,7 +105,7 @@ const messages: Translation<typeof en> = {
   'revise.hint':
     'Για να προσθέσεις, να αφαιρέσεις ή να αλλάξεις τη σειρά των ενοτήτων, ρώτα τον δάσκαλο.',
   'revise.ask': 'Ζήτα αλλαγές από τον δάσκαλο',
-  'revise.confirm': 'Να σημειωθεί ως ολοκληρωμένη και να συνεχίσεις;',
+  'revise.confirm': 'Να παραλειφθεί και να συνεχίσεις;',
   'revise.skip': 'Παράλειψη',
   'revise.next': 'Αυτή μετά',
   'revise.known': 'Το ξέρω ήδη',

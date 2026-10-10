@@ -5,6 +5,7 @@
 const en = {
   // How a topic stands
   'status.done': 'Done',
+  'status.skipped': 'Skipped',
   'status.inProgress': 'In progress',
   'status.startsAfter': 'Starts after {topics}',
   'status.quoted': '“{name}”',
@@ -95,7 +96,7 @@ const en = {
   // Editing the plan in the Hub
   'revise.hint': 'To add, remove or reorder topics, ask the tutor.',
   'revise.ask': 'Ask the tutor for changes',
-  'revise.confirm': 'Mark it done and move on?',
+  'revise.confirm': 'Skip it and move on?',
   'revise.skip': 'Skip it',
   'revise.next': 'Do this next',
   'revise.known': 'I know this',

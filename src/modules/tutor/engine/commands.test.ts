@@ -1012,7 +1012,31 @@ describe('evidence and misconceptions', () => {
       'unknown_misconception',
       /thinks-a-limit/,
     );
-    h.tutor({ type: 'resolve_misconception', misconceptionId: first.misconceptionId });
+    // A right answer the tutor's message handed them shows nothing of their own.
+    h.tutor(
+      {
+        type: 'record_evidence',
+        source: 'observation',
+        kind: 'applied',
+        note: 'You said 4',
+        helped: true,
+      },
+      'r2',
+    );
+    assertError(
+      h.refuse({
+        by: 'tutor',
+        type: 'resolve_misconception',
+        misconceptionId: first.misconceptionId,
+      }),
+      'needs_evidence',
+      /fresh question/,
+    );
+    h.tutor(
+      { type: 'record_evidence', source: 'observation', kind: 'applied', note: 'You worked out 6' },
+      'r3',
+    );
+    h.tutor({ type: 'resolve_misconception', misconceptionId: first.misconceptionId }, 'r3');
     assert.equal(h.state.mastery.limits.misconceptions[0].resolvedBy, 'tutor');
     assert.deepEqual(
       h.decide({
@@ -1025,12 +1049,23 @@ describe('evidence and misconceptions', () => {
     );
     h.tutor({
       type: 'note_misconception',
-      description: 'Thinks a limit is the value at the point',
+      description: 'You thought the limit is where the function is defined',
+      misconceptionId: first.misconceptionId,
     });
+    assert.equal(h.state.mastery.limits.misconceptions.length, 1, 'reworded, but the same entry');
     assert.equal(
       h.state.mastery.limits.misconceptions[0].resolved,
       false,
       'noting again reopens it',
+    );
+    // Evidence from before it came back no longer shows it gone.
+    assertError(
+      h.refuse({
+        by: 'tutor',
+        type: 'resolve_misconception',
+        misconceptionId: first.misconceptionId,
+      }),
+      'needs_evidence',
     );
     assertError(
       teaching({ learnerModelEditable: false }).refuse({

@@ -28,7 +28,7 @@ export function learningRecord(chat: Chat, state: TutorState): LearningRecord | 
         name: node.name,
         state: step,
         ...(percent != null ? { percent } : {}),
-        status: statusWords(step, node.id === upNextId, waitingOn(plan, node)),
+        status: statusWords(step, node.id === upNextId, waitingOn(plan, node), node.completedHow),
       };
     }),
   };

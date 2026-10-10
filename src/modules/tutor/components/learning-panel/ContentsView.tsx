@@ -162,7 +162,7 @@ function ContentsItem({
         <span className="hub-path__sub">
           {showMastery && <Meter value={mastery!.confidence} />}
           <span className="hub-path__status">
-            <Markdown inline content={statusWords(state, upNext, waiting)} />
+            <Markdown inline content={statusWords(state, upNext, waiting, node.completedHow)} />
             {toClear > 0 && (
               <>
                 {' · '}

@@ -29,6 +29,7 @@ export type TutorErrorCode =
   | 'open_misconceptions'
   | 'unknown_misconception'
   | 'already_resolved'
+  | 'needs_evidence'
   | 'unknown_card'
   | 'unknown_item'
   | 'card_closed'
@@ -72,6 +73,8 @@ export type TutorToolCommand =
       description: string;
       /** Which answer showed it; an earlier one leaves this reply's evidence standing. */
       shownBy?: 'latest_answer' | 'earlier_answer';
+      /** The same belief, already on the topic (open or cleared), come back. */
+      misconceptionId?: string;
     }
   | {
       by: 'tutor';

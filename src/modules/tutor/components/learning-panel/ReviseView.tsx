@@ -116,7 +116,7 @@ function ReviseItem({
         <span className="hub-path__sub">
           {percent != null && <Meter value={mastery!.confidence} />}
           <span className="hub-path__status">
-            <Markdown inline content={statusWords(state, false, waiting)} />
+            <Markdown inline content={statusWords(state, false, waiting, node.completedHow)} />
           </span>
         </span>
       </div>

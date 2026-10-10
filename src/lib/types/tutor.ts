@@ -219,6 +219,8 @@ export type Evidence = {
   setTo?: number;
   /** The tutor event that recorded this. Entries from before the event log have none. */
   eventId?: string;
+  /** The tutor had just told them the move they made. */
+  helped?: boolean;
   source?: EvidenceSource;
   /** The engine's own name for what happened; `type` is its legacy equivalent. */
   kind?: string;
@@ -235,4 +237,9 @@ export type Misconception = {
   severity?: string;
   examples?: string[];
   resolvedBy?: 'tutor' | 'learner';
+  /**
+   * How much evidence the topic had when this was last noted: what came after
+   * is what can show it is gone.
+   */
+  evidenceAt?: number;
 };

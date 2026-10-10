@@ -2,7 +2,7 @@
 // Responsibility: How a plan topic's standing is put into words and numbers, the
 // same in the Learning Hub and in memory's Learning folder.
 
-import type { TopicMastery } from '@/lib/types';
+import type { LearningPlanNode, TopicMastery } from '@/lib/types';
 import { formatList } from '@/lib/i18n/format';
 import { t } from '@/modules/tutor/i18n';
 import type { StepState } from '@/modules/tutor/components/learning-panel/PlanPath';
@@ -21,9 +21,17 @@ export function shownPercent(state: StepState, mastery: TopicMastery | undefined
   return started || isMeasured(mastery) ? pct(mastery.confidence) : undefined;
 }
 
-/** `waiting` leaves out the topic just before, which goes without saying. */
-export function statusWords(state: StepState, upNext: boolean, waiting: string[]): string {
-  if (state === 'done') return t('status.done');
+/**
+ * `waiting` leaves out the topic just before, which goes without saying. A
+ * skipped topic says so: "Done" would claim what the learner never showed.
+ */
+export function statusWords(
+  state: StepState,
+  upNext: boolean,
+  waiting: string[],
+  how?: LearningPlanNode['completedHow'],
+): string {
+  if (state === 'done') return t(how === 'skipped' ? 'status.skipped' : 'status.done');
   if (state === 'current') return t('status.inProgress');
   if (state === 'locked' && waiting.length) {
     return t('status.startsAfter', {
