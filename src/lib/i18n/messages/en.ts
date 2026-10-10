@@ -31,12 +31,17 @@ const en = {
     'Paste a key from Anthropic to use Claude models. You pay Anthropic only for what you use.',
   'connect.lead.local':
     'Paste the address of a model server you run, such as Ollama or LM Studio. Most need no key.',
+  'connect.steps.what':
+    'A key is like a password that lets Dialogia use your {provider} account. You pay {provider} directly for what you use.',
   'connect.steps.account': '{action} at {link}.',
   'connect.steps.accountAction': 'Make an account',
-  'connect.steps.credit': '{action} under {page}.',
+  'connect.steps.credit':
+    '{action} under {page}. You need a card, and a few dollars is enough to start.',
   'connect.steps.creditAction': 'Add a little credit',
   'connect.steps.key': '{action} under {link}, copy it, and paste it above.',
   'connect.steps.keyAction': 'Create a key',
+  'connect.steps.free':
+    'Just want to try it? OpenRouter also has free models, with “(free)” in their names. They need no credit, but allow only a limited number of messages a day.',
   'connect.serverAddress': 'Server address',
   'connect.submit': 'Connect',
   'connect.howToGetKey': 'How do I get a key?',
@@ -52,6 +57,9 @@ const en = {
   'connect.keyRefused':
     '{provider} did not accept that key. Check that you copied all of it, or create a new one.',
   'connect.serverSilent': 'Could not get any models from that address. Is the server running?',
+  'connect.keyFormat':
+    'That does not look like an {provider} key: {provider} keys start with {prefix}. Copy the whole key and paste it again.',
+  'connect.serverUnreachable': 'Could not reach that address.',
   'connect.keyNotSaved':
     'This browser could not save your key, so it works only until you close this page.',
   'connect.invalidAddress':
@@ -215,6 +223,7 @@ const en = {
   'ending.nothing.stopped': 'Stopped before the reply began.',
   'ending.nothing.failed': 'This reply failed.',
   'ending.nothing.interrupted': 'The page closed before this reply began.',
+  'ending.details': 'What the provider said',
   'ending.length': 'Stopped at the length limit.',
   'ending.announce.stopped': 'Reply stopped',
   'ending.announce.failed': 'Reply failed',
@@ -381,6 +390,10 @@ const en = {
   'header.collapseSidebar': 'Collapse sidebar',
   'header.openMemory': 'Open memory',
   'header.openSettings': 'Open settings',
+  'learnTools.notice':
+    '{model} cannot use tools, so in Learn it can only chat: no plan and no quizzes.',
+  'learnTools.chooseModel': 'Choose another model',
+  'learnTools.turnOnTools': 'Turn on Tools in Settings',
   'header.tutorModel': 'Tutor model: {model}. Set it in Settings.',
   'lightbox.label': 'Image viewer',
   'lightbox.download': 'Download',
@@ -753,6 +766,14 @@ const en = {
   'notice.cutOff': 'The connection closed before the reply finished. Try again.',
   'notice.stalled': 'The provider stopped sending, so the reply was ended. Try again.',
   'notice.unknownError': 'Something went wrong, and the provider did not say what.',
+  'notice.outOfCredit':
+    'Your account with the provider is out of credit. Add some on the provider’s website, then try again.',
+  'notice.modelNotFound':
+    'The provider does not have this model. Choose another model, then try again.',
+  'notice.providerDown':
+    'The provider had a problem on its side. Try again in a moment, or choose another model.',
+  'notice.requestRefused':
+    'The provider could not handle this request. Try again, or choose another model.',
   'notice.tryAgainSoon': 'Try again in a moment.',
   'notice.providerError': 'The model provider returned an error',
   'notice.modelListFailed': 'Could not load the model list',

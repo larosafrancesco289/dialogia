@@ -54,6 +54,16 @@
   color: var(--color-danger);
 }
 
+.error p {
+  margin: 0;
+}
+
+/* What to change on the server: advice, so in ink rather than alarm. */
+.error .errorHint {
+  margin-top: var(--space-1);
+  color: var(--color-fg-muted);
+}
+
 .toggles {
   display: flex;
   justify-content: space-between;
@@ -101,8 +111,22 @@
   margin: var(--space-2) 0 0;
   padding: var(--space-3) 0 0;
   border-top: 1px solid var(--chrome-rule);
+}
+
+.steps ol {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
   list-style: none;
   counter-reset: step;
+}
+
+.stepsNote {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--color-fg-muted);
 }
 
 .steps li {

@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   CheckIcon,
@@ -64,14 +64,38 @@ export function McqCard({
   );
 
   const activeAttempt = activeItem ? attempts[activeItem.id] : undefined;
-  const picked = activeAttempt?.choice;
   const answered = !!activeAttempt;
+  // A tap only selects; the answer goes when it is checked, so a thumb that
+  // lands on the wrong row while scrolling a phone commits nothing.
+  const [selected, setSelected] = useState<number>();
+  const [checking, setChecking] = useState(false);
+  const picked = activeAttempt?.choice ?? selected;
   const correctIdx = typeof activeItem?.correct === 'number' ? activeItem.correct : -1;
+  const choiceRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const activeId = activeItem?.id;
+
+  useEffect(() => {
+    setSelected(undefined);
+  }, [activeId]);
+
+  const handleSelect = (choiceIdx: number) => {
+    if (!activeItem || answered || checking) return;
+    setSelected(choiceIdx);
+  };
 
   // The answer and its explanation stay until the learner presses Next, right or wrong.
-  const handleSelect = (choiceIdx: number) => {
-    if (!activeItem || answered) return;
-    void onAnswer(activeItem.id, choiceIdx);
+  const check = async () => {
+    if (!activeItem || answered || checking || selected === undefined) return;
+    const choice = selected;
+    setChecking(true);
+    try {
+      await onAnswer(activeItem.id, choice);
+    } finally {
+      setChecking(false);
+    }
+    // The Check button goes once answered: focus stays on the answer given,
+    // where the verdict and its label are.
+    choiceRefs.current[choice]?.focus();
   };
 
   if (!total || !activeItem) return null;
@@ -123,25 +147,40 @@ export function McqCard({
                 } else if (isPicked) {
                   state = 'is-picked';
                 }
+                // Said in words as well as colour and mark: the right answer,
+                // and the learner's own when it was not.
+                const graded = answered && (isCorrect || isPicked);
 
                 return (
                   <button
                     type="button"
                     key={idx}
+                    ref={(el) => {
+                      choiceRefs.current[idx] = el;
+                    }}
                     className={`choice ${state}`.trim()}
                     onClick={() => handleSelect(idx)}
-                    disabled={answered}
+                    // Not disabled once answered: a disabled button drops focus.
+                    aria-disabled={answered || undefined}
+                    aria-pressed={answered ? undefined : isPicked}
                   >
                     <span className="choice__mark">{String.fromCharCode(65 + idx)}</span>
                     <span className="choice__body">
                       <Markdown inline content={choice} />
                     </span>
-                    {answered && (isCorrect || isPicked) && (
-                      <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }}>
+                    {graded && (
+                      <motion.span
+                        className="choice__grade"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                      >
+                        <span className="choice__label">
+                          {t(isCorrect ? 'quiz.rightAnswer' : 'quiz.yourAnswer')}
+                        </span>
                         {isCorrect ? (
-                          <CheckIcon className="choice__end" />
+                          <CheckIcon className="choice__end" aria-hidden="true" />
                         ) : (
-                          <XMarkIcon className="choice__end" />
+                          <XMarkIcon className="choice__end" aria-hidden="true" />
                         )}
                       </motion.span>
                     )}
@@ -150,35 +189,51 @@ export function McqCard({
               })}
             </div>
 
-            <AnimatePresence>
-              {answered && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden"
+            {!answered && (
+              <div>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  onClick={() => void check()}
+                  disabled={selected === undefined || checking}
                 >
-                  <div className={`exercise-feedback${picked === correctIdx ? '' : ' is-wrong'}`}>
-                    <p className="exercise-feedback__verdict">
-                      {picked === correctIdx ? (
-                        <>
-                          <CheckIcon /> {t('quiz.correct')}
-                        </>
-                      ) : (
-                        <>
-                          <XMarkIcon /> {t('quiz.notQuite')}
-                        </>
-                      )}
-                    </p>
-                    {activeItem.explanation && (
-                      <p className="exercise-feedback__text">
-                        <Markdown inline content={activeItem.explanation} />
+                  {t('quiz.check')}
+                </button>
+              </div>
+            )}
+
+            {/* Always there, so the verdict is read out as it arrives. */}
+            <div role="status">
+              <AnimatePresence>
+                {answered && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className={`exercise-feedback${picked === correctIdx ? '' : ' is-wrong'}`}>
+                      <p className="exercise-feedback__verdict">
+                        {picked === correctIdx ? (
+                          <>
+                            <CheckIcon aria-hidden="true" /> {t('quiz.correct')}
+                          </>
+                        ) : (
+                          <>
+                            <XMarkIcon aria-hidden="true" /> {t('quiz.notQuite')}
+                          </>
+                        )}
                       </p>
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                      {activeItem.explanation && (
+                        <p className="exercise-feedback__text">
+                          <Markdown inline content={activeItem.explanation} />
+                        </p>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </motion.div>
         </AnimatePresence>
       </div>

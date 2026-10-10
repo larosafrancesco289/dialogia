@@ -141,17 +141,6 @@
     transform: rotate(180deg);
   }
 
-  /* Tutor mode: read-only display, no hover effects */
-  .model-picker-trigger--tutor {
-    cursor: default;
-  }
-
-  @media (hover: hover) {
-    .model-picker-trigger--tutor:hover {
-      background: transparent;
-    }
-  }
-
   /* ============================================
    * TUTOR TOGGLE AND PLAN BUTTON
    * Bare ink controls like the rest of the bar. The only gold is the small

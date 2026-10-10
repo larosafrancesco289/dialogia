@@ -189,6 +189,23 @@
     border-radius: var(--radius-editorial);
     font-family: var(--font-sans);
   }
+  .message-notice__details {
+    font-size: 0.75rem;
+    color: var(--color-fg-muted);
+  }
+  .message-notice__details summary {
+    width: fit-content;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-decoration-color: color-mix(in oklab, var(--color-fg) 25%, transparent);
+    text-underline-offset: 3px;
+  }
+  .message-notice__details p {
+    margin: var(--space-1) 0 0;
+    font-family: var(--font-mono);
+    overflow-wrap: anywhere;
+  }
 
   /* Smoother auto-resize for message textarea */
 

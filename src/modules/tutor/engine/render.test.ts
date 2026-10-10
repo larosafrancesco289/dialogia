@@ -38,10 +38,13 @@ test('while teaching: goal, current topic with objectives, bands, misconceptions
       'Phase: teaching',
       'Current topic: Limits [limits]',
       'Objectives: Evaluate simple limits',
-      'Card questions on this topic so far, the latest last, with how each went. Any new question must differ from these and use new numbers:',
+      'Card questions on this topic so far, each asked once, the latest last, with how it went. Your next question uses a new case and new numbers:',
       '- "lim x->0 of x?" (quiz, right)',
       '- "lim x->1 of 2x?" (quiz, not answered)',
       '- "lim x->2 of x^2?" (quiz, not answered)',
+      'Coming up in the plan, with their own objectives. Teach these there, not inside the current topic; work the learner does on them is evidence for that topic:',
+      '- Derivatives [derivatives]: Define the derivative; Apply the power rule',
+      '- Chain rule [chain-rule]: Differentiate composite functions',
       'Topics (building < 50%, practising 50-79%, ready >= 80%):',
       '- Limits [limits]: in progress; building 48%',
       '- Derivatives [derivatives]: not started; building 30%; needs limits',
@@ -94,7 +97,10 @@ test('no plan: intake answers, diagnostic results, and a declined proposal are s
   const block = render(h);
   assert.match(block, /^The learner declined your last plan proposal: "Skip limits"\.$/m);
   assert.match(block, /^Intake answers:\n- "Goal\?": Exam\n- "Background\?": Complete beginner$/m);
-  assert.match(block, /^Diagnostic on "Algebra": 2 of 3 right; missed "lim x->1 of 2x\?"\.$/m);
+  assert.match(
+    block,
+    /^Diagnostic on "Algebra": 2 of 3 right\. Missed: "lim x->1 of 2x\?" \(chose "1"; right answer "2"\)\.$/m,
+  );
   assert.match(block, /^Budget: 1 diagnostic left\.$/m);
 });
 
@@ -301,7 +307,7 @@ test('diagnostic items tied to the current topic are remembered with their resul
 
 test('the tutor is reminded of the answers it recorded on the current topic since it opened', () => {
   const h = teaching();
-  assert.doesNotMatch(render(h), /recent answers/);
+  assert.doesNotMatch(render(h), /What their answers on this topic/);
   const record = (kind: 'struggled' | 'applied', note: string, messageId: string) =>
     h.tutor({ type: 'record_evidence', kind, note, source: 'observation' }, messageId);
   record('struggled', 'Said the left side stays', 'r1');
@@ -317,7 +323,7 @@ test('the tutor is reminded of the answers it recorded on the current topic sinc
     'r2',
   );
   const block = render(h);
-  assert.match(block, /recent answers you recorded on this topic/);
+  assert.match(block, /What their answers on this topic have shown so far/);
   assert.match(
     block,
     /^- struggled: "Said the left side stays"\n- applied: "Said equal midpoint means found"$/m,
@@ -328,5 +334,130 @@ test('the tutor is reminded of the answers it recorded on the current topic sinc
   h.learner({ type: 'adjust_mastery', nodeId: 'limits', setTo: 0.9 });
   h.tutor({ type: 'complete_topic', how: 'skipped' });
   h.learner({ type: 'reopen_topic', nodeId: 'limits' });
-  assert.doesNotMatch(render(h), /recent answers/);
+  assert.doesNotMatch(render(h), /What their answers on this topic/);
+});
+
+test('a diagnostic stays in view while teaching, with the wrong choices the learner picked', () => {
+  const h = harness();
+  h.tutor({
+    type: 'give_diagnostic',
+    topic: 'Adding fractions',
+    items: [
+      { question: '1/2 + 1/3?', choices: ['2/5', '5/6'], correct: 1 },
+      { question: '1/4 + 1/6?', choices: ['2/10', '5/12'], correct: 1 },
+      { question: '1/2 + 1/2?', choices: ['1', '2/4'], correct: 0 },
+    ],
+  });
+  h.learner({
+    type: 'answer_diagnostic',
+    diagnosticId: h.state.awaiting!.id,
+    answers: { q1: 0, q2: 0, q3: 0 },
+  });
+  h.tutor({ type: 'propose_plan', ...CALCULUS });
+  h.learner({ type: 'approve_plan', proposalId: h.state.proposal!.proposalId });
+  assert.equal(h.state.phase, 'teaching');
+  assert.match(
+    render(h),
+    /^Diagnostic on "Adding fractions": 1 of 3 right\. Missed: "1\/2 \+ 1\/3\?" \(chose "2\/5"; right answer "5\/6"\); "1\/4 \+ 1\/6\?" \(chose "2\/10"; right answer "5\/12"\)\.$/m,
+  );
+});
+
+test('the next topics are shown with their objectives, and finished ones drop out', () => {
+  const h = teaching();
+  assert.match(
+    render(h),
+    /^Coming up in the plan.*\n- Derivatives \[derivatives\]: Define the derivative; Apply the power rule\n- Chain rule \[chain-rule\]: Differentiate composite functions$/m,
+  );
+  master(h);
+  h.tutor({ type: 'complete_topic', how: 'mastered' });
+  h.tutor({ type: 'start_topic', nodeId: 'derivatives' });
+  const block = render(h);
+  assert.match(block, /^- Chain rule \[chain-rule\]: Differentiate composite functions$/m);
+  assert.doesNotMatch(block, /^- Derivatives \[derivatives\]: Define/m);
+});
+
+test('a card from the last reply is reported once, in the learner changes, not again as an earlier question', () => {
+  const h = teaching();
+  const since = h.state.lastSeq;
+  h.tutor({ type: 'give_quiz', items: QUIZ_ITEMS });
+  const quizId = h.state.awaiting!.id;
+  ['q1', 'q2', 'q3'].forEach((itemId) =>
+    h.learner({ type: 'answer_quiz_item', quizId, itemId, choice: 0 }),
+  );
+  const changes = learnerChangesSince(h.state, h.events, since);
+  assert.match(changes.join('\n'), /Answered your quiz on Limits: 1 of 3 right/);
+  const block = renderStateBlock(h.state, { flags: h.flags, learnerChanges: changes, since });
+  assert.doesNotMatch(block, /Card questions on this topic/);
+  assert.equal(block.match(/lim x->1 of 2x/g)?.length, 1);
+
+  // From the next reply on, it is part of the record.
+  const later = renderStateBlock(h.state, { flags: h.flags, since: h.state.lastSeq });
+  assert.match(later, /^- "lim x->1 of 2x\?" \(quiz, wrong\)$/m);
+});
+
+test('a diagnostic just answered is summed up once, in the learner changes', () => {
+  const h = harness();
+  const since = h.state.lastSeq;
+  h.tutor({ type: 'give_diagnostic', topic: 'Algebra', items: QUIZ_ITEMS });
+  h.learner({
+    type: 'answer_diagnostic',
+    diagnosticId: h.state.awaiting!.id,
+    answers: { q1: 0, q2: 0, q3: 1 },
+  });
+  const changes = learnerChangesSince(h.state, h.events, since);
+  const block = renderStateBlock(h.state, { flags: h.flags, learnerChanges: changes, since });
+  assert.equal(block.match(/Diagnostic on "Algebra"/g)?.length, 1);
+  assert.match(
+    block,
+    /^- Finished the diagnostic\. Diagnostic on "Algebra": 2 of 3 right\. Missed:/m,
+  );
+});
+
+test('after the intake and before any diagnostic, the tutor is asked to see the learner try', () => {
+  const h = harness();
+  h.tutor({
+    type: 'ask_intake',
+    questions: [
+      { question: 'Goal?', options: [{ label: 'Exam' }, { label: 'Fun' }] },
+      { question: 'Background?', options: [{ label: 'Complete beginner' }, { label: 'Some' }] },
+    ],
+  });
+  assert.doesNotMatch(render(h), /No diagnostic yet/, 'not before they answer');
+  h.learner({
+    type: 'answer_intake',
+    intakeId: h.state.awaiting!.id,
+    responses: { q1: ['Exam'], q2: ['Some'] },
+  });
+  assert.match(render(h), /^No diagnostic yet\. Unless they are new to the subject/m);
+  h.tutor({ type: 'give_diagnostic', topic: 'Algebra', items: QUIZ_ITEMS });
+  h.learner({
+    type: 'answer_diagnostic',
+    diagnosticId: h.state.awaiting!.id,
+    answers: { q1: 0, q2: 0, q3: 1 },
+  });
+  assert.doesNotMatch(render(h), /No diagnostic yet/);
+});
+
+test('while teaching, missed diagnostic picks come with a reminder to note the belief they share', () => {
+  const h = harness();
+  h.tutor({ type: 'give_diagnostic', topic: 'Algebra', items: QUIZ_ITEMS });
+  h.learner({
+    type: 'answer_diagnostic',
+    diagnosticId: h.state.awaiting!.id,
+    answers: { q1: 0, q2: 1, q3: 1 },
+  });
+  h.tutor({ type: 'propose_plan', ...CALCULUS });
+  h.learner({ type: 'approve_plan', proposalId: h.state.proposal!.proposalId });
+  assert.doesNotMatch(render(h), /A wrong belief those picks share/, 'nothing missed');
+
+  const g = harness();
+  g.tutor({ type: 'give_diagnostic', topic: 'Algebra', items: QUIZ_ITEMS });
+  g.learner({
+    type: 'answer_diagnostic',
+    diagnosticId: g.state.awaiting!.id,
+    answers: { q1: 0, q2: 0, q3: 1 },
+  });
+  g.tutor({ type: 'propose_plan', ...CALCULUS });
+  g.learner({ type: 'approve_plan', proposalId: g.state.proposal!.proposalId });
+  assert.match(render(g), /^A wrong belief those picks share is a misconception/m);
 });

@@ -33,12 +33,17 @@ const messages: Translation<typeof en> = {
     'Colle une clé Anthropic pour utiliser les modèles Claude. Tu ne paies à Anthropic que ce que tu utilises.',
   'connect.lead.local':
     'Colle l’adresse d’un serveur de modèles que tu fais tourner, comme Ollama ou LM Studio. La plupart n’ont pas besoin de clé.',
+  'connect.steps.what':
+    'Une clé, c’est comme un mot de passe : elle permet à Dialogia d’utiliser ton compte {provider}. Tu paies {provider} directement pour ce que tu utilises.',
   'connect.steps.account': '{action} sur {link}.',
   'connect.steps.accountAction': 'Crée un compte',
-  'connect.steps.credit': '{action} dans {page}.',
+  'connect.steps.credit':
+    '{action} dans {page}. Il faut une carte, et quelques dollars suffisent pour commencer.',
   'connect.steps.creditAction': 'Ajoute un peu de crédit',
   'connect.steps.key': '{action} dans {link}, copie-la et colle-la ci-dessus.',
   'connect.steps.keyAction': 'Crée une clé',
+  'connect.steps.free':
+    'Tu veux juste essayer ? OpenRouter a aussi des modèles gratuits, avec « (free) » dans leur nom. Ils ne demandent pas de crédit, mais n’autorisent qu’un nombre limité de messages par jour.',
   'connect.serverAddress': 'Adresse du serveur',
   'connect.submit': 'Connecter',
   'connect.howToGetKey': 'Comment obtenir une clé ?',
@@ -54,6 +59,9 @@ const messages: Translation<typeof en> = {
   'connect.keyRefused':
     '{provider} n’a pas accepté cette clé. Vérifie que tu l’as copiée en entier, ou crées-en une nouvelle.',
   'connect.serverSilent': 'Aucun modèle n’est venu de cette adresse. Le serveur tourne-t-il ?',
+  'connect.keyFormat':
+    'Ça ne ressemble pas à une clé {provider} : les clés {provider} commencent par {prefix}. Copie la clé en entier et colle-la à nouveau.',
+  'connect.serverUnreachable': 'Impossible de joindre cette adresse.',
   'connect.keyNotSaved':
     'Ce navigateur n’a pas pu enregistrer ta clé : elle ne marche que jusqu’à ce que tu fermes la page.',
   'connect.invalidAddress':
@@ -221,6 +229,7 @@ const messages: Translation<typeof en> = {
   'ending.nothing.stopped': 'Arrêtée avant que la réponse commence.',
   'ending.nothing.failed': 'Cette réponse a échoué.',
   'ending.nothing.interrupted': 'La page s’est fermée avant que la réponse commence.',
+  'ending.details': 'Ce qu’a dit le fournisseur',
   'ending.length': 'Arrêtée à la limite de longueur.',
   'ending.announce.stopped': 'Réponse arrêtée',
   'ending.announce.failed': 'Réponse en échec',
@@ -396,6 +405,10 @@ const messages: Translation<typeof en> = {
   'header.collapseSidebar': 'Replier la barre latérale',
   'header.openMemory': 'Ouvrir la mémoire',
   'header.openSettings': 'Ouvrir les réglages',
+  'learnTools.notice':
+    '{model} ne sait pas utiliser d’outils : en mode Apprendre, il peut seulement discuter, sans plan ni quiz.',
+  'learnTools.chooseModel': 'Choisir un autre modèle',
+  'learnTools.turnOnTools': 'Activer Outils dans les Réglages',
   'header.tutorModel': 'Modèle du tuteur : {model}. À changer dans les Réglages.',
   'lightbox.label': 'Visionneuse d’images',
   'lightbox.download': 'Télécharger',
@@ -790,6 +803,13 @@ const messages: Translation<typeof en> = {
   'notice.cutOff': 'La connexion s’est fermée avant la fin de la réponse. Réessaie.',
   'notice.stalled': 'Le fournisseur a cessé d’envoyer, alors la réponse a été arrêtée. Réessaie.',
   'notice.unknownError': 'Quelque chose s’est mal passé, et le fournisseur n’a pas dit quoi.',
+  'notice.outOfCredit':
+    'Ton compte chez le fournisseur n’a plus de crédit. Ajoutes-en sur son site, puis réessaie.',
+  'notice.modelNotFound': 'Le fournisseur n’a pas ce modèle. Choisis-en un autre, puis réessaie.',
+  'notice.providerDown':
+    'Le fournisseur a eu un problème de son côté. Réessaie dans un instant, ou choisis un autre modèle.',
+  'notice.requestRefused':
+    'Le fournisseur n’a pas pu traiter cette demande. Réessaie, ou choisis un autre modèle.',
   'notice.tryAgainSoon': 'Réessaie dans un instant.',
   'notice.providerError': 'Le fournisseur du modèle a renvoyé une erreur',
   'notice.modelListFailed': 'Impossible de charger la liste des modèles',
