@@ -17,7 +17,8 @@
     "mock-llm": "PORT=3999 tsx e2e/mock/server.ts",
     "tutor:simulate": "tsx src/modules/tutor/tooling/simulate.ts",
     "tutor:step": "tsx src/modules/tutor/tooling/step.ts",
-    "tutor:evals": "tsx src/modules/tutor/tooling/evals.ts"
+    "tutor:evals": "tsx src/modules/tutor/tooling/evals.ts",
+    "smoke:providers": "tsx src/lib/cli/providerSmoke.ts"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "^5.3.0",
