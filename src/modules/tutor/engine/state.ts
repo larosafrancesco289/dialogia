@@ -13,6 +13,7 @@ import {
   BUDGETS,
   MASTERY_EVIDENCE_MIN,
   MASTERY_PRIOR,
+  MISCONCEPTION_CLEAR_MIN,
   READY,
   reaches,
   STARTING_ESTIMATE_MAX,
@@ -213,8 +214,9 @@ export function earlierMistake(
  */
 /**
  * Whether the learner has shown, on their own, that a noted misconception is
- * gone: a right answer on its topic since it was last noted, on a card or in
- * the conversation, that the tutor's message had not just handed them.
+ * gone: right answers on its topic since it was last noted, on a card or in
+ * the conversation, that the tutor's message had not just handed them, at
+ * least MISCONCEPTION_CLEAR_MIN of them.
  */
 export function shownGone(state: TutorState, nodeId: string, misconceptionId: string): boolean {
   const topic = state.mastery[nodeId];
@@ -224,19 +226,18 @@ export function shownGone(state: TutorState, nodeId: string, misconceptionId: st
   const takenBack = new Set(
     evidence.filter((entry) => entry.kind === 'misconception').map((entry) => entry.ref?.eventId),
   );
-  return evidence
-    .slice(noted.evidenceAt ?? 0)
-    .some(
-      (entry) =>
-        !!entry.eventId &&
-        !takenBack.has(entry.eventId) &&
-        !entry.helped &&
-        entry.weight > 0 &&
-        entry.kind !== 'partial' &&
-        (entry.source === 'quiz' ||
-          entry.source === 'diagnostic' ||
-          entry.source === 'observation'),
-    );
+  const shown = evidence.slice(noted.evidenceAt ?? 0).filter(
+    (entry) =>
+      !!entry.eventId &&
+      !takenBack.has(entry.eventId) &&
+      !entry.helped &&
+      entry.weight > 0 &&
+      entry.kind !== 'partial' &&
+      (entry.source === 'quiz' ||
+        entry.source === 'diagnostic' ||
+        entry.source === 'observation'),
+  );
+  return shown.length >= MISCONCEPTION_CLEAR_MIN;
 }
 
 export function demonstratedEvidence(state: TutorState, nodeId: string): number {

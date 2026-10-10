@@ -198,8 +198,9 @@ export function decideTutor(
           reason: text(estimate.reason),
         };
       });
-      if (state.awaiting?.kind === 'intake') {
-        out.push({ type: 'card_dismissed', card: 'intake', cardId: state.awaiting.id });
+      const open = state.awaiting;
+      if (open?.kind === 'intake' || open?.kind === 'diagnostic') {
+        out.push({ type: 'card_dismissed', card: open.kind, cardId: open.id });
       }
       out.push({
         type: 'plan_proposed',

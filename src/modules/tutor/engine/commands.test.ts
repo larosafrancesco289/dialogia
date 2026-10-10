@@ -108,10 +108,19 @@ describe('intake', () => {
       }),
       'card_closed',
     );
-    // An open diagnostic still waits: its answers are evidence.
-    const d = harness();
-    d.tutor({ type: 'give_diagnostic', topic: 'Calculus basics', items: DIAGNOSTIC });
-    assertError(d.refuse({ by: 'tutor', type: 'propose_plan', ...CALCULUS }), 'card_open');
+  });
+
+  test('a plan proposed over an unanswered diagnostic closes it', () => {
+    const h = harness();
+    h.tutor({ type: 'give_diagnostic', topic: 'Calculus basics', items: DIAGNOSTIC }, 'm1');
+    const diagnosticId = h.state.awaiting!.id;
+    // Other cards still wait on it.
+    assertError(h.refuse({ by: 'tutor', type: 'ask_intake', questions: INTAKE }), 'card_open');
+    // "skip this pls": without this the tutor could neither plan nor teach.
+    const events = h.tutor({ type: 'propose_plan', ...CALCULUS }, 'm2');
+    assert.deepEqual(types(events), ['card_dismissed:tutor', 'plan_proposed:tutor']);
+    assert.equal(h.state.diagnostics[diagnosticId].dismissed, true);
+    assert.equal(h.state.awaiting?.kind, 'proposal');
   });
 
   test('answer_intake records trimmed responses once', () => {
@@ -1036,7 +1045,21 @@ describe('evidence and misconceptions', () => {
       { type: 'record_evidence', source: 'observation', kind: 'applied', note: 'You worked out 6' },
       'r3',
     );
-    h.tutor({ type: 'resolve_misconception', misconceptionId: first.misconceptionId }, 'r3');
+    // One answer of their own right after the correction can be imitation: it takes a second.
+    assertError(
+      h.refuse({
+        by: 'tutor',
+        type: 'resolve_misconception',
+        misconceptionId: first.misconceptionId,
+      }),
+      'needs_evidence',
+      /2 right answers of their own/,
+    );
+    h.tutor(
+      { type: 'record_evidence', source: 'observation', kind: 'applied', note: 'You worked out 9' },
+      'r4',
+    );
+    h.tutor({ type: 'resolve_misconception', misconceptionId: first.misconceptionId }, 'r4');
     assert.equal(h.state.mastery.limits.misconceptions[0].resolvedBy, 'tutor');
     assert.deepEqual(
       h.decide({
