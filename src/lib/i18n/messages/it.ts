@@ -642,6 +642,38 @@ const messages: Translation<typeof en> = {
     other: '{count} chat non si sono potute leggere.',
   },
 
+  'data.review.system': 'Imposta l’istruzione con cui inizia ogni nuova chat:',
+  'data.review.notes': {
+    one: 'Aggiunge questa nota alla Memoria:',
+    other: 'Aggiunge queste {count} note alla Memoria:',
+  },
+  'data.review.more': { one: 'e altre {count}', other: 'e altre {count}' },
+  'history.label': 'Chat da ChatGPT o Claude',
+  'history.hint':
+    'Chiedi a ChatGPT o a Claude una copia dei tuoi dati. Scegli il file .zip che ricevi, o il file conversations.json che contiene.',
+  'history.choose': 'Scegli file',
+  'history.confirmBody':
+    'Le tue chat vengono aggiunte in una cartella a parte, e niente di quello che hai qui viene sostituito. Se scegli di nuovo lo stesso file, niente arriva due volte. Immagini e file restano fuori; una nota segna dove si trovava ognuno.',
+  'history.reading': 'Lettura del file…',
+  'history.progress': 'Importazione da {source}: {done} di {total}',
+  'history.folder': 'Da {source}',
+  'history.imported': {
+    one: 'Importata {count} chat da {source}, nella cartella “{folder}”.',
+    other: 'Importate {count} chat da {source}, nella cartella “{folder}”.',
+  },
+  'history.nothing': 'Questa esportazione di {source} non contiene chat.',
+  'history.zipMissing':
+    'In questo .zip non c’è nessun conversations.json. Scegli l’esportazione dei dati che hai ricevuto da ChatGPT o Claude.',
+  'history.zipUnreadable':
+    'Questo browser non riesce ad aprire quel .zip. Estrailo, poi scegli il file conversations.json che contiene.',
+  'history.isBackup':
+    'Questo è un backup di Dialogia. Usa Importa in “Chat e impostazioni” per ripristinarlo.',
+  'history.unknown':
+    'Questa non è un’esportazione di ChatGPT o Claude. Scegli il suo file conversations.json, o il .zip in cui è arrivato.',
+  'history.placeholder.image': '[Immagine non inclusa]',
+  'history.placeholder.file': '[File non incluso: {name}]',
+  'history.placeholder.fileUnnamed': '[File non incluso]',
+
   // Settings › Appearance
   'appearance.scheme': 'Colori',
   'appearance.schemeHint': 'Chiaro, scuro o come il tuo sistema.',

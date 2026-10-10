@@ -135,7 +135,7 @@ test('a topic studied nine days ago is offered for a refresher on the Learn page
   );
   await page
     .getByRole('tabpanel', { name: 'Data' })
-    .locator('input[type=file]')
+    .getByLabel('Import', { exact: true })
     .setInputFiles(backup);
   const confirm = page.getByRole('alertdialog').or(page.getByRole('dialog', { name: /Import/ }));
   if (await confirm.isVisible().catch(() => false)) {
