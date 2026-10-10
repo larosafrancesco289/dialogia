@@ -63,6 +63,38 @@ function stripCacheControl(messages: ModelMessage[]): ModelMessage[] {
   });
 }
 
+/**
+ * A tool call's arguments as a JSON object, the only shape providers take
+ * back. A call whose arguments arrived malformed (cut short at the length
+ * limit, say) was refused when it ran, and its error result follows it; sent
+ * back raw, Anthropic rejects the whole request, and every later turn of the
+ * chat replays the same call. The direct Claude transport reads arguments the
+ * same way (`parseToolInput`).
+ */
+function withReplayableArguments(messages: ModelMessage[]): ModelMessage[] {
+  return messages.map((message) => {
+    if (message.role !== 'assistant' || !message.tool_calls?.length) return message;
+    let changed = false;
+    const tool_calls = message.tool_calls.map((call) => {
+      const args = call.function.arguments;
+      if (isJsonObjectText(args)) return call;
+      changed = true;
+      return { ...call, function: { ...call.function, arguments: '{}' } };
+    });
+    return changed ? { ...message, tool_calls } : message;
+  });
+}
+
+function isJsonObjectText(text: string | undefined): boolean {
+  if (!text) return false;
+  try {
+    const parsed: unknown = JSON.parse(text);
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed);
+  } catch {
+    return false;
+  }
+}
+
 function withoutAnnotations(messages: ModelMessage[]): ModelMessage[] {
   return messages.map((message) => {
     if (message.role !== 'assistant' || !('annotations' in message)) return message;
@@ -80,7 +112,9 @@ export function buildChatBody(params: BuildChatBodyParams): OpenRouterChatReques
   // tool support, or a provider handed tool calls it has no definitions for,
   // may refuse the whole request.
   const offersTools = allow('tools') && Array.isArray(params.tools) && params.tools.length > 0;
-  const history = offersTools ? params.messages : withoutToolHistory(params.messages);
+  const history = offersTools
+    ? withReplayableArguments(params.messages)
+    : withoutToolHistory(params.messages);
   // A reply's citations ride on its message for OpenRouter; another server
   // never sent them and may refuse the key.
   const messages = allowExtensions ? history : withoutAnnotations(history);
