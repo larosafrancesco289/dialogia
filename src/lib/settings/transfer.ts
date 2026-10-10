@@ -1,10 +1,17 @@
-import { exportAll, importAll } from '@/lib/db';
+import { exportAll, importAll, repository } from '@/lib/db';
+import { sanitizeMemoryNote } from '@/lib/db/sanitize';
+import { hasKey } from '@/lib/keys/store';
+import { guardImportedEndpoints } from '@/lib/store/endpointSlice';
+import type { MemoryNote } from '@/lib/types';
 import { PERSISTED_STORE_KEY, useChatStore } from '@/lib/store';
 import { buildPersistedState, mergePersistedState } from '@/lib/store/persistence';
 import { migrate } from '@/lib/store/migrations';
 import { STORE_MIGRATION_VERSION } from '@/lib/store/versions';
 import { err, ok, type Result } from '@/lib/utils/result';
 import { t } from '@/lib/i18n';
+import { detectHistorySource } from '@/lib/historyImport/parse';
+import { importHistory, type ImportProgress } from '@/lib/historyImport/importHistory';
+import { looksLikeZip, readZipText } from '@/lib/historyImport/zip';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -81,22 +88,94 @@ export function describeImport({
   return `${imported} ${skipped}`;
 }
 
-export async function importChatExport(
-  payload: string,
-): Promise<Result<{ notice: string }, string>> {
+type Applied = Result<{ notice: string }, string>;
+
+/** What a backup would set that the person should see before it does. */
+export type ImportReview = {
+  /** The instruction every new chat would start with, when the file changes it. */
+  system?: string;
+  /** Memory notes the file adds or rewrites. */
+  notes: string[];
+};
+
+/** A file read and checked, waiting for the person's yes. */
+export type PreparedImport = {
+  review: ImportReview;
+  apply: (onProgress?: (progress: ImportProgress) => void) => Promise<Applied>;
+};
+
+/** @internal A backup's text, read and applied at once. */
+export async function importChatExport(payload: string): Promise<Applied> {
   let data: unknown;
   try {
     data = JSON.parse(payload);
   } catch {
     return err(t('data.notJson'));
   }
+  const prepared = await prepareBackup(data);
+  return prepared.ok ? prepared.prepared.apply() : prepared;
+}
+
+/** @internal Read and apply a file at once, as the Data panel does after its question. */
+export async function importFile(
+  file: Blob,
+  options: { historyOnly?: boolean; onProgress?: (progress: ImportProgress) => void } = {},
+): Promise<Applied> {
+  const prepared = await prepareImport(file, options);
+  return prepared.ok ? prepared.prepared.apply(options.onProgress) : prepared;
+}
+
+/**
+ * Any file Settings › Data is given, read and checked but not yet applied: a
+ * Dialogia backup, or the conversations.json of a ChatGPT or Claude export
+ * (on its own or still in the export's .zip), told apart by what is in it.
+ */
+export async function prepareImport(
+  file: Blob,
+  options: { historyOnly?: boolean } = {},
+): Promise<Result<{ prepared: PreparedImport }, string>> {
+  let payload: string;
+  if (await looksLikeZip(file)) {
+    const read = await readZipText(file, 'conversations.json').catch(() => undefined);
+    if (!read?.ok)
+      return err(t(read?.reason === 'missing' ? 'history.zipMissing' : 'history.zipUnreadable'));
+    payload = read.text;
+  } else {
+    payload = await file.text();
+  }
+  let data: unknown;
+  try {
+    data = JSON.parse(payload);
+  } catch {
+    return err(t('data.notJson'));
+  }
+  const source = detectHistorySource(data);
+  if (source && Array.isArray(data)) {
+    // Chats and their messages only: an export from elsewhere never sets
+    // settings, servers or memory.
+    return ok({
+      prepared: {
+        review: { notes: [] },
+        apply: (onProgress) => importHistory(source, data as unknown[], onProgress),
+      },
+    });
+  }
+  // Asked for chats from elsewhere, a backup (which replaces settings) is not
+  // brought back without the warning its own button gives.
+  if (options.historyOnly) {
+    return err(t(isRecord(data) && 'chats' in data ? 'history.isBackup' : 'history.unknown'));
+  }
+  return prepareBackup(data);
+}
+
+async function prepareBackup(data: unknown): Promise<Result<{ prepared: PreparedImport }, string>> {
   const hasSettings = isRecord(data) && isRecord(data.persistedStore);
   const hasChats = isRecord(data) && Array.isArray(data.chats) && data.chats.length > 0;
   // Any JSON parses; one with nothing of ours in it is said to be so, not
   // reported as a success that changed nothing.
-  if (!hasSettings && !hasChats) return err(t('data.nothing'));
+  if (!isRecord(data) || (!hasSettings && !hasChats)) return err(t('data.nothing'));
   const version =
-    isRecord(data) && typeof data.persistedStoreVersion === 'number'
+    typeof data.persistedStoreVersion === 'number'
       ? data.persistedStoreVersion
       : STORE_MIGRATION_VERSION;
   // Checked before anything is written: a newer build's settings are not ours
@@ -104,20 +183,55 @@ export async function importChatExport(
   if (version > STORE_MIGRATION_VERSION) {
     return err(t('data.newerVersion'));
   }
-  try {
-    const counts = await importAll(data as Parameters<typeof importAll>[0]);
+  const migrated = isRecord(data.persistedStore)
+    ? migrate(data.persistedStore, version)
+    : undefined;
+  const local = await repository.loadMemory().catch(() => undefined);
+  const localNotes = new Map((local?.notes ?? []).map((note) => [note.id, note]));
+  const unchanged = (note: MemoryNote) => localNotes.get(note.id)?.text === note.text;
+  const incoming = (Array.isArray(data.memoryNotes) ? data.memoryNotes : [])
+    .map(sanitizeMemoryNote)
+    .filter((note): note is MemoryNote => !!note);
 
-    if (isRecord(data) && isRecord(data.persistedStore)) {
-      const migrated = migrate(data.persistedStore, version);
-      useChatStore.setState(mergePersistedState(useChatStore.getState(), migrated));
-      await persistImportedStoreSnapshot();
+  const system = migrated?.ui?.chatDefaults?.system?.trim();
+  const currentSystem = useChatStore.getState().ui.chatDefaults?.system?.trim();
+  const review: ImportReview = {
+    system: system && system !== currentSystem ? system : undefined,
+    notes: incoming.filter((note) => !note.forgottenAt && !unchanged(note)).map((n) => n.text),
+  };
+
+  const apply = async (): Promise<Applied> => {
+    try {
+      // Words this browser did not see written are not the person's: only a
+      // note that is already here, word for word as theirs, stays theirs.
+      const memoryNotes = incoming.map((note) =>
+        unchanged(note) && localNotes.get(note.id)?.author === 'user'
+          ? note
+          : { ...note, author: 'model' as const },
+      );
+      const counts = await importAll({ ...data, memoryNotes } as Parameters<typeof importAll>[0]);
+
+      if (migrated) {
+        const state = useChatStore.getState();
+        const safe = {
+          ...migrated,
+          customEndpoints: guardImportedEndpoints(
+            migrated.customEndpoints,
+            state.customEndpoints,
+            hasKey,
+          ),
+        };
+        useChatStore.setState(mergePersistedState(state, safe));
+        await persistImportedStoreSnapshot();
+      }
+
+      const notice = describeImport({ ...counts, settings: hasSettings });
+      if (!notice) return err(t('data.noneRead'));
+      return ok({ notice });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t('data.importFailed');
+      return err(message);
     }
-
-    const notice = describeImport({ ...counts, settings: hasSettings });
-    if (!notice) return err(t('data.noneRead'));
-    return ok({ notice });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : t('data.importFailed');
-    return err(message);
-  }
+  };
+  return ok({ prepared: { review, apply } });
 }

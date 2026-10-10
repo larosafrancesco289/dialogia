@@ -544,10 +544,10 @@ const messages: Translation<typeof en> = {
   'servers.namePlaceholder': 'Nome, es. Ollama',
   'servers.add': 'Aggiungi',
   'servers.addHint':
-    'Funziona con Ollama, LM Studio, llama.cpp e vLLM. Le funzioni partono spente: le accendi tu.',
+    'Funziona con Ollama, LM Studio, llama.cpp e vLLM. Le funzioni extra partono spente: apri il server per attivare quello che sa fare, come gli strumenti (servono per ricerca, memoria e tutor) o le immagini.',
   'servers.noAddress': 'nessun indirizzo',
   'webSearch.hint':
-    'La ricerca integrata nel fornitore del modello non richiede altre chiavi ed è quella predefinita. Con una chiave OpenRouter puoi anche scegliere la ricerca OpenRouter nel campo di scrittura: il modello cerca quando serve, con il tuo credito OpenRouter, e le pagine vengono lette tramite Jina Reader. Le tue ricerche vanno al partner di ricerca di OpenRouter, e gli indirizzi delle pagine a Jina.',
+    'La ricerca del tuo fornitore non richiede altre chiavi ed è quella predefinita. Con una chiave OpenRouter puoi anche scegliere la ricerca di OpenRouter nel campo di scrittura, pagata con il tuo credito OpenRouter. In quel caso le ricerche vanno al partner di ricerca di OpenRouter e le pagine vengono lette tramite un servizio chiamato Jina.',
   'webSearch.keyLabel': 'Chiave {provider}',
   'capability.tools': 'Strumenti',
   'capability.toolsHint': 'Lascia che il modello usi strumenti, come la ricerca e la memoria.',
@@ -641,6 +641,38 @@ const messages: Translation<typeof en> = {
     one: '{count} chat non si è potuta leggere.',
     other: '{count} chat non si sono potute leggere.',
   },
+
+  'data.review.system': 'Imposta l’istruzione con cui inizia ogni nuova chat:',
+  'data.review.notes': {
+    one: 'Aggiunge questa nota alla Memoria:',
+    other: 'Aggiunge queste {count} note alla Memoria:',
+  },
+  'data.review.more': { one: 'e altre {count}', other: 'e altre {count}' },
+  'history.label': 'Chat da ChatGPT o Claude',
+  'history.hint':
+    'Chiedi a ChatGPT o a Claude una copia dei tuoi dati. Scegli il file .zip che ricevi, o il file conversations.json che contiene.',
+  'history.choose': 'Scegli file',
+  'history.confirmBody':
+    'Le tue chat vengono aggiunte in una cartella a parte, e niente di quello che hai qui viene sostituito. Se scegli di nuovo lo stesso file, niente arriva due volte. Immagini e file restano fuori; una nota segna dove si trovava ognuno.',
+  'history.reading': 'Lettura del file…',
+  'history.progress': 'Importazione da {source}: {done} di {total}',
+  'history.folder': 'Da {source}',
+  'history.imported': {
+    one: 'Importata {count} chat da {source}, nella cartella “{folder}”.',
+    other: 'Importate {count} chat da {source}, nella cartella “{folder}”.',
+  },
+  'history.nothing': 'Questa esportazione di {source} non contiene chat.',
+  'history.zipMissing':
+    'In questo .zip non c’è nessun conversations.json. Scegli l’esportazione dei dati che hai ricevuto da ChatGPT o Claude.',
+  'history.zipUnreadable':
+    'Questo browser non riesce ad aprire quel .zip. Estrailo, poi scegli il file conversations.json che contiene.',
+  'history.isBackup':
+    'Questo è un backup di Dialogia. Usa Importa in “Chat e impostazioni” per ripristinarlo.',
+  'history.unknown':
+    'Questa non è un’esportazione di ChatGPT o Claude. Scegli il suo file conversations.json, o il .zip in cui è arrivato.',
+  'history.placeholder.image': '[Immagine non inclusa]',
+  'history.placeholder.file': '[File non incluso: {name}]',
+  'history.placeholder.fileUnnamed': '[File non incluso]',
 
   // Settings › Appearance
   'appearance.scheme': 'Colori',
@@ -802,6 +834,7 @@ const messages: Translation<typeof en> = {
   'notice.providerError': 'Il fornitore del modello ha restituito un errore',
   'notice.modelListFailed': 'Impossibile caricare l’elenco dei modelli',
   'notice.emptyResponse': 'Il fornitore ha inviato una risposta vuota',
+  'markdown.remoteImage': 'Immagine: {name} (apri)',
   'notice.kind.image': 'immagini',
   'notice.kind.audio': 'audio',
   'notice.kind.pdf': 'PDF',

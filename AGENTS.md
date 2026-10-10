@@ -45,6 +45,13 @@ sent, because a strict OpenAI-compatible server rejects the entire request over 
 **Never add `rehype-raw`.** Model output is untrusted and BYOK keys live in the same origin. The
 import is lint-banned with that reason attached.
 
+**The production build runs under a Content Security Policy** (`src/lib/csp.ts`, emitted by
+`vite.config.ts` as a `<meta>` and as Cloudflare's `dist/_headers`). Scripts, images and workers
+load from this origin only; requests may go anywhere. A remote image in a reply renders as a link,
+never an `<img>`, because its URL can carry the conversation out. A new CDN script, web font or
+remote image will be blocked, and the browser tests fail on the console error it raises. An
+attachment's `dataURL` must be its own bytes (`SAFE_DATA_URL` in `src/lib/db/sanitize.ts`).
+
 **Colours come from tokens.** Use `styles/tokens.css` via `color-mix`, never a hex literal. Theme
 state has one source of truth, `useThemeMode`. Never touch `localStorage.theme` from a component.
 

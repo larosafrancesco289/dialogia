@@ -55,7 +55,8 @@ export async function importBackup(
     backup,
     JSON.stringify(build(JSON.parse(await fs.readFile(exported, 'utf8')))),
   );
-  await page.locator('input[type=file][accept="application/json"]').setInputFiles(backup);
+  // Data has two pickers now: a backup's Import, and other apps' histories.
+  await page.getByLabel('Import', { exact: true }).setInputFiles(backup);
   // With chats already here, the import asks first; the question can take a
   // moment to come up, so wait for it or for the import's own word.
   const confirm = page.getByRole('alertdialog').or(page.getByRole('dialog', { name: /Import/ }));

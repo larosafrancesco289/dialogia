@@ -157,3 +157,25 @@ test('createUserMessage marks a ledger line and leaves typed messages unmarked',
   const typed = createUserMessage({ chatId: 'c', content: 'hello' });
   assert.equal('ledger' in typed, false);
 });
+
+test('an attachment whose data URL is not its own bytes loses the URL, so it can never be followed', () => {
+  const base = { id: 'm', chatId: 'c', role: 'user' as const, content: '', createdAt: 1 };
+  const { next, changed } = sanitizeMessageRecord({
+    ...base,
+    attachments: [
+      { id: 'a', kind: 'image', mime: 'image/png', dataURL: 'javascript:alert(document.domain)' },
+      { id: 'b', kind: 'image', mime: 'image/png', dataURL: 'data:image/png;base64,AAAA' },
+      {
+        id: 'c',
+        kind: 'pdf',
+        mime: 'application/pdf',
+        dataURL: 'data:text/html,<script>x</script>',
+      },
+    ],
+  } as never);
+  assert.equal(changed, true);
+  assert.deepEqual(
+    next.attachments?.map((a) => a.dataURL),
+    [undefined, 'data:image/png;base64,AAAA', undefined],
+  );
+});

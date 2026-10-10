@@ -544,10 +544,10 @@ const messages: Translation<typeof en> = {
   'servers.namePlaceholder': 'Nombre, ej. Ollama',
   'servers.add': 'Añadir',
   'servers.addHint':
-    'Funciona con Ollama, LM Studio, llama.cpp y vLLM. Las funciones empiezan desactivadas; tú decides cuáles activar.',
+    'Funciona con Ollama, LM Studio, llama.cpp y vLLM. Las funciones extra empiezan desactivadas: abre el servidor para activar lo que sabe hacer, como las herramientas (necesarias para la búsqueda, la memoria y el tutor) o las imágenes.',
   'servers.noAddress': 'sin dirección',
   'webSearch.hint':
-    'La búsqueda integrada en el proveedor del modelo no necesita otra clave y es la predeterminada. Con una clave de OpenRouter también puedes elegir la búsqueda de OpenRouter en el cuadro de texto: el modelo busca cuando lo necesita, con tu saldo de OpenRouter, y las páginas se leen con Jina Reader. Tus búsquedas van al socio de búsqueda de OpenRouter, y las direcciones de las páginas a Jina.',
+    'La búsqueda de tu proveedor no necesita otra clave y es la predeterminada. Con una clave de OpenRouter también puedes elegir la búsqueda de OpenRouter en el cuadro de texto, pagada con tu crédito de OpenRouter. En ese caso, tus búsquedas van al socio de búsqueda de OpenRouter y las páginas se leen con un servicio llamado Jina.',
   'webSearch.keyLabel': 'Clave de {provider}',
   'capability.tools': 'Herramientas',
   'capability.toolsHint': 'Deja que el modelo use herramientas, como la búsqueda y la memoria.',
@@ -638,6 +638,38 @@ const messages: Translation<typeof en> = {
     one: '{count} chat no se pudo leer.',
     other: '{count} chats no se pudieron leer.',
   },
+
+  'data.review.system': 'Establece la instrucción con la que empieza cada chat nuevo:',
+  'data.review.notes': {
+    one: 'Añade esta nota a la Memoria:',
+    other: 'Añade estas {count} notas a la Memoria:',
+  },
+  'data.review.more': { one: 'y {count} más', other: 'y {count} más' },
+  'history.label': 'Chats de ChatGPT o Claude',
+  'history.hint':
+    'Pide a ChatGPT o a Claude una copia de tus datos. Elige el archivo .zip que recibas, o el archivo conversations.json que contiene.',
+  'history.choose': 'Elegir archivo',
+  'history.confirmBody':
+    'Tus chats se añaden en una carpeta aparte, y no se reemplaza nada de lo que tienes aquí. Si eliges otra vez el mismo archivo, nada llega dos veces. Las imágenes y los archivos se quedan fuera; una nota marca dónde estaba cada uno.',
+  'history.reading': 'Leyendo el archivo…',
+  'history.progress': 'Importando desde {source}: {done} de {total}',
+  'history.folder': 'De {source}',
+  'history.imported': {
+    one: 'Se importó {count} chat de {source}, en la carpeta «{folder}».',
+    other: 'Se importaron {count} chats de {source}, en la carpeta «{folder}».',
+  },
+  'history.nothing': 'Esta exportación de {source} no tiene chats.',
+  'history.zipMissing':
+    'Este .zip no tiene ningún conversations.json. Elige la exportación de datos que recibiste de ChatGPT o Claude.',
+  'history.zipUnreadable':
+    'Este navegador no puede abrir ese .zip. Descomprímelo y elige el archivo conversations.json que contiene.',
+  'history.isBackup':
+    'Esto es una copia de seguridad de Dialogia. Usa Importar en «Chats y ajustes» para restaurarla.',
+  'history.unknown':
+    'Esto no es una exportación de ChatGPT ni de Claude. Elige su archivo conversations.json, o el .zip en el que llegó.',
+  'history.placeholder.image': '[Imagen no incluida]',
+  'history.placeholder.file': '[Archivo no incluido: {name}]',
+  'history.placeholder.fileUnnamed': '[Archivo no incluido]',
 
   // Settings › Appearance
   'appearance.scheme': 'Colores',
@@ -802,6 +834,7 @@ const messages: Translation<typeof en> = {
   'notice.providerError': 'El proveedor del modelo devolvió un error',
   'notice.modelListFailed': 'No se pudo cargar la lista de modelos',
   'notice.emptyResponse': 'El proveedor envió una respuesta vacía',
+  'markdown.remoteImage': 'Imagen: {name} (abrir)',
   'notice.kind.image': 'imágenes',
   'notice.kind.audio': 'audio',
   'notice.kind.pdf': 'PDF',

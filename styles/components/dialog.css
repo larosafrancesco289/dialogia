@@ -42,6 +42,29 @@
     line-height: 1.5;
     color: var(--color-fg-muted);
   }
+  /* What a confirmation is about, quoted: the words a file would put in
+     place, in a ruled box that scrolls rather than pushing the actions away. */
+  .dialog__review {
+    margin: var(--space-3) 0 0;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--color-fg);
+  }
+  .dialog__quote {
+    margin: var(--space-1) 0 0;
+    max-height: 9rem;
+    overflow: auto;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-editorial);
+    background: color-mix(in oklab, var(--color-fg) 4%, var(--color-surface));
+    color: var(--color-fg-muted);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .dialog__quote li + li {
+    margin-top: var(--space-1);
+  }
   .dialog__actions {
     display: flex;
     align-items: center;

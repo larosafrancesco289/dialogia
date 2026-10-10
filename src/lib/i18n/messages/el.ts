@@ -544,10 +544,10 @@ const messages: Translation<typeof en> = {
   'servers.namePlaceholder': 'Όνομα, π.χ. Ollama',
   'servers.add': 'Προσθήκη',
   'servers.addHint':
-    'Λειτουργεί με Ollama, LM Studio, llama.cpp και vLLM. Οι δυνατότητες ξεκινούν ανενεργές και τις ενεργοποιείς εσύ.',
+    'Λειτουργεί με Ollama, LM Studio, llama.cpp και vLLM. Οι επιπλέον λειτουργίες ξεκινούν απενεργοποιημένες: άνοιξε τον διακομιστή για να ενεργοποιήσεις ό,τι μπορεί να κάνει, όπως τα εργαλεία (χρειάζονται για αναζήτηση, μνήμη και δάσκαλο) ή τις εικόνες.',
   'servers.noAddress': 'χωρίς διεύθυνση',
   'webSearch.hint':
-    'Η αναζήτηση που είναι ενσωματωμένη στον πάροχο του μοντέλου δεν χρειάζεται άλλο κλειδί και είναι η προεπιλογή. Με κλειδί OpenRouter μπορείς να διαλέξεις και την αναζήτηση OpenRouter στο πεδίο γραφής: το μοντέλο ψάχνει όταν χρειάζεται, με την πίστωσή σου στο OpenRouter, και οι σελίδες διαβάζονται μέσω του Jina Reader. Οι αναζητήσεις σου πηγαίνουν στον συνεργάτη αναζήτησης του OpenRouter και οι διευθύνσεις των σελίδων στο Jina.',
+    'Η αναζήτηση του παρόχου σου δεν χρειάζεται επιπλέον κλειδί και είναι η προεπιλογή. Με κλειδί OpenRouter μπορείς επίσης να διαλέξεις την αναζήτηση του OpenRouter στο πεδίο γραφής, με χρέωση στο υπόλοιπό σου στο OpenRouter. Τότε οι αναζητήσεις σου πηγαίνουν στον συνεργάτη αναζήτησης του OpenRouter και οι σελίδες διαβάζονται μέσω μιας υπηρεσίας που λέγεται Jina.',
   'webSearch.keyLabel': 'Κλειδί {provider}',
   'capability.tools': 'Εργαλεία',
   'capability.toolsHint':
@@ -644,6 +644,38 @@ const messages: Translation<typeof en> = {
     one: '{count} συζήτηση δεν διαβάστηκε.',
     other: '{count} συζητήσεις δεν διαβάστηκαν.',
   },
+
+  'data.review.system': 'Ορίζει την οδηγία με την οποία ξεκινά κάθε νέα συζήτηση:',
+  'data.review.notes': {
+    one: 'Προσθέτει αυτή τη σημείωση στη Μνήμη:',
+    other: 'Προσθέτει αυτές τις {count} σημειώσεις στη Μνήμη:',
+  },
+  'data.review.more': { one: 'και {count} ακόμη', other: 'και {count} ακόμη' },
+  'history.label': 'Συζητήσεις από το ChatGPT ή το Claude',
+  'history.hint':
+    'Ζήτησε από το ChatGPT ή το Claude ένα αντίγραφο των δεδομένων σου. Διάλεξε το αρχείο .zip που θα λάβεις ή το αρχείο conversations.json μέσα σε αυτό.',
+  'history.choose': 'Επιλογή αρχείου',
+  'history.confirmBody':
+    'Οι συζητήσεις σου προστίθενται σε δικό τους φάκελο και τίποτα από όσα έχεις εδώ δεν αντικαθίσταται. Αν διαλέξεις ξανά το ίδιο αρχείο, τίποτα δεν έρχεται δύο φορές. Οι εικόνες και τα αρχεία μένουν έξω· μια σημείωση δείχνει πού ήταν το καθένα.',
+  'history.reading': 'Ανάγνωση του αρχείου…',
+  'history.progress': 'Εισαγωγή από {source}: {done} από {total}',
+  'history.folder': 'Από {source}',
+  'history.imported': {
+    one: 'Εισήχθη {count} συζήτηση από {source}, στον φάκελο «{folder}».',
+    other: 'Εισήχθησαν {count} συζητήσεις από {source}, στον φάκελο «{folder}».',
+  },
+  'history.nothing': 'Αυτή η εξαγωγή από {source} δεν έχει συζητήσεις.',
+  'history.zipMissing':
+    'Δεν υπάρχει conversations.json σε αυτό το .zip. Διάλεξε την εξαγωγή δεδομένων που πήρες από το ChatGPT ή το Claude.',
+  'history.zipUnreadable':
+    'Αυτό το πρόγραμμα περιήγησης δεν μπορεί να ανοίξει αυτό το .zip. Αποσυμπίεσέ το και διάλεξε το αρχείο conversations.json μέσα του.',
+  'history.isBackup':
+    'Αυτό είναι αντίγραφο ασφαλείας του Dialogia. Χρησιμοποίησε την Εισαγωγή στις «Συζητήσεις και ρυθμίσεις» για να το επαναφέρεις.',
+  'history.unknown':
+    'Αυτό δεν είναι εξαγωγή από το ChatGPT ή το Claude. Διάλεξε το αρχείο conversations.json της ή το .zip με το οποίο ήρθε.',
+  'history.placeholder.image': '[Η εικόνα δεν περιλαμβάνεται]',
+  'history.placeholder.file': '[Το αρχείο δεν περιλαμβάνεται: {name}]',
+  'history.placeholder.fileUnnamed': '[Το αρχείο δεν περιλαμβάνεται]',
 
   // Settings › Appearance
   'appearance.scheme': 'Χρώματα',
@@ -805,6 +837,7 @@ const messages: Translation<typeof en> = {
   'notice.providerError': 'Ο πάροχος του μοντέλου επέστρεψε σφάλμα',
   'notice.modelListFailed': 'Η λίστα μοντέλων δεν φόρτωσε',
   'notice.emptyResponse': 'Ο πάροχος έστειλε κενή απάντηση',
+  'markdown.remoteImage': 'Εικόνα: {name} (άνοιγμα)',
   'notice.kind.image': 'εικόνες',
   'notice.kind.audio': 'ήχος',
   'notice.kind.pdf': 'PDF',

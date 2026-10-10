@@ -16,19 +16,20 @@ defaults.
 
 ## Commands
 
-| Command              | What it does                                                            |
-| -------------------- | ----------------------------------------------------------------------- |
-| `bun run dev`        | Vite dev server.                                                        |
-| `bun run build`      | Static bring-your-own-key (BYOK) build into `dist/`.                    |
-| `bun start`          | Preview a production build.                                             |
-| `bun run lint:types` | `tsc --noEmit`. There is no emit step, so this is the whole type check. |
-| `bun run test`       | Node's test runner over `tests/**/*.test.ts` and `src/**/*.test.ts`.    |
-| `bun run lint`       | ESLint, including the layer boundaries.                                 |
-| `bun run format`     | Prettier.                                                               |
-| `bun run knip`       | Dead-code gate. See below.                                              |
-| `scripts/ci.sh`      | All of the above, in the order CI runs them.                            |
-| `bun run e2e`        | Browser tests (Playwright) against the mock model. See Testing.         |
-| `bun run mock-llm`   | The mock model on :3999, to try the app by hand without a key.          |
+| Command                   | What it does                                                                                                                                                               |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bun run dev`             | Vite dev server.                                                                                                                                                           |
+| `bun run build`           | Static bring-your-own-key (BYOK) build into `dist/`.                                                                                                                       |
+| `bun start`               | Preview a production build.                                                                                                                                                |
+| `bun run lint:types`      | `tsc --noEmit`. There is no emit step, so this is the whole type check.                                                                                                    |
+| `bun run test`            | Node's test runner over `tests/**/*.test.ts` and `src/**/*.test.ts`.                                                                                                       |
+| `bun run lint`            | ESLint, including the layer boundaries.                                                                                                                                    |
+| `bun run format`          | Prettier.                                                                                                                                                                  |
+| `bun run knip`            | Dead-code gate. See below.                                                                                                                                                 |
+| `scripts/ci.sh`           | All of the above, in the order CI runs them.                                                                                                                               |
+| `bun run e2e`             | Browser tests (Playwright) against the mock model. See Testing.                                                                                                            |
+| `bun run mock-llm`        | The mock model on :3999, to try the app by hand without a key.                                                                                                             |
+| `bun run smoke:providers` | Real calls to the Claude API and OpenRouter through the app's transports (keys from `.env.local`): models, stream, tool round trip, Stop, a bad key. A fraction of a cent. |
 
 **`bun run test` always runs the whole suite.** Passing a file path does not filter it. The suite
 takes a few seconds, so run all of it.
@@ -120,7 +121,7 @@ pattern the runner and knip match, and live either in `tests/` or beside the cod
 **Browser tests.** `bun run e2e` builds the app, serves it on :4318 with the mock model from
 `e2e/mock/server.ts` on :4399, and drives the critical journeys in headless Chromium: first run,
 a wrong key then a right one, streaming, Stop, a connection cut mid-reply, a provider error and Try
-again, Learn on a model without tools, two tabs, export and import, and the phone layout. Both
+again, Learn on a model without tools, two tabs, export and import, a ChatGPT export brought in, and the phone layout. Both
 ports are fresh origins, so no key or chat of yours is ever in reach. A run already listening there
 is reused outside CI, so a second checkout running at the same time sets `E2E_APP_PORT` and
 `E2E_MOCK_PORT` to ports of its own. Specs are `e2e/*.spec.ts` (`*.phone.spec.ts` run at phone size) and fail on any uncaught

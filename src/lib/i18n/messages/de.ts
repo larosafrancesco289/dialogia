@@ -540,10 +540,10 @@ const messages: Translation<typeof en> = {
   'servers.namePlaceholder': 'Name, z. B. Ollama',
   'servers.add': 'Hinzufügen',
   'servers.addHint':
-    'Funktioniert mit Ollama, LM Studio, llama.cpp und vLLM. Die Funktionen sind zuerst aus; du schaltest sie ein.',
+    'Funktioniert mit Ollama, LM Studio, llama.cpp und vLLM. Zusätzliche Funktionen sind zuerst aus: Öffne den Server, um einzuschalten, was er kann, etwa Werkzeuge (nötig für Suche, Gedächtnis und Tutor) oder Bilder.',
   'servers.noAddress': 'keine Adresse',
   'webSearch.hint':
-    'Die eingebaute Suche des Modellanbieters braucht keinen weiteren Schlüssel und ist voreingestellt. Mit einem OpenRouter-Schlüssel kannst du im Eingabefeld auch die OpenRouter-Suche wählen: Das Modell sucht, wenn nötig, über dein OpenRouter-Guthaben, und Seiten werden mit Jina Reader gelesen. Deine Suchen gehen an den Suchpartner von OpenRouter, die Seitenadressen an Jina.',
+    'Die Suche deines Anbieters braucht keinen zusätzlichen Schlüssel und ist voreingestellt. Mit einem OpenRouter-Schlüssel kannst du im Eingabefeld auch die OpenRouter-Suche wählen, bezahlt mit deinem OpenRouter-Guthaben. Deine Suchanfragen gehen dann an den Suchpartner von OpenRouter, und die Seiten werden über einen Dienst namens Jina gelesen.',
   'webSearch.keyLabel': '{provider}-Schlüssel',
   'capability.tools': 'Werkzeuge',
   'capability.toolsHint': 'Das Modell darf Werkzeuge nutzen, etwa Suche und Gedächtnis.',
@@ -639,6 +639,38 @@ const messages: Translation<typeof en> = {
     one: '{count} Chat ließ sich nicht lesen.',
     other: '{count} Chats ließen sich nicht lesen.',
   },
+
+  'data.review.system': 'Sie legt die Anweisung fest, mit der jeder neue Chat beginnt:',
+  'data.review.notes': {
+    one: 'Sie fügt diese Notiz dem Gedächtnis hinzu:',
+    other: 'Sie fügt diese {count} Notizen dem Gedächtnis hinzu:',
+  },
+  'data.review.more': { one: 'und {count} weitere', other: 'und {count} weitere' },
+  'history.label': 'Chats aus ChatGPT oder Claude',
+  'history.hint':
+    'Bitte ChatGPT oder Claude um eine Kopie deiner Daten. Wähle die .zip-Datei, die du bekommst, oder die Datei conversations.json darin.',
+  'history.choose': 'Datei wählen',
+  'history.confirmBody':
+    'Deine Chats kommen in einen eigenen Ordner, und nichts, was du hier hast, wird ersetzt. Wählst du dieselbe Datei noch einmal, kommt nichts doppelt herein. Bilder und Dateien bleiben draußen; ein Hinweis zeigt, wo jedes Stück war.',
+  'history.reading': 'Datei wird gelesen …',
+  'history.progress': 'Import aus {source}: {done} von {total}',
+  'history.folder': 'Aus {source}',
+  'history.imported': {
+    one: '{count} Chat aus {source} importiert, in den Ordner „{folder}“.',
+    other: '{count} Chats aus {source} importiert, in den Ordner „{folder}“.',
+  },
+  'history.nothing': 'Dieser Export aus {source} enthält keine Chats.',
+  'history.zipMissing':
+    'In dieser .zip-Datei gibt es keine conversations.json. Wähle den Datenexport, den du von ChatGPT oder Claude bekommen hast.',
+  'history.zipUnreadable':
+    'Dieser Browser kann diese .zip-Datei nicht öffnen. Entpacke sie und wähle dann die Datei conversations.json darin.',
+  'history.isBackup':
+    'Das ist ein Dialogia-Backup. Nutze Importieren unter „Chats und Einstellungen“, um es zurückzuholen.',
+  'history.unknown':
+    'Das ist kein Export aus ChatGPT oder Claude. Wähle die Datei conversations.json daraus oder die .zip-Datei, in der sie kam.',
+  'history.placeholder.image': '[Bild nicht übernommen]',
+  'history.placeholder.file': '[Datei nicht übernommen: {name}]',
+  'history.placeholder.fileUnnamed': '[Datei nicht übernommen]',
 
   // Settings › Appearance
   'appearance.scheme': 'Farbschema',
@@ -807,6 +839,7 @@ const messages: Translation<typeof en> = {
   'notice.providerError': 'Der Modellanbieter hat einen Fehler gemeldet',
   'notice.modelListFailed': 'Die Modellliste konnte nicht geladen werden',
   'notice.emptyResponse': 'Der Anbieter hat eine leere Antwort geschickt',
+  'markdown.remoteImage': 'Bild: {name} (öffnen)',
   'notice.kind.image': 'Bilder',
   'notice.kind.audio': 'Audio',
   'notice.kind.pdf': 'PDFs',

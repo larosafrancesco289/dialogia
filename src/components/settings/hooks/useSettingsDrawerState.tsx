@@ -23,10 +23,15 @@ import { ProvidersPanel } from '@/components/settings/sections/ProvidersPanel';
 import { ChatPanel } from '@/components/settings/sections/ChatPanel';
 import { SettingsModuleSlot } from '@/components/ModuleSlot';
 import { AppearancePanel } from '@/components/settings/sections/AppearancePanel';
-import { DataPanel } from '@/components/settings/sections/DataPanel';
+import {
+  DataPanel,
+  type ImportKind,
+  type PendingImport,
+} from '@/components/settings/sections/DataPanel';
 import { TAB_LIST } from '@/components/settings/sections/config';
 import { NOTICE_EXPORTED_CHATS } from '@/lib/store/notices';
-import { buildChatExport, importChatExport } from '@/lib/settings/transfer';
+import { buildChatExport, prepareImport, type PreparedImport } from '@/lib/settings/transfer';
+import type { ImportProgress } from '@/lib/historyImport/importHistory';
 import { t } from '@/lib/i18n';
 import { anyTurnActive } from '@/lib/ui/streaming';
 
@@ -50,6 +55,11 @@ export type SettingsDrawerState = {
 
 export function useSettingsDrawerState(): SettingsDrawerState {
   const [closing, setClosing] = useState(false);
+  const [importing, setImporting] = useState<ImportKind | null>(null);
+  const [importProgress, setImportProgress] = useState<ImportProgress | null>(null);
+  const [pendingImport, setPendingImport] = useState<
+    (PendingImport & { prepared: PreparedImport }) | null
+  >(null);
 
   const { setUI, setNotice, ui, loadModels, toggleFavoriteModel, favoriteModelIds, initializeApp } =
     useChatStore(
@@ -159,17 +169,40 @@ export function useSettingsDrawerState(): SettingsDrawerState {
     }
   };
 
-  const onImportPicked = async (file?: File | null) => {
-    if (!file) return;
+  const onImportPicked = async (file: File, kind: ImportKind) => {
+    setImporting(kind);
+    try {
+      const result = await prepareImport(file, { historyOnly: kind === 'history' });
+      if (!result.ok) {
+        setNotice(result.error || t('data.importFailed'));
+        return;
+      }
+      setPendingImport({
+        name: file.name,
+        kind,
+        review: result.prepared.review,
+        prepared: result.prepared,
+      });
+    } catch (e: unknown) {
+      setNotice(e instanceof Error ? e.message : t('data.importFailed'));
+    } finally {
+      setImporting(null);
+    }
+  };
+
+  const onConfirmImport = async () => {
+    const pending = pendingImport;
+    setPendingImport(null);
+    if (!pending) return;
     // An import reloads every chat from disk, and a reply being written is
     // the store's, not the disk's yet: it would be lost from under its turn.
     if (anyTurnActive(useChatStore.getState().ui)) {
       setNotice(t('data.importWhileReplying'));
       return;
     }
+    setImporting(pending.kind);
     try {
-      const text = await file.text();
-      const importResult = await importChatExport(text);
+      const importResult = await pending.prepared.apply(setImportProgress);
       if (!importResult.ok) {
         setNotice(importResult.error || t('data.importFailed'));
         return;
@@ -179,6 +212,9 @@ export function useSettingsDrawerState(): SettingsDrawerState {
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : t('data.importFailed');
       setNotice(message);
+    } finally {
+      setImporting(null);
+      setImportProgress(null);
     }
   };
 
@@ -250,6 +286,11 @@ export function useSettingsDrawerState(): SettingsDrawerState {
         renderSection={renderSection}
         onExport={onExport}
         onImportPicked={onImportPicked}
+        pendingImport={pendingImport}
+        onConfirmImport={() => void onConfirmImport()}
+        onCancelImport={() => setPendingImport(null)}
+        importing={importing}
+        importProgress={importProgress}
       />
     ),
   };

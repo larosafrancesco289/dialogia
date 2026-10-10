@@ -158,6 +158,20 @@ follows through a `BroadcastChannel` (`src/lib/sync/tabChannel.ts`, a no-op wher
   the reply, and the transcript would interleave two turns. A writing tab not heard from for 60 s
   is let go.
 
+### Chats from ChatGPT and Claude
+
+Settings › Data also takes the `conversations.json` of a ChatGPT or Claude data export, or the
+export's `.zip` (read with `Blob.slice` and `DecompressionStream`, so only the directory and that
+one entry are touched). `src/lib/historyImport/` tells the two apart by shape, follows ChatGPT's
+`mapping` tree from `current_node` to the root (and Claude's `parent_message_uuid` chain, where
+messages carry one), and keeps only the person's and the assistant's words: tool calls, tool
+output, thinking and hidden system turns are dropped, and pictures and files become a bracketed
+note. Each conversation becomes a chat with ids derived from the source's (`chatgpt-<id>`,
+`claude-<uuid>`), in a folder per source, written through `importAll` in batches with a yield
+between them. A second import therefore doubles nothing; a chat brought in before keeps its own
+row (title, folder, settings) and takes the export's messages again by id. Nothing is added to
+the schema.
+
 ## A turn, end to end
 
 1. The composer first asks `canSendWithModel` (a key, and the cached ZDR verdict) so a refused
@@ -573,6 +587,13 @@ A browser-held key is readable by the page holding it. That is inherent to bring
   attacker-influenced.
 - `sanitizeEndpoint` always derives `apiKeyRef` from the endpoint id and ignores the persisted blob,
   so an imported backup cannot point a hostile base URL at a built-in endpoint's key.
+- A backup's servers pass `guardImportedEndpoints`: a server already here keeps its own address
+  and kind, and one whose id a key still waits under comes in under a new id, so a file cannot
+  point a hostile base URL at a custom server's key either.
+- A backup is read and checked before anything is written, and its confirmation quotes the default
+  instruction and the memory notes it would add. Imported notes are marked `author: 'model'`
+  unless the same words are already here as the person's. ChatGPT and Claude exports bring chats
+  and messages only.
 
 ## Where things live
 
@@ -589,6 +610,7 @@ A browser-held key is readable by the page holding it. That is inherent to bring
 | Keys                     | `src/lib/keys/store.ts`                                                                     |
 | Long-term memory         | `src/lib/memory/**`, `src/lib/store/memorySlice.ts`, `src/components/memory/**`             |
 | Chat persistence         | `src/lib/db/**`                                                                             |
+| ChatGPT / Claude import  | `src/lib/historyImport/**`, `src/lib/settings/transfer.ts`                                  |
 | Cross-tab sync           | `src/lib/sync/tabChannel.ts`, `src/lib/db/announce.ts`, `src/lib/store/tabSync.ts`          |
 | Feature modules          | `src/modules/**`, listed in `src/lib/modules.ts`                                            |
 | Languages                | `src/lib/i18n/**`, `src/modules/tutor/i18n/**`                                              |

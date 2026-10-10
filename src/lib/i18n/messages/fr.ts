@@ -550,10 +550,10 @@ const messages: Translation<typeof en> = {
   'servers.namePlaceholder': 'Nom, ex. Ollama',
   'servers.add': 'Ajouter',
   'servers.addHint':
-    'Fonctionne avec Ollama, LM Studio, llama.cpp et vLLM. Les fonctions commencent désactivées, à toi de les activer.',
+    'Fonctionne avec Ollama, LM Studio, llama.cpp et vLLM. Les fonctions en plus sont désactivées au départ : ouvre le serveur pour activer ce qu’il sait faire, comme les outils (nécessaires pour la recherche, la mémoire et le tuteur) ou les images.',
   'servers.noAddress': 'aucune adresse',
   'webSearch.hint':
-    'La recherche intégrée au fournisseur du modèle ne demande pas d’autre clé et c’est celle par défaut. Avec une clé OpenRouter, tu peux aussi choisir la recherche OpenRouter dans la zone de saisie : le modèle cherche quand il le faut, sur ton crédit OpenRouter, et les pages sont lues avec Jina Reader. Tes recherches partent chez le partenaire de recherche d’OpenRouter, et les adresses des pages chez Jina.',
+    'La recherche de ton fournisseur n’a pas besoin de clé en plus, et c’est celle par défaut. Avec une clé OpenRouter, tu peux aussi choisir la recherche d’OpenRouter dans la zone de saisie, payée avec ton crédit OpenRouter. Tes recherches vont alors au partenaire de recherche d’OpenRouter, et les pages sont lues par un service appelé Jina.',
   'webSearch.keyLabel': 'Clé {provider}',
   'capability.tools': 'Outils',
   'capability.toolsHint':
@@ -651,6 +651,38 @@ const messages: Translation<typeof en> = {
     one: '{count} discussion n’a pas pu être lue.',
     other: '{count} discussions n’ont pas pu être lues.',
   },
+
+  'data.review.system': 'Il définit la consigne par laquelle commence chaque nouvelle discussion :',
+  'data.review.notes': {
+    one: 'Il ajoute cette note à la Mémoire :',
+    other: 'Il ajoute ces {count} notes à la Mémoire :',
+  },
+  'data.review.more': { one: 'et {count} autre', other: 'et {count} autres' },
+  'history.label': 'Discussions de ChatGPT ou Claude',
+  'history.hint':
+    'Demande à ChatGPT ou à Claude une copie de tes données. Choisis le fichier .zip reçu, ou le fichier conversations.json qu’il contient.',
+  'history.choose': 'Choisir un fichier',
+  'history.confirmBody':
+    'Tes discussions sont ajoutées dans un dossier à part, et rien de ce que tu as ici n’est remplacé. Choisir à nouveau le même fichier n’ajoute rien en double. Les images et les fichiers restent de côté ; une note marque l’endroit de chacun.',
+  'history.reading': 'Lecture du fichier…',
+  'history.progress': 'Import depuis {source} : {done} sur {total}',
+  'history.folder': 'De {source}',
+  'history.imported': {
+    one: '{count} discussion importée depuis {source}, dans le dossier « {folder} ».',
+    other: '{count} discussions importées depuis {source}, dans le dossier « {folder} ».',
+  },
+  'history.nothing': 'Cet export de {source} ne contient aucune discussion.',
+  'history.zipMissing':
+    'Ce .zip ne contient pas de conversations.json. Choisis l’export de données reçu de ChatGPT ou de Claude.',
+  'history.zipUnreadable':
+    'Ce navigateur ne peut pas ouvrir ce .zip. Décompresse-le, puis choisis le fichier conversations.json qu’il contient.',
+  'history.isBackup':
+    'C’est une sauvegarde de Dialogia. Utilise Importer sous « Discussions et réglages » pour la restaurer.',
+  'history.unknown':
+    'Ce n’est pas un export de ChatGPT ou de Claude. Choisis son fichier conversations.json, ou le .zip dans lequel il est arrivé.',
+  'history.placeholder.image': '[Image non incluse]',
+  'history.placeholder.file': '[Fichier non inclus : {name}]',
+  'history.placeholder.fileUnnamed': '[Fichier non inclus]',
 
   // Settings › Appearance
   'appearance.scheme': 'Couleurs',
@@ -814,6 +846,7 @@ const messages: Translation<typeof en> = {
   'notice.providerError': 'Le fournisseur du modèle a renvoyé une erreur',
   'notice.modelListFailed': 'Impossible de charger la liste des modèles',
   'notice.emptyResponse': 'Le fournisseur a envoyé une réponse vide',
+  'markdown.remoteImage': 'Image : {name} (ouvrir)',
   'notice.kind.image': 'images',
   'notice.kind.audio': 'audio',
   'notice.kind.pdf': 'PDF',

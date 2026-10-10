@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { logger } from '@/lib/logger';
 import { useModalFocus } from '@/lib/hooks/useModalFocus';
 import { useT } from '@/lib/i18n';
+import { SAFE_DATA_URL } from '@/lib/db/sanitize';
 
 type Img = { src: string; name?: string };
 
@@ -33,7 +34,9 @@ export function ImageLightbox({
   }, [images.length]);
 
   const download = () => {
-    if (!current) return;
+    // Only the image's own bytes are offered as a file; any other URL as a
+    // link's href would be followed, in this origin.
+    if (!current || !SAFE_DATA_URL.test(current.src)) return;
     try {
       const a = document.createElement('a');
       a.href = current.src;
