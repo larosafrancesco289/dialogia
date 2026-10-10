@@ -159,12 +159,13 @@
   /* Only where there is a pointer to hover with: a tap would leave the tint
      stuck on. */
   @media (hover: hover) {
-    .choice:hover:not(:disabled) {
+    .choice:hover:not(:disabled):not([aria-disabled='true']) {
       border-color: color-mix(in oklab, var(--color-fg) 28%, transparent);
       background: color-mix(in oklab, var(--color-fg) 4%, transparent);
     }
   }
-  .choice:disabled {
+  .choice:disabled,
+  .choice[aria-disabled='true'] {
     cursor: default;
   }
   .choice.is-picked {
@@ -218,16 +219,26 @@
     font-size: 0.8125rem;
     color: var(--color-fg-muted);
   }
-  .choice__end {
+  .choice__grade {
     flex: none;
     align-self: center;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+  .choice__label {
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .choice__end {
+    flex: none;
     width: 16px;
     height: 16px;
   }
-  .choice.is-correct .choice__end {
+  .choice.is-correct .choice__grade {
     color: var(--color-success);
   }
-  .choice.is-wrong .choice__end {
+  .choice.is-wrong .choice__grade {
     color: var(--color-danger);
   }
 

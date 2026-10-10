@@ -32,12 +32,17 @@ const messages: Translation<typeof en> = {
     'Pega una clave de Anthropic para usar los modelos Claude. Solo pagas a Anthropic lo que uses.',
   'connect.lead.local':
     'Pega la dirección de un servidor de modelos que tengas tú, como Ollama o LM Studio. La mayoría no necesita clave.',
+  'connect.steps.what':
+    'Una clave es como una contraseña: permite que Dialogia use tu cuenta de {provider}. Pagas a {provider} directamente por lo que uses.',
   'connect.steps.account': '{action} en {link}.',
   'connect.steps.accountAction': 'Crea una cuenta',
-  'connect.steps.credit': '{action} en {page}.',
+  'connect.steps.credit':
+    '{action} en {page}. Necesitas una tarjeta, y unos pocos dólares bastan para empezar.',
   'connect.steps.creditAction': 'Añade un poco de saldo',
   'connect.steps.key': '{action} en {link}, cópiala y pégala arriba.',
   'connect.steps.keyAction': 'Crea una clave',
+  'connect.steps.free':
+    '¿Solo quieres probar? OpenRouter también tiene modelos gratuitos, con «(free)» en el nombre. No piden saldo, pero solo permiten un número limitado de mensajes al día.',
   'connect.serverAddress': 'Dirección del servidor',
   'connect.submit': 'Conectar',
   'connect.howToGetKey': '¿Cómo consigo una clave?',
@@ -54,6 +59,9 @@ const messages: Translation<typeof en> = {
     '{provider} no ha aceptado esa clave. Comprueba que la copiaste entera, o crea una nueva.',
   'connect.serverSilent':
     'No llegó ningún modelo desde esa dirección. ¿Está encendido el servidor?',
+  'connect.keyFormat':
+    'Eso no parece una clave de {provider}: las claves de {provider} empiezan por {prefix}. Copia la clave entera y vuelve a pegarla.',
+  'connect.serverUnreachable': 'No se pudo llegar a esa dirección.',
   'connect.keyNotSaved':
     'Este navegador no ha podido guardar tu clave, así que solo funciona hasta que cierres esta página.',
   'connect.invalidAddress':
@@ -218,6 +226,7 @@ const messages: Translation<typeof en> = {
   'ending.nothing.stopped': 'Detenida antes de que empezara la respuesta.',
   'ending.nothing.failed': 'Esta respuesta falló.',
   'ending.nothing.interrupted': 'La página se cerró antes de que empezara la respuesta.',
+  'ending.details': 'Lo que dijo el proveedor',
   'ending.length': 'Detenida en el límite de longitud.',
   'ending.announce.stopped': 'Respuesta detenida',
   'ending.announce.failed': 'Respuesta fallida',
@@ -392,6 +401,10 @@ const messages: Translation<typeof en> = {
   'header.collapseSidebar': 'Cerrar la barra lateral',
   'header.openMemory': 'Abrir la memoria',
   'header.openSettings': 'Abrir los ajustes',
+  'learnTools.notice':
+    '{model} no puede usar herramientas, así que en Aprender solo puede chatear: sin plan y sin quiz.',
+  'learnTools.chooseModel': 'Elegir otro modelo',
+  'learnTools.turnOnTools': 'Activar Herramientas en Ajustes',
   'header.tutorModel': 'Modelo del tutor: {model}. Se cambia en Ajustes.',
   'lightbox.label': 'Visor de imágenes',
   'lightbox.download': 'Descargar',
@@ -778,6 +791,13 @@ const messages: Translation<typeof en> = {
   'notice.stalled':
     'El proveedor dejó de enviar, así que la respuesta se detuvo. Inténtalo de nuevo.',
   'notice.unknownError': 'Algo salió mal y el proveedor no dijo qué.',
+  'notice.outOfCredit':
+    'Tu cuenta con el proveedor se quedó sin saldo. Añade saldo en su web y vuelve a intentarlo.',
+  'notice.modelNotFound': 'El proveedor no tiene este modelo. Elige otro y vuelve a intentarlo.',
+  'notice.providerDown':
+    'El proveedor tuvo un problema por su parte. Inténtalo de nuevo en un momento, o elige otro modelo.',
+  'notice.requestRefused':
+    'El proveedor no pudo atender esta petición. Inténtalo de nuevo, o elige otro modelo.',
   'notice.tryAgainSoon': 'Inténtalo de nuevo en un momento.',
   'notice.providerError': 'El proveedor del modelo devolvió un error',
   'notice.modelListFailed': 'No se pudo cargar la lista de modelos',

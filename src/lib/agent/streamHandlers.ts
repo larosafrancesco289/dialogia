@@ -378,6 +378,7 @@ export function createMessageStreamCallbacks(
         finishReason: extras?.finishReason,
         cutOff: undefined,
         cutOffReason: undefined,
+        cutOffDetail: undefined,
         stopPolicy:
           extras?.finishReason === 'content_filter'
             ? extractStopPolicy(extras?.stopDetails)

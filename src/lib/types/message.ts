@@ -142,6 +142,8 @@ export type Message = {
   // Why a failed reply failed, in the words its notice used, kept for after
   // the notice is gone.
   cutOffReason?: string;
+  // The provider's own words for that failure, shown only when asked for.
+  cutOffDetail?: string;
   tokensIn?: number;
   tokensOut?: number;
   model?: string;
@@ -219,6 +221,7 @@ export type ReplyVersionKey =
   | 'stopPolicy'
   | 'cutOff'
   | 'cutOffReason'
+  | 'cutOffDetail'
   | 'tokensIn'
   | 'tokensOut'
   | 'model'

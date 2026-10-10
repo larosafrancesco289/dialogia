@@ -34,12 +34,17 @@ const messages: Translation<typeof en> = {
     'Füge einen Schlüssel von Anthropic ein, um Claude-Modelle zu nutzen. Du zahlst Anthropic nur, was du nutzt.',
   'connect.lead.local':
     'Füge die Adresse eines Modellservers ein, den du selbst betreibst, etwa Ollama oder LM Studio. Meist braucht es keinen Schlüssel.',
+  'connect.steps.what':
+    'Ein Schlüssel ist wie ein Passwort: Mit ihm darf Dialogia dein {provider}-Konto nutzen. Du zahlst {provider} direkt für das, was du nutzt.',
   'connect.steps.account': '{action} auf {link}.',
   'connect.steps.accountAction': 'Leg ein Konto an',
-  'connect.steps.credit': '{action} unter {page}.',
+  'connect.steps.credit':
+    '{action} unter {page}. Du brauchst eine Karte, und für den Anfang reichen ein paar Dollar.',
   'connect.steps.creditAction': 'Lade etwas Guthaben auf',
   'connect.steps.key': '{action} unter {link}, kopiere ihn und füge ihn oben ein.',
   'connect.steps.keyAction': 'Erstelle einen Schlüssel',
+  'connect.steps.free':
+    'Willst du es erst ausprobieren? OpenRouter hat auch kostenlose Modelle, mit „(free)“ im Namen. Sie brauchen kein Guthaben, erlauben aber nur eine begrenzte Zahl von Nachrichten am Tag.',
   'connect.serverAddress': 'Serveradresse',
   'connect.submit': 'Verbinden',
   'connect.howToGetKey': 'Wie bekomme ich einen Schlüssel?',
@@ -55,6 +60,9 @@ const messages: Translation<typeof en> = {
   'connect.keyRefused':
     '{provider} hat diesen Schlüssel nicht angenommen. Prüf, ob du ihn ganz kopiert hast, oder erstelle einen neuen.',
   'connect.serverSilent': 'Unter dieser Adresse kamen keine Modelle. Läuft der Server?',
+  'connect.keyFormat':
+    'Das sieht nicht nach einem {provider}-Schlüssel aus: {provider}-Schlüssel beginnen mit {prefix}. Kopiere den ganzen Schlüssel und füge ihn noch einmal ein.',
+  'connect.serverUnreachable': 'Diese Adresse ist nicht erreichbar.',
   'connect.keyNotSaved':
     'Dieser Browser konnte deinen Schlüssel nicht speichern. Er funktioniert nur, bis du die Seite schließt.',
   'connect.invalidAddress':
@@ -222,6 +230,7 @@ const messages: Translation<typeof en> = {
   'ending.nothing.stopped': 'Gestoppt, bevor die Antwort begann.',
   'ending.nothing.failed': 'Diese Antwort ist fehlgeschlagen.',
   'ending.nothing.interrupted': 'Die Seite wurde geschlossen, bevor die Antwort begann.',
+  'ending.details': 'Was der Anbieter gesagt hat',
   'ending.length': 'An der Längengrenze gestoppt.',
   'ending.announce.stopped': 'Antwort gestoppt',
   'ending.announce.failed': 'Antwort fehlgeschlagen',
@@ -390,6 +399,10 @@ const messages: Translation<typeof en> = {
   'header.collapseSidebar': 'Seitenleiste einklappen',
   'header.openMemory': 'Gedächtnis öffnen',
   'header.openSettings': 'Einstellungen öffnen',
+  'learnTools.notice':
+    '{model} kann keine Werkzeuge nutzen, also kann es unter Lernen nur chatten: kein Plan und kein Quiz.',
+  'learnTools.chooseModel': 'Anderes Modell wählen',
+  'learnTools.turnOnTools': 'Werkzeuge in den Einstellungen einschalten',
   'header.tutorModel': 'Tutor-Modell: {model}. Änderbar in den Einstellungen.',
   'lightbox.label': 'Bildansicht',
   'lightbox.download': 'Herunterladen',
@@ -782,6 +795,14 @@ const messages: Translation<typeof en> = {
   'notice.stalled':
     'Der Anbieter hat nichts mehr gesendet, deshalb wurde die Antwort beendet. Versuch es noch einmal.',
   'notice.unknownError': 'Etwas ist schiefgegangen, und der Anbieter hat nicht gesagt, was.',
+  'notice.outOfCredit':
+    'Dein Konto beim Anbieter hat kein Guthaben mehr. Lade auf seiner Website etwas auf und versuch es dann noch einmal.',
+  'notice.modelNotFound':
+    'Der Anbieter hat dieses Modell nicht. Wähl ein anderes und versuch es dann noch einmal.',
+  'notice.providerDown':
+    'Beim Anbieter ist ein Problem aufgetreten. Versuch es gleich noch einmal oder wähl ein anderes Modell.',
+  'notice.requestRefused':
+    'Der Anbieter konnte diese Anfrage nicht bearbeiten. Versuch es noch einmal oder wähl ein anderes Modell.',
   'notice.tryAgainSoon': 'Versuch es gleich noch einmal.',
   'notice.providerError': 'Der Modellanbieter hat einen Fehler gemeldet',
   'notice.modelListFailed': 'Die Modellliste konnte nicht geladen werden',
