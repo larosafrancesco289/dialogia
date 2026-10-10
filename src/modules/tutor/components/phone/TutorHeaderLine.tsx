@@ -1,9 +1,5 @@
-import { useMemo } from 'react';
-import { shallow } from 'zustand/shallow';
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
-import { useChatStore } from '@/lib/store';
-import { selectCurrentChat } from '@/lib/store/selectors';
-import { findModelById, formatModelLabel } from '@/lib/models';
+import { useTutorModel } from '@/lib/hooks/useTutorModel';
 import { usePlanCallbacks } from '@/modules/tutor/ui/usePlanCallbacks';
 import { useT } from '@/modules/tutor/i18n';
 
@@ -15,26 +11,9 @@ import { useT } from '@/modules/tutor/i18n';
  */
 export function TutorHeaderLine() {
   const t = useT();
-  const { models, modelId } = useChatStore((s) => {
-    const chat = selectCurrentChat(s);
-    return {
-      models: s.models,
-      modelId:
-        chat?.settings?.features.tutor?.defaultModelId ||
-        chat?.settings?.modelId ||
-        s.ui.tutor?.defaultModelId,
-    };
-  }, shallow);
+  const modelLabel = useTutorModel().label;
   const { learningPlan, hasPlan, planProgress, onOpenRightPanel, rightPanelOpen } =
     usePlanCallbacks();
-
-  const modelLabel = useMemo(
-    () =>
-      modelId
-        ? formatModelLabel({ model: findModelById(models, modelId), fallbackId: modelId })
-        : '',
-    [models, modelId],
-  );
 
   const canOpen = hasPlan && !!planProgress && !!learningPlan;
   const detail = canOpen

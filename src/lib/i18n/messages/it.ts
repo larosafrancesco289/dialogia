@@ -33,12 +33,17 @@ const messages: Translation<typeof en> = {
     'Incolla una chiave di Anthropic per usare i modelli Claude. Paghi Anthropic solo per quello che usi.',
   'connect.lead.local':
     'Incolla l’indirizzo di un server di modelli che gestisci tu, come Ollama o LM Studio. Quasi sempre non serve una chiave.',
+  'connect.steps.what':
+    'Una chiave è come una password: permette a Dialogia di usare il tuo account {provider}. Paghi {provider} direttamente per quello che usi.',
   'connect.steps.account': '{action} su {link}.',
   'connect.steps.accountAction': 'Crea un account',
-  'connect.steps.credit': '{action} nella sezione {page}.',
+  'connect.steps.credit':
+    '{action} nella sezione {page}. Serve una carta, e per iniziare bastano pochi dollari.',
   'connect.steps.creditAction': 'Aggiungi un po’ di credito',
   'connect.steps.key': '{action} nella sezione {link}, copiala e incollala qui sopra.',
   'connect.steps.keyAction': 'Crea una chiave',
+  'connect.steps.free':
+    'Vuoi solo provare? OpenRouter ha anche modelli gratuiti, con “(free)” nel nome. Non chiedono credito, ma permettono solo un numero limitato di messaggi al giorno.',
   'connect.serverAddress': 'Indirizzo del server',
   'connect.submit': 'Collega',
   'connect.howToGetKey': 'Come ottengo una chiave?',
@@ -54,6 +59,9 @@ const messages: Translation<typeof en> = {
   'connect.keyRefused':
     '{provider} non ha accettato quella chiave. Controlla di averla copiata tutta, oppure creane una nuova.',
   'connect.serverSilent': 'Da quell’indirizzo non è arrivato nessun modello. Il server è acceso?',
+  'connect.keyFormat':
+    'Questa non sembra una chiave {provider}: le chiavi {provider} iniziano con {prefix}. Copia tutta la chiave e incollala di nuovo.',
+  'connect.serverUnreachable': 'Quell’indirizzo non risponde.',
   'connect.keyNotSaved':
     'Questo browser non è riuscito a salvare la chiave: funziona solo finché non chiudi la pagina.',
   'connect.invalidAddress':
@@ -222,6 +230,7 @@ const messages: Translation<typeof en> = {
   'ending.nothing.stopped': 'Fermata prima che la risposta iniziasse.',
   'ending.nothing.failed': 'Questa risposta non è riuscita.',
   'ending.nothing.interrupted': 'La pagina si è chiusa prima che la risposta iniziasse.',
+  'ending.details': 'Cosa ha detto il fornitore',
   'ending.length': 'Fermata al limite di lunghezza.',
   'ending.announce.stopped': 'Risposta fermata',
   'ending.announce.failed': 'Risposta non riuscita',
@@ -393,6 +402,10 @@ const messages: Translation<typeof en> = {
   'header.collapseSidebar': 'Chiudi la barra laterale',
   'header.openMemory': 'Apri la memoria',
   'header.openSettings': 'Apri le impostazioni',
+  'learnTools.notice':
+    '{model} non sa usare gli strumenti, quindi in Impara può solo chattare: niente piano e niente quiz.',
+  'learnTools.chooseModel': 'Scegli un altro modello',
+  'learnTools.turnOnTools': 'Attiva Strumenti nelle Impostazioni',
   'header.tutorModel': 'Modello del tutor: {model}. Puoi cambiarlo nelle Impostazioni.',
   'lightbox.label': 'Visualizzatore di immagini',
   'lightbox.download': 'Scarica',
@@ -778,6 +791,13 @@ const messages: Translation<typeof en> = {
   'notice.stalled':
     'Il fornitore ha smesso di inviare, quindi la risposta è stata interrotta. Riprova.',
   'notice.unknownError': 'Qualcosa è andato storto, e il fornitore non ha detto cosa.',
+  'notice.outOfCredit':
+    'Il credito del tuo account presso il fornitore è finito. Aggiungine sul sito del fornitore, poi riprova.',
+  'notice.modelNotFound': 'Il fornitore non ha questo modello. Scegline un altro, poi riprova.',
+  'notice.providerDown':
+    'Il fornitore ha avuto un problema. Riprova tra un momento, o scegli un altro modello.',
+  'notice.requestRefused':
+    'Il fornitore non è riuscito a gestire questa richiesta. Riprova, o scegli un altro modello.',
   'notice.tryAgainSoon': 'Riprova tra un momento.',
   'notice.providerError': 'Il fornitore del modello ha restituito un errore',
   'notice.modelListFailed': 'Impossibile caricare l’elenco dei modelli',

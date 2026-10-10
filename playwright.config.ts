@@ -1,9 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
 
 // Ports of their own: a fresh origin with no keys or chats, and clear of the
-// dev servers (3000s) and the hand-run mock (3999).
-const APP_PORT = 4318;
-const MOCK_PORT = 4399;
+// dev servers (3000s) and the hand-run mock (3999). Another checkout's run on
+// the same machine takes others (E2E_APP_PORT, E2E_MOCK_PORT), or it would be
+// served the build already listening there.
+const APP_PORT = Number(process.env.E2E_APP_PORT || 4318);
+const MOCK_PORT = Number(process.env.E2E_MOCK_PORT || 4399);
 
 export default defineConfig({
   testDir: 'e2e',

@@ -34,9 +34,14 @@ const LEADS: Record<ConnectChoice, MessageKey> = {
 };
 
 // The provider's own page names (Credits, Keys) stay as its site writes them.
-const KEY_SITES: Record<KeyChoice, { home: string; credit: string; keys: string }> = {
-  openrouter: { home: 'openrouter.ai', credit: 'Credits', keys: 'Keys' },
-  anthropic: { home: 'console.anthropic.com', credit: 'Billing', keys: 'API keys' },
+const KEY_SITES: Record<KeyChoice, { name: string; home: string; credit: string; keys: string }> = {
+  openrouter: { name: 'OpenRouter', home: 'openrouter.ai', credit: 'Credits', keys: 'Keys' },
+  anthropic: {
+    name: 'Anthropic',
+    home: 'console.anthropic.com',
+    credit: 'Billing',
+    keys: 'API keys',
+  },
 };
 
 function keySteps(t: Translate, choice: KeyChoice): ReactNode[] {
@@ -86,7 +91,7 @@ export function ConnectForm({
   const [choice, setChoice] = useState<ConnectChoice>(() => refused ?? 'openrouter');
   const [value, setValue] = useState('');
   const [open, setOpen] = useState<Fold | null>(null);
-  const { connect, busy, error, clearError } = useConnectProvider();
+  const { connect, busy, error, corsHint, clearError } = useConnectProvider();
   const ownInputRef = useRef<HTMLInputElement>(null);
   const inputRef = givenInputRef ?? ownInputRef;
   const stepsToggleRef = useRef<HTMLButtonElement>(null);
@@ -122,9 +127,8 @@ export function ConnectForm({
     // A key pasted under the other provider is saved where it belongs.
     const target = keyChoiceFor(choice, value);
     if (target !== choice) setChoice(target);
+    // What was pasted stays in the field beside the reason it failed.
     if (await connect(target, value)) onConnected?.();
-    // A refused key is cleared, so the note saying so shows in its place.
-    else if (target !== 'local') setValue('');
   };
 
   const keyChoice = choice === 'local' ? null : choice;
@@ -184,9 +188,14 @@ export function ConnectForm({
           </button>
         </div>
         {shownError && (
-          <p id={errorId} className={styles.error} role="alert">
-            {shownError}
-          </p>
+          <div id={errorId} className={styles.error} role="alert">
+            <p>{shownError}</p>
+            {corsHint && (
+              <p className={styles.errorHint}>
+                {t('probe.unreachableHint', { origin: window.location.origin })}
+              </p>
+            )}
+          </div>
         )}
 
         <div className={styles.toggles}>
@@ -218,17 +227,25 @@ export function ConnectForm({
 
         <div ref={foldsRef}>
           {keyChoice && (
-            <ol
+            <div
               id={`${id}-steps`}
               className={`${styles.steps} motion-fade`}
               hidden={open !== 'steps'}
             >
-              {keySteps(t, keyChoice).map((step, index) => (
-                <li key={index}>
-                  <span>{step}</span>
-                </li>
-              ))}
-            </ol>
+              <p className={styles.stepsNote}>
+                {t('connect.steps.what', { provider: KEY_SITES[keyChoice].name })}
+              </p>
+              <ol>
+                {keySteps(t, keyChoice).map((step, index) => (
+                  <li key={index}>
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ol>
+              {keyChoice === 'openrouter' && (
+                <p className={styles.stepsNote}>{t('connect.steps.free')}</p>
+              )}
+            </div>
           )}
           <div
             id={`${id}-others`}

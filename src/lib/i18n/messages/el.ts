@@ -34,12 +34,17 @@ const messages: Translation<typeof en> = {
     'Επικόλλησε ένα κλειδί από την Anthropic για να χρησιμοποιήσεις τα μοντέλα Claude. Πληρώνεις την Anthropic μόνο για ό,τι χρησιμοποιείς.',
   'connect.lead.local':
     'Επικόλλησε τη διεύθυνση ενός διακομιστή μοντέλων που τρέχεις εσύ, όπως το Ollama ή το LM Studio. Οι περισσότεροι δεν χρειάζονται κλειδί.',
+  'connect.steps.what':
+    'Ένα κλειδί είναι σαν κωδικός: επιτρέπει στο Dialogia να χρησιμοποιεί τον λογαριασμό σου στο {provider}. Πληρώνεις το {provider} απευθείας για ό,τι χρησιμοποιείς.',
   'connect.steps.account': '{action} στο {link}.',
   'connect.steps.accountAction': 'Φτιάξε λογαριασμό',
-  'connect.steps.credit': '{action} στην ενότητα {page}.',
+  'connect.steps.credit':
+    '{action} στην ενότητα {page}. Χρειάζεσαι μια κάρτα, και λίγα δολάρια αρκούν για αρχή.',
   'connect.steps.creditAction': 'Βάλε λίγη πίστωση',
   'connect.steps.key': '{action} στην ενότητα {link}, αντίγραψέ το και επικόλλησέ το παραπάνω.',
   'connect.steps.keyAction': 'Δημιούργησε ένα κλειδί',
+  'connect.steps.free':
+    'Θες απλώς να το δοκιμάσεις; Το OpenRouter έχει και δωρεάν μοντέλα, με «(free)» στο όνομα. Δεν θέλουν πίστωση, αλλά επιτρέπουν μόνο περιορισμένο αριθμό μηνυμάτων τη μέρα.',
   'connect.serverAddress': 'Διεύθυνση διακομιστή',
   'connect.submit': 'Σύνδεση',
   'connect.howToGetKey': 'Πώς βρίσκω κλειδί;',
@@ -55,6 +60,9 @@ const messages: Translation<typeof en> = {
   'connect.keyRefused':
     'Το {provider} δεν δέχτηκε αυτό το κλειδί. Έλεγξε ότι το αντέγραψες ολόκληρο ή φτιάξε καινούργιο.',
   'connect.serverSilent': 'Δεν ήρθε κανένα μοντέλο από αυτή τη διεύθυνση. Τρέχει ο διακομιστής;',
+  'connect.keyFormat':
+    'Αυτό δεν μοιάζει με κλειδί του {provider}: τα κλειδιά του {provider} ξεκινούν με {prefix}. Αντίγραψε ολόκληρο το κλειδί και επικόλλησέ το ξανά.',
+  'connect.serverUnreachable': 'Δεν ήταν δυνατή η σύνδεση με αυτή τη διεύθυνση.',
   'connect.keyNotSaved':
     'Αυτός ο browser δεν μπόρεσε να αποθηκεύσει το κλειδί σου, οπότε λειτουργεί μόνο μέχρι να κλείσεις τη σελίδα.',
   'connect.invalidAddress':
@@ -221,6 +229,7 @@ const messages: Translation<typeof en> = {
   'ending.nothing.stopped': 'Σταμάτησε πριν ξεκινήσει η απάντηση.',
   'ending.nothing.failed': 'Αυτή η απάντηση απέτυχε.',
   'ending.nothing.interrupted': 'Η σελίδα έκλεισε πριν ξεκινήσει η απάντηση.',
+  'ending.details': 'Τι είπε ο πάροχος',
   'ending.length': 'Σταμάτησε στο όριο μήκους.',
   'ending.announce.stopped': 'Η απάντηση σταμάτησε',
   'ending.announce.failed': 'Η απάντηση απέτυχε',
@@ -393,6 +402,10 @@ const messages: Translation<typeof en> = {
   'header.collapseSidebar': 'Κλείσιμο πλαϊνής στήλης',
   'header.openMemory': 'Άνοιγμα μνήμης',
   'header.openSettings': 'Άνοιγμα ρυθμίσεων',
+  'learnTools.notice':
+    'Το {model} δεν μπορεί να χρησιμοποιήσει εργαλεία, οπότε στη Μάθηση μπορεί μόνο να συζητά: χωρίς πλάνο και χωρίς κουίζ.',
+  'learnTools.chooseModel': 'Επιλογή άλλου μοντέλου',
+  'learnTools.turnOnTools': 'Ενεργοποίηση Εργαλείων στις Ρυθμίσεις',
   'header.tutorModel': 'Μοντέλο του δασκάλου: {model}. Αλλάζει από τις Ρυθμίσεις.',
   'lightbox.label': 'Προβολή εικόνας',
   'lightbox.download': 'Λήψη',
@@ -781,6 +794,13 @@ const messages: Translation<typeof en> = {
   'notice.cutOff': 'Η σύνδεση έκλεισε πριν τελειώσει η απάντηση. Δοκίμασε ξανά.',
   'notice.stalled': 'Ο πάροχος σταμάτησε να στέλνει, οπότε η απάντηση τερματίστηκε. Δοκίμασε ξανά.',
   'notice.unknownError': 'Κάτι πήγε στραβά και ο πάροχος δεν είπε τι.',
+  'notice.outOfCredit':
+    'Ο λογαριασμός σου στον πάροχο έμεινε χωρίς πίστωση. Πρόσθεσε από τον ιστότοπό του και δοκίμασε ξανά.',
+  'notice.modelNotFound': 'Ο πάροχος δεν έχει αυτό το μοντέλο. Διάλεξε άλλο και δοκίμασε ξανά.',
+  'notice.providerDown':
+    'Ο πάροχος είχε ένα πρόβλημα από τη μεριά του. Δοκίμασε ξανά σε λίγο ή διάλεξε άλλο μοντέλο.',
+  'notice.requestRefused':
+    'Ο πάροχος δεν μπόρεσε να χειριστεί αυτό το αίτημα. Δοκίμασε ξανά ή διάλεξε άλλο μοντέλο.',
   'notice.tryAgainSoon': 'Δοκίμασε ξανά σε λίγο.',
   'notice.providerError': 'Ο πάροχος του μοντέλου επέστρεψε σφάλμα',
   'notice.modelListFailed': 'Η λίστα μοντέλων δεν φόρτωσε',

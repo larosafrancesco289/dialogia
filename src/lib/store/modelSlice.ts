@@ -9,7 +9,9 @@ import { reconcileModelDefaults } from '@/lib/models/defaultResolutions';
 import { createStoreSlice } from '@/lib/store/createSlice';
 import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
 import { getTransportClient } from '@/lib/transport/registry';
-import { listEndpoints } from '@/lib/transport/endpointRegistry';
+import { getEndpoint, listEndpoints } from '@/lib/transport/endpointRegistry';
+import { buildTransportAuth } from '@/lib/auth/transport';
+import { isBuiltInEndpointId } from '@/lib/transport/endpoints';
 import {
   describeErrorNotice,
   describeNoModelsOffered,
@@ -34,11 +36,18 @@ export type ModelSliceState = {
   zdrFetchedAt?: number;
 };
 
+/** How a server answered before it was saved. */
+export type ServerProbe = 'answered' | 'unreachable' | 'empty';
+/** What a provider said of a key before it was saved; `unchecked` when it could not be asked. */
+export type KeyCheck = 'accepted' | 'refused' | 'unchecked';
+
 export type ModelSliceActions = {
   /** `showErrors` repeats a failure already reported this session (an explicit refresh). */
   loadModels: (opts?: { showErrors?: boolean }) => Promise<void>;
   /** Whether a server at this address answers with a model, without saving it. */
-  probeServer: (baseUrl: string) => Promise<boolean>;
+  probeServer: (baseUrl: string) => Promise<ServerProbe>;
+  /** Asks the endpoint's provider about a key, without saving it. */
+  checkKey: (endpointId: string, apiKey: string) => Promise<KeyCheck>;
   toggleFavoriteModel: (id: string) => void;
 };
 
@@ -186,7 +195,9 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
           return;
         }
         if (hadUnauthorizedFailure && authEntries.length === 1) {
-          notify(get, NOTICE_INVALID_KEY);
+          // A built-in's refused key brings the connect form back, which says
+          // so in its own words; a toast over it gave a second instruction.
+          if (!isBuiltInEndpointId(authEntries[0][0].id)) notify(get, NOTICE_INVALID_KEY);
           return;
         }
         if (noticeSegments.length > 0 && !get().ui.notice) {
@@ -254,9 +265,24 @@ export const createModelSlice = createStoreSlice<ModelSliceState & ModelSliceAct
         };
         try {
           const models = await getTransportClient(endpoint.kind).fetchModels({ endpoint });
-          return models.length > 0;
-        } catch {
-          return false;
+          return models.length > 0 ? 'answered' : 'empty';
+        } catch (error) {
+          return isUnreachable(error) ? 'unreachable' : 'empty';
+        }
+      },
+
+      async checkKey(endpointId: string, apiKey: string) {
+        const endpoint = getEndpoint(endpointId);
+        if (!endpoint || !apiKey.trim()) return 'unchecked';
+        const auth = buildTransportAuth({ endpoint, apiKey: apiKey.trim() });
+        const client = getTransportClient(endpoint.kind);
+        try {
+          await (client.checkKey ? client.checkKey(auth) : client.fetchModels(auth));
+          return 'accepted';
+        } catch (error) {
+          return isApiError(error) && error.code === API_ERROR_CODES.UNAUTHORIZED
+            ? 'refused'
+            : 'unchecked';
         }
       },
 
