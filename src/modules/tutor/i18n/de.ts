@@ -13,6 +13,7 @@ const messages: Translation<typeof en> = {
   'status.quoted': '„{name}“',
   'status.upNext': 'Als Nächstes',
   'status.notStarted': 'Noch nicht begonnen',
+  'status.due': 'Zum Auffrischen',
   'idea.youThought': 'Du dachtest: {belief}',
 
   // The Learning Hub
@@ -44,6 +45,13 @@ const messages: Translation<typeof en> = {
   'hub.proposed': 'Vorgeschlagener Plan',
   'hub.done': 'Fertig',
   'hub.editPlan': 'Plan bearbeiten',
+
+  // Coming back to topics studied a while ago
+  'review.title': 'Zeit zum Auffrischen',
+  'review.hint': 'Ein paar kurze Fragen jetzt helfen dir, das Gelernte zu behalten.',
+  'review.studiedToday': 'Heute gelernt',
+  'review.studied': { one: 'Vor {count} Tag gelernt', other: 'Vor {count} Tagen gelernt' },
+  'review.now': 'Jetzt auffrischen',
   'why.title': 'Warum {percent}',
   'why.starting': 'Anfangseinschätzung',
   'why.carriedBefore': 'Von früher übernommen',
@@ -137,6 +145,7 @@ const messages: Translation<typeof en> = {
   'cards.revisedPlan': 'Überarbeiteter Plan',
   'cards.beforeStart': 'Bevor wir anfangen',
   'cards.exercises': 'Übungen',
+  'cards.refresher': 'Auffrischung',
 
   // Quizzes and the quick check
   'quiz.question': 'Frage {at} von {count}',
@@ -222,6 +231,7 @@ const messages: Translation<typeof en> = {
   'ledger.tooHigh': 'Gesagt, die Einschätzung sei zu hoch: {topic}',
   'ledger.tooLow': 'Gesagt, die Einschätzung sei zu niedrig: {topic}',
   'ledger.clearedUp': 'Als geklärt markiert: {idea}',
+  'ledger.review': 'Um Auffrischung gebeten: {topics}',
   'notice.saveFailed':
     'Der Lernfortschritt konnte nicht gespeichert werden. Er bleibt in diesem Tab und wird mit der nächsten Änderung erneut gespeichert.',
 };

@@ -10,6 +10,7 @@ export * from '@/modules/tutor/engine/fold';
 export * from '@/modules/tutor/engine/phase';
 export * from '@/modules/tutor/engine/plan';
 export * from '@/modules/tutor/engine/render';
+export * from '@/modules/tutor/engine/review';
 export * from '@/modules/tutor/engine/rules';
 export * from '@/modules/tutor/engine/state';
 export * from '@/modules/tutor/engine/tools';

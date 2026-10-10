@@ -13,6 +13,7 @@ const messages: Translation<typeof en> = {
   'status.quoted': '«{name}»',
   'status.upNext': 'Επόμενη',
   'status.notStarted': 'Δεν ξεκίνησε',
+  'status.due': 'Για επανάληψη',
   'idea.youThought': 'Νόμιζες ότι {belief}',
 
   // The Learning Hub
@@ -47,6 +48,16 @@ const messages: Translation<typeof en> = {
   'hub.proposed': 'Προτεινόμενο πλάνο',
   'hub.done': 'Τέλος',
   'hub.editPlan': 'Επεξεργασία πλάνου',
+
+  // Coming back to topics studied a while ago
+  'review.title': 'Ώρα για επανάληψη',
+  'review.hint': 'Λίγες γρήγορες ερωτήσεις τώρα σε βοηθούν να κρατήσεις όσα έμαθες.',
+  'review.studiedToday': 'Μελετήθηκε σήμερα',
+  'review.studied': {
+    one: 'Μελετήθηκε πριν από {count} μέρα',
+    other: 'Μελετήθηκε πριν από {count} μέρες',
+  },
+  'review.now': 'Επανάληψη τώρα',
   'why.title': 'Γιατί {percent}',
   'why.starting': 'Αρχική εκτίμηση',
   'why.carriedBefore': 'Μεταφέρθηκε από πριν',
@@ -140,6 +151,7 @@ const messages: Translation<typeof en> = {
   'cards.revisedPlan': 'Αναθεωρημένο πλάνο',
   'cards.beforeStart': 'Πριν ξεκινήσουμε',
   'cards.exercises': 'Ασκήσεις',
+  'cards.refresher': 'Επανάληψη',
 
   // Quizzes and the quick check
   'quiz.question': 'Ερώτηση {at} από {count}',
@@ -225,6 +237,7 @@ const messages: Translation<typeof en> = {
   'ledger.tooHigh': 'Είπα ότι η εκτίμηση μού φάνηκε πολύ υψηλή: {topic}',
   'ledger.tooLow': 'Είπα ότι η εκτίμηση μού φάνηκε πολύ χαμηλή: {topic}',
   'ledger.clearedUp': 'Το σημείωσα ως ξεκαθαρισμένο: {idea}',
+  'ledger.review': 'Ζήτησα επανάληψη: {topics}',
   'notice.saveFailed':
     'Η πρόοδος του μαθήματος δεν αποθηκεύτηκε. Κρατιέται σε αυτή την καρτέλα και θα ξαναδοκιμαστεί με την επόμενη αλλαγή.',
 };

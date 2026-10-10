@@ -52,6 +52,10 @@ export type LearningTopic = {
   percent?: number;
   /** Where the topic stands, in plain words ("Done", "Starts after Limits"). */
   status: string;
+  /** When the learner last answered on it themselves. */
+  lastStudiedAt?: number;
+  /** Studied a while ago and due for a refresher. */
+  dueForReview?: boolean;
 };
 
 /** One thing a pass did, in the model's words, with the note or folder it opens on. */

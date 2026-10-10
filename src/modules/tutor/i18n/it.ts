@@ -13,6 +13,7 @@ const messages: Translation<typeof en> = {
   'status.quoted': '“{name}”',
   'status.upNext': 'Il prossimo',
   'status.notStarted': 'Non iniziato',
+  'status.due': 'Da ripassare',
   'idea.youThought': 'Pensavi che {belief}',
 
   // The Learning Hub
@@ -44,6 +45,13 @@ const messages: Translation<typeof en> = {
   'hub.proposed': 'Piano proposto',
   'hub.done': 'Fatto',
   'hub.editPlan': 'Modifica il piano',
+
+  // Coming back to topics studied a while ago
+  'review.title': 'È ora di ripassare',
+  'review.hint': 'Qualche domanda veloce adesso ti aiuta a ricordare quello che hai imparato.',
+  'review.studiedToday': 'Studiato oggi',
+  'review.studied': { one: 'Studiato {count} giorno fa', other: 'Studiato {count} giorni fa' },
+  'review.now': 'Ripassa ora',
   'why.title': 'Perché {percent}',
   'why.starting': 'Stima iniziale',
   'why.carriedBefore': 'Ripresa da prima',
@@ -137,6 +145,7 @@ const messages: Translation<typeof en> = {
   'cards.revisedPlan': 'Piano rivisto',
   'cards.beforeStart': 'Prima di iniziare',
   'cards.exercises': 'Esercizi',
+  'cards.refresher': 'Ripasso',
 
   // Quizzes and the quick check
   'quiz.question': 'Domanda {at} di {count}',
@@ -221,6 +230,7 @@ const messages: Translation<typeof en> = {
   'ledger.tooHigh': 'Ho detto che la stima mi sembrava troppo alta: {topic}',
   'ledger.tooLow': 'Ho detto che la stima mi sembrava troppo bassa: {topic}',
   'ledger.clearedUp': 'Ho segnato come chiarito: {idea}',
+  'ledger.review': 'Ho chiesto di ripassare: {topics}',
   'notice.saveFailed':
     'I progressi del tutor non si sono potuti salvare. Restano in questa scheda e verranno salvati con la prossima modifica.',
 };

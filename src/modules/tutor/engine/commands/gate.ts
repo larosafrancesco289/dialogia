@@ -2,6 +2,7 @@
 // Responsibility: whether a tutor tool may be called in a state at all, before its arguments are looked at: phase, open card, flags and budget.
 
 import type { TutorFlags } from '@/modules/tutor/engine/flags';
+import { reviewSchedule } from '@/modules/tutor/engine/review';
 import { remainingBudgets, type TutorPhase, type TutorState } from '@/modules/tutor/engine/state';
 import { PHASE_HINT, err } from '@/modules/tutor/engine/commands/shared';
 import type { TutorError, TutorToolName } from '@/modules/tutor/engine/commands/types';
@@ -10,8 +11,9 @@ const TOOL_PHASES: Record<TutorToolName, TutorPhase[]> = {
   ask_intake: ['intake'],
   give_diagnostic: ['intake', 'proposal', 'interlude'],
   propose_plan: ['intake', 'proposal', 'teaching', 'interlude', 'complete'],
-  give_quiz: ['teaching'],
-  record_evidence: ['teaching', 'interlude'],
+  // Outside teaching, only as a refresher on a topic already studied.
+  give_quiz: ['teaching', 'interlude', 'complete'],
+  record_evidence: ['teaching', 'interlude', 'complete'],
   note_misconception: ['teaching'],
   resolve_misconception: ['teaching'],
   complete_topic: ['teaching'],
@@ -39,6 +41,14 @@ export function gateTutorTool(
   if (!TOOL_PHASES[tool].includes(phase)) {
     return err('wrong_phase', `${tool} is not available in the ${phase} phase.`, PHASE_HINT[phase]);
   }
+  const refreshers = tool === 'give_quiz' && reviewSchedule(state).length > 0;
+  if (tool === 'give_quiz' && phase !== 'teaching' && !refreshers) {
+    return err(
+      'wrong_phase',
+      `give_quiz is not available in the ${phase} phase: no topic is in progress, and none has been studied yet to review.`,
+      PHASE_HINT[phase],
+    );
+  }
   const open = state.awaiting;
   // A plan proposal closes an unanswered intake: a learner who would rather
   // skip the questions, or answered them in chat, is not kept waiting on them.
@@ -65,7 +75,7 @@ export function gateTutorTool(
     );
   }
   const budgets = remainingBudgets(state);
-  if (tool === 'give_quiz' && budgets.quizzesLeft === 0) {
+  if (tool === 'give_quiz' && budgets.quizzesLeft === 0 && !refreshers) {
     return err(
       'budget_exhausted',
       'No quizzes left for this topic.',

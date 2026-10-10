@@ -59,6 +59,10 @@ export async function buildTutorComposeContribution({
       : [];
 
   const language = tutorLanguagePrompt(appLanguageForModel());
+  const lastExchangeAt = priorMessages.reduce<number | undefined>(
+    (latest, message) => Math.max(latest ?? 0, message.createdAt),
+    undefined,
+  );
 
   return {
     tools: tutorToolDefinitions(state, flags),
@@ -70,6 +74,8 @@ export async function buildTutorComposeContribution({
     dynamicPreambles: [
       renderStateBlock(state, {
         flags,
+        now: Date.now(),
+        ...(lastExchangeAt != null ? { lastExchangeAt } : {}),
         learnerChanges: learnerChangesSince(state, events, since),
         otherChats,
       }),

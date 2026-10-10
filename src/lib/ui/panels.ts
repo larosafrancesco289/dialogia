@@ -18,7 +18,9 @@ export type StandalonePanelSlot =
   // The line under the chat's title on the phone, in place of the model.
   | 'phoneHeaderLine'
   // On a fresh page, above the composer: the modes a chat can begin in.
-  | 'welcomeModes';
+  | 'welcomeModes'
+  // On a fresh page, below the composer: where to pick up from.
+  | 'welcomeBelow';
 
 /** Slots rendered per assistant message. */
 export type MessagePanelSlot =

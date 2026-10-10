@@ -85,6 +85,7 @@ export function WelcomeHero({ keyboardMetrics }: { keyboardMetrics: KeyboardMetr
               <>
                 {modes}
                 <Composer variant="hero" keyboardMetrics={keyboardMetrics} />
+                <ModuleSlot slot="welcomeBelow" />
               </>
             ) : (
               connectBox
@@ -106,7 +107,14 @@ export function WelcomeHero({ keyboardMetrics }: { keyboardMetrics: KeyboardMetr
             <h1 className={styles.heroMobileHeadline}>{headline}</h1>
             {subline && <p className={styles.subline}>{subline}</p>}
           </div>
-          {connected ? modes : connectBox}
+          {connected ? (
+            <>
+              {modes}
+              <ModuleSlot slot="welcomeBelow" />
+            </>
+          ) : (
+            connectBox
+          )}
         </div>
       </div>
 

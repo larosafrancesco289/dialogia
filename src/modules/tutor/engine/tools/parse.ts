@@ -90,8 +90,10 @@ function toCommand(name: TutorToolName, data: unknown): TutorToolCommand {
         nodes: args.topics,
       };
     }
-    case 'give_quiz':
-      return { by: 'tutor', type: name, ...(data as z.infer<(typeof ARGS)['give_quiz']>) };
+    case 'give_quiz': {
+      const { topicId: nodeId, ...args } = data as z.infer<(typeof ARGS)['give_quiz']>;
+      return { by: 'tutor', type: name, ...args, ...(nodeId ? { nodeId } : {}) };
+    }
     case 'record_evidence': {
       const { topicId: nodeId, ...args } = data as z.infer<(typeof ARGS)['record_evidence']>;
       return { by: 'tutor', type: name, nodeId, ...args };

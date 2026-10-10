@@ -87,7 +87,18 @@ type Payloads = {
   topic_started: { nodeId: string };
   topic_completed: { nodeId: string; how: CompletionHow; note?: string };
   topic_reopened: { nodeId: string };
-  quiz_given: { quizId: string; nodeId: string; title?: string; items: QuizItem[] };
+  quiz_given: {
+    quizId: string;
+    nodeId: string;
+    title?: string;
+    items: QuizItem[];
+    /**
+     * A refresher on a topic already studied, not the one in progress: its
+     * answers count toward the topic, which keeps its status, and it does not
+     * spend the topic's quiz budget.
+     */
+    review?: true;
+  };
   quiz_answered: { quizId: string; itemId: string; choice: number; correct: boolean };
   evidence_recorded: {
     nodeId: string;

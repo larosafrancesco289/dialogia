@@ -88,9 +88,11 @@ test('availability follows phase, open card, flags and budget', () => {
   const i = teaching();
   master(i);
   i.tutor({ type: 'complete_topic', how: 'mastered' });
+  // A finished topic can take a refresher at the chapter break and after the plan.
   assert.deepEqual(available(i), [
     'give_diagnostic',
     'propose_plan',
+    'give_quiz',
     'record_evidence',
     'start_topic',
   ]);
@@ -98,7 +100,19 @@ test('availability follows phase, open card, flags and budget', () => {
   i.learner({ type: 'mark_known', nodeId: 'derivatives' });
   i.learner({ type: 'mark_known', nodeId: 'chain-rule' });
   assert.equal(i.state.phase, 'complete');
-  assert.deepEqual(available(i), ['propose_plan']);
+  assert.deepEqual(available(i), ['propose_plan', 'give_quiz', 'record_evidence']);
+
+  // With nothing studied, a finished plan offers only a new one.
+  const known = teaching();
+  for (const nodeId of ['limits', 'derivatives', 'chain-rule']) {
+    known.learner({ type: 'mark_known', nodeId });
+    if (known.state.phase === 'interlude') {
+      const next = known.state.plan!.nodes.find((n) => n.status === 'not_started');
+      if (next) known.learner({ type: 'start_topic', nodeId: next.id });
+    }
+  }
+  assert.equal(known.state.phase, 'complete');
+  assert.deepEqual(available(known), ['propose_plan', 'record_evidence']);
 });
 
 const SAMPLES: Record<TutorToolName, TutorToolCommand> = {
