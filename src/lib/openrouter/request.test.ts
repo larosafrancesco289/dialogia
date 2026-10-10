@@ -161,3 +161,38 @@ test('buildChatBody leaves built-in transports untouched by the caching gate', (
   const system = body.messages[0].content as Array<Record<string, unknown>>;
   assert.deepEqual(system[0].cache_control, { type: 'ephemeral' });
 });
+
+test('buildChatBody sends a tool call whose arguments arrived malformed back as an empty object', () => {
+  const tools = [{ type: 'function' as const, function: { name: 'ask_intake', parameters: {} } }];
+  const call = (id: string, args: string) => ({
+    id,
+    type: 'function' as const,
+    function: { name: 'ask_intake', arguments: args },
+  });
+  const body = buildChatBody({
+    model: 'anthropic/claude-haiku-5.5',
+    stream: true,
+    tools,
+    messages: [
+      { role: 'user', content: 'hi' },
+      {
+        role: 'assistant',
+        content: '',
+        tool_calls: [
+          call('a', '{"questions": [{"question": "When'),
+          call('b', '[]'),
+          call('c', '{"ok":1}'),
+        ],
+      },
+      { role: 'tool', tool_call_id: 'a', name: 'ask_intake', content: '{"ok":false}' },
+      { role: 'tool', tool_call_id: 'b', name: 'ask_intake', content: '{"ok":false}' },
+      { role: 'tool', tool_call_id: 'c', name: 'ask_intake', content: '{"ok":true}' },
+    ],
+  });
+  const assistant = body.messages[1];
+  assert.ok(assistant.role === 'assistant');
+  assert.deepEqual(
+    assistant.tool_calls?.map((c) => c.function.arguments),
+    ['{}', '{}', '{"ok":1}'],
+  );
+});
