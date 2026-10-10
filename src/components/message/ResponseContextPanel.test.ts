@@ -4,6 +4,7 @@ import {
   buildOrderedResponseActivity,
   currentThoughtLine,
   formatThinkingTime,
+  retryWaitLine,
   silentWaitLine,
   summarizeActivity,
   toolAnnotation,
@@ -305,4 +306,12 @@ test('a wait for the first word is said only once it has gone on a while, counti
   assert.equal(silentWaitLine(4_999), '');
   assert.equal(silentWaitLine(5_000), 'Waiting for the model… 5s');
   assert.equal(silentWaitLine(12_700), 'Waiting for the model… 12s');
+});
+
+test('a busy provider is said calmly, counting down whole seconds to the next try', () => {
+  assert.equal(retryWaitLine(4_000), 'The provider is busy. Trying again in 4 seconds…');
+  assert.equal(retryWaitLine(3_200), 'The provider is busy. Trying again in 4 seconds…');
+  assert.equal(retryWaitLine(1_000), 'The provider is busy. Trying again in 1 second…');
+  // The moment it is due, until the request goes out, it is still a second away.
+  assert.equal(retryWaitLine(-200), 'The provider is busy. Trying again in 1 second…');
 });

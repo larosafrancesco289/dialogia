@@ -190,6 +190,10 @@ const en = {
   'activity.tools': { one: '{count} tool', other: '{count} tools' },
   'activity.searches': { one: '{count} search', other: '{count} searches' },
   'activity.waiting': 'Waiting for the model… {seconds}s',
+  'activity.retrying': {
+    one: 'The provider is busy. Trying again in {count} second…',
+    other: 'The provider is busy. Trying again in {count} seconds…',
+  },
   'activity.searchingWeb': 'Searching the web',
   'activity.searchingFor': 'Searching: {query}',
   'activity.searchingSources': 'Searching sources',
@@ -765,6 +769,7 @@ const en = {
   'notice.invalidKey': 'That key was rejected. Check it in Settings › Connections.',
   'notice.expiredKey': 'That key has expired. Add a new one in Settings › Connections.',
   'notice.rateLimited': 'The provider is limiting requests. Wait a moment, then try again.',
+  'notice.busyWait': 'The provider is busy and asks you to wait {wait} before trying again.',
   'notice.missingSearchKey': 'This search needs a key. Add one in Settings › Connections.',
   'notice.searchUnavailable': 'Web search is unavailable for this chat; answering without it.',
   'notice.unknownEndpoint':

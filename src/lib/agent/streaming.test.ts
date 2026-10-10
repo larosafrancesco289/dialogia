@@ -8,6 +8,7 @@ import { makeChat } from '../../../tests/helpers/makeChat';
 import { buildTransportAuth } from '@/lib/auth/transport';
 import type { Message } from '@/lib/types';
 import type { ModelMessage } from '@/lib/agent/types';
+import { ApiError, API_ERROR_CODES } from '@/lib/api/errors';
 
 test('streamFinal rebuilds multipart system prompt when stable split is provided', async () => {
   const chatId = 'chat-cache-test';
@@ -103,4 +104,74 @@ test('streamFinal rebuilds multipart system prompt when stable split is provided
   assert.equal(lastBlock?.type, 'text');
   if (lastBlock?.type !== 'text') return;
   assert.deepEqual(lastBlock?.cache_control, { type: 'ephemeral' });
+});
+
+test('streamFinal sends a request the provider was too busy for again, without ending the reply', async () => {
+  const chatId = 'chat-busy-test';
+  const assistantMessage: Message = {
+    id: 'assistant-busy',
+    chatId,
+    role: 'assistant',
+    content: '',
+    createdAt: Date.now(),
+  };
+  const chat = makeChat({ id: chatId, title: 'Busy', settings: { modelId: 'openrouter/test' } });
+  const { state, set, get } = createTestStoreState({
+    messagesById: { [assistantMessage.id]: assistantMessage },
+    messageIdsByChatId: { [chatId]: [assistantMessage.id] },
+  });
+  const saved: Message[] = [];
+  let calls = 0;
+  const pipeline = createPipelineClient({
+    streamChatCompletion: async ({ callbacks }) => {
+      calls += 1;
+      if (calls === 1) {
+        // The Anthropic transport reports its failure before it throws.
+        const error = new ApiError({
+          code: API_ERROR_CODES.RATE_LIMITED,
+          status: 429,
+          retryAfter: { retryAfterMs: '0' },
+        });
+        callbacks?.onError?.(error);
+        throw error;
+      }
+      callbacks?.onToken?.('Hello.');
+      await callbacks?.onDone?.('Hello.', { finishReason: 'stop' });
+    },
+  });
+
+  await streamFinal({
+    chat,
+    chatId,
+    assistantMessage,
+    messages: [{ role: 'user', content: 'Hi' }],
+    controller: new AbortController(),
+    turn: {
+      auth: buildTransportAuth({ endpoint: OPENROUTER_ENDPOINT, apiKey: 'test-key' }),
+      set,
+      get,
+      models: [],
+      modelIndex: state.modelIndex,
+      persistMessage: async (message) => {
+        saved.push(message);
+      },
+    },
+    settings: {
+      modelId: chat.settings.modelId,
+      modelMeta: undefined,
+      caps: { canReason: false, canSee: false, canAudio: false, canImageOut: false },
+      generation: {},
+      searchEnabled: false,
+      searchProvider: 'openrouter',
+      tutorEnabled: false,
+      timestampsEnabled: false,
+      system: undefined,
+    },
+    pipeline,
+  });
+
+  assert.equal(calls, 2);
+  assert.equal(saved.at(-1)?.content, 'Hello.');
+  assert.equal(saved.at(-1)?.cutOff, undefined);
+  assert.ok(saved.every((message) => message.cutOff !== 'failed'));
 });

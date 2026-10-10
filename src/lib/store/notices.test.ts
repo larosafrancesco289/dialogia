@@ -6,7 +6,7 @@ import {
   describeErrorDetail,
   describeErrorNotice,
 } from '@/lib/store/notices';
-import { API_ERROR_CODES } from '@/lib/api/errors';
+import { ApiError, API_ERROR_CODES } from '@/lib/api/errors';
 import { buildOpenRouterError, buildOpenRouterStreamError } from '@/lib/openrouter/errors';
 import { createTestStore } from '../../../tests/helpers/createTestStoreState';
 
@@ -132,4 +132,27 @@ test('left-out attachments read as a sentence, in the right number', () => {
     describeDroppedAttachments(['image', 'audio', 'pdf']),
     `Images, audio and PDFs were ${tail}`,
   );
+});
+
+test('a busy provider that asks for more than a minute says how long to wait', () => {
+  const asking = (retryAfter: string, status = 429) =>
+    new ApiError({
+      code: status === 429 ? API_ERROR_CODES.RATE_LIMITED : API_ERROR_CODES.PROVIDER_CHAT_FAILED,
+      status,
+      retryAfter: { retryAfter },
+    });
+  assert.equal(
+    describeErrorNotice(asking('300')),
+    'The provider is busy and asks you to wait 5 minutes before trying again.',
+  );
+  assert.equal(
+    describeErrorNotice(asking('61', 529)),
+    'The provider is busy and asks you to wait 2 minutes before trying again.',
+  );
+  assert.equal(
+    describeErrorNotice(asking('36000')),
+    'The provider is busy and asks you to wait 10 hours before trying again.',
+  );
+  // A wait the reply would have taken on its own changes nothing.
+  assert.equal(describeErrorNotice(asking('30')), NOTICE_CATALOG.rateLimited);
 });

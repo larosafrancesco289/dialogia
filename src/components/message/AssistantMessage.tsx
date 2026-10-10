@@ -27,7 +27,7 @@ import { LogoMark } from '@/components/ui/LogoMark';
 import { cn } from '@/lib/ui/cn';
 import { penIsLive, toolCallInFlight } from '@/lib/ui/streaming';
 import { replyEndingNote } from '@/lib/ui/replyEnding';
-import { silentWaitLine } from '@/lib/ui/responseActivity';
+import { retryWaitLine, silentWaitLine } from '@/lib/ui/responseActivity';
 import styles from './MessageCard.module.css';
 import { useT } from '@/lib/i18n';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
@@ -115,6 +115,25 @@ function SilentWait({
   );
 }
 
+/**
+ * The provider was busy, and the request goes out again at `until`: said where
+ * the silent wait would be, counting down. Hidden from screen readers like the
+ * silent wait, which it stands in for.
+ */
+function RetryWait({ until, className = '' }: { until: number; className?: string }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const tick = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(tick);
+  }, []);
+  useT();
+  return (
+    <span className={`${styles.silentWait} ${className} motion-fade`} aria-hidden="true">
+      {retryWaitLine(until - now)}
+    </span>
+  );
+}
+
 /** How long the words may pause before the pen says the model is still at work. */
 const QUIET_MS = 1000;
 
@@ -170,6 +189,8 @@ export function AssistantMessage({
   const displayContent = message.content;
   // A reply whose content is a module's (a card) is not empty, words or not.
   const hasModuleContent = useChatStore((s) => messageHasModuleContent(s, message));
+  // The provider was busy: when this reply's request goes out again.
+  const retryAt = useChatStore((s) => s.ui.retryAtByMessageId?.[message.id]);
   // A canned greeting was never generated: nothing to redo, branch from or edit.
   const canned = !!message.tutorWelcome;
   const resolvedCitationSources = citationSources?.length ? citationSources : undefined;
@@ -187,7 +208,10 @@ export function AssistantMessage({
   // one opened from history has it from the start.
   const wroteHere = useRef(false);
   if (writing) wroteHere.current = true;
-  const penLive = writing && penIsLive(message, quietSince !== undefined);
+  const penLive =
+    writing &&
+    (penIsLive(message, quietSince !== undefined) ||
+      (retryAt !== undefined && !!displayContent.trim()));
 
   let messageBody: ReactNode = null;
   if (isEditing) {
@@ -218,7 +242,11 @@ export function AssistantMessage({
       <div className="markdown" role="status" aria-label={t('message.writing')}>
         <p className={styles.waiting}>
           <LogoMark className={`${styles.pen} ${styles.penWaiting}`} live />
-          <SilentWait still={t('message.writing')} />
+          {retryAt !== undefined ? (
+            <RetryWait until={retryAt} />
+          ) : (
+            <SilentWait still={t('message.writing')} />
+          )}
         </p>
       </div>
     );
@@ -230,7 +258,13 @@ export function AssistantMessage({
     // live mark at a time, and it never hops between the two.
     messageBody = (
       <div className="markdown" aria-hidden="true">
-        <p>{'\u00a0'}</p>
+        <p>
+          {retryAt !== undefined ? (
+            <RetryWait until={retryAt} className={styles.silentWaitAfterPen} />
+          ) : (
+            '\u00a0'
+          )}
+        </p>
       </div>
     );
   } else if ((isStreaming && isLatestAssistant) || rendersAsBlocks(displayContent)) {
@@ -250,14 +284,18 @@ export function AssistantMessage({
           <div className="markdown" role="status" aria-label={t('message.stillWorking')}>
             <p>
               <LogoMark className={styles.pen} live />
-              <SilentWait
-                // Remounted when the words rest, so the count starts there.
-                key={quietSince ?? 'busy'}
-                since={quietSince}
-                counts={quietSince !== undefined && !toolCallInFlight(message)}
-                still={t('message.stillWorking')}
-                className={styles.silentWaitAfterPen}
-              />
+              {retryAt !== undefined ? (
+                <RetryWait until={retryAt} className={styles.silentWaitAfterPen} />
+              ) : (
+                <SilentWait
+                  // Remounted when the words rest, so the count starts there.
+                  key={quietSince ?? 'busy'}
+                  since={quietSince}
+                  counts={quietSince !== undefined && !toolCallInFlight(message)}
+                  still={t('message.stillWorking')}
+                  className={styles.silentWaitAfterPen}
+                />
+              )}
             </p>
           </div>
         )}
