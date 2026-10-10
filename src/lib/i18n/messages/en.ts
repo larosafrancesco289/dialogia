@@ -810,6 +810,7 @@ const en = {
   'notice.providerError': 'The model provider returned an error',
   'notice.modelListFailed': 'Could not load the model list',
   'notice.emptyResponse': 'The provider sent an empty response',
+  'markdown.remoteImage': 'Image: {name} (open)',
   'notice.kind.image': 'images',
   'notice.kind.audio': 'audio',
   'notice.kind.pdf': 'PDFs',

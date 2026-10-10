@@ -837,6 +837,7 @@ const messages: Translation<typeof en> = {
   'notice.providerError': 'Ο πάροχος του μοντέλου επέστρεψε σφάλμα',
   'notice.modelListFailed': 'Η λίστα μοντέλων δεν φόρτωσε',
   'notice.emptyResponse': 'Ο πάροχος έστειλε κενή απάντηση',
+  'markdown.remoteImage': 'Εικόνα: {name} (άνοιγμα)',
   'notice.kind.image': 'εικόνες',
   'notice.kind.audio': 'ήχος',
   'notice.kind.pdf': 'PDF',
