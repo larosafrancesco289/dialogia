@@ -640,6 +640,32 @@ const messages: Translation<typeof en> = {
     other: '{count} Chats ließen sich nicht lesen.',
   },
 
+  'history.label': 'Chats aus ChatGPT oder Claude',
+  'history.hint':
+    'Bitte ChatGPT oder Claude um eine Kopie deiner Daten. Wähle die .zip-Datei, die du bekommst, oder die Datei conversations.json darin.',
+  'history.choose': 'Datei wählen',
+  'history.confirmBody':
+    'Deine Chats kommen in einen eigenen Ordner, und nichts, was du hier hast, wird ersetzt. Wählst du dieselbe Datei noch einmal, kommt nichts doppelt herein. Bilder und Dateien bleiben draußen; ein Hinweis zeigt, wo jedes Stück war.',
+  'history.reading': 'Datei wird gelesen …',
+  'history.progress': 'Import aus {source}: {done} von {total}',
+  'history.folder': 'Aus {source}',
+  'history.imported': {
+    one: '{count} Chat aus {source} importiert, in den Ordner „{folder}“.',
+    other: '{count} Chats aus {source} importiert, in den Ordner „{folder}“.',
+  },
+  'history.nothing': 'Dieser Export aus {source} enthält keine Chats.',
+  'history.zipMissing':
+    'In dieser .zip-Datei gibt es keine conversations.json. Wähle den Datenexport, den du von ChatGPT oder Claude bekommen hast.',
+  'history.zipUnreadable':
+    'Dieser Browser kann diese .zip-Datei nicht öffnen. Entpacke sie und wähle dann die Datei conversations.json darin.',
+  'history.isBackup':
+    'Das ist ein Dialogia-Backup. Nutze Importieren unter „Chats und Einstellungen“, um es zurückzuholen.',
+  'history.unknown':
+    'Das ist kein Export aus ChatGPT oder Claude. Wähle die Datei conversations.json daraus oder die .zip-Datei, in der sie kam.',
+  'history.placeholder.image': '[Bild nicht übernommen]',
+  'history.placeholder.file': '[Datei nicht übernommen: {name}]',
+  'history.placeholder.fileUnnamed': '[Datei nicht übernommen]',
+
   // Settings › Appearance
   'appearance.scheme': 'Farbschema',
   'appearance.schemeHint': 'Hell, dunkel oder wie dein System.',
