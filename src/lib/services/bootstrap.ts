@@ -7,6 +7,8 @@ import type { StoreGetter, StoreSetter } from '@/lib/store/types';
 import { hydrateRepositorySnapshot } from '@/lib/services/hydrate';
 import { ENABLED_MODULES } from '@/lib/modules';
 import { refreshZdrListsIfNeeded } from '@/lib/policy/zdr/cache';
+import { hasKey } from '@/lib/keys/store';
+import { OPENROUTER_KEY_REF } from '@/lib/transport/endpoints';
 import { ZDR_CACHE_TTL_MS } from '@/lib/policy/zdr/constants';
 
 let zdrRefreshInterval: ReturnType<typeof setInterval> | null = null;
@@ -14,6 +16,7 @@ let zdrRefreshInterval: ReturnType<typeof setInterval> | null = null;
 function scheduleZdrRefresh(set: StoreSetter, get: StoreGetter) {
   if (typeof window === 'undefined' || zdrRefreshInterval) return;
   zdrRefreshInterval = setInterval(() => {
+    if (!hasKey(OPENROUTER_KEY_REF)) return;
     refreshZdrListsIfNeeded(set, get).catch(() => undefined);
   }, ZDR_CACHE_TTL_MS);
 }
@@ -111,10 +114,15 @@ async function runBootstrap(set: StoreSetter, get: StoreGetter): Promise<void> {
 
   prefetchRemainingChatMessages(get);
 
-  try {
-    await refreshZdrListsIfNeeded(set, get);
-  } catch {
-    /* ignore ZDR refresh failures */
+  // OpenRouter's zero-data-retention lists (half a megabyte) describe its
+  // providers alone: someone without an OpenRouter key, on a local server
+  // say, never sends it a request. Loading OpenRouter's models fetches them.
+  if (hasKey(OPENROUTER_KEY_REF)) {
+    try {
+      await refreshZdrListsIfNeeded(set, get);
+    } catch {
+      /* ignore ZDR refresh failures */
+    }
   }
 
   scheduleZdrRefresh(set, get);

@@ -623,6 +623,38 @@ const en = {
     other: '{count} chats could not be read.',
   },
 
+  'data.review.system': 'It sets the instruction every new chat starts with:',
+  'data.review.notes': {
+    one: 'It adds this note to Memory:',
+    other: 'It adds these {count} notes to Memory:',
+  },
+  'data.review.more': { one: 'and {count} more', other: 'and {count} more' },
+  'history.label': 'Chats from ChatGPT or Claude',
+  'history.hint':
+    'Ask ChatGPT or Claude for a copy of your data. Choose the .zip file it sends you, or the conversations.json file inside it.',
+  'history.choose': 'Choose file',
+  'history.confirmBody':
+    'Your chats are added in a folder of their own, and nothing you have here is replaced. Choosing the same file again brings nothing in twice. Pictures and files stay behind; a note marks where each one was.',
+  'history.reading': 'Reading the file…',
+  'history.progress': 'Importing from {source}: {done} of {total}',
+  'history.folder': 'From {source}',
+  'history.imported': {
+    one: 'Imported {count} chat from {source}, into the folder “{folder}”.',
+    other: 'Imported {count} chats from {source}, into the folder “{folder}”.',
+  },
+  'history.nothing': 'This {source} export has no chats in it.',
+  'history.zipMissing':
+    'There is no conversations.json in this .zip. Choose the data export you got from ChatGPT or Claude.',
+  'history.zipUnreadable':
+    'This browser cannot open that .zip. Unzip it, then choose the conversations.json file inside.',
+  'history.isBackup':
+    'This is a Dialogia backup. Use Import under “Chats and settings” to bring it back.',
+  'history.unknown':
+    'This is not a ChatGPT or Claude export. Choose the conversations.json file from one, or the .zip it came in.',
+  'history.placeholder.image': '[Picture not included]',
+  'history.placeholder.file': '[File not included: {name}]',
+  'history.placeholder.fileUnnamed': '[File not included]',
+
   // Settings › Appearance
   'appearance.scheme': 'Color scheme',
   'appearance.schemeHint': 'Light, dark, or following your system.',
