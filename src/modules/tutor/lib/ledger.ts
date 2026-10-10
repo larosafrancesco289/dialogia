@@ -2,6 +2,7 @@
 // Responsibility: the words of the ledger lines a learner's turn-taking actions leave in the
 // transcript. Pure, so the UI and the simulation harness send exactly the same lines.
 
+import { formatList } from '@/lib/i18n/format';
 import { asTheirIdea } from '@/modules/tutor/lib/text';
 import { t } from '@/modules/tutor/i18n';
 
@@ -27,4 +28,5 @@ export const LEDGER = {
   contested: (direction: 'high' | 'low', topic: string) =>
     t(direction === 'high' ? 'ledger.tooHigh' : 'ledger.tooLow', { topic }),
   clearedUp: (belief: string) => t('ledger.clearedUp', { idea: asTheirIdea(belief) }),
+  review: (topics: string[]) => t('ledger.review', { topics: formatList(topics) }),
 } as const;

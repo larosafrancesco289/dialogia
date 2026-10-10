@@ -11,6 +11,7 @@ const en = {
   'status.quoted': '“{name}”',
   'status.upNext': 'Up next',
   'status.notStarted': 'Not started',
+  'status.due': 'Due for a refresher',
   'idea.youThought': 'You thought {belief}',
 
   // The Learning Hub
@@ -39,6 +40,13 @@ const en = {
   'hub.proposed': 'Proposed plan',
   'hub.done': 'Done',
   'hub.editPlan': 'Edit plan',
+
+  // Coming back to topics studied a while ago
+  'review.title': 'Time for a refresher',
+  'review.hint': 'A few quick questions now help you keep what you learned.',
+  'review.studiedToday': 'Studied today',
+  'review.studied': { one: 'Studied {count} day ago', other: 'Studied {count} days ago' },
+  'review.now': 'Review now',
   'why.title': 'Why {percent}',
   'why.starting': 'Starting estimate',
   'why.carriedBefore': 'Carried over from before',
@@ -131,6 +139,7 @@ const en = {
   'cards.revisedPlan': 'Revised plan',
   'cards.beforeStart': 'Before we start',
   'cards.exercises': 'Exercises',
+  'cards.refresher': 'Refresher',
 
   // Quizzes and the quick check
   'quiz.question': 'Question {at} of {count}',
@@ -215,6 +224,7 @@ const en = {
   'ledger.tooHigh': 'Said the estimate felt too high: {topic}',
   'ledger.tooLow': 'Said the estimate felt too low: {topic}',
   'ledger.clearedUp': 'Marked as cleared up: {idea}',
+  'ledger.review': 'Asked to review: {topics}',
   'notice.saveFailed':
     'Tutor progress could not be saved. It holds in this tab and will be retried with the next change.',
 } as const;

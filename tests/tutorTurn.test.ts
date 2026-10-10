@@ -345,7 +345,9 @@ test('a tutoring session runs intake, plan, teaching and a chapter break through
   assert.ok(breakSystem.includes('Next in the plan: Derivatives [derivatives]'));
   assert.ok(!breakSystem.includes("Since the learner's last message"), 'nothing changed since');
   assert.ok(toolNames(breakRequest).includes('start_topic'));
-  assert.ok(!toolNames(breakRequest).includes('give_quiz'));
+  // Only as a refresher on the finished topic: no topic is in progress.
+  assert.ok(toolNames(breakRequest).includes('give_quiz'));
+  assert.ok(!toolNames(breakRequest).includes('complete_topic'));
   assert.deepEqual(
     toolExchanges(breakRequest).map((x) => x.name),
     ['propose_plan', 'record_evidence', 'record_evidence', 'complete_topic'],
@@ -353,7 +355,8 @@ test('a tutoring session runs intake, plan, teaching and a chapter break through
   // Replayed history never carries an answer key or a failed call's secrets.
   assert.ok(!JSON.stringify(breakRequest.messages).includes('"correct"'));
 
-  // ---- Turn 4, one turn: start the next topic, then quiz it. The quiz is offered once it starts.
+  // ---- Turn 4, one turn: start the next topic, then quiz it. The tools that need a topic in
+  // progress are offered once it starts (the quiz itself was already there, as a refresher).
   const fourth = await s.turn('Go on.', (round, cb) => {
     if (round === 1) {
       reply(cb, 'On to derivatives.', [call('start_topic', { nodeId: 'derivatives' }, 'c4')]);
@@ -368,8 +371,11 @@ test('a tutoring session runs intake, plan, teaching and a chapter break through
     ]);
   });
   assert.equal(fourth.requests.length, 2);
-  assert.ok(!toolNames(fourth.requests[0]).includes('give_quiz'));
-  assert.ok(toolNames(fourth.requests[1]).includes('give_quiz'), 'offered after start_topic ran');
+  assert.ok(!toolNames(fourth.requests[0]).includes('complete_topic'));
+  assert.ok(
+    toolNames(fourth.requests[1]).includes('complete_topic'),
+    'offered after start_topic ran',
+  );
   assert.equal(s.tutor().state.currentNodeId, 'derivatives');
   assert.equal(s.tutor().state.awaiting?.kind, 'quiz');
 });

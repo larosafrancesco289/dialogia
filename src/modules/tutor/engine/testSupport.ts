@@ -33,6 +33,8 @@ export type Harness = {
   /** Decides only; expects an error and returns it. */
   refuse(command: TutorCommand): TutorError;
   decide(command: TutorCommand): DecideResult;
+  /** Moves the clock on: the next command happens this much later. */
+  advance(ms: number): void;
 };
 
 export function harness(flags: Partial<TutorFlags> = {}): Harness {
@@ -72,6 +74,9 @@ export function harness(flags: Partial<TutorFlags> = {}): Harness {
     },
     decide(command) {
       return decide(state, command, h.ctx());
+    },
+    advance(ms) {
+      clock += ms;
     },
   };
 

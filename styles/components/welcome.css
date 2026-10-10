@@ -10,4 +10,18 @@
     align-items: center;
     gap: 6px;
   }
+
+  /* In Learn, below the composer: topics from earlier learning sessions due
+     for a refresher. It grows downward, so nothing above it moves. */
+  .welcome-refresh {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    margin-top: var(--space-8);
+    text-align: left;
+  }
+  .welcome-refresh .refresher {
+    padding-left: var(--space-3);
+    border-left: 2px solid color-mix(in oklab, var(--color-fg) 55%, transparent);
+  }
 }

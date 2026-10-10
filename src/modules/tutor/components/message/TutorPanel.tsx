@@ -26,7 +26,12 @@ export function TutorPanel(props: {
     !!intake?.questions.length || !!proposal || !!diagnostic?.items.length || !!quiz?.items.length;
   if (!hasAny) return null;
 
+  // A refresher says so: it is on a topic already studied, not the one in progress.
+  const refresher = quiz?.review
+    ? [t('cards.refresher'), quiz.title].filter(Boolean).join(' · ')
+    : undefined;
   const title =
+    refresher ??
     quiz?.title ??
     intake?.title ??
     (proposal ? t(proposal.revision ? 'cards.revisedPlan' : 'cards.plan') : undefined) ??

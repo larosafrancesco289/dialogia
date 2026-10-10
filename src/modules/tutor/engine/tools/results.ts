@@ -95,7 +95,17 @@ export function tutorToolResult(
         diagnosticsLeft: remainingBudgets(after).diagnosticsLeft,
         note: 'The learner sees the diagnostic. The engine scores it when they submit.',
       };
-    case 'give_quiz':
+    case 'give_quiz': {
+      const given = event?.type === 'quiz_given' ? event : undefined;
+      if (given?.review) {
+        return {
+          ok: true,
+          shown: 'quiz',
+          topic: given.nodeId,
+          refresher: true,
+          note: 'The learner sees the refresher. The engine grades each answer; the topic stays done.',
+        };
+      }
       return {
         ok: true,
         shown: 'quiz',
@@ -103,6 +113,7 @@ export function tutorToolResult(
         quizzesLeft: remainingBudgets(after).quizzesLeft,
         note: 'The learner sees the quiz. The engine grades each answer.',
       };
+    }
     case 'propose_plan': {
       const proposal = after.proposal;
       const previous = new Set(before.plan?.nodes.map((n) => n.id) ?? []);

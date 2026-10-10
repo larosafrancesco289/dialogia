@@ -14,6 +14,13 @@ import {
   percent,
 } from '@/modules/tutor/engine/rules';
 import {
+  DAY_MS,
+  HOUR_MS,
+  SITTING_GAP_MS,
+  dueTopics,
+  lastStudiedAt,
+} from '@/modules/tutor/engine/review';
+import {
   confidenceOf,
   currentNode,
   openMisconceptions,
@@ -44,7 +51,19 @@ function quote(value: string, max = 80): string {
   return `"${clean.length > max ? `${clean.slice(0, max - 3)}...` : clean}"`;
 }
 
-function topicLine(state: TutorState, node: LearningPlanNode): string {
+/** How long ago, in the units a person would use. */
+function ago(ms: number): string {
+  if (ms < HOUR_MS) return 'just now';
+  if (ms < DAY_MS) return `${count(Math.floor(ms / HOUR_MS), 'hour', 'hours')} ago`;
+  return `${count(Math.floor(ms / DAY_MS), 'day', 'days')} ago`;
+}
+
+function topicLine(
+  state: TutorState,
+  node: LearningPlanNode,
+  now: number | undefined,
+  due: ReadonlySet<string>,
+): string {
   const c = confidenceOf(state, node.id);
   const parts: string[] = [];
   if (node.status === 'completed') {
@@ -59,6 +78,9 @@ function topicLine(state: TutorState, node: LearningPlanNode): string {
     parts.push('carried over from another chat');
   }
   if (state.mastery[node.id]?.needsReview) parts.push('flagged for review');
+  const studied = now != null ? lastStudiedAt(state, node.id) : undefined;
+  if (now != null && studied != null) parts.push(`last studied ${ago(now - studied)}`);
+  if (due.has(node.id)) parts.push('due for a refresher');
   if (node.status === 'not_started' && state.plan) {
     const unmet = unmetPrerequisites(state.plan, node);
     if (unmet.length) parts.push(`needs ${unmet.map((n) => n.id).join(', ')}`);
@@ -163,7 +185,7 @@ function otherChatLines(records: readonly LearningRecord[]): string[] {
       `- [${record.chatId}] ${record.subject ? `${record.subject}: ` : ''}${record.goal}${record.finished ? ' (finished)' : ''}`,
       ...record.topics.map(
         (topic) =>
-          `  - ${topic.name}: ${RECORD_STATE[topic.state]}${topic.percent != null ? `, ${topic.percent}%` : ''}`,
+          `  - ${topic.name}: ${RECORD_STATE[topic.state]}${topic.percent != null ? `, ${topic.percent}%` : ''}${topic.dueForReview ? ', due for a refresher' : ''}`,
       ),
     ]),
   ];
@@ -200,6 +222,10 @@ function controlsLine(flags: TutorFlags): string {
 
 export type RenderOptions = {
   flags: TutorFlags;
+  /** The time of the request. Without it the block says nothing about time. */
+  now?: number;
+  /** When the conversation last moved before this message, to tell a return after a break. */
+  lastExchangeAt?: number;
   /** From `learnerChangesSince`: shown last, as authoritative. */
   learnerChanges?: string[];
   /** The learner's other tutor chats, shown until this chat has a plan. */
@@ -211,6 +237,15 @@ export function renderStateBlock(state: TutorState, options: RenderOptions): str
   const lines: string[] = ['Tutor state'];
   const plan = state.plan;
   const current = currentNode(state);
+  const now = options.now;
+  const due = now != null ? dueTopics(state, now) : [];
+  const dueIds = new Set(due.map((schedule) => schedule.nodeId));
+  if (now != null && options.lastExchangeAt != null) {
+    const gap = now - options.lastExchangeAt;
+    if (gap >= SITTING_GAP_MS) {
+      lines.push(`Back after a break: the last exchange here was ${ago(gap)}.`);
+    }
+  }
 
   if (plan) {
     const done = plan.nodes.filter((n) => n.status === 'completed').length;
@@ -244,7 +279,13 @@ export function renderStateBlock(state: TutorState, options: RenderOptions): str
     lines.push(
       `Topics (building < ${percent(PRACTISING)}%, practising ${percent(PRACTISING)}-${percent(READY) - 1}%, ready >= ${percent(READY)}%):`,
     );
-    for (const node of plan.nodes) lines.push(topicLine(state, node));
+    for (const node of plan.nodes) lines.push(topicLine(state, node, now, dueIds));
+    if (due.length) {
+      const name = (id: string) => plan.nodes.find((n) => n.id === id)?.name ?? id;
+      lines.push(
+        `Due for a refresher, studied a while ago and not practised since: ${due.map((s) => `${name(s.nodeId)} [${s.nodeId}]`).join(', ')}.`,
+      );
+    }
     const open = plan.nodes.flatMap((node) =>
       openMisconceptions(state, node.id).map(
         (m) =>

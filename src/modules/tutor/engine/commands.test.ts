@@ -1209,10 +1209,11 @@ describe('topics and phases', () => {
     assert.equal(h.state.phase, 'interlude', 'completing never starts the next topic');
     assert.equal(h.state.currentNodeId, undefined);
     assert.equal(h.state.plan!.nodes[1].status, 'not_started');
+    // A quiz now is only a refresher on a topic already studied, so it names one.
     assertError(
       h.refuse({ by: 'tutor', type: 'give_quiz', items: QUIZ_ITEMS }),
-      'wrong_phase',
-      /start_topic/,
+      'no_current_topic',
+      /limits/,
     );
 
     assertError(
@@ -1228,17 +1229,16 @@ describe('topics and phases', () => {
     h.learner({ type: 'skip_topic', nodeId: 'chain-rule' });
     assert.equal(h.state.phase, 'complete');
     assertError(h.refuse({ by: 'learner', type: 'start_topic', nodeId: 'limits' }), 'wrong_phase');
-    assertError(
-      h.refuse({
-        by: 'tutor',
-        type: 'record_evidence',
-        nodeId: 'limits',
-        kind: 'applied',
-        note: 'n',
-        source: 'observation',
-      }),
-      'wrong_phase',
-    );
+    // Going back over a finished topic still counts toward it, and it stays done.
+    h.tutor({
+      type: 'record_evidence',
+      nodeId: 'limits',
+      kind: 'applied',
+      note: 'n',
+      source: 'observation',
+    });
+    assert.equal(h.state.phase, 'complete');
+    assert.equal(h.state.plan!.nodes[0].status, 'completed');
 
     h.tutor({
       type: 'propose_plan',

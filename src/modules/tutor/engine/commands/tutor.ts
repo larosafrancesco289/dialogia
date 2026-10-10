@@ -38,10 +38,12 @@ import {
   followsCorrection,
   isMeasured,
   openMisconceptions,
+  remainingBudgets,
   replyRecord,
   startingEstimateCap,
   type TutorState,
 } from '@/modules/tutor/engine/state';
+import { SITTING_GAP_MS, canReview, reviewSchedule } from '@/modules/tutor/engine/review';
 import { gateTutorTool } from '@/modules/tutor/engine/commands/gate';
 import {
   err,
@@ -212,8 +214,9 @@ export function decideTutor(
     }
 
     case 'give_quiz': {
-      const nodeId = state.currentNodeId;
-      if (!nodeId) return resolveNode(state, undefined, true).error ?? null;
+      const target = quizTarget(state, cmd.nodeId, ctx.at);
+      if (target.error) return target.error;
+      const { nodeId, review } = target;
       const count = checkCount('Items', cmd.items.length, LIMITS.quizItems);
       if (count) return count;
       const bad = checkChoiceItems(cmd.items);
@@ -222,6 +225,7 @@ export function decideTutor(
         type: 'quiz_given',
         quizId: ctx.idFactory(),
         nodeId,
+        ...(review ? { review: true as const } : {}),
         ...(text(cmd.title) ? { title: text(cmd.title) } : {}),
         items: cmd.items.map((item, i) => ({
           id: `q${i + 1}`,
@@ -393,6 +397,72 @@ export function decideTutor(
       }
       return startTopic(state, cmd.nodeId, 'tutor', out);
   }
+}
+
+/**
+ * Which topic a quiz is on: the one in progress by default, or one already
+ * studied as a refresher, at most once a sitting. Refreshers do not spend the
+ * topic's quiz budget; quizzes on the topic in progress do.
+ */
+function quizTarget(
+  state: TutorState,
+  ref: string | undefined,
+  at: number,
+): { nodeId: string; review: boolean; error?: undefined } | { error: TutorError } {
+  const reviewable = reviewSchedule(state).map((s) => s.nodeId);
+  const studied = reviewable.length
+    ? `Topics already studied, which can take a refresher: ${reviewable.join(', ')}.`
+    : 'No topic has been studied yet to review.';
+  const current = state.currentNodeId;
+  let nodeId = current;
+  if (text(ref)) {
+    const found = resolveNode(state, ref, false);
+    if (found.error) return { error: found.error };
+    nodeId = found.node.id;
+  }
+  if (!nodeId) {
+    return {
+      error: err(
+        'no_current_topic',
+        'No topic is in progress, so the quiz needs a topicId.',
+        `Give the topicId of a topic to refresh. ${studied}`,
+      ),
+    };
+  }
+  if (nodeId === current) {
+    if (remainingBudgets(state).quizzesLeft === 0) {
+      return {
+        error: err(
+          'budget_exhausted',
+          'No quizzes left for the topic in progress.',
+          'Check understanding in conversation and use record_evidence instead.',
+        ),
+      };
+    }
+    return { nodeId, review: false };
+  }
+  if (!canReview(state, nodeId)) {
+    return {
+      error: err(
+        'not_studied',
+        `"${nodeId}" has not been studied yet, so there is nothing to refresh.`,
+        `Quiz the topic in progress (leave topicId out), or a topic already studied. ${studied}`,
+      ),
+    };
+  }
+  const recent = Object.values(state.quizzes).some(
+    (quiz) => quiz.review && quiz.nodeId === nodeId && at - quiz.at < SITTING_GAP_MS,
+  );
+  if (recent) {
+    return {
+      error: err(
+        'budget_exhausted',
+        `${nodeId} already had a refresher in this sitting.`,
+        'Talk it through in conversation instead. If the learner wants more practice on it, they can take the topic up again.',
+      ),
+    };
+  }
+  return { nodeId, review: true };
 }
 
 /**

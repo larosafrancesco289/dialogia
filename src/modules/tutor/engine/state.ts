@@ -45,6 +45,10 @@ export type DiagnosticRecord = CardBase & {
 export type QuizRecord = CardBase & {
   quizId: string;
   nodeId: string;
+  /** When it was given. */
+  at: number;
+  /** A refresher on a topic already studied. */
+  review?: boolean;
   title?: string;
   items: QuizItem[];
   answers: Record<string, { choice: number; correct: boolean }>;
@@ -88,7 +92,7 @@ export type TutorState = {
   quizzes: Record<string, QuizRecord>;
   counts: {
     diagnostics: number;
-    /** Quizzes given per topic since it was last reopened. */
+    /** Quizzes given per topic since it was last reopened; refreshers not counted. */
     quizzesByNode: Record<string, number>;
     /**
      * How many evidence entries a topic had when it was last reopened: what

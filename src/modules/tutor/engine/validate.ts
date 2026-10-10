@@ -151,6 +151,7 @@ const PAYLOADS: Record<TutorEventType, z.ZodTypeAny> = {
     nodeId: z.string(),
     title: z.string().optional(),
     items: z.array(quizItem),
+    review: z.literal(true).optional(),
   }),
   quiz_answered: z.object({
     quizId: id,

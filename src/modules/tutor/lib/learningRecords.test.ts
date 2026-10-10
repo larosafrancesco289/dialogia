@@ -22,7 +22,7 @@ const mastery = (nodeId: string, confidence: number, measured = true): TopicMast
 });
 
 test('a tutor chat without an approved plan has no record yet', () => {
-  assert.equal(learningRecord(chat, emptyTutorState()), undefined);
+  assert.equal(learningRecord(chat, emptyTutorState(), Date.now()), undefined);
 });
 
 test('a record shows the whole path, with numbers only where there is evidence', () => {
@@ -48,7 +48,7 @@ test('a record shows the whole path, with numbers only where there is evidence',
     e: mastery('e', 0.3, false),
   };
 
-  const record = learningRecord(chat, state);
+  const record = learningRecord(chat, state, Date.now());
   assert.ok(record);
   assert.equal(record.chatId, 'c1');
   assert.equal(record.goal, 'Read a test result');
@@ -76,7 +76,7 @@ test('a started topic shows its starting number before any evidence', () => {
   };
   state.mastery = { a: mastery('a', 0.3, false), b: mastery('b', 0.3, false) };
   assert.deepEqual(
-    learningRecord(chat, state)?.topics.map((t) => t.percent),
+    learningRecord(chat, state, Date.now())?.topics.map((t) => t.percent),
     [30, undefined],
   );
 });

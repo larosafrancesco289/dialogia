@@ -6,15 +6,20 @@ import type { Chat, LearningRecord } from '@/lib/types';
 import type { TutorState } from '@/modules/tutor/engine/state';
 import type { TutorSession } from '@/modules/tutor/store/tutorSlice';
 import { isSharedTutorChat } from '@/modules/tutor/store/selectors';
-import { nextReadyNode } from '@/modules/tutor/engine';
+import { dueTopics, lastStudiedAt, nextReadyNode } from '@/modules/tutor/engine';
 import { stepState, waitingOn } from '@/modules/tutor/components/learning-panel/PlanPath';
 import { shownPercent, statusWords } from '@/modules/tutor/lib/topicStatus';
 
-/** The chat's record, or undefined while it has no approved plan. */
-export function learningRecord(chat: Chat, state: TutorState): LearningRecord | undefined {
+/** The chat's record at `now`, or undefined while it has no approved plan. */
+export function learningRecord(
+  chat: Chat,
+  state: TutorState,
+  now: number,
+): LearningRecord | undefined {
   const plan = state.plan;
   if (!plan?.nodes.length) return undefined;
   const upNextId = nextReadyNode(plan)?.id;
+  const due = new Set(dueTopics(state, now).map((schedule) => schedule.nodeId));
   return {
     chatId: chat.id,
     goal: plan.goal,
@@ -24,11 +29,14 @@ export function learningRecord(chat: Chat, state: TutorState): LearningRecord | 
     topics: plan.nodes.map((node) => {
       const step = stepState(plan, node);
       const percent = shownPercent(step, state.mastery[node.id]);
+      const studied = lastStudiedAt(state, node.id);
       return {
         name: node.name,
         state: step,
         ...(percent != null ? { percent } : {}),
         status: statusWords(step, node.id === upNextId, waitingOn(plan, node), node.completedHow),
+        ...(studied != null ? { lastStudiedAt: studied } : {}),
+        ...(due.has(node.id) ? { dueForReview: true } : {}),
       };
     }),
   };
@@ -43,6 +51,7 @@ export function learningRecord(chat: Chat, state: TutorState): LearningRecord | 
 export async function tutorLearningRecords(
   chats: readonly Chat[],
   ensureTutorSession: (chatId: string) => Promise<TutorSession>,
+  now = Date.now(),
 ): Promise<LearningRecord[]> {
   const tutorChats = chats.filter(isSharedTutorChat);
   const states = await Promise.all(
@@ -60,7 +69,7 @@ export async function tutorLearningRecords(
     }
   });
   return tutorChats.flatMap((chat, i) => {
-    const record = learningRecord(chat, states[i]);
+    const record = learningRecord(chat, states[i], now);
     if (!record) return [];
     const subject = record.subject ?? inherited.get(chat.id);
     return [subject ? { ...record, subject } : record];

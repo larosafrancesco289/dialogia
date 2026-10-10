@@ -10,11 +10,18 @@ import { pct, shownPercent, statusWords } from '@/modules/tutor/lib/topicStatus'
 import { Markdown } from '@/components/Markdown';
 import { asTheirIdea } from '@/modules/tutor/lib/text';
 import { CarriedOverWords } from '@/modules/tutor/components/message/CarriedOverWords';
+import { RefresherBox, type RefresherTopic } from './Refreshers';
 
 // Corrections are recorded for the tutor ("Learner said…"); read them back
 // to the learner in the second person.
 
 type Explain = (nodeId: string) => TopicExplanation | undefined;
+
+export type ContentsRefreshers = {
+  topics: RefresherTopic[];
+  now: number;
+  onReview: () => Promise<unknown>;
+};
 
 export type ContentsCorrections = {
   onContestMastery: (nodeId: string, direction: 'up' | 'down') => Promise<unknown>;
@@ -32,6 +39,7 @@ export function ContentsView({
   plan,
   mastery,
   explain,
+  refreshers,
   affordances,
   corrections,
 }: {
@@ -39,6 +47,8 @@ export function ContentsView({
   mastery?: Record<string, TopicMastery>;
   /** "Why N%": the engine's replay of the session's evidence for a topic. */
   explain: Explain;
+  /** Topics studied a while ago that are due for a refresher. */
+  refreshers?: ContentsRefreshers;
   affordances: TutorAffordances;
   corrections: ContentsCorrections;
 }) {
@@ -51,6 +61,7 @@ export function ContentsView({
   const done = plan.nodes.filter((n) => n.status === 'completed').length;
   const upNextId = nextReadyNode(plan)?.id;
   const hours = plan.metadata?.estimatedHours;
+  const due = new Set(refreshers?.topics.map((topic) => topic.id));
   const anyShown = plan.nodes.some(
     (n) => shownPercent(stepState(plan, n), mastery?.[n.id]) != null,
   );
@@ -72,6 +83,14 @@ export function ContentsView({
         </p>
       </div>
 
+      {refreshers && refreshers.topics.length > 0 && (
+        <div className="hub-refresh">
+          <p className="hub-label">{t('review.title')}</p>
+          <p className="hub-refresh__hint">{t('review.hint')}</p>
+          <RefresherBox {...refreshers} />
+        </div>
+      )}
+
       <ol className="hub-path">
         {plan.nodes.map((node, index) => (
           <ContentsItem
@@ -80,6 +99,7 @@ export function ContentsView({
             number={index + 1}
             state={stepState(plan, node)}
             upNext={node.id === upNextId}
+            due={due.has(node.id)}
             waiting={waitingOn(plan, node)}
             mastery={mastery?.[node.id]}
             explain={explain}
@@ -105,6 +125,7 @@ function ContentsItem({
   number,
   state,
   upNext,
+  due,
   waiting,
   mastery,
   explain,
@@ -117,6 +138,7 @@ function ContentsItem({
   number: number;
   state: StepState;
   upNext: boolean;
+  due: boolean;
   waiting: string[];
   mastery?: TopicMastery;
   explain: Explain;
@@ -163,6 +185,12 @@ function ContentsItem({
           {showMastery && <Meter value={mastery!.confidence} />}
           <span className="hub-path__status">
             <Markdown inline content={statusWords(state, upNext, waiting, node.completedHow)} />
+            {due && (
+              <>
+                {' · '}
+                <span className="hub-path__due">{t('status.due')}</span>
+              </>
+            )}
             {toClear > 0 && (
               <>
                 {' · '}

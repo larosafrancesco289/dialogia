@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { shallow } from 'zustand/shallow';
-import { explainTopic } from '@/modules/tutor/engine';
+import { dueTopics, explainTopic } from '@/modules/tutor/engine';
+import { LEDGER } from '@/modules/tutor/lib/ledger';
+import { useLedger } from '@/modules/tutor/ui/ledger';
+import { useNow } from '@/modules/tutor/ui/useNow';
 import {
   useApprovePlan,
   usePlanCallbacks,
@@ -40,6 +43,8 @@ export function LearningPanel() {
   const approvePlan = useApprovePlan();
   const requestPlanChanges = useRequestPlanChanges();
   const [approving, setApproving] = useState(false);
+  const ledger = useLedger();
+  const now = useNow();
 
   const { planSheetOverride, revisingState, setUI } = useChatStore(
     (s) => ({
@@ -61,6 +66,15 @@ export function LearningPanel() {
   const answerable = !!pending && pending.plan === planSheetOverride;
 
   if (!plan) return null;
+
+  // Not over a proposal, and not while a card waits on the learner: the tutor
+  // could not put a refresher up beside it.
+  const cardOpen = !!state.awaiting && state.awaiting.kind !== 'proposal';
+  const due = isPreviewingProposal || cardOpen ? [] : dueTopics(state, now);
+  const refreshers = due.flatMap((schedule) => {
+    const node = plan.nodes.find((n) => n.id === schedule.nodeId);
+    return node ? [{ id: node.id, name: node.name, studiedAt: schedule.lastStudiedAt }] : [];
+  });
 
   const canRevise = affordances.revisePlan && !isPreviewingProposal;
   const revising = canRevise && revisingState;
@@ -92,6 +106,11 @@ export function LearningPanel() {
             plan={plan}
             mastery={state.mastery}
             explain={(nodeId) => explainTopic(state, nodeId)}
+            refreshers={{
+              topics: refreshers,
+              now,
+              onReview: () => ledger(LEDGER.review(refreshers.map((topic) => topic.name))),
+            }}
             affordances={
               isPreviewingProposal ? { ...affordances, correctMastery: false } : affordances
             }

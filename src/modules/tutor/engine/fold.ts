@@ -228,21 +228,25 @@ function reduce(state: TutorState, event: TutorEvent): TutorState {
       };
     }
 
-    case 'quiz_given':
+    case 'quiz_given': {
+      const quizzes = {
+        ...state.quizzes,
+        [event.quizId]: {
+          quizId: event.quizId,
+          nodeId: event.nodeId,
+          at: event.at,
+          ...(event.review ? { review: true } : {}),
+          title: event.title,
+          items: event.items,
+          answers: {},
+          seq: event.seq,
+          messageId: event.messageId,
+        },
+      };
+      if (event.review) return { ...state, quizzes };
       return {
         ...state,
-        quizzes: {
-          ...state.quizzes,
-          [event.quizId]: {
-            quizId: event.quizId,
-            nodeId: event.nodeId,
-            title: event.title,
-            items: event.items,
-            answers: {},
-            seq: event.seq,
-            messageId: event.messageId,
-          },
-        },
+        quizzes,
         counts: {
           ...state.counts,
           quizzesByNode: {
@@ -251,6 +255,7 @@ function reduce(state: TutorState, event: TutorEvent): TutorState {
           },
         },
       };
+    }
 
     case 'quiz_answered': {
       const quiz = state.quizzes[event.quizId];

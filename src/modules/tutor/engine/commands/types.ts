@@ -22,6 +22,7 @@ export type TutorErrorCode =
   | 'topic_not_current'
   | 'topic_completed'
   | 'topic_not_completed'
+  | 'not_studied'
   | 'already_current'
   | 'prerequisites_unmet'
   | 'not_ready'
@@ -54,7 +55,14 @@ export type TutorToolCommand =
   | { by: 'tutor'; type: 'ask_intake'; title?: string; questions: IntakeQuestionInput[] }
   | { by: 'tutor'; type: 'give_diagnostic'; topic: string; items: DiagnosticItemInput[] }
   | ({ by: 'tutor'; type: 'propose_plan'; rationale?: string } & PlanInput)
-  | { by: 'tutor'; type: 'give_quiz'; title?: string; items: QuizItemInput[] }
+  | {
+      by: 'tutor';
+      type: 'give_quiz';
+      title?: string;
+      items: QuizItemInput[];
+      /** The topic in progress when absent; another topic only as a refresher. */
+      nodeId?: string;
+    }
   | {
       by: 'tutor';
       type: 'record_evidence';

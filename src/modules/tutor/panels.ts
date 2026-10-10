@@ -35,6 +35,11 @@ export const tutorPanels: ModulePanels = {
       default: m.WelcomeModes,
     })),
   ),
+  welcomeBelow: lazy(() =>
+    import('@/modules/tutor/components/welcome/WelcomeRefreshers').then((m) => ({
+      default: m.WelcomeRefreshers,
+    })),
+  ),
   settingsSection: lazy(() =>
     import('@/modules/tutor/components/settings/TutorSettingsSection').then((m) => ({
       default: m.TutorSettingsSection,

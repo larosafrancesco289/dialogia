@@ -13,6 +13,7 @@ const messages: Translation<typeof en> = {
   'status.quoted': '« {name} »',
   'status.upNext': 'Ensuite',
   'status.notStarted': 'Pas commencé',
+  'status.due': 'À réviser',
   'idea.youThought': 'Tu pensais que {belief}',
 
   // The Learning Hub
@@ -44,6 +45,13 @@ const messages: Translation<typeof en> = {
   'hub.proposed': 'Plan proposé',
   'hub.done': 'Terminé',
   'hub.editPlan': 'Modifier le plan',
+
+  // Coming back to topics studied a while ago
+  'review.title': 'Le moment de réviser',
+  'review.hint': 'Quelques questions rapides maintenant t’aident à garder ce que tu as appris.',
+  'review.studiedToday': 'Étudié aujourd’hui',
+  'review.studied': { one: 'Étudié il y a {count} jour', other: 'Étudié il y a {count} jours' },
+  'review.now': 'Réviser maintenant',
   'why.title': 'Pourquoi {percent}',
   'why.starting': 'Estimation de départ',
   'why.carriedBefore': 'Reprise d’avant',
@@ -137,6 +145,7 @@ const messages: Translation<typeof en> = {
   'cards.revisedPlan': 'Plan révisé',
   'cards.beforeStart': 'Avant de commencer',
   'cards.exercises': 'Exercices',
+  'cards.refresher': 'Révision',
 
   // Quizzes and the quick check
   'quiz.question': 'Question {at} sur {count}',
@@ -222,6 +231,7 @@ const messages: Translation<typeof en> = {
   'ledger.tooHigh': 'J’ai dit que l’estimation me semblait trop haute : {topic}',
   'ledger.tooLow': 'J’ai dit que l’estimation me semblait trop basse : {topic}',
   'ledger.clearedUp': 'Marqué comme éclairci : {idea}',
+  'ledger.review': 'J’ai demandé à réviser : {topics}',
   'notice.saveFailed':
     'La progression du tuteur n’a pas pu être enregistrée. Elle reste dans cet onglet et sera réessayée au prochain changement.',
 };
