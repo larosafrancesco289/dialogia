@@ -183,6 +183,19 @@ export class HeadlessTutorSession {
     return this.store.getState().tutorSessions[this.chatId] ?? EMPTY_TUTOR_SESSION;
   }
 
+  /**
+   * Puts a saved chat back: its messages and its tutor log, into the store and
+   * the in-memory database, as a reload would find them. Only for a fresh
+   * session, before any turn.
+   */
+  async restore(messages: Message[], events: TutorEvent[]): Promise<void> {
+    await repository.saveMessages(messages);
+    await repository.seedTutorEvents(this.chatId, events);
+    this.store.setState((s) => appendMessagesToChat(s, this.chatId, messages));
+    this.clock = Math.max(this.clock, ...messages.map((m) => m.createdAt));
+    await this.store.getState().ensureTutorSession(this.chatId);
+  }
+
   /** A learner command, exactly as a card or the Hub dispatches it. */
   learner(action: LearnerAction, messageId?: string): Promise<TutorDispatchResult> {
     return this.store

@@ -2,6 +2,8 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": [
     "src/modules/tutor/tooling/simulate.ts!",
+    "src/modules/tutor/tooling/step.ts!",
+    "src/modules/tutor/tooling/evals.ts!",
     "tests/**/*.test.ts",
     "src/**/*.test.ts",
     "tests/helpers/**/*.ts",
