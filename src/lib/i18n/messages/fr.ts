@@ -619,6 +619,7 @@ const messages: Translation<typeof en> = {
     'Les discussions du fichier remplacent celles d’ici qui ont le même identifiant, et ses réglages remplacent les tiens : serveurs, favoris et réglages des discussions. Tout le reste est gardé. Exporte d’abord si tu risques de vouloir revenir en arrière.',
   'data.exportFailed': 'L’export a échoué. Réessaie.',
   'data.importFailed': 'L’import a échoué. Réessaie.',
+  'data.importWhileReplying': 'Attends la fin de la réponse, puis importe.',
   'data.nothing': 'Ce fichier ne contient ni discussions ni réglages de Dialogia.',
   'data.notJson': 'Ce fichier n’est pas un export de Dialogia : ce n’est pas du JSON valide.',
   'data.newerVersion':
@@ -786,6 +787,8 @@ const messages: Translation<typeof en> = {
   'notice.unreachable':
     'Impossible de joindre le fournisseur. Vérifie ta connexion, ou que ton serveur local tourne.',
   'notice.timedOut': 'La requête a pris trop de temps. Réessaie.',
+  'notice.cutOff': 'La connexion s’est fermée avant la fin de la réponse. Réessaie.',
+  'notice.stalled': 'Le fournisseur a cessé d’envoyer, alors la réponse a été arrêtée. Réessaie.',
   'notice.unknownError': 'Quelque chose s’est mal passé, et le fournisseur n’a pas dit quoi.',
   'notice.tryAgainSoon': 'Réessaie dans un instant.',
   'notice.providerError': 'Le fournisseur du modèle a renvoyé une erreur',

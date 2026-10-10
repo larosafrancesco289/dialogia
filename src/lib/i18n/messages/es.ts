@@ -612,6 +612,7 @@ const messages: Translation<typeof en> = {
     'Los chats del archivo reemplazan a los de aquí con el mismo id, y sus ajustes reemplazan los tuyos: servidores, favoritos y ajustes de los chats. Todo lo demás se conserva. Exporta antes si puede que quieras volver atrás.',
   'data.exportFailed': 'La exportación falló. Inténtalo de nuevo.',
   'data.importFailed': 'La importación falló. Inténtalo de nuevo.',
+  'data.importWhileReplying': 'Espera a que termine la respuesta y luego importa.',
   'data.nothing': 'Este archivo no tiene chats ni ajustes de Dialogia.',
   'data.notJson': 'Ese archivo no es una exportación de Dialogia: no es un JSON válido.',
   'data.newerVersion':
@@ -773,6 +774,9 @@ const messages: Translation<typeof en> = {
   'notice.unreachable':
     'No se pudo conectar con el proveedor. Revisa tu conexión, o que tu servidor local esté encendido.',
   'notice.timedOut': 'La petición tardó demasiado. Inténtalo de nuevo.',
+  'notice.cutOff': 'La conexión se cerró antes de que terminara la respuesta. Inténtalo de nuevo.',
+  'notice.stalled':
+    'El proveedor dejó de enviar, así que la respuesta se detuvo. Inténtalo de nuevo.',
   'notice.unknownError': 'Algo salió mal y el proveedor no dijo qué.',
   'notice.tryAgainSoon': 'Inténtalo de nuevo en un momento.',
   'notice.providerError': 'El proveedor del modelo devolvió un error',

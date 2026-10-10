@@ -606,6 +606,7 @@ const messages: Translation<typeof en> = {
     'As conversas do arquivo substituem as daqui com o mesmo id, e as configurações dele substituem as suas: servidores, favoritos e padrões das conversas. Todo o resto fica. Exporte antes se talvez quiser voltar atrás.',
   'data.exportFailed': 'A exportação falhou. Tente de novo.',
   'data.importFailed': 'A importação falhou. Tente de novo.',
+  'data.importWhileReplying': 'Espere a resposta terminar e depois importe.',
   'data.nothing': 'Este arquivo não tem conversas nem configurações do Dialogia.',
   'data.notJson': 'Esse arquivo não é uma exportação do Dialogia: não é um JSON válido.',
   'data.newerVersion':
@@ -768,6 +769,8 @@ const messages: Translation<typeof en> = {
   'notice.unreachable':
     'Não foi possível conectar ao provedor. Confira sua conexão, ou se o seu servidor local está rodando.',
   'notice.timedOut': 'O pedido demorou demais. Tente de novo.',
+  'notice.cutOff': 'A conexão caiu antes de a resposta terminar. Tente de novo.',
+  'notice.stalled': 'O provedor parou de enviar, então a resposta foi encerrada. Tente de novo.',
   'notice.unknownError': 'Algo deu errado, e o provedor não disse o quê.',
   'notice.tryAgainSoon': 'Tente de novo daqui a pouco.',
   'notice.providerError': 'O provedor do modelo retornou um erro',
