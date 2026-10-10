@@ -145,8 +145,7 @@ export function useSettingsDrawerState(): SettingsDrawerState {
       return;
     }
     try {
-      const { filename, json } = exportResult;
-      const blob = new Blob([json], { type: 'application/json' });
+      const { filename, blob } = exportResult;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

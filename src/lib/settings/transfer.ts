@@ -40,22 +40,39 @@ const buildExportFilename = (timestamp: Date): string => {
   )}.json`;
 };
 
-export async function buildChatExport(): Promise<
-  Result<{ filename: string; json: string }, string>
-> {
+/**
+ * The backup as JSON in pieces, a row at a time, so no one string has to hold
+ * every chat: a history with attachments can outgrow the longest string a
+ * browser will build.
+ */
+function jsonPieces(data: Record<string, unknown>): string[] {
+  const pieces: string[] = [];
+  for (const [key, value] of Object.entries(data)) {
+    if (value === undefined) continue;
+    pieces.push(`${pieces.length ? ',' : '{'}${JSON.stringify(key)}:`);
+    if (!Array.isArray(value)) {
+      pieces.push(JSON.stringify(value));
+      continue;
+    }
+    pieces.push('[');
+    value.forEach((row, i) => pieces.push(`${i ? ',' : ''}${JSON.stringify(row ?? null)}`));
+    pieces.push(']');
+  }
+  pieces.push(pieces.length ? '}' : '{}');
+  return pieces;
+}
+
+export async function buildChatExport(): Promise<Result<{ filename: string; blob: Blob }, string>> {
   try {
     const data = await exportAll();
+    const pieces = jsonPieces({
+      ...data,
+      persistedStore: buildPersistedState(useChatStore.getState()),
+      persistedStoreVersion: STORE_MIGRATION_VERSION,
+    });
     return ok({
       filename: buildExportFilename(new Date()),
-      json: JSON.stringify(
-        {
-          ...data,
-          persistedStore: buildPersistedState(useChatStore.getState()),
-          persistedStoreVersion: STORE_MIGRATION_VERSION,
-        },
-        null,
-        2,
-      ),
+      blob: new Blob(pieces, { type: 'application/json' }),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : t('data.exportFailed');
