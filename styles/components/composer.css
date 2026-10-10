@@ -305,6 +305,28 @@
     }
   }
 
+  /* Above the words, inside the composer: something about the next send that
+     the person should know before writing it. */
+  .composer-notice {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-1) var(--space-2);
+    margin-bottom: var(--space-1);
+    border-bottom: 1px solid var(--chrome-rule);
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: var(--color-fg-muted);
+  }
+  .composer-notice p {
+    margin: 0;
+  }
+  .composer-notice__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
   /* Two rows: the text across the full width, the tools beneath it (attach,
      search, reasoning on the left; send on the right), so icons never
      crowd the words and the send button stays put as the text grows. */
