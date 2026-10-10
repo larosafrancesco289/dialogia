@@ -587,6 +587,13 @@ A browser-held key is readable by the page holding it. That is inherent to bring
   attacker-influenced.
 - `sanitizeEndpoint` always derives `apiKeyRef` from the endpoint id and ignores the persisted blob,
   so an imported backup cannot point a hostile base URL at a built-in endpoint's key.
+- A backup's servers pass `guardImportedEndpoints`: a server already here keeps its own address
+  and kind, and one whose id a key still waits under comes in under a new id, so a file cannot
+  point a hostile base URL at a custom server's key either.
+- A backup is read and checked before anything is written, and its confirmation quotes the default
+  instruction and the memory notes it would add. Imported notes are marked `author: 'model'`
+  unless the same words are already here as the person's. ChatGPT and Claude exports bring chats
+  and messages only.
 
 ## Where things live
 

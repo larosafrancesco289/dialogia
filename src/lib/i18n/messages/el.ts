@@ -645,6 +645,12 @@ const messages: Translation<typeof en> = {
     other: '{count} συζητήσεις δεν διαβάστηκαν.',
   },
 
+  'data.review.system': 'Ορίζει την οδηγία με την οποία ξεκινά κάθε νέα συζήτηση:',
+  'data.review.notes': {
+    one: 'Προσθέτει αυτή τη σημείωση στη Μνήμη:',
+    other: 'Προσθέτει αυτές τις {count} σημειώσεις στη Μνήμη:',
+  },
+  'data.review.more': { one: 'και {count} ακόμη', other: 'και {count} ακόμη' },
   'history.label': 'Συζητήσεις από το ChatGPT ή το Claude',
   'history.hint':
     'Ζήτησε από το ChatGPT ή το Claude ένα αντίγραφο των δεδομένων σου. Διάλεξε το αρχείο .zip που θα λάβεις ή το αρχείο conversations.json μέσα σε αυτό.',

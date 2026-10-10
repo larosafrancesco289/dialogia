@@ -623,6 +623,12 @@ const en = {
     other: '{count} chats could not be read.',
   },
 
+  'data.review.system': 'It sets the instruction every new chat starts with:',
+  'data.review.notes': {
+    one: 'It adds this note to Memory:',
+    other: 'It adds these {count} notes to Memory:',
+  },
+  'data.review.more': { one: 'and {count} more', other: 'and {count} more' },
   'history.label': 'Chats from ChatGPT or Claude',
   'history.hint':
     'Ask ChatGPT or Claude for a copy of your data. Choose the .zip file it sends you, or the conversations.json file inside it.',

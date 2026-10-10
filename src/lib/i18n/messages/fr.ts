@@ -652,6 +652,12 @@ const messages: Translation<typeof en> = {
     other: '{count} discussions n’ont pas pu être lues.',
   },
 
+  'data.review.system': 'Il définit la consigne par laquelle commence chaque nouvelle discussion :',
+  'data.review.notes': {
+    one: 'Il ajoute cette note à la Mémoire :',
+    other: 'Il ajoute ces {count} notes à la Mémoire :',
+  },
+  'data.review.more': { one: 'et {count} autre', other: 'et {count} autres' },
   'history.label': 'Discussions de ChatGPT ou Claude',
   'history.hint':
     'Demande à ChatGPT ou à Claude une copie de tes données. Choisis le fichier .zip reçu, ou le fichier conversations.json qu’il contient.',
