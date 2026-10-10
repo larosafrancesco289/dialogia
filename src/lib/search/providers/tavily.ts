@@ -9,13 +9,14 @@
 // or turn reads it) but the request code is behind a dynamic import, so Tavily's
 // payload builders stay out of the boot bundle.
 
-import type {
-  FetchOutcome,
-  NormalizedFetchArgs,
-  NormalizedSearchArgs,
-  SearchContext,
-  SearchOutcome,
-  SearchProvider,
+import {
+  hasReadableContent,
+  type FetchOutcome,
+  type NormalizedFetchArgs,
+  type NormalizedSearchArgs,
+  type SearchContext,
+  type SearchOutcome,
+  type SearchProvider,
 } from '@/lib/search/providers/types';
 import { describeSearchFailure } from '@/lib/search/providers/failure';
 import { NOTICE_MISSING_SEARCH_KEY } from '@/lib/store/notices';
@@ -63,6 +64,7 @@ async function fetchPage(args: NormalizedFetchArgs, ctx: SearchContext): Promise
       apiKey: ctx.apiKey,
       signal: ctx.signal,
     });
+    if (!hasReadableContent(results)) return err(t('searchError.tavily.fetch'), { results: [] });
     return ok({ results });
   } catch (error: unknown) {
     return err(describeFailure(error, 'fetch'), { results: [] });

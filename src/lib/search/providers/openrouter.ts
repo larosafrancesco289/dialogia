@@ -7,13 +7,14 @@
 // provider-native search: the model calls `web_search` and `web_fetch` as tools,
 // when and as often as it decides to.
 
-import type {
-  FetchOutcome,
-  NormalizedFetchArgs,
-  NormalizedSearchArgs,
-  SearchContext,
-  SearchOutcome,
-  SearchProvider,
+import {
+  hasReadableContent,
+  type FetchOutcome,
+  type NormalizedFetchArgs,
+  type NormalizedSearchArgs,
+  type SearchContext,
+  type SearchOutcome,
+  type SearchProvider,
 } from '@/lib/search/providers/types';
 import { describeSearchFailure } from '@/lib/search/providers/failure';
 import { NOTICE_MISSING_SEARCH_KEY } from '@/lib/store/notices';
@@ -65,6 +66,7 @@ async function fetchPage(args: NormalizedFetchArgs, ctx: SearchContext): Promise
   const api = await import('@/lib/search/api/jina');
   try {
     const results = await api.runJinaRead(args, { signal: ctx.signal });
+    if (!hasReadableContent(results)) return err(t('searchError.reader.couldNot'), { results: [] });
     return ok({ results });
   } catch (error: unknown) {
     return err(

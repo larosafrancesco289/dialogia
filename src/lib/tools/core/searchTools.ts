@@ -230,7 +230,12 @@ const executeWebFetchTool: PlanningToolHandler = async ({
   if (result.error === NOTICE_MISSING_SEARCH_KEY) {
     notify(get, NOTICE_MISSING_SEARCH_KEY, 'info');
   }
-  const output = { ok: false, url: fetchArgs.url, error: result.error || 'No content' };
+  const output = {
+    ok: false,
+    url: fetchArgs.url,
+    error: result.error || t('searchError.reader.couldNot'),
+    hint: 'Tell the person this page could not be read. Do not guess what it says; another source may have it.',
+  };
   log.error(output, result.error || 'Fetch returned no content', metadataBase);
   return {
     convoMessages: [

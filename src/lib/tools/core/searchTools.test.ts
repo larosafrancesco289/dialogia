@@ -190,3 +190,40 @@ test('a failed search reaches the model as a failure, not as an empty result', a
   assert.ok(failed.hint);
   assert.deepEqual(JSON.parse(await searchWith('empty-search')), []);
 });
+
+registerSearchProvider({
+  id: 'blank-reader',
+  label: 'Blank',
+  requiresKey: false,
+  search: async () => ok({ results: [] }),
+  // A provider that reports success for a page it could not load.
+  fetchPage: async () => ok({ results: [{ url: 'https://walled.test/', raw_content: '' }] }),
+});
+
+test('a page that could not be read reaches the model as a failure, with what to do', async () => {
+  const store = createStore<StoreState>(
+    buildStoreInitializer() as unknown as StateCreator<StoreState>,
+  );
+  const log = { success: () => undefined, error: () => undefined };
+  const handler = getToolHandler('web_fetch');
+  assert.ok(handler);
+  const result = await handler({
+    toolCall: { id: 'c5', type: 'function', function: { name: 'web_fetch', arguments: '{}' } },
+    parsedArgs: { url: 'https://walled.test/' },
+    aggregatedResults: [],
+    context: {
+      chatId: 'chat-5',
+      assistantMessage: { id: 'reply-5', chatId: 'chat-5', role: 'assistant' } as Message,
+      userContent: 'read it',
+      searchProvider: 'blank-reader',
+      controller: new AbortController(),
+      set: store.setState,
+      get: store.getState,
+      logger: { start: () => log },
+    } as unknown as ToolExecutionContext,
+  });
+  const told = JSON.parse(String(result.convoMessages?.[0]?.content));
+  assert.equal(told.ok, false);
+  assert.equal(told.error, 'Could not read this page.');
+  assert.match(told.hint, /could not be read/);
+});
