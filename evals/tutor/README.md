@@ -39,3 +39,11 @@ A session folder ends up holding:
 Compare a prompt or engine change by running the same personas before and after: the prompt hash
 changes with any edit to the system prompt or a tool definition, so each series stays separate.
 Single sessions are noisy; compare medians over two or three sessions per persona.
+
+## Coming back after a break
+
+Spaced review is only visible across days, so a learner can leave and return: `wait <days>` moves
+the saved chat that far into the past, and the next move runs at today's clock. Tell the learner
+in its brief when to take the break; `LEARNER.md` says how its hidden knowledge fades meanwhile,
+and the judge scores the return (`review`) only in sessions that had one (`transcript.json` →
+`waits`).

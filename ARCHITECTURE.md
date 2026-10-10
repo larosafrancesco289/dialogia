@@ -500,6 +500,24 @@ changed since. The tools offered follow the state, and the agent loop reads them
 round (`ModuleComposeContribution.refreshTools`), so a topic started in one round can be quizzed in
 the next round of the same turn.
 
+Spaced review is derived from the log, never stored (`engine/review.ts`). A topic's own answers
+(quiz, diagnostic and observed; not a placement, a correction or pre-log history) group into
+sittings at least six hours apart, and the topic is expected to hold for a day after the first. A
+later sitting answered cleanly adds 1.5 times the days since the one before (so a refresher taken
+when due multiplies the interval by about 2.5), a mixed one keeps the interval, and one with more
+misses than right answers starts it again. A topic the learner worked on comes due when its
+interval runs out (six hours early, so evening study is due the next afternoon), or at once when
+they flagged it; one they left (skipped) or declared known never does. Given the request's time
+(`RenderOptions.now`) and when the conversation last moved (`lastExchangeAt`), the state block
+dates each studied topic, says when the learner is back after a break, and lists what is due.
+`give_quiz` takes a `topicId` for a refresher on a topic already studied, once per topic per
+sitting: its `quiz_given` carries `review: true`, spends no quiz budget, and its answers count
+toward the topic, which stays done. An estimate never fades with time alone, since a number that
+moved without evidence would be a change nobody can explain. The Hub lists the chat's due topics
+with Review now (a ledger line, "Asked to review: …"), and the Learn page lists them across tutor
+chats through the `welcomeBelow` slot, read from the learning records
+(`LearningTopic.dueForReview`), so a chat with memory off is offered only in its own Hub.
+
 ## Languages
 
 The app speaks English (the source), Italian, French, Spanish, German, Brazilian Portuguese and
