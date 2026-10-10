@@ -72,6 +72,7 @@ export async function buildTutorComposeContribution({
         flags,
         learnerChanges: learnerChangesSince(state, events, since),
         otherChats,
+        since,
       }),
     ],
     loop: 'agent',

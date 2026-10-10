@@ -375,3 +375,89 @@ test('the next topics are shown with their objectives, and finished ones drop ou
   assert.match(block, /^- Chain rule \[chain-rule\]: Differentiate composite functions$/m);
   assert.doesNotMatch(block, /^- Derivatives \[derivatives\]: Define/m);
 });
+
+test('a card from the last reply is reported once, in the learner changes, not again as an earlier question', () => {
+  const h = teaching();
+  const since = h.state.lastSeq;
+  h.tutor({ type: 'give_quiz', items: QUIZ_ITEMS });
+  const quizId = h.state.awaiting!.id;
+  ['q1', 'q2', 'q3'].forEach((itemId) =>
+    h.learner({ type: 'answer_quiz_item', quizId, itemId, choice: 0 }),
+  );
+  const changes = learnerChangesSince(h.state, h.events, since);
+  assert.match(changes.join('\n'), /Answered your quiz on Limits: 1 of 3 right/);
+  const block = renderStateBlock(h.state, { flags: h.flags, learnerChanges: changes, since });
+  assert.doesNotMatch(block, /Card questions on this topic/);
+  assert.equal(block.match(/lim x->1 of 2x/g)?.length, 1);
+
+  // From the next reply on, it is part of the record.
+  const later = renderStateBlock(h.state, { flags: h.flags, since: h.state.lastSeq });
+  assert.match(later, /^- "lim x->1 of 2x\?" \(quiz, wrong\)$/m);
+});
+
+test('a diagnostic just answered is summed up once, in the learner changes', () => {
+  const h = harness();
+  const since = h.state.lastSeq;
+  h.tutor({ type: 'give_diagnostic', topic: 'Algebra', items: QUIZ_ITEMS });
+  h.learner({
+    type: 'answer_diagnostic',
+    diagnosticId: h.state.awaiting!.id,
+    answers: { q1: 0, q2: 0, q3: 1 },
+  });
+  const changes = learnerChangesSince(h.state, h.events, since);
+  const block = renderStateBlock(h.state, { flags: h.flags, learnerChanges: changes, since });
+  assert.equal(block.match(/Diagnostic on "Algebra"/g)?.length, 1);
+  assert.match(
+    block,
+    /^- Finished the diagnostic\. Diagnostic on "Algebra": 2 of 3 right\. Missed:/m,
+  );
+});
+
+test('after the intake and before any diagnostic, the tutor is asked to see the learner try', () => {
+  const h = harness();
+  h.tutor({
+    type: 'ask_intake',
+    questions: [
+      { question: 'Goal?', options: [{ label: 'Exam' }, { label: 'Fun' }] },
+      { question: 'Background?', options: [{ label: 'Complete beginner' }, { label: 'Some' }] },
+    ],
+  });
+  assert.doesNotMatch(render(h), /No diagnostic yet/, 'not before they answer');
+  h.learner({
+    type: 'answer_intake',
+    intakeId: h.state.awaiting!.id,
+    responses: { q1: ['Exam'], q2: ['Some'] },
+  });
+  assert.match(render(h), /^No diagnostic yet\. Unless they are new to the subject/m);
+  h.tutor({ type: 'give_diagnostic', topic: 'Algebra', items: QUIZ_ITEMS });
+  h.learner({
+    type: 'answer_diagnostic',
+    diagnosticId: h.state.awaiting!.id,
+    answers: { q1: 0, q2: 0, q3: 1 },
+  });
+  assert.doesNotMatch(render(h), /No diagnostic yet/);
+});
+
+test('while teaching, missed diagnostic picks come with a reminder to note the belief they share', () => {
+  const h = harness();
+  h.tutor({ type: 'give_diagnostic', topic: 'Algebra', items: QUIZ_ITEMS });
+  h.learner({
+    type: 'answer_diagnostic',
+    diagnosticId: h.state.awaiting!.id,
+    answers: { q1: 0, q2: 1, q3: 1 },
+  });
+  h.tutor({ type: 'propose_plan', ...CALCULUS });
+  h.learner({ type: 'approve_plan', proposalId: h.state.proposal!.proposalId });
+  assert.doesNotMatch(render(h), /A wrong belief those picks share/, 'nothing missed');
+
+  const g = harness();
+  g.tutor({ type: 'give_diagnostic', topic: 'Algebra', items: QUIZ_ITEMS });
+  g.learner({
+    type: 'answer_diagnostic',
+    diagnosticId: g.state.awaiting!.id,
+    answers: { q1: 0, q2: 0, q3: 1 },
+  });
+  g.tutor({ type: 'propose_plan', ...CALCULUS });
+  g.learner({ type: 'approve_plan', proposalId: g.state.proposal!.proposalId });
+  assert.match(render(g), /^A wrong belief those picks share is a misconception/m);
+});
