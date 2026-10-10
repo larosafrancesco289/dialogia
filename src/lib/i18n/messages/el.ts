@@ -196,10 +196,6 @@ const messages: Translation<typeof en> = {
   'activity.tools': { one: '{count} εργαλείο', other: '{count} εργαλεία' },
   'activity.searches': { one: '{count} αναζήτηση', other: '{count} αναζητήσεις' },
   'activity.waiting': 'Περιμένει το μοντέλο… {seconds} δ.',
-  'activity.retrying': {
-    one: 'Ο πάροχος είναι απασχολημένος. Νέα προσπάθεια σε {count} δευτερόλεπτο…',
-    other: 'Ο πάροχος είναι απασχολημένος. Νέα προσπάθεια σε {count} δευτερόλεπτα…',
-  },
   'activity.searchingWeb': 'Ψάχνει στο web',
   'activity.searchingFor': 'Αναζήτηση: {query}',
   'activity.searchingSources': 'Ψάχνει πηγές',
@@ -793,8 +789,6 @@ const messages: Translation<typeof en> = {
   'notice.invalidKey': 'Αυτό το κλειδί απορρίφθηκε. Έλεγξέ το στις Ρυθμίσεις › Συνδέσεις.',
   'notice.expiredKey': 'Αυτό το κλειδί έληξε. Πρόσθεσε καινούργιο στις Ρυθμίσεις › Συνδέσεις.',
   'notice.rateLimited': 'Ο πάροχος περιορίζει τα αιτήματα. Περίμενε λίγο και δοκίμασε ξανά.',
-  'notice.busyWait':
-    'Ο πάροχος είναι απασχολημένος και ζητά να περιμένεις {wait} πριν δοκιμάσεις ξανά.',
   'notice.missingSearchKey':
     'Αυτή η αναζήτηση χρειάζεται κλειδί. Πρόσθεσέ το στις Ρυθμίσεις › Συνδέσεις.',
   'notice.searchUnavailable':

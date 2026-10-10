@@ -193,10 +193,6 @@ const messages: Translation<typeof en> = {
   'activity.tools': { one: '{count} herramienta', other: '{count} herramientas' },
   'activity.searches': { one: '{count} búsqueda', other: '{count} búsquedas' },
   'activity.waiting': 'Esperando al modelo… {seconds} s',
-  'activity.retrying': {
-    one: 'El proveedor está ocupado. Reintentando en {count} segundo…',
-    other: 'El proveedor está ocupado. Reintentando en {count} segundos…',
-  },
   'activity.searchingWeb': 'Buscando en la web',
   'activity.searchingFor': 'Buscando: {query}',
   'activity.searchingSources': 'Buscando fuentes',
@@ -790,8 +786,6 @@ const messages: Translation<typeof en> = {
   'notice.expiredKey': 'Esa clave ha caducado. Añade una nueva en Ajustes › Conexiones.',
   'notice.rateLimited':
     'El proveedor está limitando las peticiones. Espera un momento y vuelve a intentarlo.',
-  'notice.busyWait':
-    'El proveedor está ocupado y pide esperar {wait} antes de volver a intentarlo.',
   'notice.missingSearchKey': 'Esta búsqueda necesita una clave. Añádela en Ajustes › Conexiones.',
   'notice.searchUnavailable':
     'La búsqueda web no está disponible en este chat; se responde sin ella.',

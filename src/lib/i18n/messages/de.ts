@@ -197,10 +197,6 @@ const messages: Translation<typeof en> = {
   'activity.tools': { one: '{count} Werkzeug', other: '{count} Werkzeuge' },
   'activity.searches': { one: '{count} Suche', other: '{count} Suchen' },
   'activity.waiting': 'Warte auf das Modell … {seconds} s',
-  'activity.retrying': {
-    one: 'Der Anbieter ist ausgelastet. Neuer Versuch in {count} Sekunde …',
-    other: 'Der Anbieter ist ausgelastet. Neuer Versuch in {count} Sekunden …',
-  },
   'activity.searchingWeb': 'Sucht im Web',
   'activity.searchingFor': 'Sucht: {query}',
   'activity.searchingSources': 'Sucht Quellen',
@@ -791,8 +787,6 @@ const messages: Translation<typeof en> = {
     'Dieser Schlüssel ist abgelaufen. Füge unter Einstellungen › Verbindungen einen neuen hinzu.',
   'notice.rateLimited':
     'Der Anbieter bremst die Anfragen. Warte einen Moment und versuch es dann noch einmal.',
-  'notice.busyWait':
-    'Der Anbieter ist ausgelastet und bittet, {wait} zu warten, bevor du es nochmal versuchst.',
   'notice.missingSearchKey':
     'Diese Suche braucht einen Schlüssel. Füge ihn unter Einstellungen › Verbindungen hinzu.',
   'notice.searchUnavailable':

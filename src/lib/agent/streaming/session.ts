@@ -45,7 +45,6 @@ import type { PlanningExecutionState } from '@/lib/agent/planning/types';
 import type { ToolCallDelta } from '@/lib/transport/types';
 import { createStreamCallContext, type StreamCallContext } from '@/lib/agent/streaming/streamCall';
 import { t } from '@/lib/i18n';
-import { abortError } from '@/lib/agent/streaming/retry';
 
 export type StreamingTurnOptions = StreamFinalOptions & {
   userContent: string;
@@ -316,7 +315,11 @@ function isStreamError(error: unknown): boolean {
   );
 }
 
-export { abortError };
+export function abortError(): Error {
+  const error = new Error('The turn was stopped.');
+  error.name = 'AbortError';
+  return error;
+}
 
 /**
  * A stream that fails or is stopped has already told the UI callbacks, which

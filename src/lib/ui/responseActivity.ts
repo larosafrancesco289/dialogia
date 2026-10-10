@@ -95,14 +95,6 @@ export function silentWaitLine(waitedMs: number): string {
 }
 
 /**
- * The quiet line while a busy provider's request waits to go out again,
- * counting down whole seconds: "The provider is busy. Trying again in 4 seconds…".
- */
-export function retryWaitLine(msLeft: number): string {
-  return t('activity.retrying', { count: Math.max(1, Math.ceil(msLeft / 1000)) });
-}
-
-/**
  * What the model's thinking came to, at rest: how long it took when that was
  * timed, otherwise how many words it ran to.
  */

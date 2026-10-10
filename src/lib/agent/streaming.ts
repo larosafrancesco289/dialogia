@@ -10,8 +10,6 @@ import { clearTurnController } from '@/lib/turns/runtime';
 import { isReasoningRequested } from '@/lib/settings/generation';
 import type { StreamFinalOptions, ToolDefinition } from '@/lib/agent/types';
 import { shouldIncludeUsage } from '@/lib/api/normalizers';
-import type { TransportChatParams } from '@/lib/transport/types';
-import { showRetryWait, streamWithRetry } from '@/lib/agent/streaming/retry';
 
 export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
   const {
@@ -98,8 +96,7 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
 
   const modalities = canImageOut ? (['image', 'text'] as Array<'image' | 'text'>) : undefined;
   const toolChoice = includeTools ? 'none' : undefined;
-  const stream = getStreamChatCompletion(opts.pipeline);
-  const request: TransportChatParams = {
+  await getStreamChatCompletion(opts.pipeline)({
     auth,
     model: settings.modelId,
     messages: cachedMessages,
@@ -116,10 +113,6 @@ export async function streamFinal(opts: StreamFinalOptions): Promise<void> {
     tools: toolsForStreaming,
     toolChoice,
     plugins: combinedPlugins,
-  };
-  await streamWithRetry((guarded) => stream({ ...request, callbacks: guarded }), {
     callbacks,
-    signal: controller.signal,
-    onWait: showRetryWait(set, assistantMessage.id),
   });
 }

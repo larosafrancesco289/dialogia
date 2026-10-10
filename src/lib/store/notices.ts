@@ -5,8 +5,7 @@ import { API_ERROR_CODES, isApiError } from '@/lib/api/errors';
 import type { Message } from '@/lib/types';
 import { isRecord } from '@/lib/utils/guards';
 import { t, type MessageKey } from '@/lib/i18n';
-import { capitalize, formatList, formatNumber } from '@/lib/i18n/format';
-import { isTransientError, MAX_RETRY_WAIT_MS, requestedWaitMs } from '@/lib/api/retry';
+import { capitalize, formatList } from '@/lib/i18n/format';
 import en from '@/lib/i18n/messages/en';
 
 // Each notice is said in the language shown when it is shown. The constants
@@ -125,8 +124,6 @@ export function cutOffFor(
  */
 export function describeErrorNotice(error: unknown): string | undefined {
   if (isAbortLike(error)) return undefined;
-  const longWait = longWaitNotice(error);
-  if (longWait) return longWait;
   // A refused key or a rate limit reads the same wherever it surfaced: before
   // the stream, in its first response, or in one of its chunks.
   if (isApiError(error) && error.code === API_ERROR_CODES.UNAUTHORIZED) {
@@ -159,23 +156,6 @@ export function describeErrorNotice(error: unknown): string | undefined {
   }
   if (!message.trim()) return NOTICE_CATALOG.unknownError;
   return clip(readable(message));
-}
-
-/**
- * A busy provider that asked for a longer pause than a reply waits on its own
- * (`MAX_RETRY_WAIT_MS`) says how long, so the person knows when to try again.
- */
-function longWaitNotice(error: unknown): string | undefined {
-  if (!isTransientError(error)) return undefined;
-  const wait = requestedWaitMs(error);
-  if (wait === undefined || wait <= MAX_RETRY_WAIT_MS) return undefined;
-  const minutes = Math.ceil(wait / 60_000);
-  const hours = Math.ceil(wait / 3_600_000);
-  const words =
-    minutes < 120
-      ? formatNumber(minutes, { style: 'unit', unit: 'minute', unitDisplay: 'long' })
-      : formatNumber(hours, { style: 'unit', unit: 'hour', unitDisplay: 'long' });
-  return t('notice.busyWait', { wait: words });
 }
 
 /** The messages of an error and of the errors it wraps, outermost first. */

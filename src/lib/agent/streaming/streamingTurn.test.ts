@@ -14,7 +14,6 @@ import { missingBuiltInFolders } from '@/lib/memory/notebook';
 import { registerMemoryTools } from '@/lib/tools/core/memoryTools';
 import { MEMORY_TOOLS } from '@/lib/tools/definitions/memory';
 import { registerTool } from '@/lib/tools/registry';
-import { ApiError, API_ERROR_CODES } from '@/lib/api/errors';
 import { createTestStoreState } from '../../../../tests/helpers/createTestStoreState';
 import { makeChat } from '../../../../tests/helpers/makeChat';
 
@@ -585,33 +584,4 @@ test('executeStreamingTurn sends thinking back while the system prompt and tools
     provider: 'anthropic',
     thinkingBlocks: [thinking],
   });
-});
-
-/** OpenRouter's refusal of a request while it is busy: thrown before the stream, unreported. */
-const busy: Round = () => {
-  throw new ApiError({
-    code: API_ERROR_CODES.OPENROUTER_CHAT_FAILED,
-    status: 503,
-    message: 'openrouter_chat_failed (503): Service Unavailable',
-    retryAfter: { retryAfter: '0' },
-  });
-};
-
-test('executeStreamingTurn sends a round the provider was too busy for again, after a tool round', async () => {
-  const run = await runTurn({
-    rounds: [draftThenTool('Let me look that up.', 'quiz'), busy, finish(ANSWER)],
-  });
-
-  assert.equal(run.calls, 3);
-  assert.deepEqual(run.requests[2], run.requests[1]);
-  assert.equal(run.message?.content, ANSWER);
-  assert.equal(run.lastPersisted?.content, ANSWER);
-  assert.equal(run.lastPersisted?.cutOff, undefined);
-});
-
-test('executeStreamingTurn retries a busy first round before judging whether it was cut off', async () => {
-  const run = await runTurn({ rounds: [busy, finish('To solve this we:'), finish(ANSWER)] });
-
-  assert.equal(run.calls, 3);
-  assert.equal(run.message?.content, ANSWER);
 });
