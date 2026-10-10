@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { getSearchToolDefinition, mergeSearchResults, formatSourcesBlock } from './index';
 import { tavilySearchProvider } from '@/lib/search/providers/tavily';
 import type { SearchResult } from '@/lib/search/types';
+import { MAX_SEARCH_SOURCES } from '@/lib/constants';
 import { NOTICE_MISSING_SEARCH_KEY } from '@/lib/store/notices';
 import { mockFetch } from '../../../tests/helpers/mockFetch';
 import { buildTavilyExtractBody, buildTavilySearchBody } from '@/lib/search/api/tavily';
@@ -32,6 +33,19 @@ test('mergeSearchResults deduplicates entries by URL', () => {
   assert.equal(merged[0].url, 'https://example.com/a');
   assert.equal(merged[1].url, 'https://example.com/b');
   assert.equal(merged[2].url, 'https://example.com/c');
+});
+
+test("a reply's sources stop at the cap, and the system prompt numbers every one kept", () => {
+  const many = (site: string) =>
+    Array.from({ length: 10 }, (_, i) => ({
+      url: `https://${site}${i}.test`,
+      title: `${site}${i}`,
+    }));
+  const merged = mergeSearchResults([many('a'), many('b')]);
+  assert.equal(merged.length, MAX_SEARCH_SOURCES);
+  assert.equal(merged[10]?.url, 'https://b0.test', 'the earlier search keeps its numbers');
+  const block = formatSourcesBlock(merged, 'tavily');
+  assert.match(block, new RegExp(`^${MAX_SEARCH_SOURCES}\\. b4 — `, 'm'));
 });
 
 test('formatSourcesBlock renders provider-specific heading', () => {

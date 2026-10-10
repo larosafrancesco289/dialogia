@@ -307,7 +307,10 @@ Web search is two distinct mechanisms, kept apart on purpose.
 2. **Tool-based search** is a real `web_search`/`web_fetch` tool call against a third-party API,
    described by the `SearchProvider` interface in `src/lib/search/providers/types.ts`. Tavily is the
    first implementation. `web_fetch` is offered to the model only when the active provider
-   implements `fetchPage`.
+   implements `fetchPage`. A reply's searches share one list of sources, once per page, in the
+   order found and capped at `MAX_SEARCH_SOURCES` (`mergeSearchResults`). Its numbers are the
+   ones `[n]` cites everywhere: each `web_search` result tells the model its pages' numbers in
+   that list, the system prompt after tools lists it, and the reply keeps it as `searchSources`.
 
 `SearchMode` is an open string. A chat naming a provider this machine has no key for degrades to
 native search rather than failing (`selectSearchMode`).

@@ -1,10 +1,10 @@
-import { MAX_FALLBACK_RESULTS } from '@/lib/constants';
+import { MAX_SEARCH_SOURCES } from '@/lib/constants';
 import { getSearchProvider } from '@/lib/search/providers';
 import type { SearchMode, SearchResult } from '@/lib/search/types';
 
 export function formatSourcesBlock(results: SearchResult[], mode: SearchMode): string {
   const lines = results
-    .slice(0, MAX_FALLBACK_RESULTS)
+    .slice(0, MAX_SEARCH_SOURCES)
     .map(
       (result, index) =>
         `${index + 1}. ${(result.title || result.url || 'Result').toString()} — ${result.url || ''}${result.description ? ` — ${result.description}` : ''}`,

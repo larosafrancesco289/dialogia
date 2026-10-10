@@ -6,7 +6,10 @@ import {
 export const DEFAULT_MODEL_ID = CURATED_DEFAULT_MODEL_ID;
 export const DEFAULT_TUTOR_MODEL_ID = CURATED_DEFAULT_TUTOR_MODEL_ID;
 
-export const MAX_FALLBACK_RESULTS = 5;
+// The most sources one reply's searches keep, as one list numbered the way the
+// reply cites them: the model's tool results, its system prompt, the reply's
+// kept sources and the sources panel all read the same list.
+export const MAX_SEARCH_SOURCES = 15;
 
 // A tool call the person's Stop cut short: the ledger says so quietly, since
 // nothing went wrong.
