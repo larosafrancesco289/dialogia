@@ -529,10 +529,10 @@ const en = {
   'servers.namePlaceholder': 'Name, e.g. Ollama',
   'servers.add': 'Add',
   'servers.addHint':
-    'Works with Ollama, LM Studio, llama.cpp and vLLM. Capabilities start off and are yours to turn on.',
+    'Works with Ollama, LM Studio, llama.cpp and vLLM. Extras start switched off: open the server to turn on what it can do, such as tools (needed for search, memory and the tutor) or images.',
   'servers.noAddress': 'no address',
   'webSearch.hint':
-    'Search built into the model provider needs no extra key and is the default. With an OpenRouter key you can also pick OpenRouter search in the composer: the model searches when it needs to, on your OpenRouter credit, and pages are read through Jina Reader. Your searches go to OpenRouter’s search partner, and page addresses to Jina.',
+    'Your model provider’s own search needs no extra key, and is the default. With an OpenRouter key you can also choose OpenRouter search in the composer, paid from your OpenRouter credit. Your searches then go to OpenRouter’s search partner, and the pages are read through a service called Jina.',
   'webSearch.keyLabel': '{provider} key',
   'capability.tools': 'Tools',
   'capability.toolsHint': 'Let the model use tools, such as search and memory.',

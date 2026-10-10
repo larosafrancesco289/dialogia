@@ -544,10 +544,10 @@ const messages: Translation<typeof en> = {
   'servers.namePlaceholder': 'Nome, es. Ollama',
   'servers.add': 'Aggiungi',
   'servers.addHint':
-    'Funziona con Ollama, LM Studio, llama.cpp e vLLM. Le funzioni partono spente: le accendi tu.',
+    'Funziona con Ollama, LM Studio, llama.cpp e vLLM. Le funzioni extra partono spente: apri il server per attivare quello che sa fare, come gli strumenti (servono per ricerca, memoria e tutor) o le immagini.',
   'servers.noAddress': 'nessun indirizzo',
   'webSearch.hint':
-    'La ricerca integrata nel fornitore del modello non richiede altre chiavi ed è quella predefinita. Con una chiave OpenRouter puoi anche scegliere la ricerca OpenRouter nel campo di scrittura: il modello cerca quando serve, con il tuo credito OpenRouter, e le pagine vengono lette tramite Jina Reader. Le tue ricerche vanno al partner di ricerca di OpenRouter, e gli indirizzi delle pagine a Jina.',
+    'La ricerca del tuo fornitore non richiede altre chiavi ed è quella predefinita. Con una chiave OpenRouter puoi anche scegliere la ricerca di OpenRouter nel campo di scrittura, pagata con il tuo credito OpenRouter. In quel caso le ricerche vanno al partner di ricerca di OpenRouter e le pagine vengono lette tramite un servizio chiamato Jina.',
   'webSearch.keyLabel': 'Chiave {provider}',
   'capability.tools': 'Strumenti',
   'capability.toolsHint': 'Lascia che il modello usi strumenti, come la ricerca e la memoria.',
