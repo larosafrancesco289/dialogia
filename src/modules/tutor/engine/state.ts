@@ -226,17 +226,19 @@ export function shownGone(state: TutorState, nodeId: string, misconceptionId: st
   const takenBack = new Set(
     evidence.filter((entry) => entry.kind === 'misconception').map((entry) => entry.ref?.eventId),
   );
-  const shown = evidence.slice(noted.evidenceAt ?? 0).filter(
-    (entry) =>
-      !!entry.eventId &&
-      !takenBack.has(entry.eventId) &&
-      !entry.helped &&
-      entry.weight > 0 &&
-      entry.kind !== 'partial' &&
-      (entry.source === 'quiz' ||
-        entry.source === 'diagnostic' ||
-        entry.source === 'observation'),
-  );
+  const shown = evidence
+    .slice(noted.evidenceAt ?? 0)
+    .filter(
+      (entry) =>
+        !!entry.eventId &&
+        !takenBack.has(entry.eventId) &&
+        !entry.helped &&
+        entry.weight > 0 &&
+        entry.kind !== 'partial' &&
+        (entry.source === 'quiz' ||
+          entry.source === 'diagnostic' ||
+          entry.source === 'observation'),
+    );
   return shown.length >= MISCONCEPTION_CLEAR_MIN;
 }
 
