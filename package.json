@@ -8,11 +8,13 @@
     "start": "vite preview --port 3000",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint": "eslint --cache src tests",
+    "lint": "eslint --cache src tests e2e",
     "knip": "knip --include files,dependencies,unlisted,unresolved,binaries,exports,nsExports,types,nsTypes && knip --production --include files,exports,nsExports,types,nsTypes",
     "lint:types": "tsc --noEmit",
     "check": "bun run lint:types && bun run test && bun run format:check && bun run lint && bun run knip",
     "test": "tsx --test 'tests/**/*.test.ts' 'src/**/*.test.ts'",
+    "e2e": "playwright test",
+    "mock-llm": "PORT=3999 tsx e2e/mock/server.ts",
     "tutor:simulate": "tsx src/modules/tutor/tooling/simulate.ts"
   },
   "dependencies": {
@@ -43,6 +45,7 @@
     "zustand": "^4.5.2"
   },
   "devDependencies": {
+    "@playwright/test": "1.58.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^20.11.19",
     "@types/prismjs": "^1.26.5",
