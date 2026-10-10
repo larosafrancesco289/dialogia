@@ -22,7 +22,12 @@ import { createMessagePersister } from '@/lib/services/messagePersistence';
 import { resetEphemeralUi } from '@/lib/ui/defaults';
 import { triggerAsyncTitleGeneration } from '@/lib/services/titleGenerator';
 import { appendMessagesToChat, getMessagesForChat } from '@/lib/messages/indexing';
-import { canRedoReply, latestExchangeOnly, notifyReplyRetracted } from '@/lib/modules';
+import {
+  canRedoReply,
+  latestExchangeOnly,
+  notifyReplyRestored,
+  notifyReplyRetracted,
+} from '@/lib/modules';
 
 export type SendTurnOptions = {
   content: string;
@@ -278,6 +283,7 @@ export async function regenerateTurn({
       controller,
       overrideModelId,
       keepVersions,
+      onOriginalRestored: () => notifyReplyRestored({ get: getState }, { chatId, messageId }),
     });
   } catch (error: unknown) {
     handleTurnApiError(error, get, targetAuth, { chatId, messageId });

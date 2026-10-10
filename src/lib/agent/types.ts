@@ -119,6 +119,8 @@ export type RegenerateOptions = {
   /** The attempt joins the reply's versions instead of replacing them. */
   keepVersions?: boolean;
   pipeline?: PipelineClient;
+  /** The attempt failed before writing anything and the old reply is back as it was. */
+  onOriginalRestored?: () => Promise<void>;
 };
 
 export type ToolExecutionResult = Result<
