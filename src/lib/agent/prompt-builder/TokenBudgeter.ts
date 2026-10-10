@@ -9,7 +9,10 @@ export class TokenBudgeter {
   /**
    * Keeps the newest messages that fit, oldest dropped first. Each entry is
    * kept or dropped whole: `extraTokens` counts what travels with a message
-   * (its replayed tool rounds), so a tool result never outlives its call.
+   * (its replayed tool rounds, its attachments), so a tool result never
+   * outlives its call. The newest is kept whatever it costs: it is what is
+   * being asked, and a provider says when it is too long, where a request
+   * without it would be answered as if nothing had been said.
    */
   public budget(messages: { content: string; extraTokens?: number }[]): number[] {
     const limit = Math.max(512, this.maxTokens - this.reservedForCompletion);
@@ -24,7 +27,7 @@ export class TokenBudgeter {
     // Iterate backwards
     for (let i = withTokens.length - 1; i >= 0; i--) {
       const t = withTokens[i].tokens;
-      if (running + t > limit) break;
+      if (running + t > limit && keepIndices.length > 0) break;
       keepIndices.push(i);
       running += t;
     }

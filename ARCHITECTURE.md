@@ -191,6 +191,23 @@ the schema.
 6. Streaming responses feed `src/lib/agent/streamHandlers.ts`, which updates the store and
    checkpoints the partial assistant message to IndexedDB.
 
+### Attachments
+
+A file is stored once (`src/lib/attachments/prepare`): a PDF whose text was read in the browser
+keeps the text alone, its file only when there is none; audio keeps its data URL, and the base64
+a model takes is cut from it at send time. A PDF locked by a password, or with no text and too
+large to send as a file, is not attached, and the composer says why; a scan small enough goes as
+the file, with a note that only some models read it.
+
+`buildChatCompletionMessages` sends attachments with their message and counts them toward its
+budget (`AttachmentProcessor.tokens`: a PDF's text by its length, a flat amount per image,
+recording and PDF page sent as a file), so an old one is dropped like any other words. The newest
+message is always kept, whatever it costs. Only the two latest messages that carry files send them
+in full; an earlier image, recording or file-only PDF is a line naming it (`[image: x.png, shared
+earlier]`), so a long chat stops paying for every picture again each turn while follow-up
+questions still see the latest ones. An image or recording the turn's model cannot take in
+(`ResolvedTurnSettings.caps`) is a line saying so, wherever it sits in the history.
+
 ### Two invariants in the streaming path
 
 **Token flushes are batched.** `src/lib/agent/streaming/accumulator.ts` coalesces tokens on a 32 ms

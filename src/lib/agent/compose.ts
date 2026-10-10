@@ -133,6 +133,7 @@ export async function composeTurn({
     newUserContent,
     newUserAttachments: userAttachments,
     timestamps: settings.timestampsEnabled,
+    inputs: settings.caps,
     ...(memoryTools.length > 0 ? { replayMemoryWrites: memory! } : {}),
   });
   const plugins = composePlugins({ messages, searchEnabled, searchProvider });
