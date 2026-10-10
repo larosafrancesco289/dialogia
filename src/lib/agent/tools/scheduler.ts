@@ -1,10 +1,10 @@
 // Module: agent/tools/scheduler
 // Responsibility: Order and cap the tool calls a model asked for in one round.
-// Core duties only: search dedupe and per-round cap, meta-first, one content tool
-// per round, run last. Which content tool wins is delegated to the owning module.
+// Core duties only: search dedupe and per-round cap, meta-first, action calls by
+// their `order`, one content tool per round, run last. Which content tool wins is delegated to the owning module.
 
 import type { ToolCall } from '@/lib/agent/types';
-import { isContentTool, isMetaTool, isSearchTool } from '@/lib/tools';
+import { getToolOrder, isContentTool, isMetaTool, isSearchTool } from '@/lib/tools';
 
 export type ScheduleInput = {
   allowSearch?: boolean;
@@ -76,7 +76,11 @@ export function schedulePlanningToolCalls(
   const ordered: ToolCall[] = [];
   ordered.push(...meta);
   ordered.push(...searches);
-  if (others.length > 0) ordered.push(...others);
+  // A call that judges what others record runs after them (a module's `order`);
+  // the sort is stable, so equal ones keep the model's order.
+  ordered.push(
+    ...others.sort((a, b) => getToolOrder(a.function.name) - getToolOrder(b.function.name)),
+  );
   // Content goes last: it puts something in front of the user, often to wait
   // for them, so it should see the round's other changes (a topic started,
   // say) rather than run before them.

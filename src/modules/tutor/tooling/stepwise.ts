@@ -262,7 +262,12 @@ export class StepRun {
 
   async say(text: string): Promise<string> {
     if (!text.trim()) throw new Error('say needs a message.');
-    return this.turn({ kind: 'typed', text, actions: [] });
+    return this.turn({
+      kind: 'typed',
+      text,
+      actions: [],
+      ...(this.state.awaiting ? { pastCard: true } : {}),
+    });
   }
 
   /** Answers the open quiz or diagnostic: one letter per unanswered question, in order. */

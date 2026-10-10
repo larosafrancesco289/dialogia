@@ -191,7 +191,9 @@ function cardsAnswerable(run: SimulationRun): CheckResult {
     if (!next) return;
     const answers = CARD_ANSWER[open.kind] as readonly string[];
     const answered = next.student.actions.some((a) => a.ok && answers.includes(a.action.type));
-    if (!answered) problems.push(`#${x.index}: the learner could not answer the open ${open.kind}`);
+    if (!answered && !next.student.pastCard) {
+      problems.push(`#${x.index}: the learner could not answer the open ${open.kind}`);
+    }
   });
   return result(
     'cards_answerable',
@@ -407,8 +409,14 @@ function noAnswerKeysReplayed(run: SimulationRun): CheckResult {
 
 /** A paragraph shorter than this is a line or a formula, which a reply may fairly repeat. */
 const REPEAT_MIN_WORDS = 8;
-/** Shared word pairs (Dice) at which two paragraphs say the same thing, reworded or not. */
-const REPEAT_SIMILARITY = 0.6;
+/**
+ * Shared word pairs (Dice) at which two paragraphs say the same thing, reworded
+ * or not. Parallel definitions ("Sensitivity is the chance of a positive
+ * result, given…" beside "Specificity is the chance of a negative result,
+ * given…") share about 0.63 and are not a repeat; a reply written again after
+ * its tool results shares well above 0.8.
+ */
+const REPEAT_SIMILARITY = 0.75;
 
 type Paragraph = { round?: number; text: string; pairs: string[] };
 

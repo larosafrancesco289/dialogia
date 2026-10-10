@@ -6,6 +6,7 @@
 export {
   getToolHandler,
   getToolLogCategory,
+  getToolOrder,
   isContentTool,
   isMetaTool,
   isReplayTool,

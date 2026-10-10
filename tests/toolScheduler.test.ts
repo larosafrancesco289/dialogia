@@ -27,9 +27,10 @@ test('scheduler keeps searches, then actions, then one content tool last', () =>
 
   // A card waits for the learner, so it runs after the round's state changes
   // (start a topic, then quiz it); a second card in the round is dropped.
+  // Evidence is about the answer just given, on the topic as it stood.
   assert.deepEqual(
     scheduled.map((c) => c.function.name),
-    ['web_search', 'start_topic', 'record_evidence', 'give_quiz'],
+    ['web_search', 'record_evidence', 'start_topic', 'give_quiz'],
   );
 });
 
@@ -84,5 +85,20 @@ test('unregistered tools fall through as ordinary calls', () => {
   assert.deepEqual(
     scheduled.map((c) => c.function.name),
     ['some_future_tool'],
+  );
+});
+
+test('scheduler runs a round’s tutor calls in dependency order, not only the model’s', () => {
+  const calls = [
+    buildCall('complete_topic'),
+    buildCall('resolve_misconception'),
+    buildCall('record_evidence'),
+    buildCall('note_misconception'),
+  ];
+
+  // Evidence first, then what it shows gone, then the topic that leaves ready.
+  assert.deepEqual(
+    schedulePlanningToolCalls(calls, {}).map((c) => c.function.name),
+    ['record_evidence', 'note_misconception', 'resolve_misconception', 'complete_topic'],
   );
 });
