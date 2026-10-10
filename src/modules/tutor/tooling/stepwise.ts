@@ -190,6 +190,22 @@ export class StepRun {
       ...(deps.envFile ? { envFile: deps.envFile } : {}),
     });
     const [model] = await connection.describe([saved.meta.tutorModel]);
+    // The same model under this provider's id: the chat asks for it by that.
+    if (model.id !== saved.meta.tutorModel) {
+      const tutor = saved.chat.settings.features.tutor;
+      saved.meta.tutorModel = model.id;
+      saved.chat = {
+        ...saved.chat,
+        settings: {
+          ...saved.chat.settings,
+          modelId: model.id,
+          features: {
+            ...saved.chat.settings.features,
+            ...(tutor ? { tutor: { ...tutor, defaultModelId: model.id } } : {}),
+          },
+        },
+      };
+    }
     const session = new HeadlessTutorSession({
       chat: saved.chat,
       models: [model],

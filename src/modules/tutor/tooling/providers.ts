@@ -12,6 +12,7 @@ import {
   getOpenRouterKeyFallback,
 } from '@/lib/env/keys';
 import { ANTHROPIC_ENDPOINT, OPENROUTER_ENDPOINT } from '@/lib/transport/endpoints';
+import { bareModelName } from '@/lib/models/defaultModels';
 import { getTransportClient } from '@/lib/transport/registry';
 import type { ModelDescriptor } from '@/lib/types';
 
@@ -22,7 +23,11 @@ export const SIM_PROVIDERS: readonly SimProvider[] = ['anthropic', 'openrouter']
 export type ProviderConnection = {
   provider: SimProvider;
   auth: TransportAuth;
-  /** The models as the app would list them; unlisted ones get a tool-capable stub. */
+  /**
+   * The models as the app would list them, found by id or else by name on
+   * this provider ("anthropic/claude-haiku-5.5" is "anthropic-direct/claude-haiku-5-5"
+   * on the Claude API); unlisted ones get a tool-capable stub.
+   */
   describe: (ids: string[]) => Promise<ModelDescriptor[]>;
 };
 
@@ -81,7 +86,12 @@ export async function connectProvider(
         listed = [];
       }
     }
-    return ids.map((id) => listed.find((m) => m.id === id) ?? stubModel(id, endpoint.id));
+    return ids.map(
+      (id) =>
+        listed.find((m) => m.id === id) ??
+        listed.find((m) => bareModelName(m.id) === bareModelName(id)) ??
+        stubModel(id, endpoint.id),
+    );
   };
 
   return { provider, auth, describe };
