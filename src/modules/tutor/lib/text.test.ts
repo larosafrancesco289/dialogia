@@ -43,3 +43,17 @@ test("a noted belief always reads as the learner's idea, never as a fact", () =>
     'You thought DNA vaccines change your genes.',
   );
 });
+
+test('an idea the tutor already framed in another tense is not framed twice', async () => {
+  const { setLocale } = await import('@/lib/i18n/state');
+  await setLocale('el');
+  try {
+    assert.equal(asTheirIdea('Νόμισες ότι 2 + 2 = 5'), 'Νόμισες ότι 2 + 2 = 5.');
+    assert.equal(asTheirIdea('Πίστευες ότι ο ήλιος γυρίζει'), 'Πίστευες ότι ο ήλιος γυρίζει.');
+    assert.match(asTheirIdea('Ο ήλιος γυρίζει'), /^Νόμιζες ότι ο ήλιος γυρίζει/);
+    await setLocale('it');
+    assert.equal(asTheirIdea('Hai pensato che sia 5'), 'Hai pensato che sia 5.');
+  } finally {
+    await setLocale('en');
+  }
+});

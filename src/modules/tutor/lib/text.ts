@@ -36,9 +36,10 @@ export function joinSentences(...parts: Array<string | undefined | null | false>
 export function asTheirIdea(belief: string): string {
   const text = asSentence(belief);
   if (!text || /^you\b/i.test(text)) return text;
-  // Already framed in the language shown ("Pensavi che…"): the tutor wrote it so.
+  // Already framed in the language shown ("Pensavi che…"): the tutor wrote it so,
+  // perhaps in another tense ("Νόμισες ότι" beside the frame's "Νόμιζες ότι").
   const frame = t('idea.youThought', { belief: '' }).replace(/[\s:,.]+$/u, '');
-  if (fold(text).startsWith(fold(frame))) return text;
+  if (fold(text).startsWith(fold(frame)) || ALREADY_FRAMED.test(fold(text))) return text;
   // Lowercase a plain first word ("A", "Vaccines"), never "I" or an acronym like
   // "DNA", nor a German noun, which keeps its capital.
   const lower = getLocale() !== 'de' && /^(?!I\b)\p{Lu}(?!\p{Lu})/u.test(text);
@@ -46,6 +47,44 @@ export function asTheirIdea(belief: string): string {
     belief: lower ? text.charAt(0).toLocaleLowerCase() + text.slice(1) : text,
   });
 }
+
+/**
+ * Openings that already say "you thought", in the app's languages and their
+ * usual tenses, folded (lower case, no accents). English is caught by "you".
+ */
+const ALREADY_FRAMED = new RegExp(
+  '^(' +
+    [
+      'pensavi',
+      'hai pensato',
+      'credevi',
+      'hai creduto',
+      'tu pensais',
+      'tu as pense',
+      'tu croyais',
+      'tu as cru',
+      'pensabas',
+      'pensaste',
+      'creias',
+      'creiste',
+      'du dachtest',
+      'du hast gedacht',
+      'du glaubtest',
+      'du hast geglaubt',
+      'voce achava',
+      'voce achou',
+      'voce pensava',
+      'voce pensou',
+      'voce acreditava',
+      'νομιζες',
+      'νομισες',
+      'πιστευες',
+      'πιστεψες',
+      'σκεφτηκες',
+    ].join('|') +
+    ')(?![\\p{L}])',
+  'u',
+);
 
 /** Lower case without accents, for comparing words written either way. */
 const fold = (text: string) =>
