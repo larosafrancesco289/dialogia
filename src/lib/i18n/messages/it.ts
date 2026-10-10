@@ -802,6 +802,7 @@ const messages: Translation<typeof en> = {
   'notice.providerError': 'Il fornitore del modello ha restituito un errore',
   'notice.modelListFailed': 'Impossibile caricare l’elenco dei modelli',
   'notice.emptyResponse': 'Il fornitore ha inviato una risposta vuota',
+  'markdown.remoteImage': 'Immagine: {name} (apri)',
   'notice.kind.image': 'immagini',
   'notice.kind.audio': 'audio',
   'notice.kind.pdf': 'PDF',
