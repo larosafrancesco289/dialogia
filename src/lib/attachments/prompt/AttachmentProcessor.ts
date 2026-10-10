@@ -7,6 +7,10 @@ import { detectAudioFormatFromAttachment, extractBase64FromDataUrl } from '@/lib
 // We use 5MB as a safe threshold to avoid hitting limits.
 const MAX_PDF_PAYLOAD_BYTES = 5 * 1024 * 1024;
 
+/** Whether a PDF's text was read: a scan reads as whitespace, which is no text. */
+export const hasPdfText = (attachment: { text?: string }): boolean =>
+  typeof attachment.text === 'string' && attachment.text.trim().length > 0;
+
 export class AttachmentProcessor {
   static process(attachments: PersistedAttachment[]): ModelContentBlock[] {
     const blocks: ModelContentBlock[] = [];
@@ -16,7 +20,7 @@ export class AttachmentProcessor {
       } else if (a.kind === 'pdf') {
         // Prefer extracted text to avoid payload size limits.
         // Fall back to file_data only for small PDFs without extracted text.
-        if (a.text && a.text.trim()) {
+        if (hasPdfText(a)) {
           const header = a.name ? `[Document: ${a.name}]` : '[Document]';
           const pageInfo = a.pageCount
             ? ` (${a.pageCount} ${a.pageCount === 1 ? 'page' : 'pages'})`

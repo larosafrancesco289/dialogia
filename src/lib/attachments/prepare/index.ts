@@ -4,7 +4,8 @@
 import { findModelById, isAudioInputSupported, isVisionSupported } from '@/lib/models';
 import type { DraftAttachment, ModelDescriptor, PersistedAttachment } from '@/lib/types';
 import { fileToDataUrl } from '@/lib/attachments/readers';
-import { detectAudioFormatFromAttachment, extractBase64FromDataUrl } from '@/lib/attachments/audio';
+import { detectAudioFormatFromAttachment } from '@/lib/attachments/audio';
+import { hasPdfText } from '@/lib/attachments/prompt';
 
 function stripFile(attachment: DraftAttachment): PersistedAttachment {
   const { file: _file, ...rest } = attachment;
@@ -42,15 +43,27 @@ export async function prepareAttachmentsForModel(opts: {
     return true;
   });
 
+  // Each file is stored once. A PDF whose text was read keeps only the text,
+  // which is all the model is sent; the file itself only when there is none.
+  // Audio keeps its data URL (the player needs it) and the model's base64 is
+  // cut from it at send time. Messages stored before keep both, and are read
+  // as they are.
   const processed = await Promise.all(
-    filtered.map(async (attachment) => {
-      if (attachment.kind === 'pdf' && attachment.file && !attachment.dataURL) {
-        try {
-          const dataURL = await fileToDataUrl(attachment.file);
-          return { ...stripFile(attachment), dataURL };
-        } catch {
-          return stripFile(attachment);
+    filtered.map(async (attachment): Promise<PersistedAttachment> => {
+      if (attachment.kind === 'pdf') {
+        if (hasPdfText(attachment)) {
+          const { dataURL: _file, ...rest } = stripFile(attachment);
+          return rest;
         }
+        if (attachment.file && !attachment.dataURL) {
+          try {
+            const dataURL = await fileToDataUrl(attachment.file);
+            return { ...stripFile(attachment), dataURL };
+          } catch {
+            return stripFile(attachment);
+          }
+        }
+        return stripFile(attachment);
       }
       if (attachment.kind === 'audio') {
         let dataURL = attachment.dataURL;
@@ -61,9 +74,10 @@ export async function prepareAttachmentsForModel(opts: {
             dataURL = undefined;
           }
         }
-        const base64 = attachment.base64 || extractBase64FromDataUrl(dataURL);
+        const { base64, ...rest } = stripFile(attachment);
         const audioFormat = detectAudioFormatFromAttachment(attachment);
-        return { ...stripFile(attachment), dataURL, base64, audioFormat };
+        // Base64 alone, without a data URL, only on a draft that never had one.
+        return { ...rest, ...(dataURL ? { dataURL } : base64 ? { base64 } : {}), audioFormat };
       }
       return stripFile(attachment);
     }),
