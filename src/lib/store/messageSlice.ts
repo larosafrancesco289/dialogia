@@ -27,6 +27,26 @@ import {
 // reachable from user actions, so it loads on first use instead of at boot.
 const loadTurnService = () => import('@/lib/services/turns');
 
+/** How long an edit's rerun waits for the stopped reply to finish ending. */
+const STOPPED_TURN_WAIT_MS = 5000;
+
+/**
+ * Resolves once no reply is being written in the chat, or after `timeoutMs`.
+ * A stopped turn may still be settling (awaiting a tool's dispatch, say); a
+ * rerun started before it ends shares the reply's id, and the old turn's
+ * ending would land on the new attempt and mark it stopped.
+ */
+export async function whenChatIdle(
+  get: () => StoreState,
+  chatId: string,
+  timeoutMs = STOPPED_TURN_WAIT_MS,
+): Promise<void> {
+  const until = Date.now() + timeoutMs;
+  while (isChatStreaming(get().ui, chatId) && Date.now() < until) {
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+}
+
 export type MessageSliceState = {
   messagesById: Record<string, Message>;
   messageIdsByChatId: Record<string, string[]>;
@@ -175,7 +195,10 @@ export function createMessageSlice(
       }));
       await persistMessage(updated);
       if (opts?.rerun) {
-        if (isChatStreaming(get().ui, chatId)) get().stopStreaming();
+        if (isChatStreaming(get().ui, chatId)) {
+          get().stopStreaming();
+          await whenChatIdle(get, chatId);
+        }
         const nextAssistant = list.slice(idx + 1).find((m) => m.role === 'assistant');
         if (nextAssistant && dropsMemoryWrites(nextAssistant)) {
           get().setNotice(NOTICE_REPLACED_REPLY_CHANGED_MEMORY, 'info');
