@@ -116,7 +116,7 @@ export type SimulationOptions = {
   onExchange?: (exchange: ExchangeRecord) => void;
 };
 
-function summarizeTurn(turn: TurnRecord): ExchangeRecord['tutor'] {
+export function summarizeTurn(turn: TurnRecord): ExchangeRecord['tutor'] {
   const usage = turn.assistant.usage as Usage | undefined;
   return {
     messageId: turn.assistant.id,
@@ -148,7 +148,7 @@ function summarizeTurn(turn: TurnRecord): ExchangeRecord['tutor'] {
   };
 }
 
-function snapshot(state: TutorState): ExchangeRecord['after'] {
+export function snapshot(state: TutorState): ExchangeRecord['after'] {
   const nodes = state.plan?.nodes ?? [];
   return {
     phase: state.phase,

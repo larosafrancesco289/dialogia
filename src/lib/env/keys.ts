@@ -17,3 +17,12 @@ export function getOpenRouterKeyFallback(): string | undefined {
     readProcessEnv('OPENROUTER_KEY')
   );
 }
+
+export function getAnthropicKeyFallback(): string | undefined {
+  return readProcessEnv('ANTHROPIC_API_KEY');
+}
+
+/** The workspace a workspace-scoped Claude key needs, sent as `anthropic-workspace-id`. */
+export function getAnthropicWorkspaceFallback(): string | undefined {
+  return readProcessEnv('ANTHROPIC_WORKSPACE_ID');
+}

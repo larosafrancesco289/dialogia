@@ -35,6 +35,9 @@ yarn-error.log*
 # Private working notes
 NOTES.md
 
+# Tutor evaluation sessions (the trends file is kept)
+evals/tutor/runs/
+
 # Browser tests
 test-results/
 playwright-report/

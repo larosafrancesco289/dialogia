@@ -15,7 +15,9 @@
     "test": "tsx --test 'tests/**/*.test.ts' 'src/**/*.test.ts'",
     "e2e": "playwright test",
     "mock-llm": "PORT=3999 tsx e2e/mock/server.ts",
-    "tutor:simulate": "tsx src/modules/tutor/tooling/simulate.ts"
+    "tutor:simulate": "tsx src/modules/tutor/tooling/simulate.ts",
+    "tutor:step": "tsx src/modules/tutor/tooling/step.ts",
+    "tutor:evals": "tsx src/modules/tutor/tooling/evals.ts"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "^5.3.0",
