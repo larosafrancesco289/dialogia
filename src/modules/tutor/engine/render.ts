@@ -71,11 +71,16 @@ function diagnosticSummary(diagnostic: DiagnosticRecord): string | undefined {
   if (!answers) return undefined;
   const scored = diagnostic.items.filter((i) => typeof i.correct === 'number');
   const right = scored.filter((i) => answers[i.id] === i.correct).length;
+  // Which wrong choice they picked, not only that they missed: the picks are
+  // where a shared wrong belief shows.
   const missed = scored
     .filter((i) => answers[i.id] !== i.correct)
-    .map((i) => quote(i.question, 60));
+    .map((i) => {
+      const picked = i.choices[answers[i.id]];
+      return `${quote(i.question, 60)} (chose ${picked == null ? 'nothing' : quote(picked, 40)}; right answer ${quote(i.choices[i.correct!], 40)})`;
+    });
   return `Diagnostic on ${quote(diagnostic.topic, 60)}: ${right} of ${scored.length} right${
-    missed.length ? `; missed ${missed.join(', ')}` : ''
+    missed.length ? `. Missed: ${missed.join('; ')}` : ''
   }.`;
 }
 
@@ -141,6 +146,20 @@ function shownOnTopic(state: TutorState, nodeId: string): string[] {
     )
     .slice(-ANSWERS_SHOWN)
     .map((entry) => `- ${entry.kind ?? 'observed'}: ${quote(entry.details, 100)}`);
+}
+
+/** How many topics after the current one the tutor is shown the objectives of. */
+const LATER_SHOWN = 2;
+
+/**
+ * The next topics in the plan with their objectives, so the tutor sees where
+ * the current topic ends instead of teaching the later ones inside it.
+ */
+function laterTopicLines(state: TutorState): string[] {
+  return (state.plan?.nodes ?? [])
+    .filter((node) => node.status === 'not_started')
+    .slice(0, LATER_SHOWN)
+    .map((node) => `- ${node.name} [${node.id}]: ${node.objectives.join('; ')}`);
 }
 
 /** How many of the learner's other tutor chats the tutor is shown: the most recently studied. */
@@ -224,15 +243,22 @@ export function renderStateBlock(state: TutorState, options: RenderOptions): str
     const asked = askedOnTopic(state, current.id);
     if (asked.length) {
       lines.push(
-        'Card questions on this topic so far, the latest last, with how each went. Any new question must differ from these and use new numbers:',
+        'Card questions on this topic so far, each asked once, the latest last, with how it went. Your next question uses a new case and new numbers:',
         ...asked,
       );
     }
     const shown = shownOnTopic(state, current.id);
     if (shown.length) {
       lines.push(
-        "Their recent answers you recorded on this topic (don't ask for these again, reworded or not; build past them):",
+        'What their answers on this topic have shown so far, from your notes, the latest last. Take the next step from here:',
         ...shown,
+      );
+    }
+    const later = laterTopicLines(state);
+    if (later.length) {
+      lines.push(
+        'Coming up in the plan, with their own objectives. Teach these there, not inside the current topic; work the learner does on them is evidence for that topic:',
+        ...later,
       );
     }
   } else if (state.phase === 'interlude') {
@@ -287,11 +313,10 @@ export function renderStateBlock(state: TutorState, options: RenderOptions): str
     }
     lines.push(...otherChatLines(options.otherChats ?? []));
   }
-  if (state.phase !== 'teaching') {
-    for (const diagnostic of Object.values(state.diagnostics)) {
-      const summary = diagnosticSummary(diagnostic);
-      if (summary) lines.push(summary);
-    }
+  // Kept through teaching: the picks are what the first topics have to confront.
+  for (const diagnostic of Object.values(state.diagnostics)) {
+    const summary = diagnosticSummary(diagnostic);
+    if (summary) lines.push(summary);
   }
   const heardBack =
     Object.values(state.intakes).some((i) => !!i.responses) ||
