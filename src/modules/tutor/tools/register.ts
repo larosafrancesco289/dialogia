@@ -80,7 +80,15 @@ function createHandler(name: TutorToolName): PlanningToolHandler {
     const refuse = (error: TutorError) => {
       const result = tutorToolError(error) as ToolResult;
       log.error(result, error.message, roundMeta ? { ...roundMeta } : undefined);
-      return { aggregatedResults, usedTool: false, usedContentTool: false, result, replay };
+      const quiet = TOOL_KEEPS_RECORD[name] && QUIET_REFUSALS.has(error.code);
+      return {
+        aggregatedResults,
+        usedTool: false,
+        usedContentTool: false,
+        result,
+        replay,
+        ...(quiet ? { quiet: true } : {}),
+      };
     };
 
     const parsed = parseTutorToolCall(name, toolCall.function.arguments);
@@ -125,6 +133,24 @@ function createHandler(name: TutorToolName): PlanningToolHandler {
   };
 }
 
+/**
+ * Within a round: evidence first (the answer it records was given on the topic
+ * as it stood), then the misconceptions it may show gone, then the moves
+ * between topics, in the order the model made them.
+ */
+const TOOL_ORDER: Partial<Record<TutorToolName, number>> = {
+  resolve_misconception: 1,
+  complete_topic: 2,
+  start_topic: 2,
+};
+
+/**
+ * Refusals of a record-keeping call that ask nothing of this turn: the reply
+ * already written stands, and the refusal reaches the tutor with the round on
+ * its next turn. Reopening the turn for them only gets the reply written twice.
+ */
+const QUIET_REFUSALS = new Set<TutorError['code']>(['needs_evidence']);
+
 let registered = false;
 
 /**
@@ -147,6 +173,7 @@ export function registerTutorTools(): void {
         kind: TOOL_ENDS_TURN[name] ? 'content' : 'action',
         logCategory: 'tutor',
         replay: true,
+        ...(TOOL_ORDER[name] ? { order: TOOL_ORDER[name] } : {}),
       },
       handler: createHandler(name),
     });

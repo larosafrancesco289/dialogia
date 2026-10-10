@@ -56,8 +56,9 @@ export type PlanningToolExecutionResult = {
   /** With `endsTurn: 'after_text'` in a turn with no text yet: what the model reads instead of `result`. */
   resultBeforeText?: ToolResult;
   /**
-   * Agent mode only: the call succeeded and only kept a record, so it needs no
-   * words. A round that wrote text and made only quiet calls ends the turn:
+   * Agent mode only: the call only kept a record, so it needs no words, or
+   * was refused in a way that asks nothing of this turn (its result reaches
+   * the model on the next). A round that wrote text and made only quiet calls ends the turn:
    * the reply is already written, and another round tends to write it again.
    */
   quiet?: boolean;

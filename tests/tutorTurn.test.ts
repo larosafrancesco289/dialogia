@@ -431,3 +431,40 @@ test('a reply still reads as working while the plan it introduced is being writt
   assert.equal(toolCallInFlight(first.message()), false, 'settled once the card is up');
   assert.equal(s.tutor().state.proposal?.messageId, first.message().id);
 });
+
+test('a resolve refused for want of evidence leaves the written reply standing: no second round to write it again', async () => {
+  const s = session();
+  await s.turn('Teach me limits.', (_, cb) =>
+    reply(cb, 'Here is a plan.', [call('propose_plan', PLAN, 'p1')]),
+  );
+  const planMessage = getMessagesForChat(s.store.getState(), s.chatId).at(-1)!;
+  await s.store
+    .getState()
+    .dispatchTutor(
+      s.chatId,
+      { by: 'learner', type: 'approve_plan', proposalId: s.tutor().state.proposal!.proposalId },
+      { by: 'learner', messageId: planMessage.id },
+    );
+  await s.turn('Is the limit the value at the point?', (_, cb) =>
+    reply(cb, 'Not always: a limit is where the values head, which may not be the value there.', [
+      call(
+        'note_misconception',
+        { description: 'You thought a limit is the value at the point' },
+        'n1',
+      ),
+    ]),
+  );
+  const id = s.tutor().state.mastery.limits.misconceptions[0].id;
+
+  const turn = await s.turn('So it is where it heads.', (_, cb) =>
+    reply(
+      cb,
+      'Right, where the values head. Now try one where the function has a hole: what is the limit of (x²−1)/(x−1) at 1?',
+      [call('resolve_misconception', { misconceptionId: id }, 'r1')],
+    ),
+  );
+
+  assert.equal(turn.requests.length, 1, 'the reply was written once');
+  assert.equal(turn.message().toolCalls?.[0]?.status, 'error');
+  assert.equal(s.tutor().state.mastery.limits.misconceptions[0].resolved, false);
+});

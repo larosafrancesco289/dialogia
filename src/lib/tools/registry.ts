@@ -27,6 +27,11 @@ export type ToolMetadata = {
    * off for tools whose results are bulky or stale by the next turn (search).
    */
   replay?: boolean;
+  /**
+   * Among a round's action calls, lower runs first; equal ones keep the order
+   * the model called them in. For a call that judges what others record.
+   */
+  order?: number;
   /** Module-private metadata. Only the owning module may interpret it. */
   ext?: Record<string, unknown>;
 };
@@ -93,6 +98,10 @@ export function getToolLogCategory(name: string): ToolCallCategory {
 
 export function isReplayTool(name: string): boolean {
   return REGISTRY.get(name)?.metadata.replay === true;
+}
+
+export function getToolOrder(name: string): number {
+  return REGISTRY.get(name)?.metadata.order ?? 0;
 }
 
 export function isContentTool(name: string): boolean {

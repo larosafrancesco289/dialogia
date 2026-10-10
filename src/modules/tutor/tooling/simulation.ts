@@ -48,6 +48,8 @@ export type StudentTurn = {
   kind: 'typed' | 'ledger';
   text: string;
   actions: LearnerActionRecord[];
+  /** Typed with a card open, by choice: the UI lets a learner write past a card. */
+  pastCard?: boolean;
 };
 
 export type ExchangeRecord = {
