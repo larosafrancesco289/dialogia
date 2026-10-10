@@ -16,6 +16,10 @@ const REMOVED_MESSAGE_KEYS = ['deepResearch'] as const;
 
 const LEGACY_TUTOR_HIDDEN = /^\s*Tutor (Recap|Data JSON):/;
 
+/** The only URLs an attachment's preview may hold: its own bytes, or a file on this device. */
+export const SAFE_DATA_URL =
+  /^(data:(image\/[\w.+-]+|audio\/[\w.+-]+|application\/pdf)[;,]|blob:)/i;
+
 export function sanitizeMessageRecord(message: Message): { next: Message; changed: boolean } {
   const next: Message = { ...message };
   let changed = false;
@@ -62,8 +66,16 @@ export function sanitizeMessageRecord(message: Message): { next: Message; change
     }
     const stripped = filtered.map((attachment) => {
       if (!attachment || typeof attachment !== 'object') return attachment;
-      if (!('file' in attachment)) return attachment;
-      const record = attachment as typeof attachment & { file?: unknown };
+      let record = attachment as typeof attachment & { file?: unknown };
+      // A data URL is drawn, played and downloaded as a link: anything but
+      // the attachment's own bytes (a `javascript:` URL in an imported
+      // backup, say) would run in this origin, beside the keys.
+      if (typeof record.dataURL === 'string' && !SAFE_DATA_URL.test(record.dataURL)) {
+        const { dataURL: _unsafe, ...rest } = record;
+        record = rest;
+        changed = true;
+      }
+      if (!('file' in record)) return record;
       if (record.file !== undefined) changed = true;
       const { file: _file, ...rest } = record;
       return rest;
