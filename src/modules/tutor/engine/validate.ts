@@ -165,6 +165,7 @@ const PAYLOADS: Record<TutorEventType, z.ZodTypeAny> = {
     weight: z.number().optional(),
     setTo: z.number().optional(),
     note: z.string(),
+    helped: z.boolean().optional(),
     ref: z
       .object({
         quizId: z.string().optional(),

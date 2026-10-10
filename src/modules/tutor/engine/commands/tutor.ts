@@ -289,6 +289,7 @@ export function decideTutor(
         kind: cmd.kind,
         weight: gains || scaled < 0 ? clampWeight(scaled) : 0,
         note,
+        ...(cmd.helped ? { helped: true } : {}),
       });
       return null;
     }
@@ -299,9 +300,10 @@ export function decideTutor(
       const description = text(cmd.description);
       if (!description) return invalid('Describe the misconception.');
       const existing = state.mastery[found.node.id]?.misconceptions ?? [];
-      const same = existing.find(
-        (m) => m.description.trim().toLowerCase() === description.toLowerCase(),
-      );
+      const named = text(cmd.misconceptionId);
+      const same =
+        (named ? existing.find((m) => m.id === named) : undefined) ??
+        existing.find((m) => m.description.trim().toLowerCase() === description.toLowerCase());
       const misconceptionId =
         same?.id ?? uniqueId(slugify(description), new Set(existing.map((m) => m.id)));
       // An earlier answer can have shown it only if the log holds that answer

@@ -38,7 +38,7 @@ test('while teaching: goal, current topic with objectives, bands, misconceptions
       'Phase: teaching',
       'Current topic: Limits [limits]',
       'Objectives: Evaluate simple limits',
-      "Already asked on this topic (don't repeat them or reuse their numbers; build on them):",
+      'Card questions on this topic so far, the latest last, with how each went. Any new question must differ from these and use new numbers:',
       '- "lim x->0 of x?" (quiz, right)',
       '- "lim x->1 of 2x?" (quiz, not answered)',
       '- "lim x->2 of x^2?" (quiz, not answered)',
@@ -230,7 +230,7 @@ test('the tutor remembers the latest questions asked on the current topic, and o
   h.tutor({ type: 'propose_plan', ...CALCULUS });
   h.learner({ type: 'approve_plan', proposalId: h.state.proposal!.proposalId });
   // Diagnostic items are tied to topics only once a plan exists, so this one names none.
-  assert.doesNotMatch(render(h), /Already asked/);
+  assert.doesNotMatch(render(h), /Card questions on this topic/);
 
   const quiz = (n: number) =>
     Array.from({ length: 4 }, (_, i) => ({
@@ -256,7 +256,7 @@ test('the tutor remembers the latest questions asked on the current topic, and o
     '- "Quiz 2 question 2?" (quiz, not answered)',
     '- "Quiz 2 question 3?" (quiz, not answered)',
   ]);
-  assert.match(block, /^Already asked on this topic \(don't repeat them/m);
+  assert.match(block, /^Card questions on this topic so far/m);
 
   // Moving on, the next topic starts with a clean slate.
   const open = h.state.awaiting!.id;
@@ -265,7 +265,7 @@ test('the tutor remembers the latest questions asked on the current topic, and o
   master(h);
   h.tutor({ type: 'complete_topic', how: 'mastered' });
   h.tutor({ type: 'start_topic', nodeId: 'derivatives' });
-  assert.doesNotMatch(render(h), /Already asked/);
+  assert.doesNotMatch(render(h), /Card questions on this topic/);
 });
 
 test('diagnostic items tied to the current topic are remembered with their result', () => {

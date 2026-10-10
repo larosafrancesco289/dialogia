@@ -96,6 +96,8 @@ type Payloads = {
     weight?: number;
     setTo?: number;
     note: string;
+    /** The tutor's message just before told them the move they made. */
+    helped?: boolean;
     ref?: EvidenceRef;
     /** A starting point from another tutor chat, with what was read there, so replay needs nothing else. */
     carriedOver?: CarriedOver;

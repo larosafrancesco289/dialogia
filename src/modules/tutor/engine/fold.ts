@@ -284,6 +284,7 @@ function reduce(state: TutorState, event: TutorEvent): TutorState {
             eventId: event.id,
             source: event.source,
             kind: event.kind,
+            ...(event.helped ? { helped: true } : {}),
             ...(event.ref ? { ref: event.ref } : {}),
             ...(event.carriedOver ? { carriedOver: event.carriedOver } : {}),
           };
@@ -311,6 +312,7 @@ function reduce(state: TutorState, event: TutorEvent): TutorState {
                       occurrences: m.occurrences + 1,
                       resolved: false,
                       resolvedBy: undefined,
+                      evidenceAt: topic.evidence.length,
                     }
                   : m,
               )
@@ -322,6 +324,7 @@ function reduce(state: TutorState, event: TutorEvent): TutorState {
                   firstObserved: event.at,
                   occurrences: 1,
                   resolved: false,
+                  evidenceAt: topic.evidence.length,
                 },
               ];
           return { ...topic, misconceptions, lastInteraction: event.at };

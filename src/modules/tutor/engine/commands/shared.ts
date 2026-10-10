@@ -4,7 +4,12 @@
 import type { LearningPlan, LearningPlanNode } from '@/lib/types';
 import type { TutorEvent, TutorEventDraft } from '@/modules/tutor/engine/events';
 import { findPlanNode, readyNodes, unmetPrerequisites } from '@/modules/tutor/engine/plan';
-import { openMisconceptions, type TutorPhase, type TutorState } from '@/modules/tutor/engine/state';
+import {
+  openMisconceptions,
+  shownGone,
+  type TutorPhase,
+  type TutorState,
+} from '@/modules/tutor/engine/state';
 import type {
   CommandContext,
   TutorError,
@@ -170,6 +175,14 @@ export function resolveMisconception(
         'already_resolved',
         `Misconception "${wanted}" is already resolved.`,
         'Nothing to do; note it again if it comes back.',
+      );
+    }
+    // The learner's word stands on its own; the tutor's needs their answer behind it.
+    if (by === 'tutor' && !shownGone(state, nodeId, hit.id)) {
+      return err(
+        'needs_evidence',
+        `Nothing they did on their own since "${hit.id}" was noted shows it is gone.`,
+        'Give them a fresh question that this belief would get wrong, with no hint; when they answer it right on their own, record that and resolve it then.',
       );
     }
     out.push({

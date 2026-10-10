@@ -54,6 +54,7 @@ const ADVISORY_ERRORS = new Set([
   'nothing_to_change',
   'already_recorded',
   'weight_against_kind',
+  'needs_evidence',
 ]);
 
 const CARD_EVENT = {

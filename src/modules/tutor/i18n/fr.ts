@@ -7,6 +7,7 @@ import type { Translation } from '@/lib/i18n/catalogue';
 const messages: Translation<typeof en> = {
   // How a topic stands
   'status.done': 'Terminé',
+  'status.skipped': 'Passé',
   'status.inProgress': 'En cours',
   'status.startsAfter': 'Commence après {topics}',
   'status.quoted': '« {name} »',
@@ -101,7 +102,7 @@ const messages: Translation<typeof en> = {
   // Editing the plan in the Hub
   'revise.hint': 'Pour ajouter, retirer ou réordonner des sujets, demande au tuteur.',
   'revise.ask': 'Demander des changements au tuteur',
-  'revise.confirm': 'Le marquer comme terminé et passer à la suite ?',
+  'revise.confirm': 'Le passer et continuer ?',
   'revise.skip': 'Le passer',
   'revise.next': 'Faire celui-ci ensuite',
   'revise.known': 'Je le sais déjà',

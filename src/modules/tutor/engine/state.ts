@@ -207,6 +207,34 @@ export function earlierMistake(
  * misconception, or what they showed before the topic had to be reopened.
  * Mastery must rest on this.
  */
+/**
+ * Whether the learner has shown, on their own, that a noted misconception is
+ * gone: a right answer on its topic since it was last noted, on a card or in
+ * the conversation, that the tutor's message had not just handed them.
+ */
+export function shownGone(state: TutorState, nodeId: string, misconceptionId: string): boolean {
+  const topic = state.mastery[nodeId];
+  const noted = topic?.misconceptions.find((m) => m.id === misconceptionId);
+  if (!topic || !noted) return false;
+  const evidence = topic.evidence;
+  const takenBack = new Set(
+    evidence.filter((entry) => entry.kind === 'misconception').map((entry) => entry.ref?.eventId),
+  );
+  return evidence
+    .slice(noted.evidenceAt ?? 0)
+    .some(
+      (entry) =>
+        !!entry.eventId &&
+        !takenBack.has(entry.eventId) &&
+        !entry.helped &&
+        entry.weight > 0 &&
+        entry.kind !== 'partial' &&
+        (entry.source === 'quiz' ||
+          entry.source === 'diagnostic' ||
+          entry.source === 'observation'),
+    );
+}
+
 export function demonstratedEvidence(state: TutorState, nodeId: string): number {
   const since = state.counts.evidenceAtReopen[nodeId] ?? 0;
   const evidence = state.mastery[nodeId]?.evidence ?? [];
