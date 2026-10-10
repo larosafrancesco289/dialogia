@@ -29,11 +29,15 @@ test('an export imported into a fresh browser brings the chats back', async ({
     .getByRole('tabpanel', { name: 'Data' })
     .getByLabel('Import', { exact: true })
     .setInputFiles(file);
+  // The question, when the backup asks one, opens only once the file is read:
+  // wait for it or the result, since checking at once can miss it on a slow run.
   const confirm = other.getByRole('alertdialog').or(other.getByRole('dialog', { name: /Import/ }));
-  if (await confirm.isVisible().catch(() => false)) {
+  const imported = other.getByText(/Imported 1 chat/);
+  await expect(confirm.or(imported).first()).toBeVisible();
+  if (await confirm.isVisible()) {
     await confirm.getByRole('button', { name: 'Import' }).click();
   }
-  await expect(other.getByText(/Imported 1 chat/)).toBeVisible();
+  await expect(imported).toBeVisible();
   await other.getByRole('button', { name: 'Close settings' }).click();
   await other.getByRole('complementary').getByText('Mock title').click();
   await expect(other.getByRole('main').getByText('Remember this exchange')).toBeVisible();
