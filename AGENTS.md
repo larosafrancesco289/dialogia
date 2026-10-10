@@ -50,7 +50,9 @@ import is lint-banned with that reason attached.
 load from this origin only; requests may go anywhere. A remote image in a reply renders as a link,
 never an `<img>`, because its URL can carry the conversation out. A new CDN script, web font or
 remote image will be blocked, and the browser tests fail on the console error it raises. An
-attachment's `dataURL` must be its own bytes (`SAFE_DATA_URL` in `src/lib/db/sanitize.ts`).
+attachment's `dataURL` must be its own bytes (`SAFE_DATA_URL` in `src/lib/db/sanitize.ts`). Pages a reply
+reads are untrusted too: `web_fetch` reads only an address that came from search in the chat or from
+the person (`fetchAllowed`), and memory refuses writes in a reply that has read the web.
 
 **Colours come from tokens.** Use `styles/tokens.css` via `color-mix`, never a hex literal. Theme
 state has one source of truth, `useThemeMode`. Never touch `localStorage.theme` from a component.

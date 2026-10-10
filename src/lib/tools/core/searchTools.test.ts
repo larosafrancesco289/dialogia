@@ -7,7 +7,7 @@ import type { StoreState } from '@/lib/store/types';
 import { registerSearchProvider } from '@/lib/search/providers/registry';
 import { formatSourcesBlock } from '@/lib/search';
 import { NOTICE_MISSING_SEARCH_KEY } from '@/lib/store/notices';
-import { registerCoreTools } from '@/lib/tools/core/searchTools';
+import { fetchAllowed, registerCoreTools } from '@/lib/tools/core/searchTools';
 import type { ToolExecutionContext } from '@/lib/tools/execution';
 import { getToolHandler } from '@/lib/tools/registry';
 import type { Message } from '@/lib/types';
@@ -210,7 +210,8 @@ test('a page that could not be read reaches the model as a failure, with what to
   const result = await handler({
     toolCall: { id: 'c5', type: 'function', function: { name: 'web_fetch', arguments: '{}' } },
     parsedArgs: { url: 'https://walled.test/' },
-    aggregatedResults: [],
+    // Found by a search earlier in the reply: only such an address is read.
+    aggregatedResults: [{ title: 'Walled', url: 'https://walled.test/' }],
     context: {
       chatId: 'chat-5',
       assistantMessage: { id: 'reply-5', chatId: 'chat-5', role: 'assistant' } as Message,
@@ -226,4 +227,30 @@ test('a page that could not be read reaches the model as a failure, with what to
   assert.equal(told.ok, false);
   assert.equal(told.error, 'Could not read this page.');
   assert.match(told.hint, /could not be read/);
+});
+
+test('a page is read only at an address that came from search or from the person, exactly', async () => {
+  const store = createStore<StoreState>(
+    buildStoreInitializer() as unknown as StateCreator<StoreState>,
+  );
+  const context = (userContent: string) =>
+    ({
+      chatId: 'chat-6',
+      assistantMessage: { id: 'reply-6', chatId: 'chat-6', role: 'assistant' } as Message,
+      userContent,
+      get: store.getState,
+    }) as unknown as ToolExecutionContext;
+  const found = [{ url: 'https://docs.test/guide' }];
+
+  assert.equal(fetchAllowed('https://docs.test/guide/', found, context('')), true);
+  assert.equal(fetchAllowed('https://docs.test/guide#part', found, context('')), true);
+  // A made-up address on a host a page named: the path or query can carry the chat out.
+  assert.equal(fetchAllowed('https://docs.test/guide?d=SECRET', found, context('')), false);
+  assert.equal(fetchAllowed('https://evil.test/SECRET', found, context('')), false);
+  // The person's own link counts, trailing punctuation and all.
+  assert.equal(
+    fetchAllowed('https://their.test/a', [], context('Can you read https://their.test/a?')),
+    true,
+  );
+  assert.equal(fetchAllowed('javascript:alert(1)', found, context('')), false);
 });

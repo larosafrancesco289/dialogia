@@ -12,6 +12,51 @@ import { notify } from '@/lib/store/notify';
 import { WEB_FETCH_TOOL, WEB_SEARCH_TOOL } from '@/lib/tools/definitions/webSearch';
 import { getToolExt, registerTool, type PlanningToolHandler } from '@/lib/tools/registry';
 import { t } from '@/lib/i18n';
+import { getMessagesForChat } from '@/lib/messages/indexing';
+
+import type { ToolExecutionContext } from '@/lib/tools/execution';
+
+const URL_IN_TEXT = /https?:\/\/[^\s"'<>()\[\]{}]+/gi;
+
+/** An address as compared: no fragment, no trailing slash, no trailing punctuation. */
+function comparableUrl(url: string): string {
+  return url
+    .trim()
+    .replace(/[.,;:!?]+$/, '')
+    .replace(/#.*$/, '')
+    .replace(/\/+$/, '');
+}
+
+/**
+ * Whether a page may be read: only at an address that came from search in
+ * this chat or from the person, exactly. The model chooses what to fetch,
+ * and the reader (Jina, Tavily) fetches it for us: an address it made up can
+ * carry the conversation out in its path or query to a host a fetched page
+ * named, so it is refused rather than fetched.
+ */
+export function fetchAllowed(
+  url: string,
+  aggregatedResults: Array<{ url?: string }>,
+  context: Pick<ToolExecutionContext, 'get' | 'chatId' | 'assistantMessage'> & {
+    userContent?: unknown;
+  },
+): boolean {
+  const wanted = comparableUrl(url);
+  if (!/^https?:\/\//i.test(wanted)) return false;
+  const known = new Set<string>();
+  const addFrom = (text: string) => {
+    for (const match of text.matchAll(URL_IN_TEXT)) known.add(comparableUrl(match[0]));
+  };
+  for (const result of aggregatedResults) if (result.url) known.add(comparableUrl(result.url));
+  if (typeof context.userContent === 'string') addFrom(context.userContent);
+  const state = context.get();
+  const live = state.messagesById[context.assistantMessage.id];
+  for (const message of [...getMessagesForChat(state, context.chatId), ...(live ? [live] : [])]) {
+    if (message.role === 'user') addFrom(message.content);
+    else addFrom(JSON.stringify([message.annotations ?? [], message.searchSources ?? []]));
+  }
+  return known.has(wanted);
+}
 
 export const CORE_MODULE_ID = 'core';
 
@@ -174,6 +219,34 @@ const executeWebFetchTool: PlanningToolHandler = async ({
     category: 'search',
     metadata: { ...(roundMeta || {}), provider: searchProvider },
   });
+
+  if (!fetchAllowed(fetchArgs.url, aggregatedResults, context)) {
+    const output = {
+      ok: false,
+      url: fetchArgs.url,
+      error:
+        'Pages are read only at an address that came from a search in this chat or from the person.',
+      hint: 'Search for the page first and read it from the results, or ask the person for the link. Never build an address yourself.',
+    };
+    log.error(
+      output,
+      'web_fetch refused an address from neither search nor the person',
+      roundMeta ? { ...roundMeta } : undefined,
+    );
+    return {
+      convoMessages: [
+        {
+          role: 'tool',
+          name: 'web_fetch',
+          tool_call_id: toolCall.id,
+          content: JSON.stringify(output),
+        },
+      ],
+      aggregatedResults,
+      usedTool: true,
+      usedContentTool: false,
+    };
+  }
 
   const provider = getSearchProvider(searchProvider);
   if (!provider?.fetchPage) {
