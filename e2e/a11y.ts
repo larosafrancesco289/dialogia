@@ -19,15 +19,26 @@ const SETTINGS_PAGES = ['Connections', 'Models', 'Chat', 'Tutor', 'Appearance', 
  */
 async function scan(page: Page, testInfo: TestInfo, screen: string) {
   // A fade caught halfway reads as low contrast. Looping animations never
-  // finish, and the scans run with reduced motion, so few are left.
-  await page.waitForFunction(() =>
-    document
-      .getAnimations()
-      .every(
-        (animation) =>
-          animation.playState !== 'running' ||
-          animation.effect?.getComputedTiming().iterations === Infinity,
-      ),
+  // finish, and the scans run with reduced motion, so few are left. Reduced
+  // motion still fades opacity (framer-motion keeps it), and a fade only shows
+  // up in getAnimations a frame after its element mounts at opacity 0, so wait
+  // two frames first, then until no inline opacity sits between 0 and 1.
+  await page.evaluate(
+    () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))),
+  );
+  await page.waitForFunction(
+    () =>
+      document
+        .getAnimations()
+        .every(
+          (animation) =>
+            animation.playState !== 'running' ||
+            animation.effect?.getComputedTiming().iterations === Infinity,
+        ) &&
+      [...document.querySelectorAll<HTMLElement>('[style*="opacity"]')].every((element) => {
+        const opacity = Number(element.style.opacity);
+        return opacity === 0 || opacity === 1;
+      }),
   );
   await page.evaluate(() => document.fonts.ready);
   const { violations, incomplete } = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
