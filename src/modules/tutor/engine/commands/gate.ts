@@ -50,9 +50,11 @@ export function gateTutorTool(
     );
   }
   const open = state.awaiting;
-  // A plan proposal closes an unanswered intake: a learner who would rather
-  // skip the questions, or answered them in chat, is not kept waiting on them.
-  const supersedes = tool === 'propose_plan' && open?.kind === 'intake';
+  // A plan proposal closes an unanswered intake or diagnostic: a learner who
+  // would rather skip the questions, or answered them in chat, is not kept
+  // waiting on them. Nothing else can close a card they will not answer.
+  const supersedes =
+    tool === 'propose_plan' && (open?.kind === 'intake' || open?.kind === 'diagnostic');
   if (CARD_TOOLS.has(tool) && open && open.kind !== 'proposal' && !supersedes) {
     return err(
       'card_open',

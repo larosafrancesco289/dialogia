@@ -223,7 +223,7 @@ function awaitingLine(state: TutorState): string | undefined {
     case 'intake':
       return "Waiting on: the learner to answer your intake questions. If they would rather skip them, or answered in chat, don't wait: propose_plan from what you know, which closes the card.";
     case 'diagnostic':
-      return 'Waiting on: the learner to finish your diagnostic. No other card until they do.';
+      return "Waiting on: the learner to finish your diagnostic. No other card until they do. If they would rather skip it, don't wait: ask one quick thing in chat, then propose_plan from their answer, which closes the card.";
     case 'quiz': {
       const quiz = state.quizzes[open.id];
       const done = quiz ? Object.keys(quiz.answers).length : 0;
@@ -381,7 +381,14 @@ export function renderStateBlock(state: TutorState, options: RenderOptions): str
   const heardBack =
     Object.values(state.intakes).some((i) => !!i.responses) ||
     Object.values(state.diagnostics).some((d) => !!d.answers);
-  if (!plan && !state.proposal && heardBack && !diagnosed(state) && budgetsAllowDiagnostic(state)) {
+  if (
+    !plan &&
+    !state.proposal &&
+    state.awaiting?.kind !== 'diagnostic' &&
+    heardBack &&
+    !diagnosed(state) &&
+    budgetsAllowDiagnostic(state)
+  ) {
     lines.push(
       'No diagnostic yet. Unless they are new to the subject, see them try before you plan: give_diagnostic on the weak spot they named or the skill they claim, so the plan rests on what they do.',
     );

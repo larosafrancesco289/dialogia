@@ -165,9 +165,7 @@ export function tutorToolResult(
             }
           : {}),
         ...(dropped.length ? { adjusted: dropped } : {}),
-        ...(events.some((e) => e.type === 'card_dismissed')
-          ? { closed: 'intake', closedNote: 'The unanswered intake card is closed.' }
-          : {}),
+        ...closedCard(events),
         note: 'The learner sees the proposal and will approve or decline it.',
       };
     }
@@ -224,7 +222,7 @@ export function tutorToolResult(
         note:
           after.phase === 'complete'
             ? 'Every topic in the plan is done.'
-            : 'The learner now sees a chapter break under your reply that asks what comes next: go on, more practice, or edit the plan. Close the topic with a short line on what they can now do and end your turn; do not list those choices or ask which they want, and do not start the next topic in this reply.',
+            : 'The learner now sees a chapter break under your reply that asks what comes next: go on, more practice, or edit the plan. If your reply before this call already said what they can now do, write nothing more and end your turn; otherwise close the topic with a short line on what they can now do and end your turn. Either way, do not list those choices or ask which they want, and do not start the next topic in this reply.',
       };
     }
     case 'start_topic': {
@@ -239,4 +237,11 @@ export function tutorToolResult(
       };
     }
   }
+}
+
+/** The unanswered card a plan proposal closed, if any. */
+function closedCard(events: readonly TutorEvent[]): { closed?: string; closedNote?: string } {
+  const dismissed = events.find((e) => e.type === 'card_dismissed');
+  if (dismissed?.type !== 'card_dismissed') return {};
+  return { closed: dismissed.card, closedNote: `The unanswered ${dismissed.card} card is closed.` };
 }

@@ -430,6 +430,9 @@ test('after the intake and before any diagnostic, the tutor is asked to see the 
   });
   assert.match(render(h), /^No diagnostic yet\. Unless they are new to the subject/m);
   h.tutor({ type: 'give_diagnostic', topic: 'Algebra', items: QUIZ_ITEMS });
+  // While it is open: no call for another, and a way on if they would rather skip it.
+  assert.doesNotMatch(render(h), /No diagnostic yet/);
+  assert.match(render(h), /If they would rather skip it, don't wait: .*propose_plan/);
   h.learner({
     type: 'answer_diagnostic',
     diagnosticId: h.state.awaiting!.id,

@@ -329,6 +329,8 @@ test('results carry what the model needs and never an answer key', () => {
   assert.equal(done.phase, 'interlude');
   assert.equal(done.nextInPlan, 'derivatives');
   assert.match(String(done.note), /chapter break/);
+  // A summary written before the call is not written again after it.
+  assert.match(String(done.note), /already said what they can now do, write nothing more/);
 
   const started = run('start_topic', { topicId: 'derivatives' });
   assert.deepEqual(started.topic, {
