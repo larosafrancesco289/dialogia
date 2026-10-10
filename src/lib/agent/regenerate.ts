@@ -31,6 +31,7 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
     overrideModelId,
     keepVersions,
     pipeline,
+    onOriginalRestored,
   } = opts;
   const { modelIndex, set } = turn;
 
@@ -155,6 +156,9 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
           : { ...current, ...cutOffFor(error) };
       set((state) => ({ messagesById: { ...state.messagesById, [original.id]: shown } }));
       if (shown !== original) await turn.persistMessage(shown).catch(() => undefined);
+      // What the old reply did (its cards, what its turn recorded) was let go
+      // of before this attempt was composed; with the reply back, it counts again.
+      else await onOriginalRestored?.().catch(() => undefined);
     }
     throw error;
   } finally {

@@ -41,15 +41,16 @@ export function effectiveEvents(events: readonly TutorEvent[]): TutorEvent[] {
 
 /**
  * The event that takes a reply back, or undefined when nothing in the log
- * (still counting) belongs to it, so there is nothing to retract.
+ * (still counting) belongs to it, so there is nothing to retract. It goes
+ * after `after` too, the last position spent by a row the log could not read.
  */
 export function retractReply(
   events: readonly TutorEvent[],
   replyId: string,
-  ctx: { chatId: string; at: number; id: string },
+  ctx: { chatId: string; at: number; id: string; after?: number },
 ): TutorEventOf<'reply_retracted'> | undefined {
   if (!effectiveEvents(events).some((event) => event.messageId === replyId)) return undefined;
-  const seq = events.reduce((max, event) => Math.max(max, event.seq), 0) + 1;
+  const seq = events.reduce((max, event) => Math.max(max, event.seq), ctx.after ?? 0) + 1;
   return {
     type: 'reply_retracted',
     replyId,
@@ -59,6 +60,35 @@ export function retractReply(
     at: ctx.at,
     by: 'system',
   };
+}
+
+/**
+ * What puts a retracted reply back when the attempt that replaced it failed
+ * before writing anything: copies, after everything else, of the reply's
+ * events that counted just before its last retraction (a regenerated reply
+ * keeps its id, so events after the retraction count again). Undefined when
+ * the reply was never retracted, or something of it was written since.
+ */
+export function restoreRetractedReply(
+  events: readonly TutorEvent[],
+  replyId: string,
+  ctx: { after: number; newId: () => string },
+): TutorEvent[] | undefined {
+  let retraction: TutorEvent | undefined;
+  for (const event of events) {
+    if (event.type === 'reply_retracted' && event.replyId === replyId) {
+      if (!retraction || event.seq > retraction.seq) retraction = event;
+    }
+  }
+  if (!retraction) return undefined;
+  const at = retraction.seq;
+  if (events.some((event) => event.messageId === replyId && event.seq > at)) return undefined;
+  const counted = effectiveEvents(events.filter((event) => event.seq < at)).filter(
+    (event) => event.messageId === replyId,
+  );
+  if (!counted.length) return undefined;
+  let seq = Math.max(ctx.after, ...events.map((event) => event.seq));
+  return counted.map((event) => ({ ...event, id: ctx.newId(), seq: (seq += 1) }));
 }
 
 /**

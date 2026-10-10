@@ -137,6 +137,15 @@ export type AppModule = {
     reply: { chatId: string; messageId: string },
   ): Promise<void> | void;
   /**
+   * The attempt that replaced a retracted reply failed before writing
+   * anything, and the old reply is back on screen: what `onReplyRetracted`
+   * let go of counts again.
+   */
+  onReplyRestored?(
+    store: { get: StoreGetter },
+    reply: { chatId: string; messageId: string },
+  ): Promise<void> | void;
+  /**
    * The module keeps a record of this chat that follows its transcript in
    * order, so a reply may be regenerated (or an edit rerun) only in the latest
    * exchange: redoing an earlier reply under later ones would leave the record
@@ -194,6 +203,9 @@ const tutorModule: AppModule = {
   },
   onReplyRetracted: async ({ get }, { chatId, messageId }) => {
     await get().retractTutorReply(chatId, messageId);
+  },
+  onReplyRestored: async ({ get }, { chatId, messageId }) => {
+    await get().restoreTutorReply(chatId, messageId);
   },
   learningRecords: ({ get }) => tutorLearningRecords(get().chats, get().ensureTutorSession),
   latestExchangeOnly: tutorFollowsTranscript,
@@ -261,6 +273,16 @@ export function latestExchangeOnly(state: StoreState, chatId: string): boolean {
 export function messageHasModuleContent(state: StoreState, message: Message): boolean {
   return ENABLED_MODULES.some(
     (appModule) => appModule.messageHasContent?.(state, message) === true,
+  );
+}
+
+/** Every module's `onReplyRestored`, awaited; one module's failure never stops another's. */
+export async function notifyReplyRestored(
+  store: { get: StoreGetter },
+  reply: { chatId: string; messageId: string },
+): Promise<void> {
+  await Promise.allSettled(
+    ENABLED_MODULES.map(async (appModule) => appModule.onReplyRestored?.(store, reply)),
   );
 }
 

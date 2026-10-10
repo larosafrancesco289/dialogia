@@ -17,6 +17,7 @@ import {
   otherChatsRead,
   parseTutorEvent,
   resolveTutorFlags,
+  restoreRetractedReply,
   retractReply,
   step,
   type StepResult,
@@ -33,7 +34,11 @@ import { t } from '@/modules/tutor/i18n';
 export type TutorSession = {
   /** The chat's log in seq order. */
   events: TutorEvent[];
-  /** Always `fold(events)`. */
+  /**
+   * Always `fold(events)`, placed after any stored row this build could not
+   * read (one a newer version wrote): its position is spent, as a retracted
+   * event's is.
+   */
   state: TutorState;
   /** False only for the placeholder a chat has before its first load. */
   loaded: boolean;
@@ -74,6 +79,12 @@ export type TutorStoreActions = {
    * dispatches. Resolves false when nothing belonged to it.
    */
   retractTutorReply: (chatId: string, messageId: string) => Promise<boolean>;
+  /**
+   * The attempt that replaced a retracted reply failed before writing
+   * anything, and the old reply is back on screen: what it did counts again.
+   * Resolves false when there was nothing to put back.
+   */
+  restoreTutorReply: (chatId: string, messageId: string) => Promise<boolean>;
   /**
    * A chat was branched: the branch inherits the log up to the branch point,
    * re-addressed to its own chat and message ids (see `branchEvents`).
@@ -141,11 +152,14 @@ const CONFLICT: TutorError = {
   hint: 'Read the current state and try again if the change still applies.',
 };
 
-const loadedSession = (events: TutorEvent[]): TutorSession => ({
-  events,
-  state: fold(events),
-  loaded: true,
-});
+const loadedSession = (events: TutorEvent[], spent = 0): TutorSession => {
+  const state = fold(events);
+  return {
+    events,
+    state: spent > state.lastSeq ? { ...state, lastSeq: spent } : state,
+    loaded: true,
+  };
+};
 
 export function createTutorSlice(
   set: StoreSetter,
@@ -174,8 +188,13 @@ export function createTutorSlice(
   const publish = (chatId: string, session: TutorSession) =>
     set((s) => ({ tutorSessions: { ...s.tutorSessions, [chatId]: session } }));
 
-  /** The chat's stored log, and how many rows it had before malformed ones were dropped. */
-  const readLog = async (chatId: string): Promise<{ events: TutorEvent[]; stored: number }> => {
+  /**
+   * The chat's stored log, how many rows it had before malformed ones were
+   * dropped, and the last position any row holds, read or not.
+   */
+  const readLog = async (
+    chatId: string,
+  ): Promise<{ events: TutorEvent[]; stored: number; spent: number }> => {
     const records = await repository.loadTutorEvents(chatId);
     const events = records
       .map(parseTutorEvent)
@@ -183,7 +202,8 @@ export function createTutorSlice(
     if (records.length > events.length) {
       logger.warn(`Dropped ${records.length - events.length} malformed tutor events for a chat`);
     }
-    return { events, stored: records.length };
+    const spent = records.reduce((max, record) => Math.max(max, record.seq), 0);
+    return { events, stored: records.length, spent };
   };
 
   /**
@@ -221,7 +241,8 @@ export function createTutorSlice(
     }
     unsaved.delete(chatId);
     failures.delete(chatId);
-    const session = loadedSession((await readLog(chatId)).events);
+    const { events, spent } = await readLog(chatId);
+    const session = loadedSession(events, spent);
     publish(chatId, session);
     return session;
   };
@@ -255,7 +276,7 @@ export function createTutorSlice(
       }
     }
 
-    const session = loadedSession(events);
+    const session = loadedSession(events, stored.spent);
     if (live(chatId, since)) publish(chatId, session);
     return session;
   };
@@ -368,14 +389,34 @@ export function createTutorSlice(
       chatId,
       at: Date.now(),
       id: uuidv4(),
+      after: session.state.lastSeq,
     });
     if (!event) return false;
     // A retraction reaches back, so the state is refolded rather than stepped.
-    publish(chatId, loadedSession([...session.events, event]));
+    publish(chatId, loadedSession([...session.events, event], event.seq));
     if ((await write(chatId, [event])) === 'conflict') {
       if (!live(chatId, since)) return false;
       await reload(chatId);
       return retried ? false : retract(chatId, messageId, true);
+    }
+    return true;
+  };
+
+  const restore = async (chatId: string, messageId: string): Promise<boolean> => {
+    const since = epoch;
+    await ensureTutorSession(chatId);
+    if (!live(chatId, since)) return false;
+    const session = get().tutorSessions[chatId] ?? EMPTY_TUTOR_SESSION;
+    const copies = restoreRetractedReply(session.events, messageId, {
+      after: session.state.lastSeq,
+      newId: uuidv4,
+    });
+    if (!copies) return false;
+    publish(chatId, loadedSession([...session.events, ...copies], copies.at(-1)!.seq));
+    if ((await write(chatId, copies)) === 'conflict') {
+      // Another tab moved on meanwhile; its record stands.
+      if (live(chatId, since)) await reload(chatId);
+      return false;
     }
     return true;
   };
@@ -393,6 +434,10 @@ export function createTutorSlice(
       return serialize(chatId, () => retract(chatId, messageId));
     },
 
+    restoreTutorReply(chatId, messageId) {
+      return serialize(chatId, () => restore(chatId, messageId));
+    },
+
     refreshTutorSession(chatId) {
       return serialize(chatId, async () => {
         const since = epoch;
@@ -401,11 +446,13 @@ export function createTutorSlice(
         // This tab's unsaved events go first; on a conflict that reloads anyway.
         await flush(chatId);
         if (!live(chatId, since) || unsaved.has(chatId)) return;
-        const { events } = await readLog(chatId);
-        const held = get().tutorSessions[chatId]?.events ?? [];
+        const { events, spent } = await readLog(chatId);
+        const held = get().tutorSessions[chatId];
         const same =
-          held.length === events.length && held.every((event, i) => event.id === events[i].id);
-        if (!same && live(chatId, since)) publish(chatId, loadedSession(events));
+          held?.events.length === events.length &&
+          held.events.every((event, i) => event.id === events[i].id) &&
+          held.state.lastSeq >= spent;
+        if (!same && live(chatId, since)) publish(chatId, loadedSession(events, spent));
       });
     },
 

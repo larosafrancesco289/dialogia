@@ -1188,3 +1188,81 @@ test('memory switched off keeps a tutor chat from the others, and the others fro
     assert.deepEqual(await carried(chat), [], 'and carries over from none');
   }
 });
+
+test('a row this build cannot read keeps its place in the log, so later changes go after it', async () => {
+  const id = chatId('unreadable-tail');
+  const store = createTestStore();
+  store.setState({ chats: [tutorChat(id)] });
+  const { dispatchTutor } = store.getState();
+  const proposed = await dispatchTutor(
+    id,
+    { by: 'tutor', type: 'propose_plan', ...CALCULUS },
+    { by: 'tutor', messageId: 'm1' },
+  );
+  assert.ok(proposed.ok);
+  // A newer version of the app, in another tab, writes an event this one does not know.
+  const spent = store.getState().tutorSessions[id].state.lastSeq + 1;
+  await repository.appendTutorEvents([
+    { id: 'from-the-future', chatId: id, seq: spent, at: 9, by: 'tutor', type: 'future_kind' },
+  ] as unknown as Parameters<typeof repository.appendTutorEvents>[0]);
+  await store.getState().refreshTutorSession(id);
+  assert.equal(store.getState().tutorSessions[id].state.lastSeq, spent);
+
+  const proposalId = store.getState().tutorSessions[id].state.proposal!.proposalId;
+  const approved = await dispatchTutor(
+    id,
+    { by: 'learner', type: 'approve_plan', proposalId },
+    { by: 'learner' },
+  );
+  assert.ok(approved.ok, approved.ok ? '' : approved.error.code);
+  const after = (await repository.loadTutorEvents(id)).filter((e) => e.seq > spent);
+  assert.ok(after.length > 0);
+  assert.equal(Math.min(...after.map((e) => e.seq)), spent + 1);
+});
+
+test('a reply whose replacement failed before writing anything gets back what it did', async () => {
+  const id = chatId('restore');
+  const store = createTestStore();
+  store.setState({ chats: [tutorChat(id)] });
+  const { dispatchTutor, retractTutorReply, restoreTutorReply } = store.getState();
+  await dispatchTutor(
+    id,
+    { by: 'tutor', type: 'propose_plan', ...CALCULUS },
+    { by: 'tutor', messageId: 'm1' },
+  );
+  const proposalId = store.getState().tutorSessions[id].state.proposal?.proposalId;
+  assert.ok(proposalId);
+
+  assert.equal(await retractTutorReply(id, 'm1'), true);
+  assert.equal(store.getState().tutorSessions[id].state.proposal, undefined);
+
+  assert.equal(await restoreTutorReply(id, 'm1'), true);
+  assert.equal(store.getState().tutorSessions[id].state.proposal?.proposalId, proposalId);
+  // On disk too: a reload finds the reply's card where it was.
+  await store.getState().refreshTutorSession(id);
+  assert.equal(store.getState().tutorSessions[id].state.proposal?.proposalId, proposalId);
+  // Nothing more to put back.
+  assert.equal(await restoreTutorReply(id, 'm1'), false);
+});
+
+test('a reply is not put back once its new attempt wrote something', async () => {
+  const id = chatId('restore-after-write');
+  const store = createTestStore();
+  store.setState({ chats: [tutorChat(id)] });
+  const { dispatchTutor, retractTutorReply, restoreTutorReply } = store.getState();
+  await dispatchTutor(
+    id,
+    { by: 'tutor', type: 'propose_plan', ...CALCULUS },
+    { by: 'tutor', messageId: 'm1' },
+  );
+  await retractTutorReply(id, 'm1');
+  // The regenerated reply keeps its id; its first tool call has landed.
+  await dispatchTutor(
+    id,
+    { by: 'tutor', type: 'propose_plan', ...CALCULUS },
+    { by: 'tutor', messageId: 'm1' },
+  );
+  const before = store.getState().tutorSessions[id].events.length;
+  assert.equal(await restoreTutorReply(id, 'm1'), false);
+  assert.equal(store.getState().tutorSessions[id].events.length, before);
+});
