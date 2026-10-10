@@ -14,7 +14,7 @@ import {
 import { withoutSearchEntry } from '@/lib/ui/messageSources';
 import { createAssistantMessage } from '@/lib/messages/createMessage';
 import { isChatStreaming } from '@/lib/ui/streaming';
-import { canRedoReply } from '@/lib/modules';
+import { canRedoReply, latestExchangeOnly } from '@/lib/modules';
 import { notify } from '@/lib/store/notify';
 import {
   NOTICE_REPLACED_REPLY_CHANGED_MEMORY,
@@ -242,8 +242,21 @@ export function createMessageSlice(
     },
 
     async regenerateAssistantMessage(messageId, opts) {
-      const chatId = get().messagesById[messageId]?.chatId;
+      const message = get().messagesById[messageId];
+      const chatId = message?.chatId;
       if (busyInOtherTab(chatId)) return;
+      // Where a module's record follows the transcript, Try again replaces the
+      // reply and its versions rather than keep them (regenerateTurn). An
+      // edit's rerun (`replace`) has said so already.
+      if (
+        chatId &&
+        !opts?.replace &&
+        latestExchangeOnly(get(), chatId) &&
+        canRedoReply(get(), chatId, messageId) &&
+        dropsMemoryWrites(message)
+      ) {
+        get().setNotice(NOTICE_REPLACED_REPLY_CHANGED_MEMORY, 'info');
+      }
       const { regenerateTurn } = await loadTurnService();
       await regenerateTurn({
         messageId,
