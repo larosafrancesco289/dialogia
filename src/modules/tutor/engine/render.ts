@@ -23,6 +23,7 @@ import {
 import {
   confidenceOf,
   currentNode,
+  diagnosed,
   openMisconceptions,
   remainingBudgets,
   startingEstimateCap,
@@ -93,11 +94,16 @@ function diagnosticSummary(diagnostic: DiagnosticRecord): string | undefined {
   if (!answers) return undefined;
   const scored = diagnostic.items.filter((i) => typeof i.correct === 'number');
   const right = scored.filter((i) => answers[i.id] === i.correct).length;
+  // Which wrong choice they picked, not only that they missed: the picks are
+  // where a shared wrong belief shows.
   const missed = scored
     .filter((i) => answers[i.id] !== i.correct)
-    .map((i) => quote(i.question, 60));
+    .map((i) => {
+      const picked = i.choices[answers[i.id]];
+      return `${quote(i.question, 60)} (chose ${picked == null ? 'nothing' : quote(picked, 40)}; right answer ${quote(i.choices[i.correct!], 40)})`;
+    });
   return `Diagnostic on ${quote(diagnostic.topic, 60)}: ${right} of ${scored.length} right${
-    missed.length ? `; missed ${missed.join(', ')}` : ''
+    missed.length ? `. Missed: ${missed.join('; ')}` : ''
   }.`;
 }
 
@@ -109,10 +115,10 @@ const ASKED_SHOWN = 6;
  * diagnostics, most recent last, with how each went: the tutor's memory of
  * practice, so it builds on them instead of asking them again.
  */
-function askedOnTopic(state: TutorState, nodeId: string): string[] {
+function askedOnTopic(state: TutorState, nodeId: string, before: number): string[] {
   const asked: Array<{ seq: number; order: number; line: string }> = [];
   for (const quiz of Object.values(state.quizzes)) {
-    if (quiz.nodeId !== nodeId) continue;
+    if (quiz.nodeId !== nodeId || quiz.seq > before) continue;
     quiz.items.forEach((item, order) => {
       const answer = quiz.answers[item.id];
       const how = answer ? (answer.correct ? 'right' : 'wrong') : 'not answered';
@@ -120,6 +126,7 @@ function askedOnTopic(state: TutorState, nodeId: string): string[] {
     });
   }
   for (const diagnostic of Object.values(state.diagnostics)) {
+    if (diagnostic.seq > before) continue;
     diagnostic.items.forEach((item, order) => {
       if (item.nodeId !== nodeId) return;
       const choice = diagnostic.answers?.[item.id];
@@ -163,6 +170,24 @@ function shownOnTopic(state: TutorState, nodeId: string): string[] {
     )
     .slice(-ANSWERS_SHOWN)
     .map((entry) => `- ${entry.kind ?? 'observed'}: ${quote(entry.details, 100)}`);
+}
+
+function budgetsAllowDiagnostic(state: TutorState): boolean {
+  return remainingBudgets(state).diagnosticsLeft > 0;
+}
+
+/** How many topics after the current one the tutor is shown the objectives of. */
+const LATER_SHOWN = 2;
+
+/**
+ * The next topics in the plan with their objectives, so the tutor sees where
+ * the current topic ends instead of teaching the later ones inside it.
+ */
+function laterTopicLines(state: TutorState): string[] {
+  return (state.plan?.nodes ?? [])
+    .filter((node) => node.status === 'not_started')
+    .slice(0, LATER_SHOWN)
+    .map((node) => `- ${node.name} [${node.id}]: ${node.objectives.join('; ')}`);
 }
 
 /** How many of the learner's other tutor chats the tutor is shown: the most recently studied. */
@@ -230,6 +255,12 @@ export type RenderOptions = {
   learnerChanges?: string[];
   /** The learner's other tutor chats, shown until this chat has a plan. */
   otherChats?: readonly LearningRecord[];
+  /**
+   * The log position `learnerChanges` starts from. Cards given after it came in
+   * the tutor's last reply, and their answers are reported in `learnerChanges`;
+   * listing them again as earlier questions reads as having asked them twice.
+   */
+  since?: number;
 };
 
 /** The tutor's view of the session, rendered fresh for every request. Plain text, short. */
@@ -246,6 +277,7 @@ export function renderStateBlock(state: TutorState, options: RenderOptions): str
       lines.push(`Back after a break: the last exchange here was ${ago(gap)}.`);
     }
   }
+  const before = options.since ?? Infinity;
 
   if (plan) {
     const done = plan.nodes.filter((n) => n.status === 'completed').length;
@@ -256,18 +288,25 @@ export function renderStateBlock(state: TutorState, options: RenderOptions): str
   if (current) {
     lines.push(`Current topic: ${current.name} [${current.id}]`);
     lines.push(`Objectives: ${current.objectives.join('; ')}`);
-    const asked = askedOnTopic(state, current.id);
+    const asked = askedOnTopic(state, current.id, before);
     if (asked.length) {
       lines.push(
-        'Card questions on this topic so far, the latest last, with how each went. Any new question must differ from these and use new numbers:',
+        'Card questions on this topic so far, each asked once, the latest last, with how it went. Your next question uses a new case and new numbers:',
         ...asked,
       );
     }
     const shown = shownOnTopic(state, current.id);
     if (shown.length) {
       lines.push(
-        "Their recent answers you recorded on this topic (don't ask for these again, reworded or not; build past them):",
+        'What their answers on this topic have shown so far, from your notes, the latest last. Take the next step from here:',
         ...shown,
+      );
+    }
+    const later = laterTopicLines(state);
+    if (later.length) {
+      lines.push(
+        'Coming up in the plan, with their own objectives. Teach these there, not inside the current topic; work the learner does on them is evidence for that topic:',
+        ...later,
       );
     }
   } else if (state.phase === 'interlude') {
@@ -328,15 +367,25 @@ export function renderStateBlock(state: TutorState, options: RenderOptions): str
     }
     lines.push(...otherChatLines(options.otherChats ?? []));
   }
-  if (state.phase !== 'teaching') {
-    for (const diagnostic of Object.values(state.diagnostics)) {
-      const summary = diagnosticSummary(diagnostic);
-      if (summary) lines.push(summary);
-    }
+  // Kept through teaching: the picks are what the first topics have to confront.
+  const summaries = Object.values(state.diagnostics)
+    .filter((diagnostic) => diagnostic.seq <= before)
+    .map(diagnosticSummary)
+    .filter((summary): summary is string => !!summary);
+  lines.push(...summaries);
+  if (plan && summaries.some((summary) => summary.includes('. Missed: '))) {
+    lines.push(
+      'A wrong belief those picks share is a misconception: if you have not noted it yet, note it on the topic it belongs to.',
+    );
   }
   const heardBack =
     Object.values(state.intakes).some((i) => !!i.responses) ||
     Object.values(state.diagnostics).some((d) => !!d.answers);
+  if (!plan && !state.proposal && heardBack && !diagnosed(state) && budgetsAllowDiagnostic(state)) {
+    lines.push(
+      'No diagnostic yet. Unless they are new to the subject, see them try before you plan: give_diagnostic on the weak spot they named or the skill they claim, so the plan rests on what they do.',
+    );
+  }
   if (!plan && !state.proposal && heardBack) {
     const cap = percent(startingEstimateCap(state));
     lines.push(

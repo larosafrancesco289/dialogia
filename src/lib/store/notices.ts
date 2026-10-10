@@ -39,6 +39,10 @@ const NOTICE_KEYS = {
   cutOff: 'notice.cutOff',
   stalled: 'notice.stalled',
   unknownError: 'notice.unknownError',
+  outOfCredit: 'notice.outOfCredit',
+  modelNotFound: 'notice.modelNotFound',
+  providerDown: 'notice.providerDown',
+  requestRefused: 'notice.requestRefused',
   zdrUnavailable: 'zdr.unavailable',
 } as const satisfies Record<string, MessageKey>;
 
@@ -99,9 +103,17 @@ export function isAbortLike(error: unknown): boolean {
 }
 
 /** How a reply that ended on `error` is marked: stopped by the person, or failed and why. */
-export function cutOffFor(error: unknown): Pick<Message, 'cutOff' | 'cutOffReason'> {
-  if (isAbortLike(error)) return { cutOff: 'stopped', cutOffReason: undefined };
-  return { cutOff: 'failed', cutOffReason: describeErrorNotice(error) };
+export function cutOffFor(
+  error: unknown,
+): Pick<Message, 'cutOff' | 'cutOffReason' | 'cutOffDetail'> {
+  if (isAbortLike(error)) {
+    return { cutOff: 'stopped', cutOffReason: undefined, cutOffDetail: undefined };
+  }
+  return {
+    cutOff: 'failed',
+    cutOffReason: describeErrorNotice(error),
+    cutOffDetail: describeErrorDetail(error),
+  };
 }
 
 /**
@@ -128,6 +140,8 @@ export function describeErrorNotice(error: unknown): string | undefined {
   if (isApiError(error) && error.code === API_ERROR_CODES.STREAM_STALLED) {
     return NOTICE_CATALOG.stalled;
   }
+  const failedReply = chatFailureNotice(error);
+  if (failedReply) return failedReply;
   const fromBody = httpErrorNotice(error);
   if (fromBody) return clip(fromBody);
   const message = error instanceof Error ? error.message : '';
@@ -170,6 +184,49 @@ function httpErrorNotice(error: unknown): string | undefined {
   const said = providerErrorText(error.detail);
   if (said) return `${head}: ${said}`;
   return error.status >= 500 ? `${head}. ${t('notice.tryAgainSoon')}` : `${head}.`;
+}
+
+const CHAT_FAILURE_CODES = new Set<string>([
+  API_ERROR_CODES.OPENROUTER_CHAT_FAILED,
+  API_ERROR_CODES.PROVIDER_CHAT_FAILED,
+]);
+
+// Servers say a model is missing in many ways, and not always with a 404:
+// Ollama behind a proxy answers 500 with 'model "llama3.2:3b" not found'.
+const MODEL_NOT_FOUND =
+  /\bmodel\b.{0,80}?\b(not found|does not exist|not exist|not available|is not a valid)|no such model|unknown model|invalid model|model_not_found|no endpoints found/i;
+
+/**
+ * A failed reply in the language shown, with what to do next: out of credit,
+ * a model the provider does not have, or trouble on its side. The provider's
+ * own words, often in English whatever the language shown, are kept apart by
+ * `describeErrorDetail`.
+ */
+function chatFailureNotice(error: unknown): string | undefined {
+  if (!isApiError(error) || !CHAT_FAILURE_CODES.has(error.code)) return undefined;
+  // A failure to connect at all, wrapped: said further down, by what it was.
+  if (error.detail instanceof Error) return undefined;
+  const status = error.status;
+  if (status === 402) return NOTICE_CATALOG.outOfCredit;
+  if (status === 404 || MODEL_NOT_FOUND.test(providerErrorText(error.detail) ?? '')) {
+    return NOTICE_CATALOG.modelNotFound;
+  }
+  // An error sent mid-stream, with no status, is the upstream model failing.
+  if (status === undefined || status >= 500) return NOTICE_CATALOG.providerDown;
+  return NOTICE_CATALOG.requestRefused;
+}
+
+/**
+ * The provider's own words for a failed request, with its status: shown only
+ * when asked for, under the plain sentence `describeErrorNotice` gives.
+ */
+export function describeErrorDetail(error: unknown): string | undefined {
+  if (!isApiError(error) || error.detail instanceof Error) return undefined;
+  if (!CHAT_FAILURE_CODES.has(error.code)) return undefined;
+  const said = providerErrorText(error.detail);
+  const status = typeof error.status === 'number' ? String(error.status) : undefined;
+  if (!said) return status;
+  return clip(status ? `${status}: ${said}` : said);
 }
 
 const MAX_BODY_DEPTH = 4;

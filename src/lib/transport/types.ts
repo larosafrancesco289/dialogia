@@ -78,6 +78,11 @@ export type TransportClient = {
     auth: TransportAuth,
     opts?: TransportFetchModelsOptions,
   ) => Promise<ModelDescriptor[]>;
+  /**
+   * Throws `unauthorized` for a key the provider refuses. A provider without
+   * it refuses a bad key on its model list, which is asked instead.
+   */
+  checkKey?: (auth: TransportAuth) => Promise<void>;
   chatCompletion: (params: TransportChatParams) => Promise<ChatCompletion>;
   streamChatCompletion: (params: TransportStreamParams) => Promise<void>;
 };

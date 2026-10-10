@@ -67,6 +67,20 @@ export async function orFetchModels(
   });
 }
 
+/** The key's own record: the one call that answers 401 for a key OpenRouter does not know. */
+export async function orFetchKey(
+  auth: TransportAuth,
+  options: { signal?: AbortSignal; origin?: string } = {},
+): Promise<Response> {
+  return orFetch('/key', {
+    method: 'GET',
+    auth,
+    signal: options.signal,
+    origin: options.origin,
+    timeoutMs: apiDefaults.timeouts.models,
+  });
+}
+
 /** Unauthenticated: the ZDR list is public and always comes from OpenRouter itself. */
 export async function orFetchZdrEndpoints(
   options: { signal?: AbortSignal; origin?: string } = {},

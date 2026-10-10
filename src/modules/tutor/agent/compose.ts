@@ -78,6 +78,7 @@ export async function buildTutorComposeContribution({
         ...(lastExchangeAt != null ? { lastExchangeAt } : {}),
         learnerChanges: learnerChangesSince(state, events, since),
         otherChats,
+        since,
       }),
     ],
     loop: 'agent',

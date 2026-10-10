@@ -1,7 +1,7 @@
 import type { TransportAuth } from '@/lib/auth/transport';
 import type { ModelDescriptor } from '@/lib/types';
 import { API_ERROR_CODES, throwForStatus } from '@/lib/api/errors';
-import { orFetchModels } from '@/lib/openrouter/http';
+import { orFetchKey, orFetchModels } from '@/lib/openrouter/http';
 import type { TransportFetchModelsOptions } from '@/lib/transport/types';
 import { normalizeModelList } from '@/lib/models/normalization';
 import { buildOpenRouterError, wrapOpenRouterClientError } from '@/lib/openrouter/errors';
@@ -56,4 +56,18 @@ export async function fetchModels(
   });
   modelCache.set(cacheKey, { models, fetchedAt: now, origin: opts.origin });
   return models;
+}
+
+/**
+ * Asks OpenRouter about the key itself. Its model list is public, so a key it
+ * does not know can still list models; this call cannot.
+ */
+export async function checkKey(auth: TransportAuth): Promise<void> {
+  let res: Response;
+  try {
+    res = await orFetchKey(auth);
+  } catch (error) {
+    throw wrapOpenRouterClientError(error, API_ERROR_CODES.OPENROUTER_MODELS_FAILED);
+  }
+  await throwForStatus(res, buildOpenRouterError, API_ERROR_CODES.OPENROUTER_MODELS_FAILED);
 }
