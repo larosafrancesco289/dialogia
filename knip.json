@@ -4,6 +4,7 @@
     "src/modules/tutor/tooling/simulate.ts!",
     "src/modules/tutor/tooling/step.ts!",
     "src/modules/tutor/tooling/evals.ts!",
+    "src/lib/cli/providerSmoke.ts!",
     "tests/**/*.test.ts",
     "src/**/*.test.ts",
     "tests/helpers/**/*.ts",
