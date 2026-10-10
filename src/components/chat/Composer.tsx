@@ -21,6 +21,7 @@ import type { DraftAttachment, ReasoningEffort } from '@/lib/types';
 import { AttachmentPreviewList } from '@/components/AttachmentPreviewList';
 import { ComposerInput } from '@/components/composer/ComposerInput';
 import { ComposerActions } from '@/components/composer/ComposerActions';
+import { LearnToolsNotice } from '@/components/chat/LearnToolsNotice';
 import { findModelEndpoint } from '@/lib/transport/endpointRegistry';
 import { useComposerAttachments } from '@/lib/hooks/useComposerAttachments';
 import { DEFAULT_REASONING_EFFORT } from '@/lib/settings/generation';
@@ -315,6 +316,7 @@ export function Composer({
 
   return (
     <ComposerLayout variant={variant} onDrop={handleDrop}>
+      {tutorEnabled && <LearnToolsNotice />}
       {/* No field on a phone: focusing it would open the keyboard. */}
       <AttachmentPreviewList
         attachments={attachments}

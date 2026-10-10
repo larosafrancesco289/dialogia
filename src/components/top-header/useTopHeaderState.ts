@@ -1,7 +1,7 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
-import { findModelById, formatModelLabel } from '@/lib/models';
+import { useTutorModel } from '@/lib/hooks/useTutorModel';
 import { selectCurrentChat, selectIsTutorEnabled } from '@/lib/store/selectors';
 import type { Chat } from '@/lib/types';
 
@@ -19,43 +19,23 @@ export type TopHeaderState = {
 };
 
 export function useTopHeaderState(): TopHeaderState {
-  const {
-    chat,
-    setUI,
-    newChat,
-    collapsed,
-    isSettingsOpen,
-    isMemoryOpen,
-    tutorDefaultModelId,
-    models,
-    tutorActive,
-  } = useChatStore(
-    (s) => ({
-      chat: selectCurrentChat(s),
-      setUI: s.setUI,
-      newChat: s.newChat,
-      collapsed: s.ui.sidebarCollapsed ?? false,
-      isSettingsOpen: s.ui.showSettings,
-      isMemoryOpen: s.ui.memoryOpen ?? false,
-      tutorDefaultModelId: s.ui.tutor?.defaultModelId,
-      models: s.models,
-      tutorActive: selectIsTutorEnabled(s),
-    }),
-    shallow,
-  );
+  const { chat, setUI, newChat, collapsed, isSettingsOpen, isMemoryOpen, tutorActive } =
+    useChatStore(
+      (s) => ({
+        chat: selectCurrentChat(s),
+        setUI: s.setUI,
+        newChat: s.newChat,
+        collapsed: s.ui.sidebarCollapsed ?? false,
+        isSettingsOpen: s.ui.showSettings,
+        isMemoryOpen: s.ui.memoryOpen ?? false,
+        tutorActive: selectIsTutorEnabled(s),
+      }),
+      shallow,
+    );
 
-  // The model picker shows which model a tutor turn will use. Both fields it reads
+  // The model picker shows which model a tutor turn will use. The fields it reads
   // are core-declared settings, so the shell can resolve them without the module.
-  const tutorModelId =
-    chat?.settings?.features.tutor?.defaultModelId ||
-    chat?.settings?.modelId ||
-    tutorDefaultModelId;
-  const tutorModelMeta = useMemo(() => findModelById(models, tutorModelId), [models, tutorModelId]);
-  const tutorModelLabel = useMemo(
-    () =>
-      tutorModelId ? formatModelLabel({ model: tutorModelMeta, fallbackId: tutorModelId }) : '',
-    [tutorModelMeta, tutorModelId],
-  );
+  const tutorModelLabel = useTutorModel().label;
 
   const onToggleSidebar = useCallback(() => {
     // The reader's own choice replaces any fold the window made.

@@ -1,12 +1,14 @@
 import { useRef, useState } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useChatStore } from '@/lib/store';
-import { isKeyRejected, setKey } from '@/lib/keys/store';
+import { deleteKey, isKeyRejected, setKey } from '@/lib/keys/store';
 import {
   ANTHROPIC_ENDPOINT,
+  ANTHROPIC_ENDPOINT_ID,
   isValidBaseUrl,
   normalizeBaseUrl,
   OPENROUTER_ENDPOINT,
+  OPENROUTER_ENDPOINT_ID,
 } from '@/lib/transport/endpoints';
 import { useT, type MessageKey, type Translate } from '@/lib/i18n';
 
@@ -50,13 +52,34 @@ const KEY_REFS: Record<KeyChoice, string> = {
   anthropic: ANTHROPIC_ENDPOINT.apiKeyRef ?? 'anthropic',
 };
 
+const KEY_ENDPOINTS: Record<KeyChoice, string> = {
+  openrouter: OPENROUTER_ENDPOINT_ID,
+  anthropic: ANTHROPIC_ENDPOINT_ID,
+};
+
+/** How each provider's keys begin. */
+const KEY_PREFIXES: Record<KeyChoice, string> = {
+  openrouter: 'sk-or-',
+  anthropic: 'sk-ant-',
+};
+
+const PROVIDER_NAMES: Record<KeyChoice, string> = {
+  openrouter: 'OpenRouter',
+  anthropic: 'Anthropic',
+};
+
 /** A key pasted under the other provider goes to the one its prefix names. */
 export function keyChoiceFor(choice: ConnectChoice, value: string): ConnectChoice {
   if (choice === 'local') return choice;
   const key = value.trim();
-  if (key.startsWith('sk-ant-')) return 'anthropic';
-  if (key.startsWith('sk-or-')) return 'openrouter';
+  if (key.startsWith(KEY_PREFIXES.anthropic)) return 'anthropic';
+  if (key.startsWith(KEY_PREFIXES.openrouter)) return 'openrouter';
   return choice;
+}
+
+/** Whether a pasted key begins the way the provider's keys do: no call is made for one that does not. */
+export function looksLikeKey(choice: KeyChoice, value: string): boolean {
+  return value.trim().startsWith(KEY_PREFIXES[choice]);
 }
 
 /** A server added by its address alone is named for what it is, else where it is. */
@@ -73,15 +96,15 @@ export function refusedKeyChoice(): KeyChoice | undefined {
 }
 
 export function refusedKeyMessage(t: Translate, choice: KeyChoice): string {
-  const provider = choice === 'anthropic' ? 'Anthropic' : 'OpenRouter';
-  return t('connect.keyRefused', { provider });
+  return t('connect.keyRefused', { provider: PROVIDER_NAMES[choice] });
 }
 
 export function useConnectProvider() {
-  const { loadModels, probeServer, addEndpoint, setNotice } = useChatStore(
+  const { loadModels, probeServer, checkKey, addEndpoint, setNotice } = useChatStore(
     (s) => ({
       loadModels: s.loadModels,
       probeServer: s.probeServer,
+      checkKey: s.checkKey,
       addEndpoint: s.addEndpoint,
       setNotice: s.setNotice,
     }),
@@ -90,6 +113,8 @@ export function useConnectProvider() {
   const t = useT();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  // Said under the error when the browser could not reach a server at all.
+  const [corsHint, setCorsHint] = useState(false);
   // Set at once: a second press can land before the render that disables it.
   const busyRef = useRef(false);
 
@@ -99,45 +124,67 @@ export function useConnectProvider() {
     if (!saved) addEndpoint({ kind: 'openai-compatible', label: serverName(baseUrl), baseUrl });
   };
 
+  const fail = (message: string, unreachable = false) => {
+    setError(message);
+    setCorsHint(unreachable);
+    return false;
+  };
+
   /**
-   * Saves the key or the server and loads its models. True once it offers a
-   * model; otherwise `error` (or the refused key) says why.
+   * Checks the key or the server, then saves it and loads its models. True
+   * once it offers a model; otherwise `error` says why, and nothing refused
+   * is kept to fail again on every visit.
    */
   const connect = async (choice: ConnectChoice, value: string): Promise<boolean> => {
     if (!value.trim() || busyRef.current) return false;
-    if (choice === 'local' && !isValidBaseUrl(value)) {
-      setError(t('connect.invalidAddress'));
-      return false;
+    if (choice === 'local' && !isValidBaseUrl(value)) return fail(t('connect.invalidAddress'));
+    if (choice !== 'local' && !looksLikeKey(choice, value)) {
+      return fail(
+        t('connect.keyFormat', {
+          provider: PROVIDER_NAMES[choice],
+          prefix: KEY_PREFIXES[choice],
+        }),
+      );
     }
     busyRef.current = true;
     setBusy(true);
     setError(undefined);
+    setCorsHint(false);
     try {
       if (choice === 'local') {
-        // Asked first and saved only once it answers: a wrong address is
-        // said in the box, never kept to fail again on every visit.
         const baseUrl = normalizeBaseUrl(value);
-        if (!(await probeServer(baseUrl))) {
-          setError(t('connect.serverSilent'));
-          return false;
-        }
+        const probe = await probeServer(baseUrl);
+        if (probe === 'unreachable') return fail(t('connect.serverUnreachable'), true);
+        if (probe !== 'answered') return fail(t('connect.serverSilent'));
         saveServer(baseUrl);
         await loadModels();
         return true;
       }
+      const ref = KEY_REFS[choice];
+      if ((await checkKey(KEY_ENDPOINTS[choice], value)) === 'refused') {
+        return fail(refusedKeyMessage(t, choice));
+      }
       try {
-        await setKey(KEY_REFS[choice], value);
+        await setKey(ref, value);
       } catch {
         // The key is held for this page, so it still connects.
         setNotice(t('connect.keyNotSaved'));
       }
       await loadModels();
-      return !isKeyRejected(KEY_REFS[choice]);
+      if (!isKeyRejected(ref)) return true;
+      // Refused only once saved (the check could not reach the provider).
+      await deleteKey(ref).catch(() => undefined);
+      return fail(refusedKeyMessage(t, choice));
     } finally {
       busyRef.current = false;
       setBusy(false);
     }
   };
 
-  return { connect, busy, error, clearError: () => setError(undefined) };
+  const clearError = () => {
+    setError(undefined);
+    setCorsHint(false);
+  };
+
+  return { connect, busy, error, corsHint, clearError };
 }

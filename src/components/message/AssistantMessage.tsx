@@ -15,6 +15,7 @@ import { MessageModuleSlot } from '@/components/ModuleSlot';
 import { ActionButton, MessageEditBar } from '@/components/message/MessageActions';
 import { MessageColophon } from '@/components/message/MessageColophon';
 import { ReplySources } from '@/components/message/SourcesEntry';
+import { FailedReplyNotice } from '@/components/message/FailedReplyNotice';
 import { StreamingMarkdown } from '@/components/message/StreamingMarkdown';
 import { MemoryWrites } from '@/components/memory/MemoryWrites';
 import { useChatStore } from '@/lib/store';
@@ -276,7 +277,12 @@ export function AssistantMessage({
       {!isStreaming &&
         !isEditing &&
         endingNote &&
-        (displayContent.trim() || hasModuleContent ? (
+        (message.cutOff === 'failed' ? (
+          <FailedReplyNotice
+            message={message}
+            written={!!displayContent.trim() || hasModuleContent}
+          />
+        ) : displayContent.trim() || hasModuleContent ? (
           <p className="px-4 pb-2 text-xs italic text-fg-muted">{endingNote}</p>
         ) : (
           // With no words before it the note is the reply: said at the reply's size.

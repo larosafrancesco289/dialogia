@@ -60,7 +60,9 @@ test('a connection that closes mid-reply is marked cut off, not passed off as fi
 test.describe('a provider error', () => {
   test.use({ expectedError: /status of 500|Mock failure 500/ });
 
-  test('reads as the provider’s own words, and Try again recovers', async ({ page }) => {
+  test('reads as a plain sentence, the provider’s words under Details, and Try again recovers', async ({
+    page,
+  }) => {
     await connectMock(page);
     // The first streamed request fails; every later one reaches the mock.
     let failed = false;
@@ -74,7 +76,11 @@ test.describe('a provider error', () => {
     await send(page, 'Break once');
 
     const main = page.getByRole('main');
-    await expect(main.getByText(/This reply failed\..*Mock failure 500/)).toBeVisible();
+    await expect(main.getByText('This reply failed.')).toBeVisible();
+    await expect(main.getByText(/The provider had a problem on its side/)).toBeVisible();
+    await expect(main.getByText('500: Mock failure 500')).toBeHidden();
+    await main.getByText('What the provider said').click();
+    await expect(main.getByText('500: Mock failure 500')).toBeVisible();
 
     await main.getByRole('button', { name: 'Try again' }).click();
     await expect(main.getByText(REPLY_END)).toBeVisible();
