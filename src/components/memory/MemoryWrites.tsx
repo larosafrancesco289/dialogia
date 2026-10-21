@@ -33,23 +33,27 @@ export function MemoryWrites({ message }: { message: Message }) {
             </span>
           ) : (
             <>
-              <span>
-                {t(VERB[write.action])}{' '}
-                <button
-                  type="button"
-                  className="memory-link memory-writes__text"
-                  title={t('memory.openInMemory')}
-                  onClick={() => {
-                    const { notes } = useChatStore.getState().memory;
-                    const page = pageOfNote(notes, write.noteId, write.folderId);
-                    setUI({ memoryOpen: true, memoryFolderId: page });
-                  }}
-                >
-                  {write.text}
-                </button>
-                {write.action === 'updated' &&
-                  write.before &&
-                  ` ${t('memory.was', { text: write.before.text })}`}
+              {/* The note is a button, which never flows as text: a long one would drop
+                  whole under the verb, so the verb holds a column and the note wraps beside it. */}
+              <span className="memory-writes__change">
+                <span className="memory-writes__verb">{t(VERB[write.action])}</span>
+                <span className="memory-writes__note">
+                  <button
+                    type="button"
+                    className="memory-link memory-writes__text"
+                    title={t('memory.openInMemory')}
+                    onClick={() => {
+                      const { notes } = useChatStore.getState().memory;
+                      const page = pageOfNote(notes, write.noteId, write.folderId);
+                      setUI({ memoryOpen: true, memoryFolderId: page });
+                    }}
+                  >
+                    {write.text}
+                  </button>
+                  {write.action === 'updated' &&
+                    write.before &&
+                    ` ${t('memory.was', { text: write.before.text })}`}
+                </span>
               </span>
               <button
                 type="button"

@@ -480,7 +480,29 @@
     flex-shrink: 0;
     width: 14px;
     height: 14px;
-    align-self: center;
+    /* Centred on the first line, so a note that wraps keeps its mark at the top. */
+    align-self: flex-start;
+    margin-top: calc((1.45em - 14px) / 2);
+  }
+  /* Top-aligned, not baseline: a button's baseline is its last line, which
+     would pull the verb down to the end of a note that wraps. */
+  .memory-writes__change {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    align-items: flex-start;
+    gap: 0.3em;
+  }
+  .memory-writes__verb {
+    flex-shrink: 0;
+  }
+  .memory-writes__note {
+    min-width: 0;
+  }
+  /* Undo stays one word at the line's end, however long the note beside it. */
+  .memory-writes__line > .memory-quiet {
+    flex-shrink: 0;
+    white-space: nowrap;
   }
   .memory-writes__text {
     color: var(--color-fg);
