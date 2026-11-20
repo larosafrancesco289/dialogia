@@ -111,9 +111,12 @@ describe('toSpeakableText', () => {
     );
   });
 
-  it('strips real HTML tags while keeping prose inequalities like x<y and y>z intact', () => {
-    const md = 'Check <b>if</b> x<y and y>z.<br/>Done.';
-    assert.equal(toSpeakableText(md, LABELS), 'Check if x<y and y>z. Done.');
+  it('strips real HTML tags while keeping prose inequalities like a<b and b>c intact', () => {
+    const md = 'Check <b>if</b> a<b and b>c, or p<q or q>r, and x<y and y>z.<br/>Done.';
+    assert.equal(
+      toSpeakableText(md, LABELS),
+      'Check if a<b and b>c, or p<q or q>r, and x<y and y>z. Done.',
+    );
   });
 
   it('reads inline and display math while leaving currency amounts untouched', () => {

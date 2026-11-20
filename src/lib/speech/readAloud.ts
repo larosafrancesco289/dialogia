@@ -123,10 +123,16 @@ export function toggleReadAloud(id: string, markdown: string): void {
   ++turn;
   queued = [];
   speech.cancel();
+  const appLang = intlLocale(getLocale());
   const nonGreekFallback =
     browserLanguages().find((tag) => !tag.toLowerCase().startsWith('el')) ?? 'en';
-  const lang = readingLanguage(markdown, intlLocale(getLocale()), nonGreekFallback);
-  const chunks = speechChunks(toSpeakableText(markdown, speechLabels(lang)));
+  // Detect script on speakable prose rather than raw markdown so fenced code,
+  // LaTeX commands, and URLs don't tip a Greek reply into an English voice.
+  const initialSpeakable = toSpeakableText(markdown, speechLabels(appLang));
+  const lang = readingLanguage(initialSpeakable, appLang, nonGreekFallback);
+  const speakable =
+    lang === appLang ? initialSpeakable : toSpeakableText(markdown, speechLabels(lang));
+  const chunks = speechChunks(speakable);
   if (!chunks.length) {
     setReading(null);
     return;

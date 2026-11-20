@@ -30,6 +30,7 @@ const VERSION_KEYS = Object.keys({
   activity: true,
   toolRounds: true,
   tutorSeq: true,
+  branchedFrom: true,
   versionCreatedAt: true,
 } satisfies Record<ReplyVersionKey, true>) as ReplyVersionKey[];
 

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { computeUsageSummary } from '@/lib/ui/usageSummary';
 import { createMemoryDb } from '@/lib/db/memory';
 import { createRepository } from '@/lib/db/repository';
+import { addVersion } from '@/lib/messages/versions';
 import { ChatService } from '@/lib/services/chatService';
 import type { ModelDescriptor } from '@/lib/types';
 import { makeChat } from '../../../tests/helpers/makeChat';
@@ -150,7 +151,7 @@ test('repository.loadUsageRecords skips branched copies, imported history, and e
   ]);
 
   // Branching copies the reply into a new chat; usage must NOT double-count it.
-  await ChatService.branchChat({
+  const branched = await ChatService.branchChat({
     sourceChat,
     messages: [
       { id: 'u1', chatId: 'c1', role: 'user', content: 'Hi', createdAt: 10 },
@@ -159,11 +160,12 @@ test('repository.loadUsageRecords skips branched copies, imported history, and e
     messageId: 'a1',
     repository: repo,
   });
+  assert.ok(branched);
 
-  const loaded = await repo.loadUsageRecords();
-  assert.equal(loaded.length, 2);
+  const loadedBeforeRegen = await repo.loadUsageRecords();
+  assert.equal(loadedBeforeRegen.length, 2);
   assert.deepEqual(
-    loaded.map((r) => ({
+    loadedBeforeRegen.map((r) => ({
       model: r.model,
       in: r.tokensIn,
       out: r.tokensOut,
@@ -173,5 +175,27 @@ test('repository.loadUsageRecords skips branched copies, imported history, and e
       { model: 'anthropic/claude-sonnet-4', in: 120, out: 60, createdAt: 200 },
       { model: 'openai/gpt-4o-mini', in: 100, out: 40, createdAt: 25 },
     ],
+  );
+
+  // Regenerating inside the branched chat counts only the new attempt, never the copied version.
+  const copiedReply = branched.messages[1];
+  const regenerated = addVersion(copiedReply, {
+    id: copiedReply.id,
+    chatId: copiedReply.chatId,
+    role: 'assistant',
+    content: 'Fresh try in branch',
+    model: 'openai/gpt-4o-mini',
+    tokensIn: 80,
+    tokensOut: 30,
+    createdAt: copiedReply.createdAt,
+    versionCreatedAt: 300,
+  });
+  await repo.saveMessage(regenerated);
+
+  const loadedAfterRegen = await repo.loadUsageRecords();
+  assert.equal(loadedAfterRegen.length, 3);
+  assert.deepEqual(
+    loadedAfterRegen.map((r) => r.createdAt).sort((a, b) => a - b),
+    [25, 200, 300],
   );
 });

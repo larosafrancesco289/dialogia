@@ -27,7 +27,7 @@ const REFERENCE_RE = /^ {0,3}\[[^\]]+\]:\s*\S+/;
 const MACHINE_BLOCK_RE =
   /<(think|thinking|tool_call|tool_use|tool_result|function_calls|function_results|invoke)\b[^>]*>[\s\S]*?(?:<\/\1>|$)/gi;
 const TAG_RE =
-  /<\/?(?:a|abbr|b|blockquote|br|code|dd|del|details|div|dl|dt|em|h[1-6]|hr|i|img|ins|kbd|li|mark|ol|p|pre|q|s|small|span|strong|sub|summary|sup|table|tbody|td|tfoot|th|thead|tr|u|ul)\b(?:\s[^<>]*)?\/?>|<\/?[a-zA-Z][\w:-]*\s+[a-zA-Z_:][\w:.-]*\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+)(?:\s[^<>]*)?\/?>/gi;
+  /<\/?(?:a|abbr|b|blockquote|br|code|dd|del|details|div|dl|dt|em|h[1-6]|hr|i|img|ins|kbd|li|mark|ol|p|pre|q|s|small|span|strong|sub|summary|sup|table|tbody|td|tfoot|th|thead|tr|u|ul)\s*\/?>|<\/?[a-zA-Z][\w:-]*\s+[a-zA-Z_:][\w:.-]*\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+)(?:\s[^<>]*)?\/?>/gi;
 
 const URL_RE = /\b(?:https?:\/\/|www\.)[^\s<>"'`]+/gi;
 const LINK_ONLY_GROUP_RE =

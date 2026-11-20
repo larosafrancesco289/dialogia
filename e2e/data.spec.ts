@@ -83,8 +83,8 @@ test('Usage and spend overview counts replies without double-counting branched c
   const dataPanel = page.getByRole('tabpanel', { name: 'Data' });
   await expect(dataPanel.getByRole('heading', { name: 'Usage and spend' })).toBeVisible();
   // Unpriced local model shows "—" instead of "$0.00", and 1 reply (not 2).
-  await expect(dataPanel.locator('.usage-summary__item').nth(0)).toContainText('—');
-  await expect(dataPanel.locator('.usage-summary__item').nth(1)).toContainText('1');
+  await expect(dataPanel.locator('.usage-summary__item').nth(0)).toHaveText(/Estimated spend\s*—$/);
+  await expect(dataPanel.locator('.usage-summary__item').nth(1)).toHaveText(/Replies\s*1$/);
   await expect(dataPanel.getByText('mock-fast')).toBeVisible();
   await expect(dataPanel.getByText('1 reply')).toBeVisible();
 

@@ -171,6 +171,31 @@ describe('readAloud', () => {
     assert.ok(fakeSynth.spoken[0].lang.length > 0);
   });
 
+  it('detects Greek prose even when a reply contains a large English code block', () => {
+    const elVoice = {
+      name: 'Melina',
+      lang: 'el-GR',
+      localService: true,
+      default: false,
+      voiceURI: 'melina',
+    } as SpeechSynthesisVoice;
+    fakeSynth.voices = [EN_VOICE, elVoice];
+    const reply = [
+      'Ορίστε ένα παράδειγμα συνάρτησης σε TypeScript που υπολογίζει το άθροισμα:',
+      '',
+      '```ts',
+      'export function calculateTotalAmountWithDiscountAndTax(items: Array<{ price: number; quantity: number }>) {',
+      '  const subtotal = items.reduce((accumulator, item) => accumulator + item.price * item.quantity, 0);',
+      '  return Math.round(subtotal * 1.24 * 100) / 100;',
+      '}',
+      '```',
+    ].join('\n');
+
+    toggleReadAloud('m-el', reply);
+    assert.equal(fakeSynth.spoken[0]?.voice, elVoice);
+    assert.equal(fakeSynth.spoken[0]?.lang, 'el-GR');
+  });
+
   it('does not speak when the markdown has no speakable content', () => {
     toggleReadAloud('m1', '   ---   ');
     assert.equal(fakeSynth.spoken.length, 0);

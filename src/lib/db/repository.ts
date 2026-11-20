@@ -58,6 +58,8 @@ type DbTable<T> = {
   orderBy?: (index: string) => { uniqueKeys?: () => Promise<unknown[]> };
 };
 
+const SEARCH_CANCELLED = Symbol('search-cancelled');
+
 async function forEachRow<T>(table: DbTable<T>, visit: (row: T) => void): Promise<void> {
   if (typeof table.each === 'function') {
     await table.each(visit);
@@ -488,35 +490,40 @@ export function createRepository(db: DialogiaDbLike) {
     if (terms.length === 0) return [];
     const limit = opts?.limit ?? 80;
     const hits: MessageSearchRecord[] = [];
-    await forEachRow(db.messages, (raw) => {
-      if (opts?.isCancelled?.()) return;
-      if (raw.metadata?.hiddenFromUser || raw.ledger) return;
-      const textParts: string[] = [];
-      if (typeof raw.content === 'string' && raw.content.trim()) textParts.push(raw.content);
-      if (Array.isArray(raw.attachments)) {
-        for (const attachment of raw.attachments) {
-          if (attachment?.name) textParts.push(attachment.name);
-          if (attachment?.text) textParts.push(attachment.text);
+    try {
+      await forEachRow(db.messages, (raw) => {
+        if (opts?.isCancelled?.()) throw SEARCH_CANCELLED;
+        if (raw.metadata?.hiddenFromUser || raw.ledger) return;
+        const textParts: string[] = [];
+        if (typeof raw.content === 'string' && raw.content.trim()) textParts.push(raw.content);
+        if (Array.isArray(raw.attachments)) {
+          for (const attachment of raw.attachments) {
+            if (attachment?.name) textParts.push(attachment.name);
+            if (attachment?.text) textParts.push(attachment.text);
+          }
         }
-      }
-      if (textParts.length === 0) return;
-      const haystack = textParts.join('\n').toLowerCase();
-      if (!terms.every((term) => haystack.includes(term))) return;
-      // Prefer the part that actually carries a matched term so the excerpt
-      // highlights the match even when it lives in an attachment.
-      const matchedPart =
-        textParts.find((part) => {
-          const lower = part.toLowerCase();
-          return terms.some((term) => lower.includes(term));
-        }) ?? textParts[0];
-      hits.push({
-        id: raw.id,
-        chatId: raw.chatId,
-        role: raw.role,
-        content: matchedPart || '',
-        createdAt: raw.createdAt,
+        if (textParts.length === 0) return;
+        const haystack = textParts.join('\n').toLowerCase();
+        if (!terms.every((term) => haystack.includes(term))) return;
+        // Prefer the part that actually carries a matched term so the excerpt
+        // highlights the match even when it lives in an attachment.
+        const matchedPart =
+          textParts.find((part) => {
+            const lower = part.toLowerCase();
+            return terms.some((term) => lower.includes(term));
+          }) ?? textParts[0];
+        hits.push({
+          id: raw.id,
+          chatId: raw.chatId,
+          role: raw.role,
+          content: matchedPart || '',
+          createdAt: raw.createdAt,
+        });
       });
-    });
+    } catch (error) {
+      if (error === SEARCH_CANCELLED) return [];
+      throw error;
+    }
     if (opts?.isCancelled?.()) return [];
     hits.sort((a, b) => b.createdAt - a.createdAt);
     return hits.slice(0, limit);
@@ -532,7 +539,7 @@ export function createRepository(db: DialogiaDbLike) {
     const records: UsageRecord[] = [];
     await forEachRow(db.messages, (msg) => {
       if (msg.role !== 'assistant') return;
-      if (msg.tutorWelcome || msg.branchedFrom) return;
+      if (msg.tutorWelcome) return;
       const pushOne = (entry: {
         content?: string;
         reasoning?: string;
@@ -543,8 +550,12 @@ export function createRepository(db: DialogiaDbLike) {
         tokensOut?: number;
         metrics?: Message['metrics'];
         usage?: Message['usage'];
+        branchedFrom?: string;
         versionCreatedAt?: number;
       }) => {
+        // Each version carries its own `branchedFrom` so regenerating in a
+        // branched chat skips the copied version while still counting the new try.
+        if (entry.branchedFrom) return;
         // Imported history (ChatGPT/Claude) carries no model or token metadata;
         // empty failed turns carry no output or usage. Skip both.
         const hasGenerationMeta =
@@ -561,7 +572,10 @@ export function createRepository(db: DialogiaDbLike) {
           !!entry.attachments?.length;
         if (!hasAnyOutput && !entry.metrics && !entry.usage) return;
         records.push({
-          createdAt: entry.versionCreatedAt ?? msg.createdAt,
+          createdAt:
+            typeof entry.versionCreatedAt === 'number' && Number.isFinite(entry.versionCreatedAt)
+              ? entry.versionCreatedAt
+              : msg.createdAt,
           model: entry.model,
           tokensIn: entry.metrics?.promptTokens ?? entry.tokensIn,
           tokensOut: entry.metrics?.completionTokens ?? entry.tokensOut,

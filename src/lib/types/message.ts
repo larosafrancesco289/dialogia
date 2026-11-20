@@ -237,6 +237,7 @@ export type ReplyVersionKey =
   | 'activity'
   | 'toolRounds'
   | 'tutorSeq'
+  | 'branchedFrom'
   | 'versionCreatedAt';
 
 export type ReplyVersion = Pick<Message, ReplyVersionKey>;
