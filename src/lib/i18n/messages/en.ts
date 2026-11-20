@@ -570,6 +570,8 @@ const en = {
   'servers.name': 'Server name',
   'servers.namePlaceholder': 'Name, e.g. Ollama',
   'servers.add': 'Add',
+  'servers.presets': 'Quick fill',
+  'servers.presetUse': 'Fill in {name}',
   'servers.addHint':
     'Works with Ollama, LM Studio, llama.cpp and vLLM. Extras start switched off: open the server to turn on what it can do, such as tools (needed for search, memory and the tutor) or images.',
   'servers.noAddress': 'no address',

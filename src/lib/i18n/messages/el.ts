@@ -585,6 +585,8 @@ const messages: Translation<typeof en> = {
   'servers.name': 'Όνομα διακομιστή',
   'servers.namePlaceholder': 'Όνομα, π.χ. Ollama',
   'servers.add': 'Προσθήκη',
+  'servers.presets': 'Έτοιμες ρυθμίσεις',
+  'servers.presetUse': 'Συμπλήρωση για {name}',
   'servers.addHint':
     'Λειτουργεί με Ollama, LM Studio, llama.cpp και vLLM. Οι επιπλέον λειτουργίες ξεκινούν απενεργοποιημένες: άνοιξε τον διακομιστή για να ενεργοποιήσεις ό,τι μπορεί να κάνει, όπως τα εργαλεία (χρειάζονται για αναζήτηση, μνήμη και δάσκαλο) ή τις εικόνες.',
   'servers.noAddress': 'χωρίς διεύθυνση',

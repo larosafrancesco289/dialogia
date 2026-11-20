@@ -585,6 +585,8 @@ const messages: Translation<typeof en> = {
   'servers.name': 'Nombre del servidor',
   'servers.namePlaceholder': 'Nombre, ej. Ollama',
   'servers.add': 'Añadir',
+  'servers.presets': 'Relleno rápido',
+  'servers.presetUse': 'Rellenar {name}',
   'servers.addHint':
     'Funciona con Ollama, LM Studio, llama.cpp y vLLM. Las funciones extra empiezan desactivadas: abre el servidor para activar lo que sabe hacer, como las herramientas (necesarias para la búsqueda, la memoria y el tutor) o las imágenes.',
   'servers.noAddress': 'sin dirección',

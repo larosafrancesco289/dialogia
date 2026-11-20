@@ -19,6 +19,7 @@ import {
   type ProviderEndpoint,
 } from '@/lib/transport/endpoints';
 import { listEndpoints } from '@/lib/transport/endpointRegistry';
+import { SERVER_PRESETS } from '@/lib/openaiCompat/presets';
 import type { RenderSection } from '@/components/settings/types';
 import { refocusIfDropped } from '@/lib/ui/focus';
 import { CONNECT_OPTIONS } from '@/components/connect/useConnectProvider';
@@ -275,6 +276,7 @@ function AddEndpointForm({ onAdded }: { onAdded: () => void }) {
   const [urlInvalid, setUrlInvalid] = useState(false);
 
   const nameRef = useRef<HTMLInputElement>(null);
+  const urlRef = useRef<HTMLInputElement>(null);
 
   const canAdd = label.trim().length > 0 && baseUrl.trim().length > 0;
 
@@ -306,6 +308,29 @@ function AddEndpointForm({ onAdded }: { onAdded: () => void }) {
 
   return (
     <div className="space-y-3">
+      <div
+        className="flex flex-wrap items-center gap-1.5"
+        role="group"
+        aria-label={t('servers.presets')}
+      >
+        <span className="text-xs text-fg-muted mr-1">{t('servers.presets')}</span>
+        {SERVER_PRESETS.map((preset) => (
+          <button
+            key={preset.id}
+            type="button"
+            className="btn-outline btn-sm"
+            aria-label={t('servers.presetUse', { name: preset.label })}
+            onClick={() => {
+              setLabel(preset.label);
+              setBaseUrl(preset.baseUrl);
+              setUrlInvalid(false);
+              urlRef.current?.focus();
+            }}
+          >
+            {preset.label}
+          </button>
+        ))}
+      </div>
       {/* With the keyboard up, the fields come into view with their button. */}
       <div className="flex flex-wrap gap-2" data-keyboard-reveal="">
         <input
@@ -317,6 +342,7 @@ function AddEndpointForm({ onAdded }: { onAdded: () => void }) {
           aria-label={t('servers.name')}
         />
         <input
+          ref={urlRef}
           className="input flex-1 basis-full sm:basis-0 min-w-0 text-base sm:text-sm"
           placeholder={CONNECT_OPTIONS.local.placeholder}
           value={baseUrl}
