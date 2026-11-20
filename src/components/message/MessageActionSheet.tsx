@@ -7,6 +7,8 @@ import {
   ClipboardIcon,
   CursorArrowRaysIcon,
   PencilSquareIcon,
+  SpeakerWaveIcon,
+  StopIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
 import type { Message } from '@/lib/types';
@@ -16,6 +18,7 @@ import { BottomSheet, SheetItem } from '@/components/ui/BottomSheet';
 import { Markdown } from '@/components/Markdown';
 import { plainExcerpt } from '@/lib/markdown/plainText';
 import { useT } from '@/lib/i18n';
+import { canReadAloud, toggleReadAloud, useReadingAloud } from '@/lib/speech/readAloud';
 
 export type MessageActionSheetProps = {
   isMobile: boolean;
@@ -59,6 +62,7 @@ export function MessageActionSheet({
   const [selecting, setSelecting] = useState<Message | null>(null);
   const showReplyVersion = useChatStore((s) => s.showReplyVersion);
   const openedOn = useRef<string | null>(null);
+  const reading = useReadingAloud(mobileActionMessage?.id ?? '');
 
   // A new long press starts on the actions, never on an old selection page.
   useEffect(() => {
@@ -120,6 +124,17 @@ export function MessageActionSheet({
         {message?.content && (
           <SheetItem icon={<CursorArrowRaysIcon />} onClick={() => setSelecting(message)}>
             {t('message.selectText')}
+          </SheetItem>
+        )}
+        {isAssistant && message?.content.trim() && canReadAloud() && (
+          <SheetItem
+            icon={reading ? <StopIcon /> : <SpeakerWaveIcon />}
+            onClick={() => {
+              toggleReadAloud(message.id, message.content);
+              onClose();
+            }}
+          >
+            {t(reading ? 'message.stopReading' : 'message.readAloud')}
           </SheetItem>
         )}
         {/* Editing a reply's text reruns nothing; editing a user message reruns its reply. */}

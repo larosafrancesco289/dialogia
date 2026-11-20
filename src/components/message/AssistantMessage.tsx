@@ -6,6 +6,8 @@ import {
   ArrowUturnRightIcon,
   ArrowPathIcon,
   ShieldExclamationIcon,
+  SpeakerWaveIcon,
+  StopIcon,
 } from '@heroicons/react/24/outline';
 import { Markdown, type MarkdownCitationSource } from '@/components/Markdown';
 import { RegenerateMenu } from '@/components/RegenerateMenu';
@@ -31,6 +33,12 @@ import { retryWaitLine, silentWaitLine } from '@/lib/ui/responseActivity';
 import styles from './MessageCard.module.css';
 import { useT } from '@/lib/i18n';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
+import {
+  canReadAloud,
+  stopReadAloud,
+  toggleReadAloud,
+  useReadingAloud,
+} from '@/lib/speech/readAloud';
 
 export type AssistantMessageProps = {
   message: Message;
@@ -212,6 +220,13 @@ export function AssistantMessage({
     writing &&
     (penIsLive(message, quietSince !== undefined) ||
       (retryAt !== undefined && !!displayContent.trim()));
+  const reading = useReadingAloud(message.id);
+  // A reply read aloud stops when it goes from the screen (another chat
+  // opened, say), changes content (edited or switched version), or is written again.
+  useEffect(() => () => stopReadAloud(message.id), [message.id, displayContent]);
+  useEffect(() => {
+    if (isStreaming) stopReadAloud(message.id);
+  }, [isStreaming, message.id]);
 
   let messageBody: ReactNode = null;
   if (isEditing) {
@@ -421,7 +436,10 @@ export function AssistantMessage({
           <div
             className={cn(
               'message-foot px-4',
-              isLatestAssistant ? wroteHere.current && 'motion-fade' : styles.footOnHover,
+              // Kept in view while the reply is read aloud, so its stop is at hand.
+              isLatestAssistant || reading
+                ? wroteHere.current && 'motion-fade'
+                : styles.footOnHover,
             )}
           >
             {showInlineActions && (
@@ -446,6 +464,22 @@ export function AssistantMessage({
                   onClick={copyMessage}
                   showFeedback={copiedId === message.id}
                 />
+                {canReadAloud() && displayContent.trim() && (
+                  <ActionButton
+                    icon={
+                      reading ? (
+                        <StopIcon className="h-4 w-4" />
+                      ) : (
+                        <SpeakerWaveIcon className="h-4 w-4" />
+                      )
+                    }
+                    title={t(reading ? 'message.stopReading' : 'message.readAloud')}
+                    action="read-aloud"
+                    pressed={reading}
+                    className={reading ? 'is-live' : undefined}
+                    onClick={() => toggleReadAloud(message.id, displayContent)}
+                  />
+                )}
                 {canRedo && !canned && (
                   <RegenerateMenu
                     onChoose={onChooseRegenerateModel}

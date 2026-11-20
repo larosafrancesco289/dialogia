@@ -62,6 +62,12 @@
   .icon-button.is-success svg {
     animation: fade-in var(--duration-fast) var(--ease-standard) both;
   }
+  /* Live, not set: a reply being read aloud. The one icon button that turns
+     gold, on a gold wash, while the voice speaks. */
+  .icon-button.is-live {
+    background: color-mix(in oklab, var(--color-accent) 22%, transparent);
+    color: color-mix(in oklab, var(--color-accent) 45%, var(--color-fg));
+  }
 
   /* Rotate settings gear when drawer is open */
   button[aria-label='Open settings'][aria-pressed='true'] > svg {

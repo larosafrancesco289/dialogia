@@ -82,6 +82,8 @@ type ActionButtonProps = {
   disabled?: boolean;
   className?: string;
   showFeedback?: boolean;
+  /** A toggle's state, for a button that turns something on and off. */
+  pressed?: boolean;
 };
 
 export function ActionButton({
@@ -93,6 +95,7 @@ export function ActionButton({
   disabled,
   className,
   showFeedback,
+  pressed,
 }: ActionButtonProps) {
   return (
     <button
@@ -100,6 +103,7 @@ export function ActionButton({
       className={`icon-button icon-button--sm ${showFeedback ? 'is-success' : ''} ${className ?? ''}`.trim()}
       aria-label={ariaLabel ?? title}
       data-action={action}
+      aria-pressed={pressed}
       title={title}
       onClick={onClick}
       disabled={disabled}
