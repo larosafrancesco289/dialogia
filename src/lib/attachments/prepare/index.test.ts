@@ -128,3 +128,27 @@ test('a kind the model cannot take is left out and named', async () => {
   );
   assert.deepEqual(prepared.droppedKinds, ['image']);
 });
+
+test('a text file is kept for text-only models and sent as a text block', async () => {
+  const textOnly: ModelDescriptor = { id: 't', name: 'Text only', raw: {} };
+  const prepared = await prepareAttachmentsForModel({
+    attachments: [
+      {
+        id: 'tx',
+        kind: 'text',
+        name: 'main.py',
+        mime: 'text/plain',
+        text: 'print("hello")',
+        file: { size: 14 } as File,
+      },
+    ],
+    modelId: textOnly.id,
+    models: [textOnly],
+  });
+  assert.equal(prepared.droppedKinds.length, 0);
+  assert.equal(prepared.attachments.length, 1);
+  assert.equal('file' in prepared.attachments[0]!, false);
+  assert.deepEqual(AttachmentProcessor.process(prepared.attachments), [
+    { type: 'text', text: '[File: main.py]\n\nprint("hello")' },
+  ]);
+});

@@ -1,6 +1,7 @@
 import type { RefObject } from 'react';
 import { XMarkIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import type { DraftAttachment } from '@/lib/types';
+import { countLines } from '@/lib/attachments/text';
 import { neighbourOf, refocusIfDropped } from '@/lib/ui/focus';
 import { useT, type Translate } from '@/lib/i18n';
 
@@ -83,6 +84,16 @@ function renderPreview(t: Translate, attachment: DraftAttachment) {
           <div className="text-[11px] text-fg-muted">{t('attachments.attachedAudio')}</div>
         </div>
       </div>
+    );
+  }
+
+  if (attachment.kind === 'text') {
+    const lines = countLines(attachment.text ?? '');
+    return (
+      <PdfChip
+        name={attachment.name || t('attachments.textFile')}
+        detail={lines > 0 ? t('attachments.lines', { count: lines }) : t('attachments.textFile')}
+      />
     );
   }
 

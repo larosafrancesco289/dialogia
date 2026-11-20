@@ -50,6 +50,10 @@ export async function prepareAttachmentsForModel(opts: {
   // as they are.
   const processed = await Promise.all(
     filtered.map(async (attachment): Promise<PersistedAttachment> => {
+      if (attachment.kind === 'text') {
+        const { dataURL: _unused, ...rest } = stripFile(attachment);
+        return rest;
+      }
       if (attachment.kind === 'pdf') {
         if (hasPdfText(attachment)) {
           const { dataURL: _file, ...rest } = stripFile(attachment);

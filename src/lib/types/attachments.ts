@@ -1,8 +1,8 @@
 type AttachmentBase = {
   id: string;
-  kind: 'image' | 'pdf' | 'audio';
+  kind: 'image' | 'pdf' | 'audio' | 'text';
   name?: string;
-  mime: string; // e.g., image/png, image/jpeg, image/webp, application/pdf
+  mime: string; // e.g., image/png, image/jpeg, image/webp, application/pdf, text/plain
   size?: number; // bytes
   // image-only
   width?: number;
@@ -11,7 +11,7 @@ type AttachmentBase = {
   dataURL?: string;
   // pdf-only
   pageCount?: number;
-  // extracted plain text (pdf); trimmed/selected later for prompt
+  // extracted plain text (pdf or text file); trimmed/selected later for prompt
   text?: string;
   // audio-only: base64-encoded payload (no data: prefix), and format hint for OpenRouter
   base64?: string;

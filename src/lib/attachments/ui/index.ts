@@ -9,10 +9,13 @@ import {
   MAX_IMAGES_PER_MESSAGE,
   MAX_PDF_SIZE_MB,
   MAX_PDFS_PER_MESSAGE,
+  MAX_TEXT_FILE_SIZE_MB,
+  MAX_TEXT_FILES_PER_MESSAGE,
 } from '@/lib/constants';
 import { fileToDataUrl } from '@/lib/attachments/readers';
 import { detectAudioFormatFromFile } from '@/lib/attachments/audio';
 import { extractTextFromPdf, type PdfExtractionResult } from '@/lib/attachments/pdf';
+import { isTextFile, looksBinary, readTextFile } from '@/lib/attachments/text';
 import { hasPdfText, pdfFileFits } from '@/lib/attachments/prompt';
 import { t } from '@/lib/i18n';
 import { formatList } from '@/lib/i18n/format';
@@ -37,6 +40,7 @@ export function acceptedKinds(canVision: boolean, canAudio: boolean): string {
 
 export type AttachmentPick = {
   pdfs: File[];
+  texts: File[];
   images: File[];
   audio: File[];
   /** One notice naming every file left out, and why; undefined when all were taken. */
@@ -53,10 +57,10 @@ export function sortAttachmentPick(
   opts: {
     canVision: boolean;
     canAudio: boolean;
-    existing: { pdf: number; image: number; audio: number };
+    existing: { pdf: number; text?: number; image: number; audio: number };
   },
 ): AttachmentPick {
-  const pick: AttachmentPick = { pdfs: [], images: [], audio: [] };
+  const pick: AttachmentPick = { pdfs: [], texts: [], images: [], audio: [] };
   const skipped = new Map<string, string[]>();
   const skip = (file: File, reason: string) =>
     skipped.set(reason, [...(skipped.get(reason) ?? []), file.name || t('attach.aFile')]);
@@ -95,6 +99,12 @@ export function sortAttachmentPick(
           perMessage: t('attach.audioFiles', { count: MAX_AUDIO_PER_MESSAGE }),
           maxMb: MAX_AUDIO_SIZE_MB,
         });
+    } else if (!isImage(file) && !isAudio(file) && isTextFile(file)) {
+      take(file, pick.texts, {
+        count: room(MAX_TEXT_FILES_PER_MESSAGE, opts.existing.text ?? 0),
+        perMessage: t('attach.textFiles', { count: MAX_TEXT_FILES_PER_MESSAGE }),
+        maxMb: MAX_TEXT_FILE_SIZE_MB,
+      });
     } else {
       skip(file, t('attach.modelTakes', { kinds: acceptedKinds(opts.canVision, opts.canAudio) }));
     }
@@ -194,6 +204,38 @@ export async function toPdfAttachment(
       pageCount,
     },
     ...(unreadable ? { notice: t('attach.pdfScanned', { name }) } : {}),
+  };
+}
+
+/**
+ * Reads a plain-text or source-code file in the browser. Empty files and
+ * binary files wearing a text extension are refused with a plain notice.
+ */
+export async function toTextAttachment(
+  file: File,
+  read: (file: File) => Promise<string> = readTextFile,
+): Promise<PdfIntake> {
+  const name = file.name || t('attach.aFile');
+  const notAttached = (reason: string) => ({
+    notice: t('attach.notAttached', { files: `${name} (${reason})` }),
+  });
+  let text: string;
+  try {
+    text = await read(file);
+  } catch {
+    return notAttached(t('attach.textUnreadable'));
+  }
+  if (looksBinary(text)) return notAttached(t('attach.textUnreadable'));
+  if (!text.trim()) return notAttached(t('attach.textEmpty'));
+  return {
+    attachment: {
+      id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      kind: 'text',
+      name: file.name,
+      mime: file.type || 'text/plain',
+      size: file.size,
+      text,
+    },
   };
 }
 

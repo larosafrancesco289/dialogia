@@ -107,7 +107,7 @@ export const ChatSchema = z
 export const PersistedAttachmentSchema = z
   .object({
     id: z.string(),
-    kind: z.enum(['image', 'pdf', 'audio']),
+    kind: z.enum(['image', 'pdf', 'audio', 'text']),
     name: z.string().optional(),
     mime: z.string(),
     size: z.number().optional(),

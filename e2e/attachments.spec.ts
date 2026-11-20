@@ -49,3 +49,34 @@ test('a PDF attached under the page’s security policy is read by the bundled w
   );
   expect(sent).toContain('Quantum otters');
 });
+
+test('a plain-text or code file is read in the browser, sent to the model, and survives a reload', async ({
+  page,
+  request,
+}) => {
+  await connectMock(page);
+  await request.delete(`${MOCK_URL.replace('/v1', '')}/__requests`);
+
+  await page
+    .locator('input[type=file]')
+    .first()
+    .setInputFiles({
+      name: 'hello.ts',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('export const greeting = "Saffron";\nexport const n = 42;\n', 'utf8'),
+    });
+  await expect(page.getByText('hello.ts')).toBeVisible();
+  await expect(page.getByText('2 lines')).toBeVisible();
+  await send(page, 'Review this code');
+  await expect(page.getByRole('main').getByText(REPLY_END)).toBeVisible();
+
+  const sent = JSON.stringify(
+    await (await request.get(`${MOCK_URL.replace('/v1', '')}/__requests`)).json(),
+  );
+  expect(sent).toContain('[File: hello.ts]');
+  expect(sent).toContain('Saffron');
+
+  await page.reload();
+  await expect(page.getByRole('main').getByText('hello.ts')).toBeVisible();
+  await expect(page.getByRole('main').getByText('2 lines')).toBeVisible();
+});

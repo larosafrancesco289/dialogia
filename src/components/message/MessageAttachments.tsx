@@ -1,5 +1,6 @@
 import type { PersistedAttachment } from '@/lib/types';
 import { PdfChip } from '@/components/AttachmentPreviewList';
+import { countLines } from '@/lib/attachments/text';
 import { useT } from '@/lib/i18n';
 
 export type MessageAttachmentsProps = {
@@ -33,6 +34,7 @@ export function MessageAttachments({
   );
   const audioAttachments = attachments.filter((item) => item.kind === 'audio');
   const pdfAttachments = attachments.filter((item) => item.kind === 'pdf');
+  const textAttachments = attachments.filter((item) => item.kind === 'text');
 
   const handleOpenLightbox = (
     index: number,
@@ -96,6 +98,18 @@ export function MessageAttachments({
           }
         />
       ))}
+      {textAttachments.map((attachment) => {
+        const lines = countLines(attachment.text ?? '');
+        return (
+          <PdfChip
+            key={attachment.id}
+            name={attachment.name || t('attachments.textFile')}
+            detail={
+              lines > 0 ? t('attachments.lines', { count: lines }) : t('attachments.textFile')
+            }
+          />
+        );
+      })}
     </div>
   );
 }

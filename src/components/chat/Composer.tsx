@@ -23,6 +23,7 @@ import { ComposerInput } from '@/components/composer/ComposerInput';
 import { ComposerActions } from '@/components/composer/ComposerActions';
 import { LearnToolsNotice } from '@/components/chat/LearnToolsNotice';
 import { findModelEndpoint } from '@/lib/transport/endpointRegistry';
+import { TEXT_FILE_ACCEPT } from '@/lib/attachments/text';
 import { useComposerAttachments } from '@/lib/hooks/useComposerAttachments';
 import { DEFAULT_REASONING_EFFORT } from '@/lib/settings/generation';
 import { useComposerShortcuts } from '@/lib/hooks/useComposerShortcuts';
@@ -327,7 +328,7 @@ export function Composer({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,audio/wav,audio/mpeg"
+        accept={`image/png,image/jpeg,image/webp,image/gif,application/pdf,audio/wav,audio/mpeg,${TEXT_FILE_ACCEPT}`}
         multiple
         className="hidden"
         onChange={(event) => handleFileInputChange(event.currentTarget)}

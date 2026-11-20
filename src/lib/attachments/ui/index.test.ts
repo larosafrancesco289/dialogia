@@ -1,44 +1,54 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sortAttachmentPick, toPdfAttachment } from '@/lib/attachments/ui';
+import { sortAttachmentPick, toPdfAttachment, toTextAttachment } from '@/lib/attachments/ui';
 
 const MB = 1024 * 1024;
 const file = (name: string, type: string, size = 1000) => ({ name, type, size }) as File;
-const none = { pdf: 0, image: 0, audio: 0 };
+const none = { pdf: 0, text: 0, image: 0, audio: 0 };
 const names = (files: File[]) => files.map((f) => f.name);
 
 test('a pick the model takes whole raises no notice', () => {
   const pick = sortAttachmentPick(
-    [file('a.png', 'image/png'), file('b.pdf', 'application/pdf'), file('c.mp3', 'audio/mpeg')],
+    [
+      file('a.png', 'image/png'),
+      file('b.pdf', 'application/pdf'),
+      file('c.mp3', 'audio/mpeg'),
+      file('notes.md', 'text/markdown'),
+      file('app.ts', ''),
+    ],
     { canVision: true, canAudio: true, existing: none },
   );
   assert.deepEqual(names(pick.images), ['a.png']);
   assert.deepEqual(names(pick.pdfs), ['b.pdf']);
   assert.deepEqual(names(pick.audio), ['c.mp3']);
+  assert.deepEqual(names(pick.texts), ['notes.md', 'app.ts']);
   assert.equal(pick.notice, undefined);
 });
 
 test('every file left out is named once, in one notice, with why', () => {
   const pick = sortAttachmentPick(
     [
-      file('notes.txt', 'text/plain'),
+      file('archive.zip', 'application/zip'),
       file('huge.png', 'image/png', 30 * MB),
       file('one.pdf', 'application/pdf'),
       file('two.pdf', 'application/pdf'),
       file('three.pdf', 'application/pdf'),
       file('big.pdf', 'application/pdf', 16 * MB),
       file('photo.heic', 'image/heic'),
-      file('data.csv', 'text/csv'),
+      file('movie.mp4', 'video/mp4'),
+      file('huge.log', 'text/plain', 3 * MB),
     ],
     { canVision: true, canAudio: false, existing: none },
   );
   assert.deepEqual(names(pick.pdfs), ['one.pdf', 'two.pdf']);
   assert.deepEqual(pick.images, []);
+  assert.deepEqual(pick.texts, []);
   assert.equal(
     pick.notice,
-    'Not attached: notes.txt and data.csv (this model takes images or PDFs); ' +
+    'Not attached: archive.zip and movie.mp4 (this model takes images, PDFs or text files); ' +
       'huge.png (too large, max 5 MB); three.pdf (only 2 PDFs per message); ' +
-      'big.pdf (too large, max 15 MB); photo.heic (only PNG, JPEG, WebP or GIF images).',
+      'big.pdf (too large, max 15 MB); photo.heic (only PNG, JPEG, WebP or GIF images); ' +
+      'huge.log (too large, max 2 MB).',
   );
 });
 
@@ -57,7 +67,7 @@ test('an image the model cannot see is refused by kind, not by size', () => {
     canAudio: false,
     existing: none,
   });
-  assert.equal(pick.notice, 'Not attached: a.png (this model takes PDFs).');
+  assert.equal(pick.notice, 'Not attached: a.png (this model takes PDFs or text files).');
 });
 
 const read = (text: string) => async () => ({ text, pageCount: 2 });
@@ -104,4 +114,26 @@ test('a PDF that could not be read here still goes as a file', async () => {
   assert.ok(intake.attachment);
   assert.equal(intake.attachment.text, undefined);
   assert.equal(intake.notice, undefined);
+});
+
+test('a plain-text or code file is attached as its text', async () => {
+  const intake = await toTextAttachment(
+    file('server.ts', ''),
+    async () => 'export const ok = true;\n',
+  );
+  assert.equal(intake.attachment?.kind, 'text');
+  assert.equal(intake.attachment?.name, 'server.ts');
+  assert.equal(intake.attachment?.mime, 'text/plain');
+  assert.equal(intake.attachment?.text, 'export const ok = true;\n');
+  assert.equal(intake.notice, undefined);
+});
+
+test('an empty or binary text file is not attached, and says why', async () => {
+  const empty = await toTextAttachment(file('blank.txt', 'text/plain'), async () => '  \n\t ');
+  assert.equal(empty.attachment, undefined);
+  assert.equal(empty.notice, 'Not attached: blank.txt (empty file).');
+
+  const binary = await toTextAttachment(file('fake.txt', 'text/plain'), async () => 'PNG\u0000bin');
+  assert.equal(binary.attachment, undefined);
+  assert.equal(binary.notice, 'Not attached: fake.txt (could not be read as plain text).');
 });

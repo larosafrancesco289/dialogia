@@ -6,6 +6,7 @@ import {
   sortAttachmentPick,
   toImageAttachment,
   toPdfAttachment,
+  toTextAttachment,
   toAudioAttachment,
 } from '@/lib/attachments/ui';
 import { t } from '@/lib/i18n';
@@ -38,14 +39,24 @@ export function useComposerAttachments({
       const pick = sortAttachmentPick(files, {
         canVision,
         canAudio,
-        existing: { pdf: count('pdf'), image: count('image'), audio: count('audio') },
+        existing: {
+          pdf: count('pdf'),
+          text: count('text'),
+          image: count('image'),
+          audio: count('audio'),
+        },
       });
       if (pick.notice) onSkipped?.(pick.notice);
       const converted: DraftAttachment[] = [];
-      // What reading the PDFs found out is said once they are read, with the above.
+      // What reading the PDFs and text files found out is said once they are read, with the above.
       const notices: string[] = [];
       for (const file of pick.pdfs) {
         const { attachment, notice } = await toPdfAttachment(file);
+        if (attachment) converted.push(attachment);
+        if (notice) notices.push(notice);
+      }
+      for (const file of pick.texts) {
+        const { attachment, notice } = await toTextAttachment(file);
         if (attachment) converted.push(attachment);
         if (notice) notices.push(notice);
       }

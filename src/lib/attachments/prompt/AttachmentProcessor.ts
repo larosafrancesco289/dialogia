@@ -61,6 +61,11 @@ function blockFor(a: PersistedAttachment, replay: AttachmentReplay): ModelConten
     if (!replay.files) return line(`[audio: ${name}, shared earlier]`);
     return { type: 'input_audio', input_audio: { data: base64, format } };
   }
+  if (a.kind === 'text') {
+    if (!hasPdfText(a)) return undefined;
+    const header = a.name ? `[File: ${a.name}]` : '[File]';
+    return line(`${header}\n\n${a.text}`);
+  }
   // Extracted text first: it is smaller than the file and every model reads it.
   if (hasPdfText(a)) {
     const header = a.name ? `[Document: ${a.name}]` : '[Document]';

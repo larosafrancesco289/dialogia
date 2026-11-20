@@ -177,3 +177,32 @@ test('the new message sends its files, the one before it too, and a PDF’s text
     ['new', 'image_url'],
   ]);
 });
+
+test('a text file counts toward the context budget and replays on later turns', () => {
+  const small: PersistedAttachment = {
+    id: 'code',
+    kind: 'text',
+    name: 'math.ts',
+    mime: 'text/plain',
+    text: 'export const add = (a: number, b: number) => a + b;',
+  };
+  const huge: PersistedAttachment = {
+    id: 'dump',
+    kind: 'text',
+    name: 'dump.log',
+    mime: 'text/plain',
+    text: 'error line '.repeat(200_000),
+  };
+  const sent = build(
+    [user('old dump', [huge]), reply('noted'), user('check this', [small]), reply('looks good')],
+    [model(8000, ['text'])],
+    'anything else?',
+  );
+  assert.ok(JSON.stringify(sent).length < 10_000, 'huge text file is dropped by the budget');
+  assert.deepEqual(parts(sent), [
+    'noted',
+    ['check this', '[File: math.ts]\n\nexport const add = (a: number, b: number) => a + b;'],
+    'looks good',
+    'anything else?',
+  ]);
+});
