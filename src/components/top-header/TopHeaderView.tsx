@@ -73,7 +73,8 @@ export function TopHeaderView({
             className="icon-button icon-button--lg hide-on-mobile"
             aria-label={t('header.openSearch')}
             title={t('header.openSearchShortcut', { mod: modKeyPrefix() })}
-            aria-pressed={isQuickSearchOpen}
+            aria-haspopup="dialog"
+            aria-expanded={isQuickSearchOpen}
             onClick={onToggleQuickSearch}
             onMouseEnter={() => {
               import('@/components/QuickSearchDialog').catch(() => undefined);

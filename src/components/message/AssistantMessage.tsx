@@ -258,7 +258,7 @@ export function AssistantMessage({
         <p className={styles.waiting}>
           <LogoMark className={`${styles.pen} ${styles.penWaiting}`} live />
           {retryAt !== undefined ? (
-            <RetryWait until={retryAt} />
+            <RetryWait key={retryAt} until={retryAt} />
           ) : (
             <SilentWait still={t('message.writing')} />
           )}
@@ -275,7 +275,7 @@ export function AssistantMessage({
       <div className="markdown" aria-hidden="true">
         <p>
           {retryAt !== undefined ? (
-            <RetryWait until={retryAt} className={styles.silentWaitAfterPen} />
+            <RetryWait key={retryAt} until={retryAt} className={styles.silentWaitAfterPen} />
           ) : (
             '\u00a0'
           )}

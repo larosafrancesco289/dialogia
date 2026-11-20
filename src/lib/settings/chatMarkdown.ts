@@ -23,6 +23,25 @@ export function buildChatMarkdownFilename(title: string): string {
   return `${cleaned || 'chat'}.md`;
 }
 
+const isVisibleMarkdownMessage = (msg: Message): boolean =>
+  !(msg.role === 'user' && msg.metadata?.hiddenFromUser) &&
+  (msg.content.trim().length > 0 || (msg.attachments?.length ?? 0) > 0);
+
+/** Allow only http(s) links in exported Markdown so untrusted schemes cannot become clickable. */
+function safeHttpUrl(raw: string): string | null {
+  try {
+    const parsed = new URL(raw.trim());
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+    return parsed.href;
+  } catch {
+    return null;
+  }
+}
+
+function escapeMarkdownLinkText(text: string): string {
+  return text.replace(/[\r\n]+/g, ' ').replace(/([\\[\]])/g, '\\$1');
+}
+
 /**
  * Turns a chat and its messages into a readable Markdown document: title,
  * date, each turn headed by speaker or model name, attachment notes, and any
@@ -37,7 +56,7 @@ export function formatChatAsMarkdown({
   messages: Message[];
   models?: ModelDescriptor[];
 }): string {
-  const title = displayChatTitle(chat.title);
+  const title = displayChatTitle(chat.title).replace(/[\r\n]+/g, ' ');
   const date = formatDate(chat.updatedAt ?? chat.createdAt, {
     year: 'numeric',
     month: 'long',
@@ -45,11 +64,7 @@ export function formatChatAsMarkdown({
   });
   const sections: string[] = [`# ${title}\n\n_${date}_`];
 
-  const visible = messages.filter(
-    (msg) =>
-      !(msg.role === 'user' && msg.metadata?.hiddenFromUser) &&
-      (msg.content.trim().length > 0 || (msg.attachments?.length ?? 0) > 0),
-  );
+  const visible = messages.filter(isVisibleMarkdownMessage);
 
   for (const msg of visible) {
     const modelId = msg.model || chat.settings.modelId;
@@ -74,11 +89,17 @@ export function formatChatAsMarkdown({
     const sources = resolveMessageSources({
       searchSources: msg.searchSources,
       annotations: msg.annotations,
-    })?.results?.filter((entry): entry is { url: string; title?: string } => !!entry.url);
+    })
+      ?.results?.map((entry) => {
+        const href = entry.url ? safeHttpUrl(entry.url) : null;
+        return href ? { url: href, title: entry.title } : null;
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
 
     if (sources?.length) {
       const lines = sources.map(
-        (source, index) => `${index + 1}. [${source.title || source.url}](${source.url})`,
+        (source, index) =>
+          `${index + 1}. [${escapeMarkdownLinkText(source.title || source.url)}](<${source.url}>)`,
       );
       parts.push(`**${t('export.sources')}**\n\n${lines.join('\n')}`);
     }
@@ -99,12 +120,7 @@ export async function buildSingleChatMarkdownExport(
 ): Promise<{ filename: string; blob: Blob } | null> {
   const { chat, messages } = await repository.getChatWithMessages(chatId);
   if (!chat) return null;
-  const hasVisible = messages.some(
-    (msg) =>
-      !(msg.role === 'user' && msg.metadata?.hiddenFromUser) &&
-      (msg.content.trim().length > 0 || (msg.attachments?.length ?? 0) > 0),
-  );
-  if (!hasVisible) return null;
+  if (!messages.some(isVisibleMarkdownMessage)) return null;
   const markdown = formatChatAsMarkdown({ chat, messages, models });
   return {
     filename: buildChatMarkdownFilename(chat.title),
@@ -121,5 +137,6 @@ export function downloadBlob(blob: Blob, filename: string): void {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  // Defer revocation so Safari finishes reading the blob URL before it is freed.
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

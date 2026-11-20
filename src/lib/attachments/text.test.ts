@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { countLines, isTextFile, looksBinary } from '@/lib/attachments/text';
+import { countLines, isTextFile, looksBinary, TEXT_FILE_ACCEPT } from '@/lib/attachments/text';
 
 test('isTextFile recognises text MIME types, source extensions, and common filenames', () => {
   assert.equal(isTextFile({ name: 'notes.txt', type: 'text/plain' }), true);
@@ -23,6 +23,24 @@ test('isTextFile refuses binaries and never overrides image, audio or PDF MIME t
 test('looksBinary flags NUL bytes and accepts UTF-8 text', () => {
   assert.equal(looksBinary('hello\nworld'), false);
   assert.equal(looksBinary('a\u0000b'), true);
+});
+
+test('TEXT_FILE_ACCEPT includes all recognised source extensions', () => {
+  const accepted = new Set(TEXT_FILE_ACCEPT.split(','));
+  for (const ext of [
+    '.kt',
+    '.swift',
+    '.vue',
+    '.svelte',
+    '.dart',
+    '.mjs',
+    '.ini',
+    '.tf',
+    '.lua',
+    '.hs',
+  ]) {
+    assert.equal(accepted.has(ext), true, `accepts ${ext}`);
+  }
 });
 
 test('countLines counts lines with or without a trailing newline', () => {

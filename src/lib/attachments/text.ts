@@ -107,43 +107,13 @@ const TEXT_BASENAMES = new Set([
   'justfile',
 ]);
 
+// Derived from TEXT_EXTENSIONS and TEXT_MIMES so OS file pickers accept the
+// same extensions as drag-and-drop (extensionless names like Makefile are
+// still accepted via drag-and-drop).
 export const TEXT_FILE_ACCEPT = [
   'text/*',
-  'application/json',
-  'application/xml',
-  '.md',
-  '.markdown',
-  '.txt',
-  '.csv',
-  '.tsv',
-  '.json',
-  '.jsonl',
-  '.yaml',
-  '.yml',
-  '.toml',
-  '.log',
-  '.js',
-  '.jsx',
-  '.ts',
-  '.tsx',
-  '.py',
-  '.rb',
-  '.go',
-  '.rs',
-  '.java',
-  '.c',
-  '.cpp',
-  '.h',
-  '.cs',
-  '.php',
-  '.sh',
-  '.sql',
-  '.html',
-  '.css',
-  '.scss',
-  '.xml',
-  '.diff',
-  '.patch',
+  ...TEXT_MIMES,
+  ...[...TEXT_EXTENSIONS].map((ext) => `.${ext}`),
 ].join(',');
 
 /** Whether a picked or dropped file is plain text or source code. */

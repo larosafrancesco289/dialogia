@@ -52,7 +52,10 @@ test('formatChatAsMarkdown writes headings, model labels, attachments, and cited
       model: 'anthropic/claude-sonnet-4',
       content: 'An eigenvector only scales under a linear transformation [1].',
       createdAt: 3,
-      searchSources: [{ title: 'Eigenvalues', url: 'https://example.com/eigen' }],
+      searchSources: [
+        { title: 'Eigenvalues [notes]', url: 'https://example.com/eigen(1)' },
+        { title: 'Bad link', url: 'javascript:alert(1)' },
+      ],
     },
   ];
 
@@ -64,5 +67,12 @@ test('formatChatAsMarkdown writes headings, model labels, attachments, and cited
   assert.ok(md.includes('Explain eigenvalues.'));
   assert.ok(md.includes('## Claude Sonnet 4'));
   assert.ok(md.includes('An eigenvector only scales under a linear transformation [1].'));
-  assert.ok(md.includes('1. [Eigenvalues](https://example.com/eigen)'));
+  assert.ok(md.includes('1. [Eigenvalues \\[notes\\]](<https://example.com/eigen(1)>)'));
+  assert.ok(!md.includes('javascript:'), 'non-http(s) source links are dropped');
+});
+
+test('formatChatAsMarkdown strips newlines from chat titles', () => {
+  const chat = makeChat({ id: 'c2', title: 'Line one\n## Injected' });
+  const md = formatChatAsMarkdown({ chat, messages: [] });
+  assert.ok(md.startsWith('# Line one ## Injected\n'));
 });

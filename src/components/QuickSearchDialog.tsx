@@ -26,7 +26,7 @@ import { useT } from '@/lib/i18n';
 
 // Minimum query length before scanning message bodies in IndexedDB.
 const MIN_MESSAGE_QUERY = 2;
-const SEARCH_DEBOUNCE_MS = 100;
+const SEARCH_DEBOUNCE_MS = 220;
 
 type QuickSearchItem =
   | { kind: 'chat'; id: string; chatId: string; title: string; isTutor: boolean; updatedAt: number }
@@ -65,11 +65,16 @@ function matchLoadedMessages(terms: string[]): MessageSearchRecord[] {
     if (parts.length === 0) continue;
     const haystack = parts.join('\n').toLowerCase();
     if (!terms.every((term) => haystack.includes(term))) continue;
+    const matchedPart =
+      parts.find((part) => {
+        const lower = part.toLowerCase();
+        return terms.some((term) => lower.includes(term));
+      }) ?? parts[0];
     hits.push({
       id: message.id,
       chatId: message.chatId,
       role: message.role,
-      content: message.content || parts[0] || '',
+      content: matchedPart || '',
       createdAt: message.createdAt,
     });
   }
@@ -96,7 +101,11 @@ export function QuickSearchDialog() {
   const surfaceRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const chatsRef = useRef(chats);
+  chatsRef.current = chats;
   const listId = useId();
+  const chatsHeadingId = useId();
+  const messagesHeadingId = useId();
   const optionIdPrefix = useId();
 
   const close = useCallback(() => {
@@ -120,16 +129,18 @@ export function QuickSearchDialog() {
     let cancelled = false;
     setSearching(true);
     const timer = setTimeout(() => {
-      Promise.resolve(repository.searchMessages(trimmed, { limit: 80 }))
+      Promise.resolve(
+        repository.searchMessages(trimmed, { limit: 80, isCancelled: () => cancelled }),
+      )
         .then((stored) => {
           if (cancelled) return;
           const combined = [...matchLoadedMessages(terms), ...stored];
-          setMessageHits(buildMessageHits(combined, chats, trimmed));
+          setMessageHits(buildMessageHits(combined, chatsRef.current, trimmed));
           setSearching(false);
         })
         .catch(() => {
           if (cancelled) return;
-          setMessageHits(buildMessageHits(matchLoadedMessages(terms), chats, trimmed));
+          setMessageHits(buildMessageHits(matchLoadedMessages(terms), chatsRef.current, trimmed));
           setSearching(false);
         });
     }, SEARCH_DEBOUNCE_MS);
@@ -138,7 +149,7 @@ export function QuickSearchDialog() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [chats, terms, trimmed]);
+  }, [terms, trimmed]);
 
   const items = useMemo<QuickSearchItem[]>(() => {
     const chatItems: QuickSearchItem[] = chatMatches.map((chat) => ({
@@ -159,7 +170,7 @@ export function QuickSearchDialog() {
 
   useEffect(() => {
     setActiveIndex(0);
-  }, [trimmed, items.length]);
+  }, [trimmed]);
 
   const clampedActive = items.length > 0 ? Math.min(activeIndex, items.length - 1) : -1;
 
@@ -238,7 +249,7 @@ export function QuickSearchDialog() {
                 placeholder={t('quickSearch.placeholder')}
                 aria-label={t('quickSearch.placeholder')}
                 role="combobox"
-                aria-expanded="true"
+                aria-expanded={items.length > 0}
                 aria-autocomplete="list"
                 aria-controls={listId}
                 aria-activedescendant={activeOptionId}
@@ -254,8 +265,12 @@ export function QuickSearchDialog() {
               aria-label={t('quickSearch.results')}
             >
               {chatCount > 0 && (
-                <div className="model-picker__section">
-                  <div className="model-picker__heading">
+                <div
+                  className="model-picker__section"
+                  role="group"
+                  aria-labelledby={chatsHeadingId}
+                >
+                  <div id={chatsHeadingId} className="model-picker__heading">
                     {t(trimmed ? 'quickSearch.chats' : 'quickSearch.recent')}
                   </div>
                   {items.slice(0, chatCount).map((item, idx) => {
@@ -271,6 +286,7 @@ export function QuickSearchDialog() {
                         }}
                         type="button"
                         role="option"
+                        tabIndex={-1}
                         aria-selected={active}
                         className={`model-row quick-search__row${active ? ' is-active' : ''}${selected ? ' is-selected' : ''}`}
                         onMouseEnter={() => setActiveIndex(idx)}
@@ -294,8 +310,14 @@ export function QuickSearchDialog() {
               )}
 
               {trimmed.length >= MIN_MESSAGE_QUERY && (
-                <div className="model-picker__section">
-                  <div className="model-picker__heading">{t('quickSearch.messages')}</div>
+                <div
+                  className="model-picker__section"
+                  role="group"
+                  aria-labelledby={messagesHeadingId}
+                >
+                  <div id={messagesHeadingId} className="model-picker__heading">
+                    {t('quickSearch.messages')}
+                  </div>
                   {messageHits.length > 0 ? (
                     items.slice(chatCount).map((item, offset) => {
                       if (item.kind !== 'message') return null;
@@ -310,6 +332,7 @@ export function QuickSearchDialog() {
                           }}
                           type="button"
                           role="option"
+                          tabIndex={-1}
                           aria-selected={active}
                           className={`model-row quick-search__row quick-search__row--message${active ? ' is-active' : ''}`}
                           onMouseEnter={() => setActiveIndex(idx)}

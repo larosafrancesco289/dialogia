@@ -123,7 +123,11 @@
   [data-mid].is-jump-highlight {
     border-radius: var(--radius-editorial);
     background: color-mix(in oklab, var(--color-accent) 16%, transparent);
-    transition: background-color 600ms var(--ease-standard);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    [data-mid].is-jump-highlight {
+      transition: background-color 600ms var(--ease-standard);
+    }
   }
   .message-edit-bar__hint {
     margin-right: auto;

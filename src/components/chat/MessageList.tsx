@@ -180,6 +180,22 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     suppressInitialBottomScroll: !!pendingJump,
   });
 
+  // Keep the temporary jump highlight's timer independent of `pendingJump` so
+  // clearing `jumpToMessage` in the store doesn't immediately strip the class.
+  const jumpHighlightRef = useRef<{
+    el: HTMLElement;
+    timer: ReturnType<typeof setTimeout>;
+  } | null>(null);
+  useEffect(
+    () => () => {
+      if (!jumpHighlightRef.current) return;
+      clearTimeout(jumpHighlightRef.current.timer);
+      jumpHighlightRef.current.el.classList.remove('is-jump-highlight');
+      jumpHighlightRef.current = null;
+    },
+    [],
+  );
+
   // Reveal a message picked from quick search once the chat's messages have loaded.
   useEffect(() => {
     if (!pendingJump || !messagesLoaded) return;
@@ -187,30 +203,43 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
       setUI({ jumpToMessage: undefined });
       return;
     }
-    let highlightTimer: ReturnType<typeof setTimeout> | undefined;
-    let highlightedEl: HTMLElement | null = null;
+    const targetVisible = visibleMessages.some((m) => m.id === pendingJump.messageId);
     const frame = requestAnimationFrame(() => {
       const target = containerRef.current?.querySelector<HTMLElement>(
         `[data-mid="${CSS.escape(pendingJump.messageId)}"]`,
       );
-      if (!target) return;
+      if (!target) {
+        // Wait for the widened window to render; if it's already in the window
+        // yet absent from the DOM (e.g. filtered out), clear the stale jump.
+        if (targetVisible) setUI({ jumpToMessage: undefined });
+        return;
+      }
       target.scrollIntoView({
         block: 'center',
         behavior: prefersReducedMotion ? 'auto' : 'smooth',
       });
+      if (jumpHighlightRef.current) {
+        clearTimeout(jumpHighlightRef.current.timer);
+        jumpHighlightRef.current.el.classList.remove('is-jump-highlight');
+      }
       target.classList.add('is-jump-highlight');
-      highlightedEl = target;
-      setUI({ jumpToMessage: undefined });
-      highlightTimer = setTimeout(() => {
+      const timer = setTimeout(() => {
         target.classList.remove('is-jump-highlight');
+        if (jumpHighlightRef.current?.timer === timer) jumpHighlightRef.current = null;
       }, 1800);
+      jumpHighlightRef.current = { el: target, timer };
+      setUI({ jumpToMessage: undefined });
     });
-    return () => {
-      cancelAnimationFrame(frame);
-      if (highlightTimer) clearTimeout(highlightTimer);
-      highlightedEl?.classList.remove('is-jump-highlight');
-    };
-  }, [containerRef, jumpIndex, messagesLoaded, pendingJump, prefersReducedMotion, setUI]);
+    return () => cancelAnimationFrame(frame);
+  }, [
+    containerRef,
+    jumpIndex,
+    messagesLoaded,
+    pendingJump,
+    prefersReducedMotion,
+    setUI,
+    visibleMessages,
+  ]);
 
   const latestAssistantId = useMemo(() => {
     for (let i = visibleMessages.length - 1; i >= 0; i -= 1) {

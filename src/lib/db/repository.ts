@@ -53,9 +53,19 @@ type DbTable<T> = {
   delete: (id: string) => PromiseLike<unknown>;
   get: (id: string) => Promise<T | undefined>;
   toArray: () => Promise<T[]>;
+  each?: (callback: (obj: T) => unknown) => PromiseLike<unknown>;
   where?: DbWhere<T>;
   orderBy?: (index: string) => { uniqueKeys?: () => Promise<unknown[]> };
 };
+
+async function forEachRow<T>(table: DbTable<T>, visit: (row: T) => void): Promise<void> {
+  if (typeof table.each === 'function') {
+    await table.each(visit);
+    return;
+  }
+  const rows = await table.toArray();
+  for (const row of rows) visit(row);
+}
 
 export type DialogiaDbLike = {
   chats: DbTable<Chat>;
@@ -467,20 +477,20 @@ export function createRepository(db: DialogiaDbLike) {
       .map((message) => sanitizeMessageRecord(message).next);
 
   /**
-   * Searches persisted message bodies (and attached text) directly in the
-   * database, keeping lazy hydration intact so unloaded chats stay out of RAM.
+   * Searches persisted message bodies (and attached text) via a cursor so
+   * unloaded chats and base64 attachments are never retained in memory.
    */
   const searchMessages = async (
     query: string,
-    opts?: { limit?: number },
+    opts?: { limit?: number; isCancelled?: () => boolean },
   ): Promise<MessageSearchRecord[]> => {
     const terms = Array.from(new Set(query.trim().toLowerCase().split(/\s+/).filter(Boolean)));
     if (terms.length === 0) return [];
     const limit = opts?.limit ?? 80;
-    const all = await db.messages.toArray();
     const hits: MessageSearchRecord[] = [];
-    for (const raw of all) {
-      if (raw.metadata?.hiddenFromUser || raw.ledger) continue;
+    await forEachRow(db.messages, (raw) => {
+      if (opts?.isCancelled?.()) return;
+      if (raw.metadata?.hiddenFromUser || raw.ledger) return;
       const textParts: string[] = [];
       if (typeof raw.content === 'string' && raw.content.trim()) textParts.push(raw.content);
       if (Array.isArray(raw.attachments)) {
@@ -489,17 +499,25 @@ export function createRepository(db: DialogiaDbLike) {
           if (attachment?.text) textParts.push(attachment.text);
         }
       }
-      if (textParts.length === 0) continue;
+      if (textParts.length === 0) return;
       const haystack = textParts.join('\n').toLowerCase();
-      if (!terms.every((term) => haystack.includes(term))) continue;
+      if (!terms.every((term) => haystack.includes(term))) return;
+      // Prefer the part that actually carries a matched term so the excerpt
+      // highlights the match even when it lives in an attachment.
+      const matchedPart =
+        textParts.find((part) => {
+          const lower = part.toLowerCase();
+          return terms.some((term) => lower.includes(term));
+        }) ?? textParts[0];
       hits.push({
         id: raw.id,
         chatId: raw.chatId,
         role: raw.role,
-        content: raw.content || textParts[0] || '',
+        content: matchedPart || '',
         createdAt: raw.createdAt,
       });
-    }
+    });
+    if (opts?.isCancelled?.()) return [];
     hits.sort((a, b) => b.createdAt - a.createdAt);
     return hits.slice(0, limit);
   };

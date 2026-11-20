@@ -85,12 +85,16 @@ export function ChatRowContainer({
   };
 
   const exportMarkdown = async () => {
-    const exported = await buildSingleChatMarkdownExport(chat.id, models);
-    if (!exported) {
-      setNotice(t('chatRow.exportEmpty'), 'info');
-      return;
+    try {
+      const exported = await buildSingleChatMarkdownExport(chat.id, models);
+      if (!exported) {
+        setNotice(t('chatRow.exportEmpty'), 'info');
+        return;
+      }
+      downloadBlob(exported.blob, exported.filename);
+    } catch {
+      setNotice(t('data.exportFailed'));
     }
-    downloadBlob(exported.blob, exported.filename);
   };
 
   const longPress = useLongPressSheet({

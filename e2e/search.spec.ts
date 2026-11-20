@@ -5,12 +5,13 @@ test('quick search finds a message in another chat and jumps to it', async ({ pa
   await send(page, 'First conversation about marmalade');
   const main = page.getByRole('main');
   await expect(main.getByText(REPLY_END)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Send message' })).toBeVisible();
 
   // Start a second chat so the first one is no longer active.
   await page.getByRole('button', { name: 'New chat', exact: true }).click();
+  await expect(main.getByText(/marmalade/)).toHaveCount(0);
   await send(page, 'Second conversation about glaciers');
   await expect(main.getByText(REPLY_END)).toBeVisible();
-  await expect(main.getByText(/marmalade/)).toHaveCount(0);
 
   // Open quick search via the header button and search for a word in the first chat.
   await page.getByRole('button', { name: 'Search chats and messages' }).click();
@@ -23,7 +24,11 @@ test('quick search finds a message in another chat and jumps to it', async ({ pa
   await hit.click();
 
   await expect(dialog).toBeHidden();
-  await expect(main.getByText('First conversation about marmalade')).toBeVisible();
+  const targetMessage = main.locator('[data-mid]', {
+    hasText: 'First conversation about marmalade',
+  });
+  await expect(targetMessage).toBeVisible();
+  await expect(targetMessage).toHaveClass(/is-jump-highlight/);
 });
 
 test('desktop keyboard shortcuts open quick search, toggle the sidebar, and open Settings', async ({

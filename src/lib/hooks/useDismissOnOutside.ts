@@ -32,7 +32,11 @@ export function useDismissOnOutside({
       latest.current.onOutsidePress();
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') latest.current.onEscape?.();
+      if (event.key !== 'Escape' || !latest.current.onEscape) return;
+      // Consuming Escape keeps app-level Escape handlers (such as stopping an
+      // active reply) from firing alongside closing this popup.
+      event.preventDefault();
+      latest.current.onEscape();
     };
     document.addEventListener('pointerdown', onPointerDown, true);
     if (listensForEscape) document.addEventListener('keydown', onKeyDown, true);

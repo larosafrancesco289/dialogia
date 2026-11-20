@@ -69,6 +69,12 @@ class InMemoryTable<T> {
     return Array.from(this.data.values()).map((entry) => cloneValue(entry));
   }
 
+  async each(callback: (obj: T) => unknown): Promise<void> {
+    for (const entry of this.data.values()) {
+      callback(cloneValue(entry));
+    }
+  }
+
   async get(id: string): Promise<T | undefined> {
     const found = this.data.get(id);
     return found ? cloneValue(found) : undefined;

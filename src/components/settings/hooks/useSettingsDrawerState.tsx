@@ -31,6 +31,7 @@ import {
 import { TAB_LIST } from '@/components/settings/sections/config';
 import { NOTICE_EXPORTED_CHATS } from '@/lib/store/notices';
 import { buildChatExport, prepareImport, type PreparedImport } from '@/lib/settings/transfer';
+import { downloadBlob } from '@/lib/settings/chatMarkdown';
 import type { ImportProgress } from '@/lib/historyImport/importHistory';
 import { t } from '@/lib/i18n';
 import { anyTurnActive } from '@/lib/ui/streaming';
@@ -153,14 +154,7 @@ export function useSettingsDrawerState(): SettingsDrawerState {
     }
     try {
       const { filename, blob } = exportResult;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      downloadBlob(blob, filename);
       setNotice(NOTICE_EXPORTED_CHATS, 'success');
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : t('data.exportFailed');
