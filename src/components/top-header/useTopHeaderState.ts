@@ -10,28 +10,39 @@ export type TopHeaderState = {
   collapsed: boolean;
   isSettingsOpen: boolean;
   isMemoryOpen: boolean;
+  isQuickSearchOpen: boolean;
   tutorActive: boolean;
   tutorModelLabel: string;
   onToggleSidebar: () => void;
   onToggleSettings: () => void;
   onToggleMemory: () => void;
+  onToggleQuickSearch: () => void;
   onNewChat: () => void;
 };
 
 export function useTopHeaderState(): TopHeaderState {
-  const { chat, setUI, newChat, collapsed, isSettingsOpen, isMemoryOpen, tutorActive } =
-    useChatStore(
-      (s) => ({
-        chat: selectCurrentChat(s),
-        setUI: s.setUI,
-        newChat: s.newChat,
-        collapsed: s.ui.sidebarCollapsed ?? false,
-        isSettingsOpen: s.ui.showSettings,
-        isMemoryOpen: s.ui.memoryOpen ?? false,
-        tutorActive: selectIsTutorEnabled(s),
-      }),
-      shallow,
-    );
+  const {
+    chat,
+    setUI,
+    newChat,
+    collapsed,
+    isSettingsOpen,
+    isMemoryOpen,
+    isQuickSearchOpen,
+    tutorActive,
+  } = useChatStore(
+    (s) => ({
+      chat: selectCurrentChat(s),
+      setUI: s.setUI,
+      newChat: s.newChat,
+      collapsed: s.ui.sidebarCollapsed ?? false,
+      isSettingsOpen: s.ui.showSettings,
+      isMemoryOpen: s.ui.memoryOpen ?? false,
+      isQuickSearchOpen: s.ui.quickSearchOpen ?? false,
+      tutorActive: selectIsTutorEnabled(s),
+    }),
+    shallow,
+  );
 
   // The model picker shows which model a tutor turn will use. The fields it reads
   // are core-declared settings, so the shell can resolve them without the module.
@@ -50,6 +61,10 @@ export function useTopHeaderState(): TopHeaderState {
     setUI({ memoryOpen: !isMemoryOpen });
   }, [isMemoryOpen, setUI]);
 
+  const onToggleQuickSearch = useCallback(() => {
+    setUI({ quickSearchOpen: !isQuickSearchOpen });
+  }, [isQuickSearchOpen, setUI]);
+
   const onNewChat = useCallback(() => {
     void newChat();
   }, [newChat]);
@@ -59,11 +74,13 @@ export function useTopHeaderState(): TopHeaderState {
     collapsed,
     isSettingsOpen,
     isMemoryOpen,
+    isQuickSearchOpen,
     tutorActive,
     tutorModelLabel,
     onToggleSidebar,
     onToggleMemory,
     onToggleSettings,
+    onToggleQuickSearch,
     onNewChat,
   };
 }

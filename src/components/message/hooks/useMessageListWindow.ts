@@ -12,6 +12,8 @@ export function useMessageListWindow(args: {
   onScrollAway?: () => void;
   pageSize?: number;
   autoScrollPreference?: boolean;
+  includeIndex?: number;
+  suppressInitialBottomScroll?: boolean;
 }) {
   const {
     messages,
@@ -23,10 +25,13 @@ export function useMessageListWindow(args: {
     onScrollAway,
     pageSize = 150,
     autoScrollPreference,
+    includeIndex,
+    suppressInitialBottomScroll,
   } = args;
   const { visibleItems, hiddenCount, showMore } = useMessageWindow(messages, {
     pageSize,
     resetKey: chatId,
+    includeIndex,
   });
   const { containerRef, contentRef, endRef, roomRef, atBottom, showJump, jumpToLatest } =
     useMessageScrolling({
@@ -38,6 +43,7 @@ export function useMessageListWindow(args: {
       isAssistantPlaceholder,
       onScrollAway,
       autoScrollPreference,
+      suppressInitialBottomScroll,
     });
 
   return {

@@ -403,8 +403,22 @@ const messages: Translation<typeof en> = {
   'header.toggleSidebar': 'Seitenleiste ein- oder ausblenden',
   'header.expandSidebar': 'Seitenleiste ausklappen',
   'header.collapseSidebar': 'Seitenleiste einklappen',
+  'header.openSearch': 'Chats und Nachrichten durchsuchen',
+  'header.openSearchShortcut': 'Suchen ({mod}K)',
   'header.openMemory': 'Gedächtnis öffnen',
   'header.openSettings': 'Einstellungen öffnen',
+
+  // Quick search (Cmd/Ctrl+K)
+  'quickSearch.title': 'Chats und Nachrichten durchsuchen',
+  'quickSearch.placeholder': 'Chats und Nachrichten durchsuchen…',
+  'quickSearch.results': 'Suchergebnisse',
+  'quickSearch.recent': 'Letzte Chats',
+  'quickSearch.chats': 'Chats',
+  'quickSearch.messages': 'Nachrichten',
+  'quickSearch.searching': 'Suche läuft…',
+  'quickSearch.empty': 'Nichts passt zu „{query}“.',
+  'quickSearch.noChats': 'Noch keine Chats.',
+  'quickSearch.hint': 'Pfeiltasten zum Bewegen · Enter zum Öffnen · Esc zum Schließen',
   'learnTools.notice':
     '{model} kann keine Werkzeuge nutzen, also kann es unter Lernen nur chatten: kein Plan und kein Quiz.',
   'learnTools.chooseModel': 'Anderes Modell wählen',

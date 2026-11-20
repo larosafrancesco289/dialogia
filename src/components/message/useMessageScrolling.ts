@@ -14,6 +14,8 @@ export type MessageScrollingOptions = {
    * the top on send and the reply is written under it while the list stays still.
    */
   autoScrollPreference?: boolean;
+  /** Skip the initial jump to the bottom when opening a chat to reveal a specific message. */
+  suppressInitialBottomScroll?: boolean;
 };
 
 export type ScrollMetrics = {
@@ -93,6 +95,7 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     isAssistantPlaceholder,
     onScrollAway,
     autoScrollPreference = true,
+    suppressInitialBottomScroll = false,
   } = options;
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -486,21 +489,23 @@ export function useMessageScrolling(options: MessageScrollingOptions) {
     if (previousChatIdRef.current === chatId) return;
     previousChatIdRef.current = chatId;
 
-    followAllowedRef.current = true;
+    followAllowedRef.current = !suppressInitialBottomScroll;
     programmaticScrollRef.current = false;
     touchStartYRef.current = null;
     lastMessageMetaRef.current = undefined;
-    settlingRef.current = true;
+    settlingRef.current = !suppressInitialBottomScroll;
     // An opened chat is read from its end, with no room kept under it.
     anchorIdRef.current = null;
     pinnedTargetRef.current = null;
     followRequestedRef.current = false;
     fitTurnRoom();
-    // A chat with nothing left to grow settles too. In a hidden tab the
-    // first resize starts the countdown, once the tab is shown.
-    if (document.visibilityState === 'visible') restartSettleTimer();
-    scrollToBottom('auto');
-  }, [chatId, fitTurnRoom, restartSettleTimer, scrollToBottom]);
+    if (!suppressInitialBottomScroll) {
+      // A chat with nothing left to grow settles too. In a hidden tab the
+      // first resize starts the countdown, once the tab is shown.
+      if (document.visibilityState === 'visible') restartSettleTimer();
+      scrollToBottom('auto');
+    }
+  }, [chatId, fitTurnRoom, restartSettleTimer, scrollToBottom, suppressInitialBottomScroll]);
 
   const lastMessageMeta = useMemo<LastMessageMeta | null>(() => {
     const last = messages[messages.length - 1];

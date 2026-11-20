@@ -54,15 +54,18 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     }),
     shallow,
   );
-  const { regenerate, branchFrom, latestOnly, deleteReplyVersion } = useChatStore(
-    (state) => ({
-      regenerate: state.regenerateAssistantMessage,
-      branchFrom: state.branchChatFromMessage,
-      latestOnly: latestExchangeOnly(state, chatId),
-      deleteReplyVersion: state.deleteReplyVersion,
-    }),
-    shallow,
-  );
+  const { regenerate, branchFrom, latestOnly, deleteReplyVersion, jumpToMessage, setUI } =
+    useChatStore(
+      (state) => ({
+        regenerate: state.regenerateAssistantMessage,
+        branchFrom: state.branchChatFromMessage,
+        latestOnly: latestExchangeOnly(state, chatId),
+        deleteReplyVersion: state.deleteReplyVersion,
+        jumpToMessage: state.ui.jumpToMessage,
+        setUI: state.setUI,
+      }),
+      shallow,
+    );
   // The last user message and its replies. A reply's versions switch only
   // here, and where a module's record follows the transcript, only these can
   // be regenerated or rerun.
@@ -147,6 +150,12 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     );
   }, []);
 
+  const pendingJump = jumpToMessage?.chatId === chatId ? jumpToMessage : undefined;
+  const jumpIndex = useMemo(
+    () => (pendingJump ? messages.findIndex((m) => m.id === pendingJump.messageId) : -1),
+    [messages, pendingJump],
+  );
+
   const {
     containerRef,
     contentRef,
@@ -167,7 +176,41 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     isAssistantPlaceholder,
     onScrollAway: () => setActiveMessageId(null),
     autoScrollPreference: autoScrollPref,
+    includeIndex: jumpIndex >= 0 ? jumpIndex : undefined,
+    suppressInitialBottomScroll: !!pendingJump,
   });
+
+  // Reveal a message picked from quick search once the chat's messages have loaded.
+  useEffect(() => {
+    if (!pendingJump || !messagesLoaded) return;
+    if (jumpIndex === -1) {
+      setUI({ jumpToMessage: undefined });
+      return;
+    }
+    let highlightTimer: ReturnType<typeof setTimeout> | undefined;
+    let highlightedEl: HTMLElement | null = null;
+    const frame = requestAnimationFrame(() => {
+      const target = containerRef.current?.querySelector<HTMLElement>(
+        `[data-mid="${CSS.escape(pendingJump.messageId)}"]`,
+      );
+      if (!target) return;
+      target.scrollIntoView({
+        block: 'center',
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      });
+      target.classList.add('is-jump-highlight');
+      highlightedEl = target;
+      setUI({ jumpToMessage: undefined });
+      highlightTimer = setTimeout(() => {
+        target.classList.remove('is-jump-highlight');
+      }, 1800);
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      if (highlightTimer) clearTimeout(highlightTimer);
+      highlightedEl?.classList.remove('is-jump-highlight');
+    };
+  }, [containerRef, jumpIndex, messagesLoaded, pendingJump, prefersReducedMotion, setUI]);
 
   const latestAssistantId = useMemo(() => {
     for (let i = visibleMessages.length - 1; i >= 0; i -= 1) {

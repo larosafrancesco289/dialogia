@@ -9,6 +9,7 @@ import { useChatStore } from '@/lib/store';
 import { shallow } from 'zustand/shallow';
 import { useAppBootstrap } from '@/lib/hooks/useAppBootstrap';
 import { useAmbientMotionPause } from '@/lib/hooks/useAmbientMotionPause';
+import { useGlobalShortcuts } from '@/lib/hooks/useGlobalShortcuts';
 import { selectIsTutorEnabled, selectSetupSheetOpen } from '@/lib/store/selectors';
 import { selectRightPanelContent } from '@/lib/modules';
 import { MotionConfig } from 'framer-motion';
@@ -33,12 +34,16 @@ const GlobalNotice = lazyClient(() =>
 const SetupSheet = lazyClient(() =>
   import('@/components/SetupSheet').then((mod) => ({ default: mod.SetupSheet })),
 );
+const QuickSearchDialog = lazyClient(() =>
+  import('@/components/QuickSearchDialog').then((mod) => ({ default: mod.QuickSearchDialog })),
+);
 
 export function HomeClient() {
   const {
     collapsed,
     isSettingsOpen,
     isMemoryOpen,
+    isQuickSearchOpen,
     isSetupOpen,
     tutorActive,
     rightPanelOpen,
@@ -50,6 +55,7 @@ export function HomeClient() {
       collapsed: s.ui.sidebarCollapsed ?? false,
       isSettingsOpen: s.ui.showSettings,
       isMemoryOpen: s.ui.memoryOpen ?? false,
+      isQuickSearchOpen: s.ui.quickSearchOpen ?? false,
       isSetupOpen: selectSetupSheetOpen(s),
       tutorActive: selectIsTutorEnabled(s),
       rightPanelOpen: s.ui.plan?.rightPanelOpen ?? false,
@@ -61,6 +67,7 @@ export function HomeClient() {
   );
   const setUI = useChatStore((s) => s.setUI);
   const { isMobile } = useAppBootstrap();
+  useGlobalShortcuts(!isMobile);
   // In parallel with reading the saved chats, so the one you left renders
   // as soon as it arrives.
   useEffect(() => preloadMarkdown(), []);
@@ -129,6 +136,7 @@ export function HomeClient() {
           </div>
           {isSettingsOpen && <SettingsDrawer />}
           {isMemoryOpen && <MemoryPage />}
+          {isQuickSearchOpen && <QuickSearchDialog />}
           {isSetupOpen && <SetupSheet />}
           <GlobalNotice />
         </main>

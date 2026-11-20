@@ -409,8 +409,22 @@ const messages: Translation<typeof en> = {
   'header.toggleSidebar': 'Afficher ou masquer la barre latérale',
   'header.expandSidebar': 'Ouvrir la barre latérale',
   'header.collapseSidebar': 'Replier la barre latérale',
+  'header.openSearch': 'Rechercher dans les discussions et messages',
+  'header.openSearchShortcut': 'Rechercher ({mod}K)',
   'header.openMemory': 'Ouvrir la mémoire',
   'header.openSettings': 'Ouvrir les réglages',
+
+  // Quick search (Cmd/Ctrl+K)
+  'quickSearch.title': 'Rechercher dans les discussions et messages',
+  'quickSearch.placeholder': 'Rechercher dans les discussions et messages…',
+  'quickSearch.results': 'Résultats de recherche',
+  'quickSearch.recent': 'Discussions récentes',
+  'quickSearch.chats': 'Discussions',
+  'quickSearch.messages': 'Messages',
+  'quickSearch.searching': 'Recherche…',
+  'quickSearch.empty': 'Aucun résultat pour « {query} ».',
+  'quickSearch.noChats': 'Aucune discussion pour le moment.',
+  'quickSearch.hint': 'Flèches pour naviguer · Entrée pour ouvrir · Échap pour fermer',
   'learnTools.notice':
     '{model} ne sait pas utiliser d’outils : en mode Apprendre, il peut seulement discuter, sans plan ni quiz.',
   'learnTools.chooseModel': 'Choisir un autre modèle',

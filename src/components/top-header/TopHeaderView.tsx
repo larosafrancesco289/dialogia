@@ -1,20 +1,28 @@
-import { BookmarkIcon, Cog6ToothIcon, DocumentPlusIcon } from '@heroicons/react/24/outline';
+import {
+  BookmarkIcon,
+  Cog6ToothIcon,
+  DocumentPlusIcon,
+  MagnifyingGlassIcon,
+} from '@heroicons/react/24/outline';
 import { ModuleSlot } from '@/components/ModuleSlot';
 import { SidebarIcon } from '@/components/ui/icons';
 import { HeaderDivider } from '@/components/top-header/HeaderDivider';
 import { ModelPickerTrigger } from '@/components/top-header/ModelPickerTrigger';
 import type { TopHeaderState } from '@/components/top-header/useTopHeaderState';
+import { modKeyPrefix } from '@/lib/ui/globalShortcuts';
 import { useT } from '@/lib/i18n';
 
 export function TopHeaderView({
   collapsed,
   isSettingsOpen,
   isMemoryOpen,
+  isQuickSearchOpen,
   tutorActive,
   tutorModelLabel,
   onToggleSidebar,
   onToggleSettings,
   onToggleMemory,
+  onToggleQuickSearch,
   onNewChat,
 }: TopHeaderState) {
   const t = useT();
@@ -61,6 +69,21 @@ export function TopHeaderView({
               <DocumentPlusIcon className="h-5 w-5" />
             </button>
           )}
+          <button
+            className="icon-button icon-button--lg hide-on-mobile"
+            aria-label={t('header.openSearch')}
+            title={t('header.openSearchShortcut', { mod: modKeyPrefix() })}
+            aria-pressed={isQuickSearchOpen}
+            onClick={onToggleQuickSearch}
+            onMouseEnter={() => {
+              import('@/components/QuickSearchDialog').catch(() => undefined);
+            }}
+            onFocus={() => {
+              import('@/components/QuickSearchDialog').catch(() => undefined);
+            }}
+          >
+            <MagnifyingGlassIcon className="h-5 w-5" />
+          </button>
           <button
             className="icon-button icon-button--lg hide-on-mobile"
             aria-label={t('header.openMemory')}

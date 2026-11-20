@@ -103,8 +103,12 @@ the app and live in the browser that pasted them.
 - Pick a model in the header. The picker searches every model, and a model you pick from a search
   joins your favorites, so it is there next time.
 - Enter sends, Shift+Enter adds a newline.
-- Attach images (vision models), audio (mp3/wav), or PDFs. PDF text is extracted client-side and
-  sent as text. A small PDF with no extractable text goes as a file block instead.
+- Desktop shortcuts: `Cmd/Ctrl+K` searches across chats and messages, `Cmd/Ctrl+Shift+O` starts a
+  new chat, `Cmd/Ctrl+B` toggles the sidebar, `Cmd/Ctrl+,` opens Settings, and `Esc` stops an active
+  reply.
+- Attach images (vision models), audio (mp3/wav), PDFs, or plain-text and source-code files. PDF
+  and text files are read client-side and sent as text. A small PDF with no extractable text goes
+  as a file block instead.
 - Set reasoning effort in the composer for thinking models. Expand the Thinking panel per
   message.
 - Toggle web search in the composer. With a search-provider key stored, the same control becomes a

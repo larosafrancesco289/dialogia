@@ -118,6 +118,13 @@
     scroll-margin-bottom: calc(var(--composer-height, 0px) + var(--space-6));
     font-family: var(--font-sans);
   }
+
+  /* Brief wash on a message jumped to from search. */
+  [data-mid].is-jump-highlight {
+    border-radius: var(--radius-editorial);
+    background: color-mix(in oklab, var(--color-accent) 16%, transparent);
+    transition: background-color 600ms var(--ease-standard);
+  }
   .message-edit-bar__hint {
     margin-right: auto;
     font-size: 0.75rem;

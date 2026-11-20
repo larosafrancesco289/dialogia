@@ -406,8 +406,22 @@ const messages: Translation<typeof en> = {
   'header.toggleSidebar': 'Εμφάνιση ή απόκρυψη πλαϊνής στήλης',
   'header.expandSidebar': 'Άνοιγμα πλαϊνής στήλης',
   'header.collapseSidebar': 'Κλείσιμο πλαϊνής στήλης',
+  'header.openSearch': 'Αναζήτηση σε συζητήσεις και μηνύματα',
+  'header.openSearchShortcut': 'Αναζήτηση ({mod}K)',
   'header.openMemory': 'Άνοιγμα μνήμης',
   'header.openSettings': 'Άνοιγμα ρυθμίσεων',
+
+  // Quick search (Cmd/Ctrl+K)
+  'quickSearch.title': 'Αναζήτηση σε συζητήσεις και μηνύματα',
+  'quickSearch.placeholder': 'Αναζήτηση σε συζητήσεις και μηνύματα…',
+  'quickSearch.results': 'Αποτελέσματα αναζήτησης',
+  'quickSearch.recent': 'Πρόσφατες συζητήσεις',
+  'quickSearch.chats': 'Συζητήσεις',
+  'quickSearch.messages': 'Μηνύματα',
+  'quickSearch.searching': 'Αναζήτηση…',
+  'quickSearch.empty': 'Δεν βρέθηκε τίποτα για «{query}».',
+  'quickSearch.noChats': 'Δεν υπάρχουν συζητήσεις ακόμα.',
+  'quickSearch.hint': 'Βέλη για πλοήγηση · Enter για άνοιγμα · Esc για κλείσιμο',
   'learnTools.notice':
     'Το {model} δεν μπορεί να χρησιμοποιήσει εργαλεία, οπότε στη Μάθηση μπορεί μόνο να συζητά: χωρίς πλάνο και χωρίς κουίζ.',
   'learnTools.chooseModel': 'Επιλογή άλλου μοντέλου',

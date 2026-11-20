@@ -224,6 +224,19 @@ export function defineA11yScans() {
         await scan(page, testInfo, 'Memory');
       });
 
+      test('Quick search', async ({ page }, testInfo) => {
+        test.skip(isPhone(page), 'Quick search header trigger is desktop-only');
+        await connectMock(page);
+        await send(page, 'Findable note about origami');
+        await expect(page.getByRole('main').getByText(REPLY_END)).toBeVisible();
+        await page.getByRole('button', { name: 'Search chats and messages' }).click();
+        const dialog = page.getByRole('dialog', { name: 'Search chats and messages' });
+        await expect(dialog).toBeVisible();
+        await dialog.getByRole('combobox').fill('origami');
+        await expect(dialog.getByRole('option', { name: /origami/i }).first()).toBeVisible();
+        await scan(page, testInfo, 'Quick search');
+      });
+
       test('Learn', async ({ page }, testInfo) => {
         await connectMock(page);
         await page.getByRole('button', { name: 'Learn', exact: true }).click();

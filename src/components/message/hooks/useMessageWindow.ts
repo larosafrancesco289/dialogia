@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 
-export function useMessageWindow<T>(items: T[], opts?: { pageSize?: number; resetKey?: unknown }) {
+export function useMessageWindow<T>(
+  items: T[],
+  opts?: { pageSize?: number; resetKey?: unknown; includeIndex?: number },
+) {
   const pageSize = opts?.pageSize ?? 150;
   const total = items.length;
   const [count, setCount] = useState(pageSize);
@@ -11,10 +14,14 @@ export function useMessageWindow<T>(items: T[], opts?: { pageSize?: number; rese
 
   useEffect(() => {
     setCount((prev) => {
-      const next = Math.max(pageSize, prev);
+      const needed =
+        typeof opts?.includeIndex === 'number' && opts.includeIndex >= 0
+          ? total - opts.includeIndex
+          : 0;
+      const next = Math.max(pageSize, prev, needed);
       return next === prev ? prev : next;
     });
-  }, [pageSize]);
+  }, [pageSize, opts?.includeIndex, total]);
 
   const startIndex = Math.max(0, total - count);
   const visibleItems = useMemo(() => items.slice(startIndex), [items, startIndex]);

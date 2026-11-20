@@ -79,8 +79,9 @@ Messages live in `messagesById` plus `messageIdsByChatId`. Always go through the
 **Startup loads only the selected chat's messages.** Other chats hydrate on selection through
 `ensureChatMessagesLoaded`, or during browser idle as a prefetch. `loadedMessageChatIds` and
 `nonEmptyChatIds` track what is in memory, and both are ephemeral. Anything that needs every
-message, usage statistics for instance, must call `ensureAllChatMessagesLoaded` first. Export and
-import read the database directly and are unaffected.
+message, usage statistics for instance, must call `ensureAllChatMessagesLoaded` first. Export,
+import, and full-text quick search (`repository.searchMessages`, opened by `Cmd/Ctrl+K`) read the
+database directly and keep unloaded chats out of memory.
 
 ### A reply's versions
 
@@ -193,18 +194,19 @@ the schema.
 
 ### Attachments
 
-A file is stored once (`src/lib/attachments/prepare`): a PDF whose text was read in the browser
-keeps the text alone, its file only when there is none; audio keeps its data URL, and the base64
+A file is stored once (`src/lib/attachments/prepare`): a plain-text or source-code file
+(`src/lib/attachments/text.ts`) and a PDF whose text was read in the browser keep the text alone,
+a PDF keeping its file only when there is none; audio keeps its data URL, and the base64
 a model takes is cut from it at send time. A PDF locked by a password, or with no text and too
 large to send as a file, is not attached, and the composer says why; a scan small enough goes as
 the file, with a note that only some models read it.
 
 `buildChatCompletionMessages` sends attachments with their message and counts them toward its
-budget (`AttachmentProcessor.tokens`: a PDF's text by its length, a flat amount per image,
-recording and PDF page sent as a file), so an old one is dropped like any other words. The newest
-message is always kept, whatever it costs. Only the two latest messages that carry files send them
-in full; an earlier image, recording or file-only PDF is a line naming it (`[image: x.png, shared
-earlier]`), so a long chat stops paying for every picture again each turn while follow-up
+budget (`AttachmentProcessor.tokens`: a text file or PDF's text by its length, a flat amount per
+image, recording and PDF page sent as a file), so an old one is dropped like any other words. The
+newest message is always kept, whatever it costs. Only the two latest messages that carry files send
+them in full; an earlier image, recording or file-only PDF is a line naming it (`[image: x.png,
+shared earlier]`), so a long chat stops paying for every picture again each turn while follow-up
 questions still see the latest ones. An image or recording the turn's model cannot take in
 (`ResolvedTurnSettings.caps`) is a line saying so, wherever it sits in the history.
 

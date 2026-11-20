@@ -118,6 +118,15 @@ export type RepositorySnapshot = {
   selectedChatId?: string;
 };
 
+/** Lightweight projection of a stored message matching a full-text search. */
+export type MessageSearchRecord = {
+  id: string;
+  chatId: string;
+  role: Message['role'];
+  content: string;
+  createdAt: number;
+};
+
 function pickChatCollection<T extends { chatId: string }>(
   table: DbTable<T>,
   chatId: string,
@@ -448,6 +457,44 @@ export function createRepository(db: DialogiaDbLike) {
       .filter((message): message is Message => !!message)
       .map((message) => sanitizeMessageRecord(message).next);
 
+  /**
+   * Searches persisted message bodies (and attached text) directly in the
+   * database, keeping lazy hydration intact so unloaded chats stay out of RAM.
+   */
+  const searchMessages = async (
+    query: string,
+    opts?: { limit?: number },
+  ): Promise<MessageSearchRecord[]> => {
+    const terms = Array.from(new Set(query.trim().toLowerCase().split(/\s+/).filter(Boolean)));
+    if (terms.length === 0) return [];
+    const limit = opts?.limit ?? 80;
+    const all = await db.messages.toArray();
+    const hits: MessageSearchRecord[] = [];
+    for (const raw of all) {
+      if (raw.metadata?.hiddenFromUser || raw.ledger) continue;
+      const textParts: string[] = [];
+      if (typeof raw.content === 'string' && raw.content.trim()) textParts.push(raw.content);
+      if (Array.isArray(raw.attachments)) {
+        for (const attachment of raw.attachments) {
+          if (attachment?.name) textParts.push(attachment.name);
+          if (attachment?.text) textParts.push(attachment.text);
+        }
+      }
+      if (textParts.length === 0) continue;
+      const haystack = textParts.join('\n').toLowerCase();
+      if (!terms.every((term) => haystack.includes(term))) continue;
+      hits.push({
+        id: raw.id,
+        chatId: raw.chatId,
+        role: raw.role,
+        content: raw.content || textParts[0] || '',
+        createdAt: raw.createdAt,
+      });
+    }
+    hits.sort((a, b) => b.createdAt - a.createdAt);
+    return hits.slice(0, limit);
+  };
+
   const saveChatWithMessages = async (chat: Chat, list: Message[]) => {
     await runTransaction(db, [db.chats, db.messages], async () => {
       await saveChat(chat);
@@ -569,6 +616,7 @@ export function createRepository(db: DialogiaDbLike) {
     loadChats,
     loadFolders,
     loadMessages,
+    searchMessages,
     saveChatWithMessages,
     deleteChatAndMessages,
     deleteFolder,

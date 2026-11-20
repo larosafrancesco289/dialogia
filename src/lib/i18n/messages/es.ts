@@ -405,8 +405,22 @@ const messages: Translation<typeof en> = {
   'header.toggleSidebar': 'Mostrar u ocultar la barra lateral',
   'header.expandSidebar': 'Abrir la barra lateral',
   'header.collapseSidebar': 'Cerrar la barra lateral',
+  'header.openSearch': 'Buscar chats y mensajes',
+  'header.openSearchShortcut': 'Buscar ({mod}K)',
   'header.openMemory': 'Abrir la memoria',
   'header.openSettings': 'Abrir los ajustes',
+
+  // Quick search (Cmd/Ctrl+K)
+  'quickSearch.title': 'Buscar chats y mensajes',
+  'quickSearch.placeholder': 'Buscar chats y mensajes…',
+  'quickSearch.results': 'Resultados de búsqueda',
+  'quickSearch.recent': 'Chats recientes',
+  'quickSearch.chats': 'Chats',
+  'quickSearch.messages': 'Mensajes',
+  'quickSearch.searching': 'Buscando…',
+  'quickSearch.empty': 'Nada coincide con «{query}».',
+  'quickSearch.noChats': 'Aún no hay chats.',
+  'quickSearch.hint': 'Flechas para moverte · Enter para abrir · Esc para cerrar',
   'learnTools.notice':
     '{model} no puede usar herramientas, así que en Aprender solo puede chatear: sin plan y sin quiz.',
   'learnTools.chooseModel': 'Elegir otro modelo',

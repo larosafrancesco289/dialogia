@@ -79,6 +79,10 @@ export type UiSnapshot = {
   memoryOpen?: boolean;
   /** The folder the Memory page opens on, when something asked for one. */
   memoryFolderId?: string;
+  /** Quick search dialog (Cmd/Ctrl+K) is open; session-scoped, never persisted. */
+  quickSearchOpen?: boolean;
+  /** Message a search result asked to reveal in its chat; session-scoped, never persisted. */
+  jumpToMessage?: { chatId: string; messageId: string; nonce: number };
   /**
    * The sidebar is folded because the window is phone-width, not because the
    * reader folded it; session-scoped, and the fold is not saved as their choice.

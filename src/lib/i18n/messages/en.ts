@@ -394,8 +394,22 @@ const en = {
   'header.toggleSidebar': 'Toggle sidebar',
   'header.expandSidebar': 'Expand sidebar',
   'header.collapseSidebar': 'Collapse sidebar',
+  'header.openSearch': 'Search chats and messages',
+  'header.openSearchShortcut': 'Search ({mod}K)',
   'header.openMemory': 'Open memory',
   'header.openSettings': 'Open settings',
+
+  // Quick search (Cmd/Ctrl+K)
+  'quickSearch.title': 'Search chats and messages',
+  'quickSearch.placeholder': 'Search chats and messages…',
+  'quickSearch.results': 'Search results',
+  'quickSearch.recent': 'Recent chats',
+  'quickSearch.chats': 'Chats',
+  'quickSearch.messages': 'Messages',
+  'quickSearch.searching': 'Searching…',
+  'quickSearch.empty': 'Nothing matches “{query}”.',
+  'quickSearch.noChats': 'No chats yet.',
+  'quickSearch.hint': 'Arrow keys to move · Enter to open · Esc to close',
   'learnTools.notice':
     '{model} cannot use tools, so in Learn it can only chat: no plan and no quizzes.',
   'learnTools.chooseModel': 'Choose another model',
