@@ -30,28 +30,41 @@ function best<T extends VoiceInfo>(voices: T[]): T | undefined {
 }
 
 /**
- * The voice for `lang` ("pt-BR", "en-GB"): one of exactly that language
- * first, then any of the same language ("pt-PT" for "pt-BR"); among them
- * one on the device, then one whose name promises a better voice
- * (Enhanced, Premium, Natural, Neural). Undefined when none speaks it, and
+ * The voice for `lang` ("pt-BR", "en-GB"): an on-device voice always comes
+ * before a cloud voice (exact locale first, then same base language) so reply
+ * text stays on the device whenever a local voice speaks the language. Within
+ * a tier, a voice whose name promises better quality (Enhanced, Premium,
+ * Natural, Neural) wins, then the default. Undefined when none matches, and
  * the browser chooses from the utterance's language.
  */
 export function pickVoice<T extends VoiceInfo>(voices: readonly T[], lang: string): T | undefined {
-  const exact = voices.filter((voice) => normalTag(voice.lang) === normalTag(lang));
-  if (exact.length) return best(exact);
-  return best(voices.filter((voice) => primaryOf(voice.lang) === primaryOf(lang)));
+  const target = normalTag(lang);
+  const primary = primaryOf(lang);
+  const exact = voices.filter((voice) => normalTag(voice.lang) === target);
+  const sameBase = voices.filter((voice) => primaryOf(voice.lang) === primary);
+  return (
+    best(exact.filter((voice) => voice.localService)) ??
+    best(sameBase.filter((voice) => voice.localService)) ??
+    best(exact) ??
+    best(sameBase)
+  );
 }
 
 /**
- * The language a reply is read in: the app's, unless the reply is plainly in
- * Greek and the app is not, which its letters show without guessing at words.
- * Nothing records a chat's own language, and telling Latin-script languages
- * apart would take a detector.
+ * The language a reply is read in: the app's, unless the script clearly shows
+ * Greek in a non-Greek app, or Latin-script prose in a Greek app. Nothing
+ * records a chat's own language, and telling Latin-script languages apart
+ * would take a detector.
  */
-export function readingLanguage(text: string, appLanguage: string): string {
+export function readingLanguage(
+  text: string,
+  appLanguage: string,
+  fallbackNonGreek = 'en',
+): string {
   const greek = text.match(/\p{Script=Greek}/gu)?.length ?? 0;
   const latin = text.match(/\p{Script=Latin}/gu)?.length ?? 0;
   const appIsGreek = primaryOf(appLanguage) === 'el';
   if (!appIsGreek && greek > latin * 2) return 'el';
+  if (appIsGreek && latin > greek * 2) return fallbackNonGreek;
   return appLanguage;
 }

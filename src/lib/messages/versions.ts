@@ -30,6 +30,7 @@ const VERSION_KEYS = Object.keys({
   activity: true,
   toolRounds: true,
   tutorSeq: true,
+  versionCreatedAt: true,
 } satisfies Record<ReplyVersionKey, true>) as ReplyVersionKey[];
 
 /** Whether a reply has anything to show: words, thoughts, tool calls or files. */

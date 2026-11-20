@@ -50,6 +50,7 @@ export type CreateAssistantMessageArgs = BaseMessageArgs & {
   hiddenContent?: Message['hiddenContent'];
   tutor?: Message['tutor'];
   tutorWelcome?: Message['tutorWelcome'];
+  versionCreatedAt?: number;
 };
 
 export function createAssistantMessage(args: CreateAssistantMessageArgs): Message {
@@ -69,6 +70,7 @@ export function createAssistantMessage(args: CreateAssistantMessageArgs): Messag
     hiddenContent,
     tutor,
     tutorWelcome,
+    versionCreatedAt,
   } = args;
 
   return {
@@ -88,6 +90,7 @@ export function createAssistantMessage(args: CreateAssistantMessageArgs): Messag
     ...(hiddenContent ? { hiddenContent } : {}),
     ...(tutor ? { tutor } : {}),
     ...(tutorWelcome ? { tutorWelcome } : {}),
+    ...(versionCreatedAt !== undefined ? { versionCreatedAt } : {}),
   };
 }
 

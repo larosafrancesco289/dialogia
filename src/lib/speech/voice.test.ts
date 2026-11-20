@@ -29,6 +29,14 @@ describe('pickVoice', () => {
     assert.equal(pickVoice(voices, 'en-US')?.name, 'Ava (Enhanced)');
   });
 
+  it('prefers an on-device voice of the same base language over a cloud exact-locale voice', () => {
+    const voices: VoiceInfo[] = [
+      { name: 'Google UK English Natural', lang: 'en-GB', localService: false, default: true },
+      { name: 'Samantha', lang: 'en-US', localService: true },
+    ];
+    assert.equal(pickVoice(voices, 'en-GB')?.name, 'Samantha');
+  });
+
   it('returns undefined when no voice matches the language', () => {
     const voices: VoiceInfo[] = [{ name: 'Samantha', lang: 'en-US', localService: true }];
     assert.equal(pickVoice(voices, 'ja-JP'), undefined);
@@ -46,5 +54,12 @@ describe('readingLanguage', () => {
 
   it('preserves the app language when the app is already Greek', () => {
     assert.equal(readingLanguage('Καλημέρα κόσμε', 'el-GR'), 'el-GR');
+  });
+
+  it('switches to the non-Greek fallback when a Greek app reads Latin-script prose', () => {
+    assert.equal(
+      readingLanguage('Here is a concise explanation in English.', 'el-GR', 'en-GB'),
+      'en-GB',
+    );
   });
 });

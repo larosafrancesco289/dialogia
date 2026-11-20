@@ -160,28 +160,15 @@ describe('readAloud', () => {
     assert.equal(fakeSynth.cancelCount, 3);
   });
 
-  it('waits for voiceschanged when the voice list starts empty and ignores stale waits', async () => {
+  it('speaks synchronously with utterance.lang when the voice list is initially empty', () => {
     fakeSynth.voices = [];
-    toggleReadAloud('m1', 'Delayed hello.');
-    assert.equal(fakeSynth.spoken.length, 0);
-
-    // Stopping before voices arrive prevents delayed speech from starting.
-    stopReadAloud('m1');
-    fakeSynth.voices = [EN_VOICE];
-    fakeSynth.emit('voiceschanged');
-    await Promise.resolve();
-    assert.equal(fakeSynth.spoken.length, 0);
-
-    // Starting fresh with empty voices then receiving voiceschanged speaks once.
-    fakeSynth.voices = [];
-    toggleReadAloud('m2', 'Arrived on time.');
-    fakeSynth.voices = [EN_VOICE];
-    fakeSynth.emit('voiceschanged');
-    await Promise.resolve();
+    toggleReadAloud('m1', 'Spoken inside the tap gesture.');
     assert.deepEqual(
       fakeSynth.spoken.map((u) => u.text),
-      ['Arrived on time.'],
+      ['Spoken inside the tap gesture.'],
     );
+    assert.equal(fakeSynth.spoken[0].voice, null);
+    assert.ok(fakeSynth.spoken[0].lang.length > 0);
   });
 
   it('does not speak when the markdown has no speakable content', () => {

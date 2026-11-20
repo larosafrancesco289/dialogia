@@ -500,7 +500,8 @@ const messages: Translation<typeof en> = {
   'settings.section.usage': 'Χρήση και κόστος',
   'settings.keywords.usage': 'χρηση κοστος δαπανη tokens απαντησεις στατιστικα',
   'usage.period': 'Χρονικό διάστημα',
-  'usage.estimateHint': 'Εκτίμηση από τις απαντήσεις που είναι αποθηκευμένες σε αυτόν τον browser.',
+  'usage.estimateHint':
+    'Εκτίμηση από τις απαντήσεις που είναι αποθηκευμένες σε αυτό το πρόγραμμα περιήγησης.',
   'usage.range.7d': '7 ημέρες',
   'usage.range.30d': '30 ημέρες',
   'usage.range.all': 'Όλα',

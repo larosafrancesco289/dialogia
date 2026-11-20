@@ -150,6 +150,8 @@ export const MessageSchema = z
     searchSources: z.custom<MessageSearchSource[]>().optional(),
     memoryWrites: z.custom<MemoryWrite[]>().optional(),
     createdAt: z.number(),
+    branchedFrom: z.string().optional(),
+    versionCreatedAt: z.number().optional(),
     finishReason: z.enum(['stop', 'tool_calls', 'length', 'content_filter']).optional(),
     stopPolicy: z.string().optional(),
     cutOff: z.enum(['stopped', 'failed', 'interrupted']).optional(),

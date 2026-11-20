@@ -524,24 +524,44 @@ export function createRepository(db: DialogiaDbLike) {
 
   /**
    * Reads lightweight token and usage metadata for every stored assistant
-   * reply (including alternate versions), keeping message bodies and
-   * attachments out of the store.
+   * reply (including alternate versions) via a cursor, keeping message bodies
+   * and base64 attachments out of memory and skipping branched copies,
+   * imported history, and empty failed turns.
    */
   const loadUsageRecords = async (): Promise<UsageRecord[]> => {
-    const all = await db.messages.toArray();
     const records: UsageRecord[] = [];
-    for (const msg of all) {
-      if (msg.role !== 'assistant') continue;
-      if (msg.tutorWelcome) continue;
+    await forEachRow(db.messages, (msg) => {
+      if (msg.role !== 'assistant') return;
+      if (msg.tutorWelcome || msg.branchedFrom) return;
       const pushOne = (entry: {
+        content?: string;
+        reasoning?: string;
+        toolCalls?: Message['toolCalls'];
+        attachments?: Message['attachments'];
         model?: string;
         tokensIn?: number;
         tokensOut?: number;
         metrics?: Message['metrics'];
         usage?: Message['usage'];
+        versionCreatedAt?: number;
       }) => {
+        // Imported history (ChatGPT/Claude) carries no model or token metadata;
+        // empty failed turns carry no output or usage. Skip both.
+        const hasGenerationMeta =
+          !!entry.model ||
+          !!entry.metrics ||
+          !!entry.usage ||
+          entry.tokensIn !== undefined ||
+          entry.tokensOut !== undefined;
+        if (!hasGenerationMeta) return;
+        const hasAnyOutput =
+          !!entry.content?.trim() ||
+          !!entry.reasoning?.trim() ||
+          !!entry.toolCalls?.length ||
+          !!entry.attachments?.length;
+        if (!hasAnyOutput && !entry.metrics && !entry.usage) return;
         records.push({
-          createdAt: msg.createdAt,
+          createdAt: entry.versionCreatedAt ?? msg.createdAt,
           model: entry.model,
           tokensIn: entry.metrics?.promptTokens ?? entry.tokensIn,
           tokensOut: entry.metrics?.completionTokens ?? entry.tokensOut,
@@ -552,7 +572,7 @@ export function createRepository(db: DialogiaDbLike) {
       if (Array.isArray(msg.versions)) {
         for (const version of msg.versions) pushOne(version);
       }
-    }
+    });
     return records;
   };
 

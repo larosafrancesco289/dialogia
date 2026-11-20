@@ -507,7 +507,7 @@ const messages: Translation<typeof en> = {
   'usage.spend': 'Spesa stimata',
   'usage.replies': 'Risposte',
   'usage.tokens': 'Token',
-  'usage.tokensDetail': '{inCount} in · {outCount} out',
+  'usage.tokensDetail': '{inCount} input · {outCount} output',
   'usage.replyCount': { one: '{count} risposta', other: '{count} risposte' },
   'usage.modelMetaWithTokens': '{replies} · {tokens} token',
   'usage.empty': 'Nessuna risposta registrata in questo periodo.',

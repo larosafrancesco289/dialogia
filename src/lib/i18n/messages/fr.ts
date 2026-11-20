@@ -962,7 +962,7 @@ const messages: Translation<typeof en> = {
   'speech.math.over': 'sur',
   'speech.math.squared': 'au carré',
   'speech.math.cubed': 'au cube',
-  'speech.math.toThePowerOf': 'puissance',
+  'speech.math.toThePowerOf': 'à la puissance',
   'speech.math.squareRootOf': 'racine carrée de',
   'speech.math.cubeRootOf': 'racine cubique de',
   'speech.math.nthRootOf': 'racine {index}-ième de',

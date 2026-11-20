@@ -56,6 +56,7 @@ export async function regenerate(opts: RegenerateOptions): Promise<void> {
     chatId,
     content: '',
     createdAt: original.createdAt,
+    versionCreatedAt: Date.now(),
     model: modelIdForTurn,
     attachments: [],
     // The old reply's system snapshot is not carried over: it holds that

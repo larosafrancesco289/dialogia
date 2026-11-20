@@ -124,11 +124,13 @@ export class ChatService {
     };
 
     // A reply goes as the version shown: the branch continues from that one.
+    // `branchedFrom` marks it as a copy so usage totals don't double-count it.
     const cloned = slice.map((m) =>
       decorateMessage({
         ...onlyShownVersion(m),
         id: uuidv4(),
         chatId: newChatId,
+        branchedFrom: m.branchedFrom ?? m.id,
       }),
     );
 

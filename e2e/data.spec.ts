@@ -65,3 +65,29 @@ test('a single chat exports as a Markdown file from the sidebar', async ({ page 
   expect(text).toContain('Write a haiku about cedar trees');
   expect(text).toContain(REPLY_END);
 });
+
+test('Usage and spend overview counts replies without double-counting branched chats', async ({
+  page,
+}) => {
+  await connectMock(page);
+  await send(page, 'Count this reply once');
+  const main = page.getByRole('main');
+  await expect(main.getByText(REPLY_END)).toBeVisible();
+
+  // Branch from the reply: the copied reply must not double-count usage.
+  await main.getByRole('button', { name: 'Branch in a new chat' }).click();
+  await expect(page.getByRole('complementary').locator('.chat-item')).toHaveCount(2);
+
+  await page.getByRole('button', { name: 'Open settings' }).click();
+  await page.getByRole('tab', { name: 'Data' }).click();
+  const dataPanel = page.getByRole('tabpanel', { name: 'Data' });
+  await expect(dataPanel.getByRole('heading', { name: 'Usage and spend' })).toBeVisible();
+  // Unpriced local model shows "—" instead of "$0.00", and 1 reply (not 2).
+  await expect(dataPanel.locator('.usage-summary__item').nth(0)).toContainText('—');
+  await expect(dataPanel.locator('.usage-summary__item').nth(1)).toContainText('1');
+  await expect(dataPanel.getByText('mock-fast')).toBeVisible();
+  await expect(dataPanel.getByText('1 reply')).toBeVisible();
+
+  await dataPanel.getByRole('radio', { name: '7 days' }).click();
+  await expect(dataPanel.getByRole('radio', { name: '7 days' })).toBeChecked();
+});

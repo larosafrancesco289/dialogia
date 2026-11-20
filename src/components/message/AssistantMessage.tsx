@@ -475,7 +475,6 @@ export function AssistantMessage({
                     }
                     title={t(reading ? 'message.stopReading' : 'message.readAloud')}
                     action="read-aloud"
-                    pressed={reading}
                     className={reading ? 'is-live' : undefined}
                     onClick={() => toggleReadAloud(message.id, displayContent)}
                   />

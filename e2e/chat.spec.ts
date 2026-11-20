@@ -125,3 +125,60 @@ test('Try again writes a new version of a finished reply', async ({ page }) => {
   await expect(main.getByText(REPLY_END)).toHaveCount(1);
   await expect(main.getByText(/2\s*\/\s*2/)).toBeVisible();
 });
+
+test('Read aloud speaks cleaned reply chunks and toggles to Stop reading', async ({ page }) => {
+  await page.addInitScript(() => {
+    const spoken: string[] = [];
+    let cancels = 0;
+    class FakeUtterance {
+      text: string;
+      lang = '';
+      voice: unknown = null;
+      onend: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      constructor(text: string) {
+        this.text = text;
+      }
+    }
+    const synth = {
+      getVoices: () => [
+        { name: 'Test Local', lang: 'en-US', localService: true, default: true, voiceURI: 'local' },
+      ],
+      speak: (u: { text: string }) => {
+        spoken.push(u.text);
+      },
+      cancel: () => {
+        cancels += 1;
+      },
+      resume: () => undefined,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    };
+    Object.defineProperty(window, 'SpeechSynthesisUtterance', {
+      value: FakeUtterance,
+      configurable: true,
+    });
+    Object.defineProperty(window, 'speechSynthesis', { value: synth, configurable: true });
+    (window as unknown as Record<string, unknown>).__speechLog = () => ({ spoken, cancels });
+  });
+
+  await connectMock(page);
+  await send(page, 'Read this aloud');
+  const main = page.getByRole('main');
+  await expect(main.getByText(REPLY_END)).toBeVisible();
+
+  await main.getByRole('button', { name: 'Read aloud' }).click();
+  await expect(main.getByRole('button', { name: 'Stop reading' })).toBeVisible();
+
+  const log = await page.evaluate(() =>
+    (
+      window as unknown as { __speechLog: () => { spoken: string[]; cancels: number } }
+    ).__speechLog(),
+  );
+  expect(log.spoken.length).toBeGreaterThan(0);
+  expect(log.spoken.join(' ')).toContain('bold text');
+  expect(log.spoken.join(' ')).not.toContain('**');
+
+  await main.getByRole('button', { name: 'Stop reading' }).click();
+  await expect(main.getByRole('button', { name: 'Read aloud' })).toBeVisible();
+});

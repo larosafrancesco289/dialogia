@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { shallow } from 'zustand/shallow';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { ApiKeyField } from '@/components/settings/ApiKeyField';
@@ -277,6 +277,7 @@ function AddEndpointForm({ onAdded }: { onAdded: () => void }) {
 
   const nameRef = useRef<HTMLInputElement>(null);
   const urlRef = useRef<HTMLInputElement>(null);
+  const presetsLabelId = useId();
 
   const canAdd = label.trim().length > 0 && baseUrl.trim().length > 0;
 
@@ -311,9 +312,11 @@ function AddEndpointForm({ onAdded }: { onAdded: () => void }) {
       <div
         className="flex flex-wrap items-center gap-1.5"
         role="group"
-        aria-label={t('servers.presets')}
+        aria-labelledby={presetsLabelId}
       >
-        <span className="text-xs text-fg-muted mr-1">{t('servers.presets')}</span>
+        <span id={presetsLabelId} className="text-xs text-fg-muted mr-1">
+          {t('servers.presets')}
+        </span>
         {SERVER_PRESETS.map((preset) => (
           <button
             key={preset.id}

@@ -13,6 +13,7 @@ export type ModelUsageRow = {
   modelId: string;
   label: string;
   replies: number;
+  pricedReplies: number;
   tokensIn: number;
   tokensOut: number;
   cost: number;
@@ -21,6 +22,8 @@ export type ModelUsageRow = {
 
 export type UsageSummary = {
   replies: number;
+  pricedReplies: number;
+  unpricedReplies: number;
   tokensIn: number;
   tokensOut: number;
   totalCost: number;
@@ -57,6 +60,8 @@ export function computeUsageSummary(
   const modelById = new Map(models.map((m) => [m.id, m]));
   const buckets = new Map<string, ModelUsageRow>();
   let replies = 0;
+  let pricedReplies = 0;
+  let unpricedReplies = 0;
   let tokensIn = 0;
   let tokensOut = 0;
   let totalCost = 0;
@@ -73,11 +78,20 @@ export function computeUsageSummary(
       completionTokens: tokens.tokensOut || undefined,
       usage: record.usage,
     });
+    const hasExplicitFreeRates =
+      model?.pricing != null &&
+      typeof model.pricing.prompt === 'number' &&
+      model.pricing.prompt >= 0 &&
+      typeof model.pricing.completion === 'number' &&
+      model.pricing.completion >= 0;
+    const hasPrice = total !== undefined || hasExplicitFreeRates;
     const cost = total && total > 0 ? total : 0;
     const rowCurrency = recordCurrency || 'USD';
     if (cost > 0) currency = rowCurrency;
 
     replies += 1;
+    if (hasPrice) pricedReplies += 1;
+    else unpricedReplies += 1;
     tokensIn += tokens.tokensIn;
     tokensOut += tokens.tokensOut;
     totalCost += cost;
@@ -86,6 +100,7 @@ export function computeUsageSummary(
     const existing = buckets.get(key);
     if (existing) {
       existing.replies += 1;
+      if (hasPrice) existing.pricedReplies += 1;
       existing.tokensIn += tokens.tokensIn;
       existing.tokensOut += tokens.tokensOut;
       existing.cost += cost;
@@ -94,6 +109,7 @@ export function computeUsageSummary(
         modelId,
         label: modelId ? formatModelLabel({ model, fallbackId: modelId }) : '',
         replies: 1,
+        pricedReplies: hasPrice ? 1 : 0,
         tokensIn: tokens.tokensIn,
         tokensOut: tokens.tokensOut,
         cost,
@@ -108,6 +124,8 @@ export function computeUsageSummary(
 
   return {
     replies,
+    pricedReplies,
+    unpricedReplies,
     tokensIn,
     tokensOut,
     totalCost,

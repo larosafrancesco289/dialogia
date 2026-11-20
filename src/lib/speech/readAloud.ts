@@ -4,14 +4,12 @@
 // the page. Nothing is kept; no setting, no stored state.
 
 import { useSyncExternalStore } from 'react';
+import { browserLanguages } from '@/lib/i18n/locales';
 import { getLocale, intlLocale } from '@/lib/i18n/state';
 import { speechChunks } from '@/lib/speech/chunks';
 import { speechLabels } from '@/lib/speech/labels';
 import { toSpeakableText } from '@/lib/speech/text';
 import { pickVoice, readingLanguage } from '@/lib/speech/voice';
-
-/** How long to wait for the voice list, which some browsers fill only after asking. */
-const VOICES_WAIT_MS = 1500;
 
 let readingId: string | null = null;
 // Each reading's turn: a later one, or a stop, makes an earlier one's events moot.
@@ -50,19 +48,6 @@ function setReading(id: string | null) {
 function subscribe(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
-}
-
-/** A moment for a voice list that is still empty, which some browsers fill only once asked. */
-function waitForVoices(speech: SpeechSynthesis): Promise<void> {
-  return new Promise((resolve) => {
-    const done = () => {
-      window.clearTimeout(timer);
-      speech.removeEventListener('voiceschanged', done);
-      resolve();
-    };
-    const timer = window.setTimeout(done, VOICES_WAIT_MS);
-    speech.addEventListener('voiceschanged', done);
-  });
 }
 
 /** Stop reading: the one reading `id`, or whatever is being read. */
@@ -135,25 +120,22 @@ export function toggleReadAloud(id: string, markdown: string): void {
   }
   bindPageHide();
   // Whatever was being read stops first, here or in the speech queue.
-  const mine = ++turn;
+  ++turn;
   queued = [];
   speech.cancel();
-  const lang = readingLanguage(markdown, intlLocale(getLocale()));
+  const nonGreekFallback =
+    browserLanguages().find((tag) => !tag.toLowerCase().startsWith('el')) ?? 'en';
+  const lang = readingLanguage(markdown, intlLocale(getLocale()), nonGreekFallback);
   const chunks = speechChunks(toSpeakableText(markdown, speechLabels(lang)));
   if (!chunks.length) {
     setReading(null);
     return;
   }
   setReading(id);
-  // Spoken within the click when the voices are known: Safari on a phone
-  // speaks only in answer to a tap.
-  if (speech.getVoices().length) {
-    speak(id, chunks, lang, speech);
-    return;
-  }
-  void waitForVoices(speech).then(() => {
-    if (mine === turn) speak(id, chunks, lang, speech);
-  });
+  // Always speak synchronously inside the click/tap gesture: iOS Safari drops
+  // speech started after an async wait (such as waiting for `voiceschanged`).
+  // When voices are not loaded yet, `utterance.lang` still guides the OS voice.
+  speak(id, chunks, lang, speech);
 }
 
 /** Whether the reply `id` is being read aloud now. */

@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { computeUsageSummary } from '@/lib/ui/usageSummary';
 import { createMemoryDb } from '@/lib/db/memory';
 import { createRepository } from '@/lib/db/repository';
+import { ChatService } from '@/lib/services/chatService';
 import type { ModelDescriptor } from '@/lib/types';
+import { makeChat } from '../../../tests/helpers/makeChat';
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = Date.UTC(2026, 9, 10);
@@ -64,9 +66,61 @@ test('computeUsageSummary filters by window, aggregates tokens and spend, and so
   assert.equal(all.byModel[1]?.replies, 2);
 });
 
-test('repository.loadUsageRecords counts assistant replies and alternate versions while skipping user rows', async () => {
+test('computeUsageSummary distinguishes unpriced models from explicitly free priced models', () => {
+  const models: ModelDescriptor[] = [
+    ...MODELS,
+    {
+      id: 'free/model',
+      name: 'Free Model',
+      pricing: { prompt: 0, completion: 0, currency: 'USD' },
+    },
+  ];
+  const unpricedOnly = computeUsageSummary(
+    [{ createdAt: NOW - DAY, model: 'local/llama3', tokensIn: 500, tokensOut: 250 }],
+    models,
+    '30d',
+    NOW,
+  );
+  assert.equal(unpricedOnly.replies, 1);
+  assert.equal(unpricedOnly.pricedReplies, 0);
+  assert.equal(unpricedOnly.unpricedReplies, 1);
+  assert.equal(unpricedOnly.byModel[0]?.pricedReplies, 0);
+
+  const freeModel = computeUsageSummary(
+    [{ createdAt: NOW - DAY, model: 'free/model', tokensIn: 500, tokensOut: 250 }],
+    models,
+    '30d',
+    NOW,
+  );
+  assert.equal(freeModel.pricedReplies, 1);
+  assert.equal(freeModel.unpricedReplies, 0);
+  assert.equal(freeModel.totalCost, 0);
+});
+
+test('repository.loadUsageRecords skips branched copies, imported history, and empty failed turns, and preserves version dates', async () => {
   const repo = createRepository(createMemoryDb());
-  await repo.saveMessages([
+  const sourceChat = makeChat({ id: 'c1', title: 'Original' });
+  const originalReply = {
+    id: 'a1',
+    chatId: 'c1',
+    role: 'assistant' as const,
+    content: 'Second try',
+    model: 'anthropic/claude-sonnet-4',
+    tokensIn: 120,
+    tokensOut: 60,
+    createdAt: 20,
+    versionCreatedAt: 200,
+    versions: [
+      {
+        content: 'First try',
+        model: 'openai/gpt-4o-mini',
+        tokensIn: 100,
+        tokensOut: 40,
+        versionCreatedAt: 25,
+      },
+    ],
+  };
+  await repo.saveChatWithMessages(sourceChat, [
     { id: 'u1', chatId: 'c1', role: 'user', content: 'Hi', createdAt: 10 },
     {
       id: 'w1',
@@ -76,33 +130,48 @@ test('repository.loadUsageRecords counts assistant replies and alternate version
       tutorWelcome: true,
       createdAt: 15,
     },
+    originalReply,
     {
-      id: 'a1',
+      id: 'imported1',
       chatId: 'c1',
       role: 'assistant',
-      content: 'Second try',
-      model: 'anthropic/claude-sonnet-4',
-      tokensIn: 120,
-      tokensOut: 60,
-      createdAt: 20,
-      versions: [
-        {
-          content: 'First try',
-          model: 'openai/gpt-4o-mini',
-          tokensIn: 100,
-          tokensOut: 40,
-        },
-      ],
+      content: 'Old ChatGPT reply',
+      createdAt: 30,
+    },
+    {
+      id: 'failed1',
+      chatId: 'c1',
+      role: 'assistant',
+      content: '',
+      model: 'openai/gpt-4o-mini',
+      cutOff: 'failed',
+      createdAt: 40,
     },
   ]);
+
+  // Branching copies the reply into a new chat; usage must NOT double-count it.
+  await ChatService.branchChat({
+    sourceChat,
+    messages: [
+      { id: 'u1', chatId: 'c1', role: 'user', content: 'Hi', createdAt: 10 },
+      originalReply,
+    ],
+    messageId: 'a1',
+    repository: repo,
+  });
 
   const loaded = await repo.loadUsageRecords();
   assert.equal(loaded.length, 2);
   assert.deepEqual(
-    loaded.map((r) => ({ model: r.model, in: r.tokensIn, out: r.tokensOut })),
+    loaded.map((r) => ({
+      model: r.model,
+      in: r.tokensIn,
+      out: r.tokensOut,
+      createdAt: r.createdAt,
+    })),
     [
-      { model: 'anthropic/claude-sonnet-4', in: 120, out: 60 },
-      { model: 'openai/gpt-4o-mini', in: 100, out: 40 },
+      { model: 'anthropic/claude-sonnet-4', in: 120, out: 60, createdAt: 200 },
+      { model: 'openai/gpt-4o-mini', in: 100, out: 40, createdAt: 25 },
     ],
   );
 });

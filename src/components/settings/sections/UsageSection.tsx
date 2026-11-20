@@ -103,7 +103,7 @@ export function UsageSection() {
         </div>
       </div>
 
-      {records !== null && summary.replies === 0 ? (
+      {records === null ? null : summary.replies === 0 ? (
         <p className="settings-empty">{t('usage.empty')}</p>
       ) : (
         <>
@@ -111,9 +111,11 @@ export function UsageSection() {
             <div className="usage-summary__item">
               <dt className="usage-summary__label">{t('usage.spend')}</dt>
               <dd className="usage-summary__value">
-                {summary.totalCost > 0
-                  ? formatCost(summary.totalCost, summary.currency)
-                  : zeroMoney}
+                {summary.pricedReplies === 0
+                  ? '—'
+                  : summary.totalCost > 0
+                    ? formatCost(summary.totalCost, summary.currency)
+                    : zeroMoney}
               </dd>
             </div>
             <div className="usage-summary__item">
@@ -154,7 +156,11 @@ export function UsageSection() {
                       </span>
                     </span>
                     <span className="usage-list__cost">
-                      {row.cost > 0 ? formatCost(row.cost, row.currency) : '—'}
+                      {row.pricedReplies === 0
+                        ? '—'
+                        : row.cost > 0
+                          ? formatCost(row.cost, row.currency)
+                          : zeroMoney}
                     </span>
                   </li>
                 );

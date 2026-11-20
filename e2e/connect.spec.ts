@@ -20,3 +20,25 @@ test('a server address that does not answer is said in the box, with what to che
   await page.reload();
   await expect(page.getByRole('heading', { name: 'First, connect a model' })).toBeVisible();
 });
+
+test('one-click server presets pre-fill name and address in Settings > Connections', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Open settings' }).click();
+  const panel = page.getByRole('tabpanel', { name: 'Connections' });
+  await expect(panel).toBeVisible();
+
+  await panel.getByRole('button', { name: 'Fill in Ollama' }).click();
+  await expect(panel.getByRole('textbox', { name: 'Server name' })).toHaveValue('Ollama');
+  await expect(panel.getByRole('textbox', { name: 'Server address' })).toHaveValue(
+    'http://localhost:11434/v1',
+  );
+  await expect(panel.getByRole('textbox', { name: 'Server address' })).toBeFocused();
+
+  await panel.getByRole('button', { name: 'Fill in LM Studio' }).click();
+  await expect(panel.getByRole('textbox', { name: 'Server name' })).toHaveValue('LM Studio');
+  await expect(panel.getByRole('textbox', { name: 'Server address' })).toHaveValue(
+    'http://localhost:1234/v1',
+  );
+});

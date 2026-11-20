@@ -198,6 +198,10 @@ export type Message = {
   activity?: MessageActivityItem[];
   // Rounds of replayable tool calls, replayed to the model as real tool messages.
   toolRounds?: MessageToolRound[];
+  /** Original message id when copied into a branched chat (skipped by usage totals). */
+  branchedFrom?: string;
+  /** When this reply version was generated, when it differs from the message's initial `createdAt`. */
+  versionCreatedAt?: number;
   /**
    * A reply's other versions, from Try again, in the order they were written.
    * The shown version is the message's own fields, and the only one later
@@ -232,6 +236,7 @@ export type ReplyVersionKey =
   | 'toolCalls'
   | 'activity'
   | 'toolRounds'
-  | 'tutorSeq';
+  | 'tutorSeq'
+  | 'versionCreatedAt';
 
 export type ReplyVersion = Pick<Message, ReplyVersionKey>;
