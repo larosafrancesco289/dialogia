@@ -1,14 +1,16 @@
 // Module: agent/streaming/streamCall
 // Responsibility: One model call inside a streaming turn. Every round of the
 // turn sends the same request shape and differs only in messages, tools and
-// callbacks, so the request assembly and the debug capture live here once.
+// callbacks, so the request assembly and the debug capture live here once, and
+// a busy provider's refusal is sent again here (`retry.ts`) round by round.
 
 import { getStreamChatCompletion } from '@/lib/agent/pipelineClient';
 import { captureRequestDebug } from '@/lib/agent/debug';
 import { isReasoningRequested } from '@/lib/settings/generation';
 import { shouldIncludeUsage } from '@/lib/api/normalizers';
+import { showRetryWait, streamWithRetry } from '@/lib/agent/streaming/retry';
 import type { ModelMessage, StreamFinalOptions, ToolCall, ToolDefinition } from '@/lib/agent/types';
-import type { StreamCallbacks, StreamDoneExtras } from '@/lib/transport/types';
+import type { StreamCallbacks, StreamDoneExtras, TransportChatParams } from '@/lib/transport/types';
 
 export type StreamCallContext = {
   opts: StreamFinalOptions;
@@ -75,7 +77,8 @@ export async function executeStreamCall(
     plugins,
   });
 
-  await getStreamChatCompletion(opts.pipeline)({
+  const stream = getStreamChatCompletion(opts.pipeline);
+  const request: TransportChatParams = {
     auth: turn.auth,
     model: settings.modelId,
     messages: params.messages,
@@ -92,7 +95,11 @@ export async function executeStreamCall(
     tools: params.tools,
     toolChoice: params.toolChoice,
     plugins,
+  };
+  await streamWithRetry((callbacks) => stream({ ...request, callbacks }), {
     callbacks: params.callbacks,
+    signal: controller.signal,
+    onWait: showRetryWait(turn.set, opts.assistantMessage.id),
   });
 }
 

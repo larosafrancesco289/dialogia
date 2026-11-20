@@ -196,6 +196,10 @@ const messages: Translation<typeof en> = {
   'activity.tools': { one: '{count} outil', other: '{count} outils' },
   'activity.searches': { one: '{count} recherche', other: '{count} recherches' },
   'activity.waiting': 'En attente du modèle… {seconds} s',
+  'activity.retrying': {
+    one: 'Le fournisseur est occupé. Nouvel essai dans {count} seconde…',
+    other: 'Le fournisseur est occupé. Nouvel essai dans {count} secondes…',
+  },
   'activity.searchingWeb': 'Cherche sur le web',
   'activity.searchingFor': 'Recherche : {query}',
   'activity.searchingSources': 'Cherche des sources',
@@ -799,6 +803,7 @@ const messages: Translation<typeof en> = {
   'notice.invalidKey': 'Cette clé a été refusée. Vérifie-la dans Réglages › Connexions.',
   'notice.expiredKey': 'Cette clé a expiré. Ajoutes-en une nouvelle dans Réglages › Connexions.',
   'notice.rateLimited': 'Le fournisseur limite les requêtes. Attends un instant, puis réessaie.',
+  'notice.busyWait': 'Le fournisseur est occupé et demande d’attendre {wait} avant de réessayer.',
   'notice.missingSearchKey':
     'Cette recherche a besoin d’une clé. Ajoute-la dans Réglages › Connexions.',
   'notice.searchUnavailable':

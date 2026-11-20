@@ -15,6 +15,7 @@ import { registerMemoryTools } from '@/lib/tools/core/memoryTools';
 import type { ModelMessage, ToolCall, ToolDefinition } from '@/lib/agent/types';
 import type { StreamCallbacks, TransportStreamParams } from '@/lib/transport/types';
 import type { Message, ModelDescriptor } from '@/lib/types';
+import { ApiError, API_ERROR_CODES } from '@/lib/api/errors';
 import { createTestStoreState } from '../../../../tests/helpers/createTestStoreState';
 import { makeChat } from '../../../../tests/helpers/makeChat';
 
@@ -261,6 +262,7 @@ async function runAgentTurn(
     visibleAtRoundStart,
     persisted,
     message: () => get().messagesById[assistantMessage.id],
+    retryAt: () => get().ui.retryAtByMessageId?.[assistantMessage.id],
   };
 }
 
@@ -716,4 +718,90 @@ test('thinking is left out of a round whose tools changed, on a model that binds
       ['thinking', 'text', 'tool_use'],
     );
   }
+});
+
+/** Anthropic's answer when it is overloaded, reported to onError and thrown, as its transport does. */
+const overloaded = (callbacks: StreamCallbacks | undefined, waitMs = 0): never => {
+  const error = new ApiError({
+    code: API_ERROR_CODES.PROVIDER_CHAT_FAILED,
+    status: 529,
+    message: 'provider_chat_failed (529): Overloaded | type: overloaded_error',
+    detail: { type: 'error', error: { type: 'overloaded_error', message: 'Overloaded' } },
+    retryAfter: { retryAfterMs: String(waitMs) },
+  });
+  callbacks?.onError?.(error);
+  throw error;
+};
+
+test('a later round the provider was too busy for is sent again, and the earlier rounds stand', async () => {
+  let noted = 0;
+  const turn = await runAgentTurn((round, callbacks) => {
+    if (round === 1) {
+      noted += 1;
+      return reply(callbacks, 'First, a note.', [call(TOOL_NOTE, { what: 'x' })]);
+    }
+    if (round === 2) return overloaded(callbacks);
+    return reply(callbacks, 'Then the answer.');
+  });
+  await turn.run;
+
+  assert.equal(turn.requests.length, 3);
+  assert.equal(noted, 1, 'the first round is not run again');
+  // The same request went out again.
+  assert.deepEqual(turn.requests[2].messages, turn.requests[1].messages);
+  assert.equal(turn.message()?.content, 'First, a note.\n\nThen the answer.');
+  const saved = turn.persisted.at(-1);
+  assert.equal(saved?.content, 'First, a note.\n\nThen the answer.');
+  assert.equal(saved?.cutOff, undefined);
+  assert.equal(saved?.cutOffReason, undefined);
+  assert.equal(turn.retryAt(), undefined);
+});
+
+test('a round that fails after its first words is not sent again', async () => {
+  const turn = await runAgentTurn((round, callbacks) => {
+    if (round === 1) return reply(callbacks, 'First, a note.', [call(TOOL_NOTE)]);
+    callbacks?.onToken?.('Then the');
+    return overloaded(callbacks);
+  });
+
+  await assert.rejects(turn.run, (error: ApiError) => error.status === 529);
+  assert.equal(turn.requests.length, 2);
+  assert.equal(turn.message()?.content, 'First, a note.\n\nThen the');
+  assert.equal(turn.persisted.at(-1)?.cutOff, 'failed');
+});
+
+test('a busy provider gives up after three retries, and the reply says why', async () => {
+  const turn = await runAgentTurn((round, callbacks) => overloaded(callbacks));
+
+  await assert.rejects(turn.run, (error: ApiError) => error.status === 529);
+  assert.equal(turn.requests.length, 4);
+  const saved = turn.persisted.at(-1);
+  assert.equal(saved?.cutOff, 'failed');
+  assert.ok(saved?.cutOffReason);
+});
+
+test('Stop while a busy provider is waited on ends the turn at once, as stopped', async () => {
+  const controller = new AbortController();
+  const turn = await runAgentTurn(
+    (round, callbacks) => {
+      if (round === 1) return reply(callbacks, 'First, a note.', [call(TOOL_NOTE)]);
+      setTimeout(() => controller.abort(), 30);
+      return overloaded(callbacks, 30_000);
+    },
+    { controller },
+  );
+  const started = Date.now();
+  let seenWaiting: number | undefined;
+  const watch = setInterval(() => {
+    seenWaiting ??= turn.retryAt();
+  }, 5);
+
+  await assert.rejects(turn.run, (error: Error) => error.name === 'AbortError');
+  clearInterval(watch);
+  assert.ok(Date.now() - started < 5_000, 'the pause was not waited out');
+  assert.ok(seenWaiting && seenWaiting > Date.now(), 'the reply said when it would try again');
+  assert.equal(turn.retryAt(), undefined, 'and stopped saying so');
+  assert.equal(turn.requests.length, 2);
+  assert.equal(turn.message()?.content, 'First, a note.');
+  assert.equal(turn.persisted.at(-1)?.cutOff, 'stopped');
 });

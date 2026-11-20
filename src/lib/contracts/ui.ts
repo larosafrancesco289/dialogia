@@ -85,6 +85,11 @@ export type UiSnapshot = {
    */
   sidebarFoldedByLayout?: boolean;
   activeTurnByChatId: Record<string, number>;
+  /**
+   * When a reply's request goes out again after the provider was busy (epoch
+   * ms), by message id, while it waits; session-scoped, never persisted.
+   */
+  retryAtByMessageId?: Record<string, number>;
   notice?: string;
   /** How the notice reads: a passing fact, a confirmation, or something wrong. */
   noticeTone?: NoticeTone;

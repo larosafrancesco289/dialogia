@@ -58,33 +58,57 @@ test('a connection that closes mid-reply is marked cut off, not passed off as fi
 });
 
 test.describe('a provider error', () => {
-  test.use({ expectedError: /status of 500|Mock failure 500/ });
+  test.use({ expectedError: /status of 50\d|Mock failure 50\d/ });
 
   test('reads as a plain sentence, the provider’s words under Details, and Try again recovers', async ({
     page,
   }) => {
     await connectMock(page);
-    // The first streamed request fails; every later one reaches the mock.
-    let failed = false;
+    // Streamed requests fail until Try again, through every retry the reply
+    // makes on its own; then they reach the mock.
+    let failing = true;
+    let attempts = 0;
     await page.route('**/v1/chat/completions', async (route) => {
-      if (failed || !route.request().postData()?.includes('"stream":true')) {
+      if (!failing || !route.request().postData()?.includes('"stream":true')) {
         return route.fallback();
       }
-      failed = true;
+      attempts += 1;
       await route.fulfill({ status: 500, json: { error: { message: 'Mock failure 500' } } });
     });
     await send(page, 'Break once');
 
     const main = page.getByRole('main');
-    await expect(main.getByText('This reply failed.')).toBeVisible();
+    // Three retries with backoff come first: up to 1 + 2 + 4 seconds.
+    await expect(main.getByText('This reply failed.')).toBeVisible({ timeout: 15_000 });
+    expect(attempts).toBe(4);
     await expect(main.getByText(/The provider had a problem on its side/)).toBeVisible();
     await expect(main.getByText('500: Mock failure 500')).toBeHidden();
     await main.getByText('What the provider said').click();
     await expect(main.getByText('500: Mock failure 500')).toBeVisible();
 
+    failing = false;
     await main.getByRole('button', { name: 'Try again' }).click();
     await expect(main.getByText(REPLY_END)).toBeVisible();
     await expect(main.getByText(/Mock failure 500/)).toHaveCount(0);
+  });
+
+  test('a provider busy for a moment is asked again, and the reply arrives', async ({ page }) => {
+    await connectMock(page);
+    let attempts = 0;
+    await page.route('**/v1/chat/completions', async (route) => {
+      if (!route.request().postData()?.includes('"stream":true')) {
+        return route.fallback();
+      }
+      attempts += 1;
+      if (attempts > 1) return route.fallback();
+      await route.fulfill({ status: 503, json: { error: { message: 'Mock failure 503' } } });
+    });
+    await send(page, 'Busy once');
+
+    const main = page.getByRole('main');
+    await expect(main.getByText(REPLY_END)).toBeVisible();
+    expect(attempts).toBe(2);
+    await expect(main.getByText('This reply failed.')).toHaveCount(0);
   });
 });
 

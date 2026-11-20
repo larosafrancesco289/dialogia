@@ -193,6 +193,10 @@ const messages: Translation<typeof en> = {
   'activity.tools': { one: '{count} ferramenta', other: '{count} ferramentas' },
   'activity.searches': { one: '{count} pesquisa', other: '{count} pesquisas' },
   'activity.waiting': 'Esperando o modelo… {seconds} s',
+  'activity.retrying': {
+    one: 'O provedor está ocupado. Tentando de novo em {count} segundo…',
+    other: 'O provedor está ocupado. Tentando de novo em {count} segundos…',
+  },
   'activity.searchingWeb': 'Pesquisando na web',
   'activity.searchingFor': 'Pesquisando: {query}',
   'activity.searchingSources': 'Procurando fontes',
@@ -781,6 +785,7 @@ const messages: Translation<typeof en> = {
   'notice.invalidKey': 'Essa chave foi recusada. Confira em Configurações › Conexões.',
   'notice.expiredKey': 'Essa chave expirou. Adicione uma nova em Configurações › Conexões.',
   'notice.rateLimited': 'O provedor está limitando os pedidos. Espere um pouco e tente de novo.',
+  'notice.busyWait': 'O provedor está ocupado e pede para esperar {wait} antes de tentar de novo.',
   'notice.missingSearchKey':
     'Esta pesquisa precisa de uma chave. Adicione em Configurações › Conexões.',
   'notice.searchUnavailable':
