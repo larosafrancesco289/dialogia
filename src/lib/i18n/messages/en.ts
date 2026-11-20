@@ -482,6 +482,21 @@ const en = {
   'settings.section.display': 'Display',
   'settings.section.developer': 'Developer',
   'settings.section.data': 'Import and export',
+  'settings.section.usage': 'Usage and spend',
+  'settings.keywords.usage': 'usage spend cost money tokens replies statistics stats',
+  'usage.period': 'Time range',
+  'usage.estimateHint': 'Estimated from replies saved in this browser.',
+  'usage.range.7d': '7 days',
+  'usage.range.30d': '30 days',
+  'usage.range.all': 'All time',
+  'usage.spend': 'Estimated spend',
+  'usage.replies': 'Replies',
+  'usage.tokens': 'Tokens',
+  'usage.tokensDetail': '{inCount} in · {outCount} out',
+  'usage.replyCount': { one: '{count} reply', other: '{count} replies' },
+  'usage.modelMetaWithTokens': '{replies} · {tokens} tokens',
+  'usage.empty': 'No replies recorded in this period.',
+  'usage.unknownModel': 'Unknown model',
 
   // What each section shows and is about, so search finds it by the words on
   // screen as well as by its title. English words always find it too.

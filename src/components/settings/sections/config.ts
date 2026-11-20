@@ -17,7 +17,7 @@ export const TAB_SECTIONS: Record<TabId, SectionId[]> = {
   chat: ['general', 'memory', 'reasoning'],
   tutor: ['tutor'],
   appearance: ['theme', 'language', 'display', 'developer'],
-  data: ['data'],
+  data: ['data', 'usage'],
 };
 
 /** A section's title in the language shown. */

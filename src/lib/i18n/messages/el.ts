@@ -495,6 +495,21 @@ const messages: Translation<typeof en> = {
   'settings.section.display': 'Προβολή',
   'settings.section.developer': 'Για προγραμματιστές',
   'settings.section.data': 'Εισαγωγή και εξαγωγή',
+  'settings.section.usage': 'Χρήση και κόστος',
+  'settings.keywords.usage': 'χρηση κοστος δαπανη tokens απαντησεις στατιστικα',
+  'usage.period': 'Χρονικό διάστημα',
+  'usage.estimateHint': 'Εκτίμηση από τις απαντήσεις που είναι αποθηκευμένες σε αυτόν τον browser.',
+  'usage.range.7d': '7 ημέρες',
+  'usage.range.30d': '30 ημέρες',
+  'usage.range.all': 'Όλα',
+  'usage.spend': 'Εκτιμώμενο κόστος',
+  'usage.replies': 'Απαντήσεις',
+  'usage.tokens': 'Tokens',
+  'usage.tokensDetail': '{inCount} είσοδος · {outCount} έξοδος',
+  'usage.replyCount': { one: '{count} απάντηση', other: '{count} απαντήσεις' },
+  'usage.modelMetaWithTokens': '{replies} · {tokens} tokens',
+  'usage.empty': 'Δεν υπάρχουν απαντήσεις σε αυτό το διάστημα.',
+  'usage.unknownModel': 'Άγνωστο μοντέλο',
 
   // What each section shows and is about, so search finds it by the words on
   // screen as well as by its title. English words always find it too.

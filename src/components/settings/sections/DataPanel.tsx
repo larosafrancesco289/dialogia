@@ -1,4 +1,5 @@
 import { SettingsSection } from '@/components/settings/SettingsSection';
+import { UsageSection } from '@/components/settings/sections/UsageSection';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import type { RenderSection } from '@/components/settings/types';
 import type { ImportProgress } from '@/lib/historyImport/importHistory';
@@ -107,6 +108,7 @@ export function DataPanel({
           </div>
         </SettingsSection>,
       )}
+      {renderSection('data', 'usage', <UsageSection />)}
       <ConfirmDialog
         open={!!pending}
         title={t('data.importTitle', { name: pending?.name || t('data.thisFile') })}

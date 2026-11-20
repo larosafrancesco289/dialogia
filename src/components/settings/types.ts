@@ -17,6 +17,7 @@ export type SectionId =
   | 'language'
   | 'display'
   | 'developer'
-  | 'data';
+  | 'data'
+  | 'usage';
 
 export type RenderSection = (tabId: TabId, sectionId: SectionId, content: ReactNode) => ReactNode;

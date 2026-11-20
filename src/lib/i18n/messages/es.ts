@@ -494,6 +494,21 @@ const messages: Translation<typeof en> = {
   'settings.section.display': 'Visualización',
   'settings.section.developer': 'Desarrolladores',
   'settings.section.data': 'Importar y exportar',
+  'settings.section.usage': 'Uso y gasto',
+  'settings.keywords.usage': 'uso gasto coste dinero tokens respuestas estadisticas',
+  'usage.period': 'Periodo',
+  'usage.estimateHint': 'Estimado a partir de las respuestas guardadas en este navegador.',
+  'usage.range.7d': '7 días',
+  'usage.range.30d': '30 días',
+  'usage.range.all': 'Todo',
+  'usage.spend': 'Gasto estimado',
+  'usage.replies': 'Respuestas',
+  'usage.tokens': 'Tokens',
+  'usage.tokensDetail': '{inCount} entrada · {outCount} salida',
+  'usage.replyCount': { one: '{count} respuesta', other: '{count} respuestas' },
+  'usage.modelMetaWithTokens': '{replies} · {tokens} tokens',
+  'usage.empty': 'No hay respuestas registradas en este periodo.',
+  'usage.unknownModel': 'Modelo desconocido',
 
   // What each section shows and is about, so search finds it by the words on
   // screen as well as by its title. English words always find it too.

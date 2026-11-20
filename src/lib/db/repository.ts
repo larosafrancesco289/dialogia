@@ -127,6 +127,15 @@ export type MessageSearchRecord = {
   createdAt: number;
 };
 
+/** Lightweight projection of an assistant reply's token and cost metadata. */
+export type UsageRecord = {
+  createdAt: number;
+  model?: string;
+  tokensIn?: number;
+  tokensOut?: number;
+  usage?: Message['usage'];
+};
+
 function pickChatCollection<T extends { chatId: string }>(
   table: DbTable<T>,
   chatId: string,
@@ -495,6 +504,40 @@ export function createRepository(db: DialogiaDbLike) {
     return hits.slice(0, limit);
   };
 
+  /**
+   * Reads lightweight token and usage metadata for every stored assistant
+   * reply (including alternate versions), keeping message bodies and
+   * attachments out of the store.
+   */
+  const loadUsageRecords = async (): Promise<UsageRecord[]> => {
+    const all = await db.messages.toArray();
+    const records: UsageRecord[] = [];
+    for (const msg of all) {
+      if (msg.role !== 'assistant') continue;
+      if (msg.tutorWelcome) continue;
+      const pushOne = (entry: {
+        model?: string;
+        tokensIn?: number;
+        tokensOut?: number;
+        metrics?: Message['metrics'];
+        usage?: Message['usage'];
+      }) => {
+        records.push({
+          createdAt: msg.createdAt,
+          model: entry.model,
+          tokensIn: entry.metrics?.promptTokens ?? entry.tokensIn,
+          tokensOut: entry.metrics?.completionTokens ?? entry.tokensOut,
+          usage: entry.usage,
+        });
+      };
+      pushOne(msg);
+      if (Array.isArray(msg.versions)) {
+        for (const version of msg.versions) pushOne(version);
+      }
+    }
+    return records;
+  };
+
   const saveChatWithMessages = async (chat: Chat, list: Message[]) => {
     await runTransaction(db, [db.chats, db.messages], async () => {
       await saveChat(chat);
@@ -617,6 +660,7 @@ export function createRepository(db: DialogiaDbLike) {
     loadFolders,
     loadMessages,
     searchMessages,
+    loadUsageRecords,
     saveChatWithMessages,
     deleteChatAndMessages,
     deleteFolder,
