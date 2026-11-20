@@ -7,12 +7,18 @@ import { MEDIA_QUERIES } from '@/lib/ui/breakpoints';
 import { BottomSheet, SheetItem } from '@/components/ui/BottomSheet';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { MoveChatSheet } from '@/components/MoveChatSheet';
-import { PencilSquareIcon, TrashIcon, FolderOpenIcon } from '@heroicons/react/24/outline';
+import {
+  ArrowDownTrayIcon,
+  PencilSquareIcon,
+  TrashIcon,
+  FolderOpenIcon,
+} from '@heroicons/react/24/outline';
 import type { Chat } from '@/lib/types';
 import { MoveChatMenu } from '@/components/sidebar/MoveChatMenu';
 import { requestFolderRename } from '@/components/sidebar/pendingRename';
 import { useDragAndDrop } from '@/lib/dragDrop';
 import { ChatRowView } from '@/components/sidebar/ChatRowView';
+import { buildSingleChatMarkdownExport, downloadBlob } from '@/lib/settings/chatMarkdown';
 import { canFocus, neighbourOf, refocusIfDropped } from '@/lib/ui/focus';
 import { useT } from '@/lib/i18n';
 import { displayChatTitle } from '@/lib/ui/chatTitle';
@@ -38,16 +44,19 @@ export function ChatRowContainer({
   onDragStart,
   onDragEnd,
 }: ChatRowContainerProps) {
-  const { renameChat, deleteChat, moveChatToFolder, createFolder, folders } = useChatStore(
-    (state) => ({
-      renameChat: state.renameChat,
-      deleteChat: state.deleteChat,
-      moveChatToFolder: state.moveChatToFolder,
-      createFolder: state.createFolder,
-      folders: state.folders,
-    }),
-    shallow,
-  );
+  const { renameChat, deleteChat, moveChatToFolder, createFolder, folders, models, setNotice } =
+    useChatStore(
+      (state) => ({
+        renameChat: state.renameChat,
+        deleteChat: state.deleteChat,
+        moveChatToFolder: state.moveChatToFolder,
+        createFolder: state.createFolder,
+        folders: state.folders,
+        models: state.models,
+        setNotice: state.setNotice,
+      }),
+      shallow,
+    );
   const t = useT();
   const shownTitle = displayChatTitle(chat.title);
   const [editing, setEditing] = useState(false);
@@ -73,6 +82,15 @@ export function ChatRowContainer({
         .querySelector<HTMLElement>(`.chat-item[data-chat-id="${CSS.escape(chat.id)}"]`)
         ?.focus({ preventScroll: true });
     });
+  };
+
+  const exportMarkdown = async () => {
+    const exported = await buildSingleChatMarkdownExport(chat.id, models);
+    if (!exported) {
+      setNotice(t('chatRow.exportEmpty'), 'info');
+      return;
+    }
+    downloadBlob(exported.blob, exported.filename);
   };
 
   const longPress = useLongPressSheet({
@@ -102,6 +120,7 @@ export function ChatRowContainer({
         }}
         onCancelEdit={() => setEditing(false)}
         onDelete={() => setShowConfirm(true)}
+        onExport={() => void exportMarkdown()}
         onMove={(anchor) => (isMobile ? setShowMoveSheet(true) : setMoveAnchor(anchor))}
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
@@ -155,6 +174,15 @@ export function ChatRowContainer({
           }}
         >
           {t('chatRow.move')}
+        </SheetItem>
+        <SheetItem
+          icon={<ArrowDownTrayIcon />}
+          onClick={() => {
+            setShowActions(false);
+            void exportMarkdown();
+          }}
+        >
+          {t('chatRow.export')}
         </SheetItem>
         <div className="sheet-rule" aria-hidden="true" />
         <SheetItem

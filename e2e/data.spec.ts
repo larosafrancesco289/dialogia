@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { test, expect, connectMock, send, REPLY_END } from './fixtures';
 
 test('an export imported into a fresh browser brings the chats back', async ({
@@ -43,4 +44,24 @@ test('an export imported into a fresh browser brings the chats back', async ({
   await expect(other.getByRole('main').getByText('Remember this exchange')).toBeVisible();
   await expect(other.getByRole('main').getByText(REPLY_END)).toBeVisible();
   await fresh.close();
+});
+
+test('a single chat exports as a Markdown file from the sidebar', async ({ page }, testInfo) => {
+  await connectMock(page);
+  await send(page, 'Write a haiku about cedar trees');
+  await expect(page.getByRole('main').getByText(REPLY_END)).toBeVisible();
+  const row = page.getByRole('complementary').locator('.chat-item').first();
+  await expect(row).toContainText('Mock title');
+  await row.hover();
+
+  const downloading = page.waitForEvent('download');
+  await row.getByRole('button', { name: /Download .* as Markdown/ }).click();
+  const download = await downloading;
+  expect(download.suggestedFilename()).toBe('mock-title.md');
+  const out = testInfo.outputPath('chat.md');
+  await download.saveAs(out);
+  const text = readFileSync(out, 'utf8');
+  expect(text).toContain('# Mock title');
+  expect(text).toContain('Write a haiku about cedar trees');
+  expect(text).toContain(REPLY_END);
 });

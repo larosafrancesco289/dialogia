@@ -2,6 +2,7 @@ import { useId, useRef, type PointerEvent } from 'react';
 import { IconButton } from '@/components/ui/IconButton';
 import {
   AcademicCapIcon,
+  ArrowDownTrayIcon,
   PencilSquareIcon,
   TrashIcon,
   FolderArrowDownIcon,
@@ -26,6 +27,7 @@ export type ChatRowViewProps = {
   onCommitEdit: (title: string) => void | Promise<void>;
   onCancelEdit: () => void;
   onDelete: () => void;
+  onExport: () => void;
   onMove: (anchor: DOMRect) => void;
   onDragStart: (chatId: string) => void;
   onDragEnd: () => void;
@@ -57,6 +59,7 @@ export function ChatRowView({
   onCommitEdit,
   onCancelEdit,
   onDelete,
+  onExport,
   onMove,
   onDragStart,
   onDragEnd,
@@ -173,6 +176,17 @@ export function ChatRowView({
             ariaLabel={t('chatRow.moveNamed', { title: shownTitle })}
           >
             <FolderArrowDownIcon />
+          </IconButton>
+          <IconButton
+            size="sm"
+            onClick={(e) => {
+              e?.stopPropagation();
+              onExport();
+            }}
+            title={t('chatRow.export')}
+            ariaLabel={t('chatRow.exportNamed', { title: shownTitle })}
+          >
+            <ArrowDownTrayIcon />
           </IconButton>
           <IconButton
             size="sm"
