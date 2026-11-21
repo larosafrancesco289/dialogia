@@ -203,6 +203,10 @@ export function QuickSearchDialog() {
   );
 
   const onInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    // Enter and Escape belong to the input method while a conversion is open
+    // (Japanese, Chinese, Korean): they confirm or cancel it, never a result.
+    // Safari ends the composition first and sends that key as keyCode 229.
+    if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
     if (event.key === 'Escape') {
       event.preventDefault();
       event.stopPropagation();

@@ -30,8 +30,8 @@ test('a PDF attached under the page’s security policy is read by the bundled w
   request,
 }) => {
   await connectMock(page);
-  await request.delete(`${MOCK_URL.replace('/v1', '')}/__requests`);
-
+  // The mock's request log is shared by tests running in parallel: never clear
+  // it, and look only for this test's own marker text.
   await page
     .locator('input[type=file]')
     .first()
@@ -55,7 +55,6 @@ test('a plain-text or code file is read in the browser, sent to the model, and s
   request,
 }) => {
   await connectMock(page);
-  await request.delete(`${MOCK_URL.replace('/v1', '')}/__requests`);
 
   await page
     .locator('input[type=file]')

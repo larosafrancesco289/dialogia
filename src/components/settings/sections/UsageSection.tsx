@@ -117,6 +117,16 @@ export function UsageSection() {
                     ? formatCost(summary.totalCost, summary.currency)
                     : zeroMoney}
               </dd>
+              {summary.pricedReplies > 0 && summary.unpricedReplies > 0 && (
+                // A total over some replies must not pass for the whole: local
+                // and uncatalogued models carry no price.
+                <dd className="usage-summary__sub">
+                  {t('usage.spendPartial', {
+                    priced: formatNumber(summary.pricedReplies),
+                    total: formatNumber(summary.replies),
+                  })}
+                </dd>
+              )}
             </div>
             <div className="usage-summary__item">
               <dt className="usage-summary__label">{t('usage.replies')}</dt>

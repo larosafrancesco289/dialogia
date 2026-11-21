@@ -10,6 +10,13 @@ test('buildChatMarkdownFilename turns titles into clean .md slugs', () => {
   assert.equal(buildChatMarkdownFilename('   ???   '), 'chat.md');
 });
 
+test('buildChatMarkdownFilename keeps kana voicing marks and Hangul syllables whole', () => {
+  assert.equal(buildChatMarkdownFilename('がっこう ガイド'), 'がっこう-ガイド.md');
+  assert.equal(buildChatMarkdownFilename('한국어 공부'), '한국어-공부.md');
+  assert.equal(buildChatMarkdownFilename('Άλγεβρα'), 'αλγεβρα.md');
+  assert.equal(buildChatMarkdownFilename('हिन्दी व्याकरण'), 'हिन्दी-व्याकरण.md');
+});
+
 test('formatChatAsMarkdown writes headings, model labels, attachments, and cited sources', () => {
   const chat = makeChat({
     id: 'c1',

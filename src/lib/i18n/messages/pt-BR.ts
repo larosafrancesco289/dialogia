@@ -500,6 +500,7 @@ const messages: Translation<typeof en> = {
   'usage.range.30d': '30 dias',
   'usage.range.all': 'Tudo',
   'usage.spend': 'Gasto estimado',
+  'usage.spendPartial': 'Inclui {priced} de {total} respostas. As demais não têm preço conhecido.',
   'usage.replies': 'Respostas',
   'usage.tokens': 'Tokens',
   'usage.tokensDetail': '{inCount} entrada · {outCount} saída',

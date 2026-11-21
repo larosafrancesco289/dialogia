@@ -2,10 +2,14 @@ import { useEffect } from 'react';
 import { useChatStore } from '@/lib/store';
 import { selectIsStreaming } from '@/lib/store/selectors';
 import { isModalOpen } from '@/lib/hooks/useModalFocus';
-import { isOtherEditableTarget, resolveGlobalShortcut } from '@/lib/ui/globalShortcuts';
+import {
+  isApplePlatform,
+  isOtherEditableTarget,
+  resolveGlobalShortcut,
+} from '@/lib/ui/globalShortcuts';
 
 /**
- * Registers desktop app-level shortcuts:
+ * Registers desktop app-level shortcuts (Cmd on Apple platforms, Ctrl elsewhere):
  * - Cmd/Ctrl+K: toggle quick search across chats and messages
  * - Cmd/Ctrl+Shift+O: start a new chat
  * - Cmd/Ctrl+B: toggle sidebar
@@ -15,6 +19,7 @@ import { isOtherEditableTarget, resolveGlobalShortcut } from '@/lib/ui/globalSho
 export function useGlobalShortcuts(enabled: boolean) {
   useEffect(() => {
     if (!enabled || typeof document === 'undefined') return;
+    const apple = isApplePlatform();
 
     const onKeyDown = (event: KeyboardEvent) => {
       const state = useChatStore.getState();
@@ -24,6 +29,7 @@ export function useGlobalShortcuts(enabled: boolean) {
         settingsOpen: state.ui.showSettings === true,
         isStreaming: selectIsStreaming(state),
         inOtherEditable: isOtherEditableTarget(event.target),
+        apple,
       });
       if (!action) return;
 

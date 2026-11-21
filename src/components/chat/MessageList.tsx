@@ -164,6 +164,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     atBottom,
     showJump,
     jumpToLatest,
+    scrollToBottom,
     visibleMessages,
     hiddenCount,
     showMore,
@@ -200,7 +201,10 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
   useEffect(() => {
     if (!pendingJump || !messagesLoaded) return;
     if (jumpIndex === -1) {
+      // The message is gone (deleted, perhaps in another tab). A chat opened
+      // for the jump skipped its usual scroll to the end, so give it that now.
       setUI({ jumpToMessage: undefined });
+      scrollToBottom('auto');
       return;
     }
     const targetVisible = visibleMessages.some((m) => m.id === pendingJump.messageId);
@@ -211,7 +215,10 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
       if (!target) {
         // Wait for the widened window to render; if it's already in the window
         // yet absent from the DOM (e.g. filtered out), clear the stale jump.
-        if (targetVisible) setUI({ jumpToMessage: undefined });
+        if (targetVisible) {
+          setUI({ jumpToMessage: undefined });
+          scrollToBottom('auto');
+        }
         return;
       }
       target.scrollIntoView({
@@ -237,6 +244,7 @@ export function MessageList({ chatId, modelFilter }: { chatId: string; modelFilt
     messagesLoaded,
     pendingJump,
     prefersReducedMotion,
+    scrollToBottom,
     setUI,
     visibleMessages,
   ]);

@@ -36,6 +36,8 @@ test('desktop keyboard shortcuts open quick search, toggle the sidebar, and open
 }) => {
   await connectMock(page);
 
+  // The Desktop Chrome device reports Windows even on a Mac host, so the app
+  // takes Ctrl as the modifier here (Cmd only on Apple platforms).
   await page.keyboard.press('Control+k');
   const dialog = page.getByRole('dialog', { name: 'Search chats and messages' });
   await expect(dialog).toBeVisible();

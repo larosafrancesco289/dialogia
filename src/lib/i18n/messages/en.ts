@@ -492,6 +492,7 @@ const en = {
   'usage.range.30d': '30 days',
   'usage.range.all': 'All time',
   'usage.spend': 'Estimated spend',
+  'usage.spendPartial': 'Covers {priced} of {total} replies. The rest have no known price.',
   'usage.replies': 'Replies',
   'usage.tokens': 'Tokens',
   'usage.tokensDetail': '{inCount} in · {outCount} out',

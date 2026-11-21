@@ -8,7 +8,9 @@ const baseCtx: ShortcutContext = {
   settingsOpen: false,
   isStreaming: false,
   inOtherEditable: false,
+  apple: true,
 };
+const pcCtx: ShortcutContext = { ...baseCtx, apple: false };
 
 const key = (
   k: string,
@@ -31,7 +33,7 @@ const key = (
 
 test('Cmd/Ctrl+K toggles quick search, and closes it when it is the open modal', () => {
   assert.equal(resolveGlobalShortcut(key('k', { metaKey: true }), baseCtx), 'toggleQuickSearch');
-  assert.equal(resolveGlobalShortcut(key('K', { ctrlKey: true }), baseCtx), 'toggleQuickSearch');
+  assert.equal(resolveGlobalShortcut(key('K', { ctrlKey: true }), pcCtx), 'toggleQuickSearch');
   assert.equal(
     resolveGlobalShortcut(key('k', { metaKey: true }), {
       ...baseCtx,
@@ -53,7 +55,7 @@ test('Cmd/Ctrl+Shift+O starts a new chat when no modal is open', () => {
   );
   assert.equal(
     resolveGlobalShortcut(key('O', { ctrlKey: true, shiftKey: true }), {
-      ...baseCtx,
+      ...pcCtx,
       modalOpen: true,
     }),
     null,
@@ -72,7 +74,7 @@ test('Cmd/Ctrl+, toggles Settings', () => {
   assert.equal(resolveGlobalShortcut(key(',', { metaKey: true }), baseCtx), 'toggleSettings');
   assert.equal(
     resolveGlobalShortcut(key(',', { ctrlKey: true }), {
-      ...baseCtx,
+      ...pcCtx,
       modalOpen: true,
       settingsOpen: true,
     }),
@@ -101,4 +103,12 @@ test('Escape stops an active reply when no modal or inline edit is open', () => 
     }),
     null,
   );
+});
+
+test('Ctrl is left to text editing on Apple platforms, and Cmd does nothing elsewhere', () => {
+  // Ctrl+B / Ctrl+K move back a character and kill to end of line in macOS text fields.
+  assert.equal(resolveGlobalShortcut(key('b', { ctrlKey: true }), baseCtx), null);
+  assert.equal(resolveGlobalShortcut(key('k', { ctrlKey: true }), baseCtx), null);
+  assert.equal(resolveGlobalShortcut(key('k', { metaKey: true }), pcCtx), null);
+  assert.equal(resolveGlobalShortcut(key('b', { ctrlKey: true }), pcCtx), 'toggleSidebar');
 });

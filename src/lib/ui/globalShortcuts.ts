@@ -28,6 +28,11 @@ export type ShortcutContext = {
   isStreaming: boolean;
   /** Focus is inside an editable field other than the main chat composer. */
   inOtherEditable: boolean;
+  /**
+   * Apple platforms use Cmd as the shortcut modifier. Ctrl stays free there,
+   * since Ctrl+B / Ctrl+K are the system's own text-editing keys.
+   */
+  apple: boolean;
 };
 
 /**
@@ -41,7 +46,7 @@ export function resolveGlobalShortcut(
 ): GlobalShortcutAction | null {
   if (event.defaultPrevented || event.isComposing || event.altKey) return null;
 
-  const mod = event.metaKey || event.ctrlKey;
+  const mod = ctx.apple ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
   const key = event.key.toLowerCase();
 
   if (mod && !event.shiftKey && key === 'k') {
@@ -80,13 +85,18 @@ export function isOtherEditableTarget(target: EventTarget | null): boolean {
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
 }
 
-/** Platform-appropriate modifier glyph for tooltips (`⌘` on Apple, `Ctrl+` elsewhere). */
-export function modKeyPrefix(): string {
-  if (typeof navigator === 'undefined') return 'Ctrl+';
+/** Whether this browser runs on an Apple platform, where Cmd is the shortcut modifier. */
+export function isApplePlatform(): boolean {
+  if (typeof navigator === 'undefined') return false;
   const platform =
     (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ??
     navigator.platform ??
     navigator.userAgent ??
     '';
-  return /mac|iphone|ipad|ipod/i.test(platform) ? '⌘' : 'Ctrl+';
+  return /mac|iphone|ipad|ipod/i.test(platform);
+}
+
+/** Platform-appropriate modifier glyph for tooltips (`⌘` on Apple, `Ctrl+` elsewhere). */
+export function modKeyPrefix(): string {
+  return isApplePlatform() ? '⌘' : 'Ctrl+';
 }

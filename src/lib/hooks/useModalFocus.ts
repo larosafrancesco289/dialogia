@@ -26,9 +26,12 @@ function onTab(event: KeyboardEvent) {
 }
 
 // Bubble, so a field inside that uses Escape (clearing itself, closing its
-// list) gets it first and marks it handled.
+// list) gets it first and marks it handled. Escape while an input method is
+// composing (Japanese, Chinese, Korean) cancels the conversion, not the dialog;
+// Safari sends that Escape after the composition ends, as keyCode 229.
 function onEscape(event: KeyboardEvent) {
   if (event.key !== 'Escape' || event.defaultPrevented) return;
+  if (event.isComposing || event.keyCode === 229) return;
   const close = layers.top()?.onEscape();
   if (!close) return;
   event.preventDefault();

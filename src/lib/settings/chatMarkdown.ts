@@ -14,7 +14,11 @@ export function buildChatMarkdownFilename(title: string): string {
   const cleaned = displayChatTitle(title)
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^\p{L}\p{N}\s-]+/gu, '')
+    // Compose again: kana voicing marks and Hangul jamo are not Latin accents,
+    // and left apart they would be stripped below (がっこう → かっこう).
+    .normalize('NFC')
+    // Marks that remain belong to scripts that need them (Devanagari, Thai).
+    .replace(/[^\p{L}\p{M}\p{N}\s-]+/gu, '')
     .trim()
     .replace(/\s+/g, '-')
     .slice(0, 64)

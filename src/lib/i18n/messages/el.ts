@@ -506,6 +506,8 @@ const messages: Translation<typeof en> = {
   'usage.range.30d': '30 ημέρες',
   'usage.range.all': 'Όλα',
   'usage.spend': 'Εκτιμώμενο κόστος',
+  'usage.spendPartial':
+    'Καλύπτει {priced} από τις {total} απαντήσεις. Για τις υπόλοιπες δεν υπάρχει γνωστή τιμή.',
   'usage.replies': 'Απαντήσεις',
   'usage.tokens': 'Tokens',
   'usage.tokensDetail': '{inCount} είσοδος · {outCount} έξοδος',

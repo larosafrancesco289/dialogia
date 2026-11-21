@@ -33,18 +33,26 @@ export function useMessageListWindow(args: {
     resetKey: chatId,
     includeIndex,
   });
-  const { containerRef, contentRef, endRef, roomRef, atBottom, showJump, jumpToLatest } =
-    useMessageScrolling({
-      messages,
-      chatId,
-      isStreaming,
-      isMobile,
-      prefersReducedMotion,
-      isAssistantPlaceholder,
-      onScrollAway,
-      autoScrollPreference,
-      suppressInitialBottomScroll,
-    });
+  const {
+    containerRef,
+    contentRef,
+    endRef,
+    roomRef,
+    atBottom,
+    showJump,
+    jumpToLatest,
+    scrollToBottom,
+  } = useMessageScrolling({
+    messages,
+    chatId,
+    isStreaming,
+    isMobile,
+    prefersReducedMotion,
+    isAssistantPlaceholder,
+    onScrollAway,
+    autoScrollPreference,
+    suppressInitialBottomScroll,
+  });
 
   return {
     visibleMessages: visibleItems,
@@ -57,5 +65,6 @@ export function useMessageListWindow(args: {
     atBottom,
     showJump,
     jumpToLatest,
+    scrollToBottom,
   };
 }
